@@ -139,6 +139,11 @@ interface StoreState {
     deleteCustomerMedia: (id: string) => void;
     updateSettings: (s: Partial<BusinessSettings>) => void;
     
+    // Room Management
+    addRoom: (r: Omit<Room, 'id' | 'businessId' | 'createdAt'>) => void;
+    updateRoom: (id: string, updates: Partial<Room>) => void;
+    deleteRoom: (id: string) => void;
+    
     processCheckout: (p: any, debtInfo?: { amount: number, dueDate: string }, soldProducts?: { productId: string, quantity: number }[]) => Promise<boolean>;
     sendNotification: (customerId: string, type: NotificationLog['type'], content: string) => void;
     addLog: (action: string, customer: string, oldValue?: string, newValue?: string) => void;
@@ -567,7 +572,8 @@ interface StoreState {
                  packages: setAllPackages,
                  commission_rules: setAllCommissionRules,
                  calendar_blocks: setAllBlocks,
-                 z_reports: setZReports
+                 z_reports: setZReports,
+                 rooms: setAllRooms
              };
  
              const setter = updaters[table];
@@ -866,6 +872,19 @@ interface StoreState {
             syncDb('customer_media', 'delete', {}, id);
         },
         updateSettings: (s) => setSettings(prev => ({ ...prev, ...s })),
+        addRoom: (r) => {
+            const nr = { ...r, id: crypto.randomUUID(), businessId: getSafeBizId()!, createdAt: new Date().toISOString() };
+            setAllRooms(prev => [...prev, nr as any]);
+            syncDb('rooms', 'insert', nr, nr.id);
+        },
+        updateRoom: (id, updates) => {
+            setAllRooms(prev => prev.map(r => r.id === id ? { ...r, ...updates } : r));
+            syncDb('rooms', 'update', updates, id);
+        },
+        deleteRoom: (id) => {
+            setAllRooms(prev => prev.filter(r => r.id !== id));
+            syncDb('rooms', 'delete', {}, id);
+        },
         processCheckout: async (p, d, s) => {
             const pay = { 
                 ...p, 

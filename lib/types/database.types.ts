@@ -85,6 +85,8 @@ export interface Room {
     name: string;
     status: string;
     createdAt?: string;
+    category?: string;
+    color?: string;
 }
 
 export interface MembershipPlan {

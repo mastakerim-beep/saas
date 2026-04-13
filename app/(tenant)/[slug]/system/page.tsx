@@ -6,7 +6,7 @@ import {
     MapPin, FileText, Share2, Settings as SettingsIcon,
     Plus, Search, Edit2, Trash2, Check, X,
     ChevronRight, Shield, Smartphone, Calendar,
-    ExternalLink, Info, AlertCircle, Save
+    ExternalLink, Info, AlertCircle, Save, Layers
 } from "lucide-react";
 import { useState, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -18,7 +18,8 @@ type SettingsTab =
     | 'expense_categories' 
     | 'branches' 
     | 'consent_forms' 
-    | 'referral_sources';
+    | 'referral_sources'
+    | 'rooms';
 
 export default function SystemSettingsPage() {
     const { 
@@ -29,7 +30,7 @@ export default function SystemSettingsPage() {
         addExpenseCategory, updateExpenseCategory, removeExpenseCategory,
         addReferralSource, updateReferralSource, removeReferralSource,
         addConsentFormTemplate, updateConsentFormTemplate, removeConsentFormTemplate,
-        updateStaff, can
+        updateStaff, can, addRoom, updateRoom, deleteRoom
     } = useStore();
 
     const [activeTab, setActiveTab] = useState<SettingsTab>('staff');
@@ -51,6 +52,7 @@ export default function SystemSettingsPage() {
             { id: 'branches', label: 'Şubeler', icon: MapPin },
             { id: 'consent_forms', label: 'Onam Formları', icon: FileText },
             { id: 'referral_sources', label: 'Referans Kaynakları', icon: Share2 },
+            { id: 'rooms', label: 'Odalar / Kabinler', icon: Layers },
         ]}
     ];
 
@@ -74,6 +76,9 @@ export default function SystemSettingsPage() {
         } else if (activeTab === 'consent_forms') {
             if (editingItem) updateConsentFormTemplate(editingItem.id, data as any);
             else addConsentFormTemplate(data);
+        } else if (activeTab === 'rooms') {
+            if (editingItem) updateRoom(editingItem.id, data as any);
+            else addRoom({ ...data, status: 'active' } as any);
         }
 
         setIsEditModalOpen(false);
@@ -244,6 +249,9 @@ export default function SystemSettingsPage() {
                                     ]}
                                 />
                             )}
+                            {activeTab === 'rooms' && (
+                                <RoomsSettingsView query={searchQuery} />
+                            )}
                         </motion.div>
                     </AnimatePresence>
                 </main>
@@ -366,6 +374,30 @@ export default function SystemSettingsPage() {
                                             </div>
                                         </>
                                     )}
+
+                                    {activeTab === 'rooms' && (
+                                        <>
+                                            <div>
+                                                <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Oda / Kabin Adı</label>
+                                                <input name="name" defaultValue={editingItem?.name} required className="w-full px-4 py-3 bg-gray-50 border-none rounded-2xl focus:ring-2 focus:ring-blue-100 outline-none transition-all" placeholder="Örn: VIP Masaj Odası" />
+                                            </div>
+                                            <div>
+                                                <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Kategori</label>
+                                                <select name="category" defaultValue={editingItem?.category || 'Masaj'} className="w-full px-4 py-3 bg-gray-50 border-none rounded-2xl focus:ring-2 focus:ring-blue-100 outline-none transition-all appearance-none">
+                                                    <option>Masaj</option>
+                                                    <option>Cilt Bakımı</option>
+                                                    <option>VIP</option>
+                                                    <option>Hamam</option>
+                                                    <option>Mola</option>
+                                                    <option>Diğer</option>
+                                                </select>
+                                            </div>
+                                            <div>
+                                                <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Tema Rengi</label>
+                                                <input type="color" name="color" defaultValue={editingItem?.color || '#0071E3'} className="w-full h-12 bg-gray-50 border-none rounded-2xl cursor-pointer" />
+                                            </div>
+                                        </>
+                                    )}
                                 </div>
 
                                 <div className="p-8 bg-gray-50/50 border-t border-gray-100 flex gap-4">
@@ -422,13 +454,13 @@ function StaffSettingsView({ staff, onUpdate, query }: { staff: Staff[], onUpdat
                                 <span className="text-xs font-medium px-2 py-1 bg-gray-100 text-gray-600 rounded-lg">{s.role}</span>
                             </td>
                             <td className="px-6 py-5">
-                                <span className="text-xs font-medium text-gray-500">{s.staff_group || 'Terapist'}</span>
+                                <span className="text-xs font-medium text-gray-500">{s.staffGroup || 'Terapist'}</span>
                             </td>
                             <td className="px-6 py-5">
-                                <Toggle checked={s.can_login_system} onChange={(v) => toggle(s.id, 'can_login_system', v)} />
+                                <Toggle checked={s.canLoginSystem} onChange={(v) => toggle(s.id, 'canLoginSystem', v)} />
                             </td>
                             <td className="px-6 py-5">
-                                <Toggle checked={s.can_login_mobile} onChange={(v) => toggle(s.id, 'can_login_mobile', v)} />
+                                <Toggle checked={s.canLoginMobile} onChange={(v) => toggle(s.id, 'canLoginMobile', v)} />
                             </td>
                             <td className="px-6 py-5">
                                 <Toggle checked={s.isVisibleOnCalendar} onChange={(v) => toggle(s.id, 'isVisibleOnCalendar', v)} />
@@ -442,6 +474,57 @@ function StaffSettingsView({ staff, onUpdate, query }: { staff: Staff[], onUpdat
                     ))}
                 </tbody>
             </table>
+        </div>
+    );
+}
+
+function RoomsSettingsView({ query }: { query: string }) {
+    const { rooms, addRoom, deleteRoom, updateRoom } = useStore();
+    const filtered = rooms.filter(r => r.name.toLowerCase().includes(query.toLowerCase()));
+
+    return (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {filtered.map((room) => (
+                <div key={room.id} className="bg-white p-6 rounded-[32px] shadow-sm border border-gray-100 hover:shadow-xl transition-all duration-300 group">
+                    <div className="flex justify-between items-start mb-6">
+                        <div 
+                            className="w-12 h-12 rounded-2xl flex items-center justify-center text-white shadow-lg"
+                            style={{ backgroundColor: room.color || '#6366f1' }}
+                        >
+                            <Layers size={24} />
+                        </div>
+                        <div className="flex gap-2">
+                             <button onClick={() => deleteRoom(room.id)} className="w-9 h-9 rounded-full bg-gray-50 flex items-center justify-center text-gray-400 hover:bg-red-500 hover:text-white transition-all">
+                                <Trash2 size={14} />
+                            </button>
+                        </div>
+                    </div>
+                    <div className="space-y-4">
+                        <div>
+                            <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Oda Adı</label>
+                            <div className="text-sm font-semibold text-gray-900">{room.name}</div>
+                        </div>
+                        <div>
+                            <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Kategori</label>
+                            <div className="text-sm font-semibold text-primary">{room.category || 'Genel'}</div>
+                        </div>
+                        <div className="flex items-center justify-between pt-2 border-t border-gray-50">
+                             <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Durum</span>
+                             <Toggle checked={room.status === 'active'} onChange={(v) => updateRoom(room.id, { status: v ? 'active' : 'passive' })} />
+                        </div>
+                    </div>
+                </div>
+            ))}
+            
+            {filtered.length === 0 && (
+                <div className="col-span-full py-20 bg-gray-50/50 rounded-[40px] border-2 border-dashed border-gray-100 flex flex-col items-center justify-center text-center">
+                    <div className="w-20 h-20 rounded-full bg-white flex items-center justify-center text-gray-300 mb-6 shadow-sm">
+                        <Plus size={40} />
+                    </div>
+                    <h3 className="text-lg font-medium text-gray-900">Henüz Oda Eklenmemiş</h3>
+                    <p className="text-sm text-gray-500 mt-2">Personellere atama yapabilmek için önce oda tanımlayın.</p>
+                </div>
+            )}
         </div>
     );
 }
