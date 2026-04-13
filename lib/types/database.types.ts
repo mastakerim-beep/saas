@@ -378,7 +378,7 @@ export interface AiInsight {
     desc: string;
     impact: string;
     category: string;
-    suggestedAction: any;
+    suggestedAction?: string;
     createdAt?: string;
 }
 

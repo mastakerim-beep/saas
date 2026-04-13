@@ -1,5 +1,7 @@
 "use client";
 
+import { useMemo } from "react";
+
 import { useStore, Appointment, Payment, Debt } from "@/lib/store";
 import { 
   AlertTriangle, TrendingUp, Wallet, ShieldAlert, Receipt, 
@@ -26,7 +28,7 @@ export default function FinancesPage() {
   const staffCommData = staffMembers.map(st => {
     const staffAppointments = appointments.filter(a => a.staffName === st.name && a.status === 'completed');
     const totalSales = staffAppointments.reduce((s, a) => s + a.price, 0);
-    const totalComm = staffAppointments.reduce((s, a) => s + calculateCommission(st.name, a.service, a.price, a.packageId), 0);
+    const totalComm = staffAppointments.reduce((s, a) => s + calculateCommission(st.id, a.service, a.price, a.packageId), 0);
     return { name: st.name, sales: totalSales, commission: totalComm };
   }).filter(s => s.sales > 0);
 
@@ -53,16 +55,33 @@ export default function FinancesPage() {
       });
   });
 
-  // Chart Data (Mocking daily trend based on real payments if possible, otherwise fixed 7-day)
-  const chartData = [
-    { name: 'Pzt', ciro: 12500, kar: 8500 },
-    { name: 'Sal', ciro: 18200, kar: 12000 },
-    { name: 'Çar', ciro: 15600, kar: 10200 },
-    { name: 'Per', ciro: 21000, kar: 14500 },
-    { name: 'Cum', ciro: 32000, kar: 21000 },
-    { name: 'Cmt', ciro: 45000, kar: 32000 },
-    { name: 'Paz', ciro: 38000, kar: 26000 },
-  ];
+  // 4. Real-Time Chart Data Aggregation (Last 7 Days)
+  const chartData = useMemo(() => {
+    const days = ['Paz', 'Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt'];
+    const result = [];
+    
+    for (let i = 6; i >= 0; i--) {
+        const d = new Date();
+        d.setDate(d.getDate() - i);
+        const dateStr = d.toISOString().split('T')[0];
+        const dayName = days[d.getDay()];
+
+        const dailyCiro = payments
+            .filter(p => p.date === dateStr)
+            .reduce((s, p) => s + (p.totalAmount || 0), 0);
+            
+        const dailyExpense = expenses
+            .filter(e => e.date === dateStr)
+            .reduce((s, e) => s + (e.amount || 0), 0);
+
+        result.push({
+            name: dayName,
+            ciro: dailyCiro,
+            kar: Math.max(0, dailyCiro - dailyExpense)
+        });
+    }
+    return result;
+  }, [payments, expenses]);
 
   return (
     <div className="p-8 max-w-7xl mx-auto animate-[fadeIn_0.5s_ease] space-y-8 pb-20">

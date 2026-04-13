@@ -13,7 +13,6 @@ export default function ExpensesPage() {
     const handleAiInput = () => {
         if (!input) return;
 
-        // Simple mock AI parsing
         // Example: "10 litre yağ aldım 500 tl verdim"
         let amount = 0;
         const amountMatch = input.match(/(\d+(?:\.\d+)?)\s*(?:tl|lira|₺)/i);
@@ -27,7 +26,8 @@ export default function ExpensesPage() {
         addExpense({
             category,
             desc: input,
-            amount: amount || 0
+            amount: amount || 0,
+            date: new Date().toISOString().split('T')[0]
         });
 
         setInput('');

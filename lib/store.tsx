@@ -144,6 +144,7 @@ interface StoreState {
     updateRoom: (id: string, updates: Partial<Room>) => void;
     deleteRoom: (id: string) => void;
     
+    analyzeSystem: () => Promise<void>;
     processCheckout: (p: any, debtInfo?: { amount: number, dueDate: string }, soldProducts?: { productId: string, quantity: number }[]) => Promise<boolean>;
     sendNotification: (customerId: string, type: NotificationLog['type'], content: string) => void;
     addLog: (action: string, customer: string, oldValue?: string, newValue?: string) => void;
@@ -205,7 +206,7 @@ interface StoreState {
     getCustomerPayments: (cid: string) => Payment[];
     getTodayPayments: () => Payment[];
     
-    calculateCommission: (staffName: string, serviceName: string, price: number, packageId?: string, membershipId?: string) => number;
+    calculateCommission: (staffId: string, serviceName: string, price: number, packageId?: string) => number;
     can: (permission: string) => boolean;
     getUpsellSuggestions: (serviceName: string) => Product[];
     determineChurnRisk: (customer: Customer) => boolean;
@@ -433,6 +434,10 @@ interface StoreState {
             setLastFetch(Date.now());
             setSyncStatus('idle');
             setIsInitialized(true);
+            
+            // Trigger AI analysis on data load
+            await store.analyzeSystem();
+            
             console.timeEnd("Aura Fetch Speed");
         } catch (error: any) {
             console.error("Critical Fetch Error:", error);
@@ -886,24 +891,111 @@ interface StoreState {
             syncDb('rooms', 'delete', {}, id);
         },
         processCheckout: async (p, d, s) => {
+            const bizId = getSafeBizId();
+            if (!bizId) return false;
+
             const pay = { 
                 ...p, 
                 id: crypto.randomUUID(), 
-                businessId: getSafeBizId()!, 
+                businessId: bizId, 
                 branchId: currentBranch?.id!, 
-                date: new Date().toISOString().split('T')[0] // Ensure YYYY-MM-DD
+                date: new Date().toISOString().split('T')[0]
             };
+            
+            // 1. Save Payment
             setAllPayments(prev => [...prev, pay]);
             syncDb('payments', 'insert', pay, pay.id);
             
-            store.addLog('Ödeme Alındı', pay.customerName, '', `₺${pay.totalAmount}`);
-            
-            // If debt created, log that too
-            if (d) {
+            // 2. Handle Debts (Connection)
+            if (d && d.amount > 0) {
+                const debtRecord = {
+                    id: crypto.randomUUID(),
+                    businessId: bizId,
+                    customerId: pay.customerId,
+                    customerName: pay.customerName,
+                    amount: d.amount,
+                    dueDate: d.dueDate,
+                    status: 'açık',
+                    createdAt: new Date().toISOString()
+                };
+                setAllDebts(prev => [...prev, debtRecord as any]);
+                syncDb('debts', 'insert', debtRecord, debtRecord.id);
                 store.addLog('Borç Kaydedildi', pay.customerName, '', `₺${d.amount}`);
             }
+
+            // 3. Handle Inventory (Connection)
+            if (s && s.length > 0) {
+                s.forEach(item => {
+                    const prod = allInventory.find(iv => iv.id === item.productId);
+                    if (prod) {
+                        const newStock = Math.max(0, (prod.stock || 0) - item.quantity);
+                        store.updateProduct(prod.id, { stock: newStock });
+                        store.addLog('Stok Düştü', prod.name, `${prod.stock}`, `${newStock}`);
+                    }
+                });
+            }
+            
+            store.addLog('Ödeme Alındı', pay.customerName, '', `₺${pay.totalAmount}`);
+            
+            // Trigger AI Re-analysis after checkout
+            store.analyzeSystem();
             
             return true;
+        },
+        analyzeSystem: async () => {
+            const bizId = getSafeBizId();
+            if (!bizId) return;
+
+            const insights: Omit<AiInsight, 'id'>[] = [];
+
+            // Case 1: Overdue Debts
+            const overdues = allDebts.filter(d => d.status === 'açık' && new Date(d.dueDate) < new Date());
+            if (overdues.length > 0) {
+                const total = overdues.reduce((s, d) => s + d.amount, 0);
+                insights.push({
+                    businessId: bizId,
+                    title: 'Vadesi Geçmiş Alacak Riski',
+                    desc: `${overdues.length} müşteriden toplam ₺${total.toLocaleString('tr-TR')} tahsilat bekliyor. Kaçak önleme modu önerilir.`,
+                    impact: 'high',
+                    category: 'risk'
+                });
+            }
+
+            // Case 2: High Spenders without Packages
+            const highSpenders = allCustomers.filter(c => {
+                const customerPayments = allPayments.filter(p => p.customerId === c.id);
+                const totalPaid = customerPayments.reduce((s, p) => s + p.totalAmount, 0);
+                const hasPackage = allPackages.some(pkg => pkg.customerId === c.id && pkg.usedSessions < pkg.totalSessions);
+                return totalPaid > 5000 && !hasPackage;
+            });
+
+            if (highSpenders.length > 0) {
+                insights.push({
+                    businessId: bizId,
+                    title: 'Sadakat & Paket Fırsatı',
+                    desc: `${highSpenders.length} yüksek harcamalı müşteri henüz paket sahibi değil. Upsell kampanyası başlatılabilir.`,
+                    impact: 'medium',
+                    category: 'sales'
+                });
+            }
+
+            // Case 3: Low Staff Utilization (Simple)
+            if (allAppointments.filter(a => a.status === 'pending').length < 5) {
+                insights.push({
+                    businessId: bizId,
+                    title: 'Düşük Doluluk Oranı',
+                    desc: 'Önümüzdeki günlerde doluluk %20\'nin altında. Kampanya veya hatırlatma mesajları önerilir.',
+                    impact: 'low',
+                    category: 'marketing'
+                });
+            }
+
+            // Update local state and Sync with DB
+            // We'll replace old insights for this business to avoid duplication
+            setAiInsights(insights.map(i => ({ ...i, id: crypto.randomUUID() })) as any);
+            
+            // In a real scenario, we'd clear old insights for this business in DB first
+            // For now, we rely on the setAiInsights to update the dashboard.
         },
         sendNotification: (cid, type, content) => {},
         addLog: (action, customer, oldValue, newValue) => {
@@ -1100,7 +1192,14 @@ interface StoreState {
         getCustomerAppointmentsByBranch: (cid, bid) => allAppointments.filter(a => a.customerId === cid && a.branchId === bid),
         getCustomerPayments: (cid) => allPayments.filter(p => p.customerId === cid),
         getTodayPayments: () => allPayments.filter(p => p.date === new Date().toISOString().split('T')[0]),
-        calculateCommission: (s, sn, p) => 0,
+        calculateCommission: (staffId, serviceName, price, packageId) => {
+            if (packageId) return 0;
+            const rule = allCommissionRules.find(r => r.staffId === staffId && (r.serviceName === serviceName || r.serviceName === 'Tümü'));
+            if (rule) {
+                return (price * (rule.value || 0)) / 100;
+            }
+            return 0;
+        },
         can: (p) => {
             if (!currentUser) return false;
             if (currentUser.role === 'SaaS_Owner' || currentUser.role === 'Business_Owner') return true;

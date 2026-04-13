@@ -16,7 +16,8 @@ export default function PublicBookingPortal() {
     const router = useRouter();
     const { 
         fetchPublicData, branches, services, staffMembers, 
-        bookingSettings, currentBusiness, addAppointment, bookingSettings: settings 
+        bookingSettings, currentBusiness, addAppointment, 
+        processCheckout, bookingSettings: settings 
     } = useStore();
 
     const [step, setStep] = useState(1);
@@ -66,6 +67,18 @@ export default function PublicBookingPortal() {
         };
         
         const success = await addAppointment(apptData);
+        if (success && depositAmount > 0) {
+            // Log the deposit payment in the system
+            await processCheckout({
+                customerId: 'online-customer', 
+                customerName: customerInfo.name,
+                totalAmount: depositAmount,
+                method: 'kredi-karti',
+                currency: 'TRY',
+                rate: 1,
+                isDeposit: true
+            });
+        }
         if (success) setStep(7); // Success Step
     };
 
