@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Aura SaaS - Tam Kapsam Önizleme (Tüm Ekranlar)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: { extend: { fontFamily: { sans: ['Inter', 'sans-serif'] } } }
+        }
+    </script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/babel-standalone@6/babel.min.js"></script>
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #F5F5F7; }
+        .glass { background: rgba(255, 255, 255, 0.6); backdrop-filter: blur(20px); border: 1px solid rgba(255, 255, 255, 0.4); }
+        .card-apple { background-color: white; border-radius: 1.5rem; box-shadow: 0 4px 20px rgba(0,0,0,0.02); transition: all 0.3s ease; border: 1px solid rgba(0,0,0,0.03); }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .drag-box { touch-action: none; user-select: none; }
+    </style>
+</head>
+<body class="flex h-screen overflow-hidden text-gray-900">
+    <div id="root" class="flex w-full h-full"></div>
+
+    <script type="text/babel">
+        function App() {
+            const [activeTab, setActiveTab] = React.useState('dashboard');
+            const [isAdminAuthOpen, setIsAdminAuthOpen] = React.useState(false);
+            const [selectedCustomer, setSelectedCustomer] = React.useState(null);
+            
+            React.useEffect(() => { lucide.createIcons(); }, [activeTab, isAdminAuthOpen, selectedCustomer]);
+
+            const SidebarItem = ({ id, icon, label, badge, color }) => (
+                <div onClick={() => { setActiveTab(id); setSelectedCustomer(null); }} className={`flex items-center justify-between px-3 py-2.5 rounded-xl text-[13px] font-bold cursor-pointer transition-colors ${activeTab === id && !selectedCustomer ? 'bg-white text-indigo-600 shadow-sm' : 'text-gray-500 hover:bg-gray-100 hover:text-gray-800'}`}>
+                    <div className="flex items-center gap-3">
+                        <i data-lucide={icon} className={`w-4 h-4 ${color || (activeTab === id && !selectedCustomer ? 'text-indigo-600' : '')}`}></i> {label}
+                    </div>
+                    {badge && <span className="bg-red-100 text-red-600 px-1.5 py-0.5 rounded text-[10px] font-bold">{badge}</span>}
+                </div>
+            )
+
+            const renderSidebar = () => (
+                <div className="w-[280px] hidden lg:flex flex-col border-r border-gray-200/60 glass z-50">
+                    <div className="p-5 border-b border-gray-200/50">
+                        <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                                <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-bold shadow-lg">A</div>
+                                <div><h1 className="font-bold text-lg leading-none">Aura SaaS</h1><p className="text-[10px] text-gray-500 font-bold">Tam Kapsam ERP</p></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div className="flex-1 px-3 mt-4 overflow-y-auto w-full no-scrollbar space-y-5 pb-6">
+                        <div>
+                            <p className="px-2 text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1.5">Operasyon</p>
+                            <div className="space-y-0.5">
+                                <SidebarItem id="dashboard" icon="layout-dashboard" label="Genel Bakış" />
+                                <SidebarItem id="calendar" icon="calendar" label="Takvim & Randevu" />
+                                <SidebarItem id="customers" icon="users" label="CRM & Danışanlar" badge="360°" />
+                                <SidebarItem id="staff" icon="briefcase" label="Personel Yönetimi" />
+                                <SidebarItem id="operations" icon="door-open" label="Oda & Cihazlar" />
+                            </div>
+                        </div>
+                        <div>
+                            <p className="px-2 text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1.5">Finans & Kasa & Güvenlik</p>
+                            <div className="space-y-0.5">
+                                <SidebarItem id="gun-sonu" icon="lock" label="Gün Sonu (Kapanış)" />
+                                <SidebarItem id="expenses" icon="receipt" label="Giderler Takibi" />
+                                <SidebarItem id="balances" icon="wallet" label="Bakiye Listesi" color="text-red-500" />
+                                <SidebarItem id="audit-log" icon="shield-alert" label="Güvenlik Logu" />
+                                <SidebarItem id="inventory" icon="package" label="Akıllı Stok" />
+                            </div>
+                        </div>
+                        <div>
+                            <p className="px-2 text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1.5">Pazarlama & Araçlar</p>
+                            <div className="space-y-0.5">
+                                <SidebarItem id="ai-advisor" icon="bot" label="AI Danışman" color="text-indigo-500" />
+                                <SidebarItem id="users" icon="user-cog" label="Kullanıcı Yetkileri" />
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            );
+
+            const CustomHeader = ({title, subtitle, rightElement}) => (
+                <div className="flex justify-between items-end mb-6">
+                    <div>
+                        <h1 className="text-3xl font-black tracking-tight mb-1 text-gray-900">{title}</h1>
+                        <p className="text-gray-500 text-sm font-semibold">{subtitle}</p>
+                    </div>
+                    {rightElement && <div>{rightElement}</div>}
+                </div>
+            )
+
+            // --- 1. DASHBOARD ---
+            const DashboardScreen = () => (
+                <div className="p-8 max-w-[1200px] mx-auto animate-[fadeIn_0.3s_ease]">
+                    <CustomHeader title="Sistem Özeti" subtitle="Bugünün önemli verilerine hızlıca göz atın." />
+                    <div className="grid grid-cols-4 gap-6 mb-8">
+                         <div className="card-apple p-6 border border-gray-100 flex flex-col justify-center items-center bg-white"><div className="w-10 h-10 rounded-full bg-indigo-50 text-indigo-500 flex items-center justify-center mb-3"><i data-lucide="calendar"></i></div><div className="text-3xl font-black">24</div><div className="text-[11px] font-bold text-gray-400 uppercase">Bugünün Randevusu</div></div>
+                         <div className="card-apple p-6 border border-gray-100 flex flex-col justify-center items-center bg-white"><div className="w-10 h-10 rounded-full bg-green-50 text-green-500 flex items-center justify-center mb-3"><i data-lucide="check-circle"></i></div><div className="text-3xl font-black">12</div><div className="text-[11px] font-bold text-gray-400 uppercase">Tamamlanan İşlem</div></div>
+                         <div className="card-apple p-6 border border-gray-100 flex flex-col justify-center items-center bg-white"><div className="w-10 h-10 rounded-full bg-orange-50 text-orange-500 flex items-center justify-center mb-3"><i data-lucide="wallet"></i></div><div className="text-3xl font-black">₺14.500</div><div className="text-[11px] font-bold text-gray-400 uppercase">Beklenen Nakit</div></div>
+                         <div className="card-apple p-6 border border-gray-100 flex flex-col justify-center items-center bg-white"><div className="w-10 h-10 rounded-full bg-red-50 text-red-500 flex items-center justify-center mb-3"><i data-lucide="clock"></i></div><div className="text-3xl font-black">2</div><div className="text-[11px] font-bold text-gray-400 uppercase">Geciken Bakiye</div></div>
+                    </div>
+                </div>
+            );
+
+            // --- 2. AUDIT LOG ---
+            const AuditLogScreen = () => (
+                <div className="p-8 max-w-[1400px] mx-auto animate-[fadeIn_0.3s_ease]">
+                    <CustomHeader title="Güvenlik & Değişiklik Logları" subtitle="Randevu ve kurgulardaki tüm değişiklikleri anlık izleyin (Anti-Fraud Aracı)" rightElement={<button className="border border-gray-200 bg-white px-4 py-2 rounded-xl text-sm font-bold flex items-center gap-2"><i data-lucide="download" className="w-4 h-4"></i> Rapor İndir</button>} />
+                    <div className="card-apple overflow-hidden border border-gray-200">
+                        <div className="bg-gray-50/50 p-4 border-b border-gray-100 flex items-center justify-between"><h3 className="font-bold flex items-center gap-2"><i data-lucide="shield-check" className="w-5 h-5 text-indigo-500"></i> İşlem Geçmişi Dökümü</h3></div>
+                        <div className="overflow-x-auto">
+                            <table className="w-full text-left text-sm whitespace-nowrap">
+                                <thead className="bg-gray-50/80 text-gray-500 text-[11px] font-bold uppercase tracking-wider border-b border-gray-100">
+                                    <tr><th className="p-4">Tarih</th><th className="p-4">Danışan</th><th className="p-4">Eski Başlangıç</th><th className="p-4 bg-yellow-50 text-yellow-800 border-x border-yellow-100 text-center">YENİ BAŞLANGIÇ</th><th className="p-4">Eski Durum</th><th className="p-4 font-bold text-gray-900 border-x border-gray-200 bg-gray-100">YENİ DURUM</th><th className="p-4">Düzenleyen</th></tr>
+                                </thead>
+                                <tbody>
+                                    <tr className="border-b border-gray-50 hover:bg-gray-50"><td className="p-4">07.04.2026</td><td className="p-4 font-bold">Müşfik Çırpanlı</td><td className="p-4 text-gray-500">13:00</td><td className="p-4 bg-yellow-100 font-bold text-yellow-900 border-x border-yellow-200/50 text-center">13:15</td><td className="p-4 text-gray-500">Beklemede</td><td className="p-4 font-bold text-indigo-700 bg-indigo-50 border-x border-indigo-100">Tamamlandı</td><td className="p-4 text-xs font-semibold text-gray-500">KERİM</td></tr>
+                                    <tr className="hover:bg-gray-50"><td className="p-4">07.04.2026</td><td className="p-4 font-bold">Sedef Arıç</td><td className="p-4 text-gray-500">16:30</td><td className="p-4 bg-yellow-100 font-bold text-yellow-900 border-x border-yellow-200/50 text-center">17:30</td><td className="p-4 text-gray-500">Tamamlandı</td><td className="p-4 font-bold text-red-600 bg-red-50 border-x border-red-100">İptal Edildi</td><td className="p-4 text-xs font-semibold text-gray-500">Sistem Otomatik</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            );
+
+            // --- 3. BALANCES ---
+            const BalancesScreen = () => (
+                <div className="p-8 max-w-[1200px] mx-auto animate-[fadeIn_0.3s_ease]">
+                    <CustomHeader title="Bakiye Listesi" subtitle="Müşterilerinizin gecikmiş ödemeleri" />
+                    <div className="card-apple border border-gray-200 mb-8 overflow-hidden">
+                        <table className="w-full text-left text-sm">
+                            <thead className="bg-[#FAF9F6] border-b border-gray-100 text-[11px] font-bold uppercase tracking-widest text-gray-500">
+                                <tr><th className="p-4">Danışan</th><th className="p-4">Satış</th><th className="p-4">Detay</th><th className="p-4 text-center">Gecikme</th><th className="p-4 text-right">Tutar</th></tr>
+                            </thead>
+                            <tbody>
+                                <tr className="border-b border-gray-50"><td className="p-4 font-bold">Tuana Gelin</td><td className="p-4">14.12.2025</td><td className="p-4"><span className="font-bold text-indigo-700">Hamam Paketi</span></td><td className="p-4 text-center font-black text-orange-500">83 Gün</td><td className="p-4 text-right font-black text-lg">17.500 ₺</td></tr>
+                                <tr className="border-b border-gray-50"><td className="p-4 font-bold">Sümeyra Kızılkaya</td><td className="p-4">28.01.2025</td><td className="p-4"><span className="font-bold text-red-700">VIP İptal Edilen Paketi</span></td><td className="p-4 text-center font-black text-red-600">416 Gün</td><td className="p-4 text-right font-black text-lg text-red-600">8.500 ₺</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            );
+
+            // --- 4. CUSTOMER PROFILES (CRM) ---
+            const CustomerDetailProfile = () => (
+                <div className="p-8 max-w-[1400px] mx-auto animate-[fadeIn_0.3s_ease]">
+                    <div className="flex items-center gap-4 mb-6">
+                        <button onClick={()=>setSelectedCustomer(null)} className="p-2 border border-gray-200 bg-white rounded-xl hover:bg-gray-50 transition"><i data-lucide="arrow-left" className="w-5 h-5"></i></button>
+                        <div className="flex-1 card-apple bg-white border border-gray-200 p-4 flex justify-between items-center"><div className="flex items-center gap-4"><div className="w-10 h-10 bg-indigo-100 rounded-full flex items-center justify-center"><i data-lucide="user" className="text-indigo-600 w-5 h-5"></i></div><div><h2 className="text-xl font-bold flex items-center gap-2">ERMAN AYDINGÜN <i data-lucide="check-circle" className="w-4 h-4 text-green-500"></i></h2></div></div></div>
+                    </div>
+                    <div className="flex gap-6 items-start">
+                        <div className="w-[180px] flex-none flex flex-col gap-1">{['Müşteri Detayı', 'Formlar', 'Randevular', 'Dosya', 'Paket Takibi', 'Satış & Tahsilat', 'Puan'].map((m,i)=> (<div key={i} className={`px-4 py-2.5 rounded-xl text-[13px] font-semibold cursor-pointer ${i===0?'bg-indigo-600 text-white':'hover:bg-gray-200 text-gray-700'}`}>{m}</div>))}</div>
+                        <div className="flex-[2] flex flex-col gap-6">
+                            <div className="card-apple border border-gray-200 p-6 flex gap-6 items-center"><button className="flex-1 bg-[#25D366] text-white py-2.5 rounded-xl font-bold flex justify-center items-center gap-2 shadow-sm"><i data-lucide="message-circle" className="w-4 h-4 text-white"></i> WhatsApp Gönder</button><button className="flex-1 bg-white border border-gray-200 py-2.5 rounded-xl font-bold flex justify-center items-center gap-2"><i data-lucide="download" className="w-4 h-4 text-gray-500"></i> Dosya İndir</button></div>
+                            <div className="card-apple border border-gray-200 p-6"><h3 className="font-bold text-lg mb-6 border-b border-gray-100 pb-3">İşlem Geçmişi (Timeline)</h3>
+                                <div className="space-y-4">
+                                     <div className="bg-gray-50 border border-gray-200 p-4 rounded-xl shadow-sm"><h4 className="font-bold text-sm mb-1 text-indigo-700">Bali Masajı Seansı</h4><div className="text-[13px] text-gray-500 font-medium">07.04.2026 - <span className="bg-green-100 text-green-700 font-bold px-1 rounded">TAMAMLANDI</span></div></div>
+                                     <div className="bg-gray-50 border border-gray-200 p-4 rounded-xl shadow-sm"><h4 className="font-bold text-sm mb-1 text-indigo-700">VIP Cilt Bakımı</h4><div className="text-[13px] text-gray-500 font-medium">12.02.2026 - <span className="bg-green-100 text-green-700 font-bold px-1 rounded">TAMAMLANDI</span></div></div>
+                                </div>
+                            </div>
+                        </div>
+                        <div className="flex-[1.2] flex flex-col gap-6">
+                             <div className="card-apple border border-gray-200 p-4"><div className="bg-gray-50 border-b border-gray-100 font-bold p-3">Kayıtlı Telefon: +90 530 212 32 93</div><div className="p-3"><span className="text-gray-500 font-medium">Segment: </span><span className="font-bold text-orange-600 bg-orange-100 px-2 rounded">Kurumsal VIP</span></div></div>
+                             <div className="card-apple border border-gray-200 p-4 flex flex-col min-h-[300px]"><h3 className="font-bold mb-4 text-gray-500">Müşteri Notu</h3><textarea className="flex-1 bg-[#FAF9F6] border border-gray-200 rounded-xl p-3 focus:outline-none" placeholder="Notları giriniz..."></textarea></div>
+                        </div>
+                    </div>
+                </div>
+            );
+            const CustomersScreen = () => {
+                if (selectedCustomer) return <CustomerDetailProfile />;
+                return (
+                    <div className="p-8 max-w-[1200px] mx-auto animate-[fadeIn_0.3s_ease]">
+                        <CustomHeader title="CRM ve Danışanlar" subtitle="Sisteme kayıtlı tüm danışanlarınızı yönetin" rightElement={<button className="bg-black text-white px-5 py-2.5 rounded-xl font-bold flex items-center gap-2">+ Danışan Ekle</button>} />
+                        <div className="card-apple p-6 min-h-[500px]">
+                             <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden cursor-pointer hover:border-indigo-400 hover:shadow-md transition-all" onClick={()=>setSelectedCustomer('Erman')}>
+                                 <div className="p-5 flex items-center justify-between"><div className="flex items-center gap-4"><div className="w-12 h-12 bg-indigo-600 text-white rounded-full flex items-center justify-center font-bold text-lg">E</div><div><h3 className="font-bold text-lg">Erman Aydingün</h3><p className="text-xs font-bold text-gray-500 mt-1">+90 530 212 32 93 • VIP</p></div></div><div className="text-right"><p className="font-bold text-indigo-700">Bali Masajı Geçmişi</p></div></div>
+                             </div>
+                        </div>
+                    </div>
+                )
+            };
+
+            // --- 5. CALENDAR (DRAG & DROP) ---
+            const CalendarScreen = () => {
+                return (
+                   <div className="flex w-full h-[100vh] animate-[fadeIn_0.3s_ease] overflow-hidden bg-[#F5F5F7]">
+                        <div className="flex-1 p-8 overflow-hidden flex flex-col">
+                            <CustomHeader title="Randevular" subtitle="Sürükle bırak özelliğiyle randevu oluşturun" />
+                            <div className="card-apple flex-1 flex flex-col relative overflow-hidden bg-white border border-gray-100 rounded-[2rem]">
+                                <div className="grid grid-cols-3 border-b border-gray-100 bg-gray-50/90 flex-none sticky top-0"><div className="p-4 text-center font-bold text-gray-500 border-r border-gray-100">Saat</div><div className="p-4 text-center font-bold">Kerim</div><div className="p-4 text-center font-bold border-l border-gray-100">Murat</div></div>
+                                <div className="flex-1 overflow-y-auto no-scrollbar relative" style={{ backgroundSize: '100% 7rem', backgroundImage: 'linear-gradient(to bottom, transparent 96%, #f3f4f6 96%)' }}>
+                                        {[9,10,11,12].map(h => <div key={h} className="absolute left-0 w-1/3 h-28 border-b-2 border-dashed border-gray-100" style={{top: `${(h-9)*7}rem`}}><div className="pt-2.5 text-[11px] font-bold text-gray-400 text-center">{h}:00</div></div>)}
+                                </div>
+                            </div>
+                        </div>
+                        <div className="w-[360px] bg-white border-l border-gray-200 shadow-2xl z-20 flex flex-col h-[100vh]">
+                            <div className="p-8 border-b border-gray-100 bg-gray-50/50"><h2 className="text-xl font-bold mb-1">Randevu Oluştur</h2><p className="text-xs font-semibold text-gray-500">Müşteri seçip grid'e sürükleyin</p></div>
+                            <div className="p-8 flex-1 space-y-8">
+                                <div><h4 className="text-[10px] font-black tracking-widest text-gray-400 mb-2 uppercase">Müşteri</h4><input type="text" placeholder="Müşteri ara..." className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-sm"/></div>
+                                <div className="pt-4"><div className="drag-box border-2 border-dashed border-indigo-200 rounded-2xl p-6 flex flex-col items-center justify-center cursor-move bg-indigo-50/30 hover:border-indigo-400 min-h-[140px]"><i data-lucide="hand" className="w-8 h-8 text-indigo-500 mb-2 drop-shadow-md"></i><span className="text-sm font-bold text-indigo-900">Ayşe - Bali Masajı</span><span className="text-xs font-medium text-gray-500 mt-1">Tutup takvime sürükleyin</span></div></div>
+                            </div>
+                        </div>
+                   </div>
+                );
+            };
+
+            // --- 6. GUN SONU ---
+            const GunSonuScreen = () => {
+                const [nakit, setNakit] = React.useState(''); const [kart, setKart] = React.useState(''); 
+                const bNakit = 1200, bKart = 5500; const fark = Math.floor((Number(nakit) + Number(kart)) - (bNakit + bKart));
+                return (
+                    <div className="p-8 max-w-[1200px] mx-auto animate-[fadeIn_0.3s_ease]">
+                        <CustomHeader title="Gün Sonu" subtitle="Günlük kasa kontrolü" />
+                        <div className="grid grid-cols-2 gap-6">
+                            <div className="card-apple p-8 bg-white border border-gray-100">
+                                <h2 className="text-xl font-bold mb-6">Kasa Eşleştirme (Kontrol)</h2>
+                                <div className="grid grid-cols-2 gap-4 mb-8">
+                                    <div className="bg-gray-50 p-4 rounded-2xl flex flex-col items-center justify-center"><i data-lucide="banknote" className="w-6 h-6 text-indigo-400 mb-2"></i><span className="text-[11px] font-bold text-gray-500 uppercase tracking-widest mb-1">Beklenen Nakit</span><span className="text-xl font-bold">₺{bNakit}</span></div>
+                                    <div className="bg-gray-50 p-4 rounded-2xl flex flex-col items-center justify-center"><i data-lucide="credit-card" className="w-6 h-6 text-indigo-400 mb-2"></i><span className="text-[11px] font-bold text-gray-500 uppercase tracking-widest mb-1">Beklenen Kart</span><span className="text-xl font-bold">₺{bKart}</span></div>
+                                </div>
+                                <div className="space-y-4">
+                                     <div><label className="block text-xs font-bold text-gray-700 mb-1">Kasadaki Nakit (₺)</label><input type="number" value={nakit} onChange={e=>setNakit(e.target.value)} className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 font-medium outline-none" /></div>
+                                     <div><label className="block text-xs font-bold text-gray-700 mb-1">Kasadaki Kart T. (₺)</label><input type="number" value={kart} onChange={e=>setKart(e.target.value)} className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 font-medium outline-none" /></div>
+                                </div>
+                                <div className={`mt-6 p-5 rounded-2xl border-2 flex flex-col items-center justify-center ${(!nakit && !kart) ? 'bg-gray-50 border-gray-200' : (fark===0 ? 'bg-green-50 border-green-400 text-green-800' : 'bg-red-50 border-red-400 text-red-800')}`}><span className="text-[11px] font-bold uppercase tracking-widest mb-1">Fark</span><span className="text-3xl font-black">₺{fark}</span></div>
+                            </div>
+                        </div>
+                    </div>
+                )
+            }
+
+            // --- 7. PERSONEL ---
+            const PersonelScreen = () => (
+                <div className="p-8 max-w-[1200px] mx-auto animate-[fadeIn_0.3s_ease]">
+                    <CustomHeader title="Personel Yönetimi" subtitle="Ekibinizi yönetin" rightElement={<button className="bg-black text-white px-5 py-2.5 rounded-xl font-bold text-sm">+ Personel Ekle</button>} />
+                    <div className="grid grid-cols-2 gap-6">
+                        <div className="card-apple p-6 relative">
+                            <div className="flex justify-between items-center mb-4"><h3 className="text-xl font-bold">Kerim</h3><span className="bg-green-100 text-green-700 text-[10px] font-bold px-2.5 py-1 rounded-full uppercase">Aktif</span></div>
+                            <div className="bg-indigo-50/50 p-4 rounded-xl border border-indigo-100"><p className="text-xs text-indigo-900/60 font-bold mb-1">Hakediş: Sabit</p><p className="text-lg font-black text-indigo-600">Toplam Prim: ₺320</p></div>
+                        </div>
+                    </div>
+                </div>
+            );
+
+            // --- 8. EXPENSES ---
+            const ExpensesScreen = () => {
+                const tags = ["Tümü", "Kira", "Malzeme", "Maaş", "Fatura", "Bakım", "Pazarlama"];
+                return (
+                    <div className="p-8 max-w-[1200px] mx-auto animate-[fadeIn_0.3s_ease]">
+                        <CustomHeader title="Gider Takibi" subtitle="İşletme giderlerinizi detaylıca yönetin" />
+                        
+                        <div className="card-apple bg-indigo-50/50 border border-indigo-100 p-6 mb-8 flex items-center gap-4 shadow-sm group hover:border-indigo-200 transition-all">
+                            <div className="w-12 h-12 rounded-full bg-white flex items-center justify-center shadow-sm flex-none">
+                                <i data-lucide="sparkles" className="w-6 h-6 text-indigo-500 group-hover:rotate-12 transition-transform"></i>
+                            </div>
+                            <div className="flex-1">
+                                <h3 className="text-sm font-bold text-indigo-900 mb-1">Akıllı Gider Girişi (Doğal Dil)</h3>
+                                <div className="flex items-center gap-3">
+                                    <input type="text" placeholder="Örn: Bugün 10 litre yağ aldım 500 TL verdim..." className="w-full bg-white border border-indigo-100 rounded-xl px-4 py-2.5 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:border-transparent transition-all" />
+                                    <button className="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-2.5 rounded-xl font-bold text-sm whitespace-nowrap shadow-sm hover:scale-105 transition-transform flex items-center gap-2"><i data-lucide="check-circle" className="w-4 h-4"></i> Sisteme İşle</button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="card-apple p-8 min-h-[400px]">
+                            <h3 className="font-bold text-gray-900 tracking-tight text-lg mb-6">Kategori Dağılımı</h3>
+                            <div className="flex flex-wrap gap-2 mb-20">{tags.map((t, i) => (<span key={i} className={`px-4 py-2 rounded-xl text-sm font-bold cursor-pointer border hover:scale-105 transition-transform ${i===0 ? 'bg-black text-white border-black' : 'bg-gray-50 text-gray-600 border-gray-200 hover:bg-gray-100'}`}>{t}</span>))}</div>
+                            <div className="flex flex-col items-center justify-center opacity-40 mt-10">
+                                <i data-lucide="receipt" className="w-12 h-12 mb-4"></i>
+                                <p className="text-sm font-bold text-gray-500">Henüz manuel veya yapay zeka ile gider kaydı eklenmemiş.</p>
+                            </div>
+                        </div>
+                    </div>
+                )
+            };
+
+            // --- 9. OPERATIONS ---
+            const OperationsScreen = () => (
+                <div className="p-8 max-w-[1200px] mx-auto animate-[fadeIn_0.3s_ease]">
+                    <CustomHeader title="Oda ve Operasyon Merkezi" subtitle="Odaların kayıtlı donanımları ve durumları" />
+                    <div className="grid grid-cols-3 gap-6">
+                        {['AYURVEDA', 'SINGLE', 'VIP ODA'].map(room => (
+                            <div key={room} className="card-apple p-5 bg-white border border-gray-200"><h4 className="font-bold text-sm tracking-wide mb-6">{room}</h4><select className="w-full border border-gray-200 bg-gray-50 rounded-lg px-3 py-2 text-sm outline-none font-bold"><option>Durum: Boş</option><option>Durum: Dolu</option><option>Durum: Bakımda</option></select></div>
+                        ))}
+                    </div>
+                </div>
+            );
+
+            // --- 10. AI ADVISOR ---
+            const AiAdvisorScreen = () => (
+                <div className="p-8 max-w-[1400px] mx-auto animate-[fadeIn_0.3s_ease] h-[100vh] flex flex-col">
+                    <CustomHeader title="AI Ciro Danışmanı" subtitle="Müşteriye özel satış önerileri" />
+                    <div className="flex gap-8 flex-1 pb-10">
+                        <div className="w-[320px] card-apple bg-white p-5"><div className="font-black text-[11px] text-gray-400 tracking-widest uppercase mb-4">Hedef Müşteri Seç</div><input type="text" placeholder="Müşteriyi ara..." className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-2 text-sm font-medium"/></div>
+                        <div className="flex-1 card-apple bg-white p-8 flex flex-col items-center justify-center relative border border-gray-100">
+                             <div className="bg-indigo-50 p-5 rounded-full mb-6 border border-indigo-100 shadow-inner"><i data-lucide="sparkles" className="w-10 h-10 text-indigo-500"></i></div>
+                             <h3 className="font-bold text-2xl mb-8">AI Müşteri Asistanı</h3>
+                             <input type="text" placeholder="Asistana bir kurgu tasarlamasını isteyin..." className="w-full bg-gray-50 border border-gray-200 rounded-2xl px-5 py-4 font-medium outline-none focus:ring-2 focus:ring-indigo-500 absolute bottom-6 w-[80%]"/>
+                        </div>
+                    </div>
+                </div>
+            );
+
+            // --- 11. USERS SCREEN ---
+            const UsersScreen = () => (
+                <div className="p-8 max-w-[1200px] mx-auto animate-[fadeIn_0.3s_ease]">
+                    <CustomHeader title="Kullanıcı Yetkileri" subtitle="Platform erişimi" />
+                    <div className="card-apple p-6 bg-white border border-indigo-100"><h3 className="font-bold text-lg mb-2">Ana Kullanıcı (İşletme Sahibi)</h3><p className="font-bold text-sm">kerim.kardas@hotmail.com</p><p className="text-gray-400 text-xs font-semibold">Tüm sistem yetkisi var</p></div>
+                </div>
+            );
+
+            const renderContent = () => {
+                switch(activeTab) {
+                    case 'dashboard': return <DashboardScreen />;
+                    case 'calendar': return <CalendarScreen />;
+                    case 'customers': return <CustomersScreen />;
+                    case 'staff': return <PersonelScreen />;
+                    case 'operations': return <OperationsScreen />;
+                    case 'gun-sonu': return <GunSonuScreen />;
+                    case 'expenses': return <ExpensesScreen />;
+                    case 'balances': return <BalancesScreen />;
+                    case 'audit-log': return <AuditLogScreen />;
+                    case 'ai-advisor': return <AiAdvisorScreen />;
+                    case 'users': return <UsersScreen />;
+                    default: return <DashboardScreen />;
+                }
+            }
+
+            return (
+                <div className="flex w-full h-full relative font-sans">
+                    {renderSidebar()}
+                    <main className="flex-1 overflow-y-auto w-full relative">{renderContent()}</main>
+                </div>
+            );
+        }
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
