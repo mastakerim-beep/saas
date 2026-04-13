@@ -11,7 +11,10 @@ import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 
 export default function Header() {
-    const { currentUser, currentBusiness, currentBranch, branches, isOnline, syncStatus, logout, setCurrentBranch } = useStore();
+    const { 
+        currentUser, currentBusiness, currentBranch, branches, 
+        isOnline, syncStatus, logout, setCurrentBranch, fetchData 
+    } = useStore();
     const [showProfileMenu, setShowProfileMenu] = useState(false);
     const [showBranchMenu, setShowBranchMenu] = useState(false);
 
@@ -81,22 +84,28 @@ export default function Header() {
             {/* Sync & Connectivity Center */}
             <div className="flex items-center gap-6">
                 <div className="flex items-center gap-6 border-r border-gray-100/50 pr-8">
-                    {syncStatus === 'syncing' ? (
-                        <div className="flex items-center gap-2.5 text-primary animate-pulse">
-                            <RefreshCcw className="w-4 h-4 animate-spin" />
-                            <span className="text-[10px] font-black uppercase tracking-widest antialiased">Senkronizasyon...</span>
-                        </div>
-                    ) : syncStatus === 'error' ? (
-                        <div className="flex items-center gap-2.5 text-red-500">
-                            <CloudOff className="w-4 h-4" />
-                            <span className="text-[10px] font-black uppercase tracking-widest">Bağlantı Hatası</span>
-                        </div>
-                    ) : (
-                        <div className="flex items-center gap-2.5 text-emerald-500">
-                            <ShieldCheck className="w-4 h-4" />
-                            <span className="text-[10px] font-black uppercase tracking-widest">Oturum Güvenli</span>
-                        </div>
-                    )}
+                    <button 
+                        onClick={() => fetchData(undefined, undefined, true)}
+                        disabled={syncStatus === 'syncing'}
+                        className="flex items-center gap-2.5 p-2 hover:bg-white rounded-xl transition-all duration-300 active:scale-95 group"
+                    >
+                        {syncStatus === 'syncing' ? (
+                            <div className="flex items-center gap-2.5 text-primary animate-pulse">
+                                <RefreshCcw className="w-4 h-4 animate-spin" />
+                                <span className="text-[10px] font-black uppercase tracking-widest antialiased">Senkronize...</span>
+                            </div>
+                        ) : syncStatus === 'error' ? (
+                            <div className="flex items-center gap-2.5 text-red-500">
+                                <CloudOff className="w-4 h-4" />
+                                <span className="text-[10px] font-black uppercase tracking-widest">Hata</span>
+                            </div>
+                        ) : (
+                            <div className="flex items-center gap-2.5 text-emerald-500 group-hover:text-primary">
+                                <ShieldCheck className="w-4 h-4 group-hover:scale-110 transition-transform" />
+                                <span className="text-[10px] font-black uppercase tracking-widest opacity-60 group-hover:opacity-100">Güncel</span>
+                            </div>
+                        )}
+                    </button>
                     
                     <div className="flex items-center gap-2.5">
                         <div className="relative flex h-2 w-2">

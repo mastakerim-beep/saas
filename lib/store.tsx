@@ -119,7 +119,7 @@ interface StoreState {
     // Actions
     login: (email: string, pass: string) => Promise<boolean>;
     logout: () => void;
-    fetchData: (bizId?: string, user?: AppUser) => Promise<void>;
+    fetchData: (bizId?: string, user?: AppUser, force?: boolean) => Promise<void>;
     isInitialized: boolean;
     fetchPublicData: (slug: string) => Promise<void>;
     closeDay: (data: Omit<ZReport, 'id' | 'businessId' | 'branchId' | 'closedBy' | 'createdAt'>) => Promise<boolean>;
@@ -247,9 +247,10 @@ interface StoreState {
  export function StoreProvider({ children }: { children: ReactNode }) {
      const [currentUser, setCurrentUser] = useState<AppUser | null>(null);
      const [isInitialized, setIsInitialized] = useState(false);
+     const [lastFetch, setLastFetch] = useState<number>(0);
+     const [syncStatus, setSyncStatus] = useState<'idle' | 'syncing' | 'error'>('idle');
  
      const [isOnline, setIsOnline] = useState(typeof window !== 'undefined' ? navigator.onLine : true);
-     const [syncStatus, setSyncStatus] = useState<'idle' | 'syncing' | 'error'>('idle');
  
      useEffect(() => {
          const handleOnline = () => setIsOnline(true);
@@ -338,13 +339,21 @@ interface StoreState {
          }
      }, [tenantSlug, allBusinesses]);
  
-     const fetchData = async (bizId?: string, userOverride?: AppUser) => {
+     const fetchData = async (bizId?: string, userOverride?: AppUser, force = false) => {
         const activeUser = userOverride || currentUser;
         const isSaaS = activeUser?.role === 'SaaS_Owner';
         const targetId = bizId || impersonatedBusinessId || currentTenant?.id || activeUser?.businessId;
         
         if (!targetId && !isSaaS) return;
 
+        // Cache Logic: Don't refetch if last fetch was within 2 minutes (unless forced)
+        const now = Date.now();
+        if (!force && lastFetch && now - lastFetch < 120000 && !bizId) {
+            console.log("Speed Paketi: Veriler önbellekten geliyor (Cache Hit)");
+            return;
+        }
+
+        console.time("Aura Fetch Speed");
         setSyncStatus('syncing');
         const tables = [
             'businesses', 'branches', 'appointments', 'customers', 
@@ -358,12 +367,13 @@ interface StoreState {
         const dataMap: any = {};
 
         try {
-            // 1. Önce Kritik Tabloları Çek (Business ve Branches)
-            const criticalTables = ['businesses', 'branches', 'app_users'];
-            for (const table of criticalTables) {
+            // Speed Paketi: Tüm tabloları tam paralel olarak çekiyoruz
+            await Promise.allSettled(tables.map(async (table) => {
                 try {
                     const result = await retryRequest(async () => {
                         let q = supabase.from(table).select('*');
+                        
+                        // Apply business filter
                         if (!isSaaS || bizId) {
                             const idToUse = bizId || targetId;
                             if (idToUse) {
@@ -371,27 +381,7 @@ interface StoreState {
                                 else q = q.eq('business_id', idToUse);
                             }
                         }
-                        const { data, error } = await q;
-                        if (error) throw (error);
-                        return data;
-                    });
-                    dataMap[table] = toCamel(result || []);
-                } catch (e) {
-                    console.error(`Kritik tablo yüklenemedi: ${table}`, e);
-                    dataMap[table] = [];
-                }
-            }
-
-            // 2. Diğer Tabloları 'Safe' Olarak Çek (Biri hata verirse diğerlerini bozma)
-            const otherTables = tables.filter(t => !criticalTables.includes(t));
-            await Promise.allSettled(otherTables.map(async (table) => {
-                try {
-                    const result = await retryRequest(async () => {
-                        let q = supabase.from(table).select('*');
-                        if (!isSaaS || bizId) {
-                            const idToUse = bizId || targetId;
-                            if (idToUse) q = q.eq('business_id', idToUse);
-                        }
+                        
                         const { data, error } = await q;
                         if (error) throw (error);
                         return data;
@@ -403,7 +393,7 @@ interface StoreState {
                 }
             }));
 
-            // 3. State'leri Güncelle
+            // State'leri toplu olarak güncelle (Batching)
             setAllBusinesses(dataMap.businesses || []);
             setAllowedBranches(dataMap.branches || []);
             setAllAppointments(dataMap.appointments || []);
@@ -435,12 +425,13 @@ interface StoreState {
                 setCurrentBranchState(dataMap.branches.find((b: any) => b.id === branchToUse));
             }
 
+            setLastFetch(Date.now());
             setSyncStatus('idle');
             setIsInitialized(true);
+            console.timeEnd("Aura Fetch Speed");
         } catch (error: any) {
             console.error("Critical Fetch Error:", error);
             setSyncStatus('error');
-            // Kritik hata olsa bile sayfanın açılabilmesi için isInitialized'ı true çekebiliriz
             setIsInitialized(true);
         }
     };
