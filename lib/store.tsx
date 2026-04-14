@@ -452,7 +452,7 @@ const StoreContext = createContext<StoreState | null>(null);
             });
             setAllCustomers(updatedCustomers);
             
-            const rawPayments = dataMap.payments || [];
+            const rawPayments = Array.isArray(dataMap.payments) ? dataMap.payments : [];
             const updatedPayments = rawPayments.map((p: any) => ({
                 ...p,
                 referenceCode: p.referenceCode || generatePaymentRef()

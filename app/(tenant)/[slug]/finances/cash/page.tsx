@@ -13,26 +13,32 @@ import { motion } from "framer-motion";
 export default function CashManagementPage() {
     const { 
         payments, expenses, customers, paymentDefinitions,
-        currentBranch, can, currentUser
+        currentBranch, can, currentUser, isInitialized
     } = useStore();
 
-    const today = new Date().toISOString().split('T')[0];
-    
-    // Permission Lock Logic
-    const hasPastAccess = can('view_past_finances');
-    
+    const [isMounted, setIsMounted] = useState(false);
     const [dateRange, setDateRange] = useState({ 
-        start: today, 
-        end: today 
+        start: '', 
+        end: '' 
     });
     const [searchQuery, setSearchQuery] = useState("");
 
+    const today = useMemo(() => new Date().toISOString().split('T')[0], []);
+    
+    // Permission Lock Logic
+    const hasPastAccess = useMemo(() => isMounted ? can('view_past_finances') : false, [isMounted, can]);
+
+    useEffect(() => {
+        setIsMounted(true);
+        setDateRange({ start: today, end: today });
+    }, [today]);
+
     // If permission is missing, force today's date
     useEffect(() => {
-        if (!hasPastAccess) {
+        if (isMounted && !hasPastAccess) {
             setDateRange({ start: today, end: today });
         }
-    }, [hasPastAccess, today]);
+    }, [hasPastAccess, today, isMounted]);
 
     // Combined Transactions (Payments + Expenses)
     const transactions = useMemo(() => {
@@ -108,6 +114,15 @@ export default function CashManagementPage() {
             tools: Object.entries(toolMap)
         };
     }, [transactions, paymentDefinitions]);
+
+    if (!isMounted || !isInitialized) {
+        return (
+            <div className="flex-1 flex flex-col items-center justify-center bg-[#F3F4F6] min-h-screen">
+                <div className="w-12 h-12 border-4 border-[#1ABE9D] border-t-transparent rounded-full animate-spin mb-4" />
+                <p className="text-xs font-black text-gray-400 uppercase tracking-widest animate-pulse">Veriler Hazırlanıyor...</p>
+            </div>
+        );
+    }
 
     return (
         <div className="flex-1 flex flex-col bg-[#F3F4F6] min-h-screen">
