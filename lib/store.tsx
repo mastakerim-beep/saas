@@ -1,4 +1,5 @@
 "use client";
+// Aura SaaS - Production Version 2.5.1
 
 import React, { createContext, useContext, useState, ReactNode, useEffect, useMemo } from 'react';
 import { supabase } from '@/lib/supabase';
