@@ -264,6 +264,18 @@ interface StoreState {
      return obj;
  };
  
+ const generateReferenceCode = (branchName: string, existingCustomers: any[]) => {
+     const prefix = (branchName || 'GEN').substring(0, 3).toUpperCase();
+     // Find the highest number for this prefix
+     const branchCodes = existingCustomers
+         .map(c => c.referenceCode)
+         .filter(code => code && typeof code === 'string' && code.startsWith(prefix))
+         .map(code => parseInt(code.split('-')[1]) || 0);
+     
+     const nextNum = Math.max(1000, ...branchCodes) + 1;
+     return `${prefix}-${nextNum}`;
+ };
+ 
  const StoreContext = createContext<StoreState | null>(null);
  
  export function StoreProvider({ children }: { children: ReactNode }) {
@@ -423,7 +435,18 @@ interface StoreState {
             setAllBusinesses(dataMap.businesses || []);
             setAllowedBranches(dataMap.branches || []);
             setAllAppointments(dataMap.appointments || []);
-            setAllCustomers(dataMap.customers || []);
+            
+            // Retroactive Code Generation for customers without referenceCode
+            const rawCustomers = dataMap.customers || [];
+            const updatedCustomers = rawCustomers.map((c: any) => {
+                if (!c.referenceCode) {
+                    const branch = dataMap.branches?.find((b: any) => b.id === c.branchId) || dataMap.branches?.[0];
+                    return { ...c, referenceCode: generateReferenceCode(branch?.name || 'AURA', rawCustomers) };
+                }
+                return c;
+            });
+            setAllCustomers(updatedCustomers);
+            
             setMembershipPlans(dataMap.membership_plans || []);
             setCustomerMemberships(dataMap.customer_memberships || []);
             setAllPayments(dataMap.payments || []);
@@ -447,11 +470,7 @@ interface StoreState {
             setSystemAnnouncements(dataMap.system_announcements || []);
             setTenantModules(dataMap.tenant_modules || []);
             
-            // SaaS Admin Data
-            // These would normally be stored in specialized state arrays if we added them to StoreState
-            // For now, filtering and exposing via helpers if needed
-
-            // Branch Selection Logic
+            // ... rest of the function or state updates
             if (currentUser && dataMap.branches?.length > 0) {
                 const savedBranchId = localStorage.getItem('aura_last_branch');
                 const branchToUse = (dataMap.branches.some((b: any) => b.id === savedBranchId)) ? savedBranchId : dataMap.branches[0].id;
@@ -835,7 +854,17 @@ interface StoreState {
             return true;
         },
         addCustomer: (c) => {
-            const nc = { ...c, id: crypto.randomUUID(), businessId: getSafeBizId()!, createdAt: new Date().toISOString() };
+            const bizId = getSafeBizId();
+            const branch = currentBranch || allowedBranches[0];
+            const refCode = generateReferenceCode(branch?.name || 'AURA', allCustomers);
+            
+            const nc = { 
+                ...c, 
+                id: crypto.randomUUID(), 
+                businessId: bizId!, 
+                referenceCode: refCode,
+                createdAt: new Date().toISOString() 
+            };
             setAllCustomers(prev => [...prev, nc]);
             syncDb('customers', 'insert', nc, nc.id);
             return nc;

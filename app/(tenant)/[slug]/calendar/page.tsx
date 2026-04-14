@@ -187,7 +187,7 @@ function CalendarItem({ item, type, onCheckout }: { item: Appointment | Calendar
                 <p className="text-[9px] font-bold opacity-80">{isAppt ? (appt.status === 'pending' ? 'Beklemede' : appt.status) : ''}</p>
                 {isAppt && (
                     <p className="text-[9px] font-black opacity-60 mt-1">
-                        ({branchPrefix}-{(customers.find(c => c.id === appt.customerId)?.id || appt.id).slice(-4).toUpperCase()})
+                        ({customers.find(c => c.id === appt.customerId)?.referenceCode || (branchPrefix + '-' + appt.id.slice(-4).toUpperCase())})
                     </p>
                 )}
             </div>
