@@ -51,7 +51,7 @@ export default function CashManagementPage() {
         // Method Breakdown
         const methodMap: any = { 'Nakit': 0, 'Kredi Kartı': 0, 'Banka Hesabı': 0 };
         filteredPayments.forEach(p => {
-            p.methods.forEach(m => {
+            p.methods.forEach((m: any) => {
                 const label = m.method === 'nakit' ? 'Nakit' : m.method === 'kredi-karti' ? 'Kredi Kartı' : 'Banka Hesabı';
                 methodMap[label] = (methodMap[label] || 0) + m.amount;
             });
@@ -60,7 +60,7 @@ export default function CashManagementPage() {
         // Tool Breakdown
         const toolMap: any = {};
         filteredPayments.forEach(p => {
-            p.methods.forEach(m => {
+            p.methods.forEach((m: any) => {
                 const tool = paymentDefinitions.find(d => d.id === m.toolId);
                 const toolName = tool?.name || 'Diğer / Tanımsız';
                 toolMap[toolName] = (toolMap[toolName] || 0) + m.amount;

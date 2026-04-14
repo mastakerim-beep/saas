@@ -16,7 +16,7 @@ export default function CustomerGallery({ customerId }: CustomerGalleryProps) {
     const [selectedImage, setSelectedImage] = useState<CustomerMedia | null>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
 
-    const media = customerMedia.filter(m => m.customerId === customerId).sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    const media = customerMedia.filter(m => m.customerId === customerId).sort((a,b) => new Date(b.createdAt || '').getTime() - new Date(a.createdAt || '').getTime());
 
     const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
@@ -49,10 +49,10 @@ export default function CustomerGallery({ customerId }: CustomerGalleryProps) {
             // 3. Add to Database via Store
             addCustomerMedia({
                 customerId,
-                url: publicUrl,
-                type: media.length === 0 ? 'before' : 'after', // First image is 'before', others 'after' by default
+                fileUrl: publicUrl,
+                fileType: media.length === 0 ? 'before' : 'after', // First image is 'before', others 'after' by default
                 note: 'Manuel Geri Bildirim',
-                date: new Date().toISOString().split('T')[0]
+                createdAt: new Date().toISOString()
             });
 
             setUploadProgress(100);
@@ -126,15 +126,15 @@ export default function CustomerGallery({ customerId }: CustomerGalleryProps) {
                             onClick={() => setSelectedImage(item)}
                             className="group relative aspect-[4/5] rounded-[1.5rem] overflow-hidden border border-gray-100 cursor-pointer hover:ring-4 ring-indigo-50 transition-all"
                         >
-                            <img src={item.url} alt={item.note} className="w-full h-full object-cover transition duration-500 group-hover:scale-110" />
+                            <img src={item.fileUrl} alt={item.note} className="w-full h-full object-cover transition duration-500 group-hover:scale-110" />
                             <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex flex-col justify-end p-4">
-                                <p className="text-[10px] font-black text-white uppercase tracking-widest leading-none mb-1">{item.type.toUpperCase()}</p>
-                                <p className="text-[9px] text-white/70 font-bold italic line-clamp-1">{item.date}</p>
+                                <p className="text-[10px] font-black text-white uppercase tracking-widest leading-none mb-1">{item.fileType?.toUpperCase()}</p>
+                                <p className="text-[9px] text-white/70 font-bold italic line-clamp-1">{item.createdAt?.split('T')[0]}</p>
                             </div>
                             <div className={`absolute top-3 left-3 px-2 py-1 rounded-lg text-[8px] font-black uppercase tracking-tighter ${
-                                item.type === 'before' ? 'bg-amber-400 text-amber-900' : 'bg-emerald-400 text-emerald-900'
+                                item.fileType === 'before' ? 'bg-amber-400 text-amber-900' : 'bg-emerald-400 text-emerald-900'
                             }`}>
-                                {item.type === 'before' ? 'ÖNCE' : 'SONRA'}
+                                {item.fileType === 'before' ? 'ÖNCE' : 'SONRA'}
                             </div>
                         </div>
                     ))}
@@ -150,15 +150,15 @@ export default function CustomerGallery({ customerId }: CustomerGalleryProps) {
                     
                     <div className="max-w-xl w-full flex flex-col gap-6">
                         <div className="relative rounded-[3rem] overflow-hidden shadow-2xl border border-white/10 bg-black/40">
-                            <img src={selectedImage.url} alt="Gelişim" className="w-full max-h-[60vh] object-contain" />
+                            <img src={selectedImage.fileUrl} alt="Gelişim" className="w-full max-h-[60vh] object-contain" />
                             <div className="absolute bottom-0 left-0 right-0 p-8 bg-gradient-to-t from-black via-black/60 to-transparent">
                                 <div className="flex items-center gap-3 mb-2">
                                     <span className={`px-4 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-widest ${
-                                        selectedImage.type === 'before' ? 'bg-amber-400 text-amber-900' : 'bg-emerald-400 text-emerald-900'
+                                        selectedImage.fileType === 'before' ? 'bg-amber-400 text-amber-900' : 'bg-emerald-400 text-emerald-900'
                                     }`}>
-                                        {selectedImage.type === 'before' ? 'Başlangıç (Önce)' : 'Sonuç (Sonra)'}
+                                        {selectedImage.fileType === 'before' ? 'Başlangıç (Önce)' : 'Sonuç (Sonra)'}
                                     </span>
-                                    <span className="text-[10px] font-bold text-white/50 tracking-widest">{selectedImage.date}</span>
+                                    <span className="text-[10px] font-bold text-white/50 tracking-widest">{selectedImage.createdAt?.split('T')[0]}</span>
                                 </div>
                                 <h4 className="text-lg font-black text-white italic tracking-tight">{selectedImage.note}</h4>
                             </div>

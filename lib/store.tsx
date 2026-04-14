@@ -35,6 +35,9 @@ export type CommissionRule = DB.CommissionRule;
 export type Expense = DB.Expense;
 export type CustomerMedia = DB.CustomerMedia;
 export type ZReport = DB.ZReport;
+export type Quote = DB.Quote;
+export type SystemAnnouncement = DB.SystemAnnouncement;
+export type TenantModule = DB.TenantModule;
 
 export type AppointmentStatus = 'pending' | 'completed' | 'no-show' | 'cancelled' | 'excused' | 'arrived';
 
@@ -115,6 +118,9 @@ interface StoreState {
     expenseCategories: ExpenseCategory[];
     referralSources: ReferralSource[];
     consentFormTemplates: ConsentFormTemplate[];
+    quotes: Quote[];
+    systemAnnouncements: SystemAnnouncement[];
+    tenantModules: TenantModule[];
     
     // Actions
     login: (email: string, pass: string) => Promise<boolean>;
@@ -157,6 +163,11 @@ interface StoreState {
     addPackageDefinition: (p: any) => void;
     updatePackageDefinition: (id: string, p: Partial<PackageDefinition>) => void;
     removePackageDefinition: (id: string) => void;
+    
+    // Quotes
+    addQuote: (q: Omit<Quote, 'id' | 'businessId'>) => void;
+    updateQuote: (id: string, updates: Partial<Quote>) => void;
+    deleteQuote: (id: string) => void;
 
     updateProduct: (id: string, p: Partial<Product>) => void;
     
@@ -216,6 +227,11 @@ interface StoreState {
  
     // License
     isLicenseExpired: boolean;
+
+    // SaaS Admin Actions
+    addAnnouncement: (a: Omit<DB.SystemAnnouncement, 'id' | 'createdAt'>) => Promise<void>;
+    updateModuleStatus: (bizId: string, moduleName: string, isEnabled: boolean) => Promise<void>;
+    updateBusinessPricing: (id: string, updates: { plan?: string, overrideMrr?: number | null, signupPrice?: number }) => Promise<void>;
 }
  
  
@@ -240,8 +256,8 @@ interface StoreState {
              const snakeK = k.replace(/[A-Z]/g, letter => `_${letter.toLowerCase()}`);
              let val = obj[k];
              // Convert empty strings to null for DB compatibility (especially UUID/Numeric columns)
-             if (val === '') val = null;
-             n[snakeK] = val; 
+            if (val === undefined || val === '') val = null;
+            n[snakeK] = toSnake(val);
          }
          return n;
      }
@@ -301,6 +317,9 @@ interface StoreState {
      const [allCustomerMedia, setAllCustomerMedia] = useState<CustomerMedia[]>([]);
      const [zReports, setZReports] = useState<ZReport[]>([]);
      const [impersonatedBusinessId, setImpersonatedBusinessId] = useState<string | null>(null);
+      const [allQuotes, setAllQuotes] = useState<Quote[]>([]);
+     const [systemAnnouncements, setSystemAnnouncements] = useState<SystemAnnouncement[]>([]);
+     const [tenantModules, setTenantModules] = useState<TenantModule[]>([]);
      const [tenantSlug, setTenantSlug] = useState<string | null>(null);
      const [currentTenant, setCurrentTenant] = useState<Business | null>(null);
      const [settings, setSettings] = useState<BusinessSettings>({ startHour: 9, endHour: 21, openDays: [1,2,3,4,5,6], isAutoMarketingEnabled: true });
@@ -367,7 +386,8 @@ interface StoreState {
             'debts', 'staff', 'inventory', 'rooms', 'expenses', 
             'services', 'app_users', 'audit_logs', 'customer_media', 
             'packages', 'package_definitions', 'commission_rules', 'calendar_blocks', 'notification_logs', 'z_reports',
-            'payment_definitions', 'bank_accounts', 'expense_categories', 'referral_sources', 'consent_form_templates'
+            'payment_definitions', 'bank_accounts', 'expense_categories', 'referral_sources', 'consent_form_templates', 'quotes',
+            'system_announcements', 'tenant_modules'
         ];
 
         const dataMap: any = {};
@@ -423,6 +443,13 @@ interface StoreState {
             setExpenseCategories(dataMap.expense_categories || []);
             setReferralSources(dataMap.referral_sources || []);
             setConsentFormTemplates(dataMap.consent_form_templates || []);
+            setAllQuotes((dataMap.quotes || []).map(toCamel));
+            setSystemAnnouncements(dataMap.system_announcements || []);
+            setTenantModules(dataMap.tenant_modules || []);
+            
+            // SaaS Admin Data
+            // These would normally be stored in specialized state arrays if we added them to StoreState
+            // For now, filtering and exposing via helpers if needed
 
             // Branch Selection Logic
             if (currentUser && dataMap.branches?.length > 0) {
@@ -577,6 +604,7 @@ interface StoreState {
                  packages: setAllPackages,
                  commission_rules: setAllCommissionRules,
                  calendar_blocks: setAllBlocks,
+                  quotes: setAllQuotes,
                  z_reports: setZReports,
                  rooms: setAllRooms
              };
@@ -637,14 +665,26 @@ interface StoreState {
         const a = { 
             ...data, 
             id: crypto.randomUUID(), 
-            businessId: safeBizId, 
-            branchId: safeBranchId,
+            businessId: safeBizId || 'SYSTEM_ERR', 
+            branchId: safeBranchId || null, // Explicit null if not found
             syncStatus: 'syncing' as const,
-            status: 'pending' as const
+            status: 'pending' as const,
+            isPaid: false // Default
         };
         
+        if (!a.businessId || a.businessId === 'SYSTEM_ERR') {
+            console.error('Critical: Appointment created without BusinessID');
+            return false;
+        }
+
         setAllAppointments(prev => [...prev, a]);
-        syncDb('appointments', 'insert', a, a.id);
+        try {
+            await syncDb('appointments', 'insert', a, a.id);
+            return true;
+        } catch (e) {
+            console.error('AddAppointment Sync Failed:', e);
+            return false;
+        }
         
         // Log the action
         store.addLog('Randevu Oluşturuldu', a.customerName, '', `${a.time} - ${a.service}`);
@@ -899,7 +939,8 @@ interface StoreState {
                 id: crypto.randomUUID(), 
                 businessId: bizId, 
                 branchId: currentBranch?.id!, 
-                date: new Date().toISOString().split('T')[0]
+                date: new Date().toISOString().split('T')[0],
+                createdAt: new Date().toISOString()
             };
             
             // 1. Save Payment
@@ -1257,6 +1298,49 @@ interface StoreState {
             const dayMonth = `${today.getDate().toString().padStart(2, '0')}-${(today.getMonth() + 1).toString().padStart(2, '0')}`;
             return allCustomers.filter(c => c.birthdate && c.birthdate.includes(dayMonth));
         },
+        quotes: allQuotes,
+        addQuote: (q: any) => {
+            const bizId = getSafeBizId();
+            const nq = { 
+                ...q, 
+                id: crypto.randomUUID(), 
+                businessId: bizId!,
+                branchId: currentBranch?.id || null,
+                createdAt: new Date().toISOString(),
+                updatedAt: new Date().toISOString()
+            };
+            setAllQuotes(prev => [...prev, nq as any]);
+            syncDb('quotes', 'insert', nq, nq.id);
+        },
+        updateQuote: (id: string, updates: any) => {
+            const upds = { ...updates, updatedAt: new Date().toISOString() };
+            setAllQuotes(prev => prev.map(q => q.id === id ? { ...q, ...upds } : q));
+            syncDb('quotes', 'update', upds, id);
+        },
+        deleteQuote: (id: string) => {
+            setAllQuotes(prev => prev.filter(q => q.id !== id));
+            syncDb('quotes', 'delete', {}, id);
+        },
+        addAnnouncement: async (announcement: any) => {
+            const { data, error } = await supabase.from('system_announcements').insert(toSnake(announcement)).select().single();
+            if (error) {
+                console.error("Announcement error:", error);
+                return;
+            }
+            setAllNotifs(prev => [...prev, toCamel(data)]);
+        },
+        updateModuleStatus: async (bizId: string, moduleName: string, isEnabled: boolean) => {
+            const { error } = await supabase.from('tenant_modules').upsert(toSnake({ businessId: bizId, moduleName, isEnabled }), { onConflict: 'business_id,module_name' });
+            if (error) console.error("Module update error:", error);
+            else await fetchData();
+        },
+        updateBusinessPricing: async (id: string, updates: any) => {
+            const { error } = await supabase.from('businesses').update(toSnake(updates)).eq('id', id);
+            if (error) console.error("Pricing update error:", error);
+            else setAllBusinesses(prev => prev.map(b => b.id === id ? { ...b, ...updates } : b));
+        },
+        systemAnnouncements,
+        tenantModules,
         isLicenseExpired: false
     };
  

@@ -35,6 +35,7 @@ export default function BookingModal({ initialData, onClose, date }: BookingModa
     const [price, setPrice] = useState(services[0]?.price || 0);
     const [isSaving, setIsSaving] = useState(false);
     const [blockReason, setBlockReason] = useState('Toplantı');
+    const [note, setNote] = useState('');
 
     const filtered = customers.filter(c => 
         c.name.toLowerCase().includes(search.toLowerCase()) || 
@@ -65,11 +66,13 @@ export default function BookingModal({ initialData, onClose, date }: BookingModa
             packageId: currentPackageId,
             price: currentPackageId ? 0 : price,
             duration: svc.duration,
-            isPackageUsage: !!currentPackageId
+            isPackageUsage: !!currentPackageId,
+            note: note
         }]);
         
         // Reset for next entry
         setCurrentPackageId(null);
+        setNote('');
     };
 
     const handleSave = async () => {
@@ -84,7 +87,8 @@ export default function BookingModal({ initialData, onClose, date }: BookingModa
                 packageId: currentPackageId,
                 price: currentPackageId ? 0 : price,
                 duration: services.find(s => s.name === currentService)?.duration || 60,
-                isPackageUsage: !!currentPackageId
+                isPackageUsage: !!currentPackageId,
+                note: note
             }];
 
             for (const item of finalBasket) {
@@ -103,7 +107,8 @@ export default function BookingModal({ initialData, onClose, date }: BookingModa
                     depositPaid: 0,
                     isOnline: false,
                     packageId: item.packageId || undefined,
-                    isPackageUsage: item.isPackageUsage
+                    isPackageUsage: item.isPackageUsage,
+                    note: item.note
                 });
             }
         } else {
@@ -307,6 +312,17 @@ export default function BookingModal({ initialData, onClose, date }: BookingModa
                                                 </div>
                                             )}
                                         </div>
+                                    </div>
+
+                                    {/* Additional Notes */}
+                                    <div className="space-y-3 pt-6 border-t border-gray-100/50">
+                                        <label className="text-[9px] font-black text-gray-400 uppercase tracking-widest ml-1 opacity-70">Randevu Notu / Açıklama</label>
+                                        <textarea 
+                                            value={note}
+                                            onChange={e => setNote(e.target.value)}
+                                            placeholder="Örn: mb MİRA (Terapist değişikliği istiyor)"
+                                            className="w-full bg-gray-50 border border-gray-100 rounded-2xl px-5 py-4 text-sm font-bold text-gray-900 outline-none focus:border-primary/30 transition-all shadow-inner min-h-[100px] resize-none"
+                                        />
                                     </div>
 
                                     <button 

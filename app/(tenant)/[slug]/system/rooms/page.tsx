@@ -87,7 +87,7 @@ export default function RoomManagement() {
                                             <button 
                                                 key={c} onClick={() => setColor(c)}
                                                 className={`w-10 h-10 rounded-xl transition-all ${color === c ? 'scale-125 ring-4 ring-offset-2' : 'hover:scale-110'}`}
-                                                style={{ backgroundColor: c, borderColor: c, ringColor: c + '40' }}
+                                                style={{ backgroundColor: c, borderColor: c }}
                                             />
                                         ))}
                                     </div>

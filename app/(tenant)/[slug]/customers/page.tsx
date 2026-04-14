@@ -1,16 +1,18 @@
 "use client";
 
 import { useState, useMemo } from 'react';
-import { useStore, Customer, Appointment, Package, Payment } from '@/lib/store';
+import { useStore, Customer, Appointment, Package, Payment, Quote } from '@/lib/store';
 import { 
     User, CheckCircle, ArrowLeft, MessageCircle, Download, Clock, Tag, 
-    MessageSquare, Search, X, Phone, Mail, Calendar, ChevronRight, 
+    MessageSquare, Search, X, Phone, Mail, Calendar, ChevronRight, ChevronLeft,
     Package as PackageIcon, Star, Banknote, CreditCard, Building2, Trash2,
     Zap, Activity, Heart, Shield, RefreshCw, BarChart3, TrendingUp, Sparkles, MapPin,
     ArrowUpRight, Info, Plus, FileText, Gift, Settings, AlertCircle, Edit2, Globe, Languages, Users, ArrowDownRight
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import BookingModal from '@/components/BookingModal';
+import jsPDF from 'jspdf';
+import 'jspdf-autotable';
 
 // ---- COMPONENTS ----
 
@@ -143,11 +145,64 @@ function CustomerDetail({ customer, onClose }: { customer: Customer; onClose: ()
         getCustomerPayments, 
         updateAppointmentStatus, 
         updateCustomer,
-        staffMembers 
+        deleteCustomer,
+        addLog,
+        staffMembers,
+        currentBranch,
+        quotes,
+        addQuote,
+        deleteQuote
     } = useStore();
     const [activeMenu, setActiveMenu] = useState('Detaylar');
+    const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(true);
     const [quickNote, setQuickNote] = useState('');
+    const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+    const [editForm, setEditForm] = useState<Partial<Customer>>({ ...customer });
+    const [isSaving, setIsSaving] = useState(false);
+    const [saveSuccess, setSaveSuccess] = useState(false);
     const [selectedSlot, setSelectedSlot] = useState<{staffId: string, time: string, customerId?: string} | null>(null);
+
+    const customerQuotes = quotes.filter(q => q.customerId === customer.id);
+
+    const handleSave = async () => {
+        setIsSaving(true);
+        try {
+            updateCustomer(customer.id, editForm);
+            setSaveSuccess(true);
+            setTimeout(() => setSaveSuccess(false), 3000);
+            addLog('Müşteri Bilgileri Güncellendi', customer.name, 'Form ile güncelleme', JSON.stringify(editForm));
+        } catch (e) {
+            console.error(e);
+        } finally {
+            setIsSaving(false);
+        }
+    };
+
+    const handleDelete = async () => {
+        const success = await deleteCustomer(customer.id);
+        if (success) {
+            addLog('Müşteri Silindi', customer.name, 'Kalıcı silme', 'Silinen Danışan: ' + customer.name);
+            onClose();
+        }
+    };
+
+    const downloadPDF = (quote: Quote) => {
+        const doc = new jsPDF() as any;
+        doc.setFillColor(79, 70, 229);
+        doc.rect(0, 0, 210, 40, 'F');
+        doc.setTextColor(255, 255, 255);
+        doc.setFontSize(24);
+        doc.text('AURA SPA PRO', 20, 25);
+        doc.setTextColor(50, 50, 50);
+        doc.text(`Teklif: ${quote.customerName}`, 20, 60);
+        doc.autoTable({
+            startY: 80,
+            head: [['Hizmet', 'Tutar', 'Tarih']],
+            body: [[quote.serviceName, `₺${quote.amount}`, new Date(quote.createdAt || '').toLocaleDateString('tr-TR')]],
+            headStyles: { fillColor: [79, 70, 229] }
+        });
+        doc.save(`Teklif_${quote.customerName}.pdf`);
+    };
 
     const pkgs = getCustomerPackages(customer.id);
     const appts = getCustomerAppointments(customer.id).sort((a, b) => b.date.localeCompare(a.date));
@@ -178,12 +233,80 @@ function CustomerDetail({ customer, onClose }: { customer: Customer; onClose: ()
     ];
 
     return (
-        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex min-h-screen bg-[#F8F9FC]">
+        <motion.div 
+            initial={{ opacity: 0, x: 20 }} 
+            animate={{ opacity: 1, x: 0 }} 
+            className="fixed inset-0 bg-[#F8F9FD] z-50 flex overflow-hidden"
+        >
+            {/* Delete Confirmation Modal */}
+            <AnimatePresence>
+                {showDeleteConfirm && (
+                    <motion.div 
+                        initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                        className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4"
+                    >
+                        <motion.div 
+                            initial={{ scale: 0.9, y: 20 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.9, y: 20 }}
+                            className="bg-white rounded-[3rem] p-12 max-w-md w-full shadow-2xl text-center"
+                        >
+                            <div className="w-20 h-20 bg-red-50 rounded-full flex items-center justify-center mx-auto mb-8">
+                                <Trash2 className="w-10 h-10 text-red-500 animate-pulse" />
+                            </div>
+                            <h2 className="text-2xl font-black uppercase italic tracking-tighter mb-4">Müşteriyi Sil?</h2>
+                            <p className="text-gray-500 text-sm font-medium mb-10 leading-relaxed">
+                                <span className="font-black text-gray-900">{customer.name}</span> isimli danışanı kalıcı olarak silmek istediğinizden emin misiniz? Bu işlem geri alınamaz.
+                            </p>
+                            <div className="flex gap-4">
+                                <button 
+                                    onClick={() => setShowDeleteConfirm(false)}
+                                    className="flex-1 py-4 bg-gray-50 text-gray-400 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-gray-100 transition-all"
+                                >
+                                    Vazgeç
+                                </button>
+                                <button 
+                                    onClick={handleDelete}
+                                    className="flex-1 py-4 bg-red-600 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-lg shadow-red-600/20 hover:scale-[1.02] active:scale-95 transition-all"
+                                >
+                                    Evet, Kalıcı Sil
+                                </button>
+                            </div>
+                        </motion.div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
             {/* Sidebar (Inner) */}
-            <div className="w-[280px] bg-white border-r border-gray-100 flex flex-col p-6 sticky top-0 h-screen">
-                <button onClick={onClose} className="mb-10 flex items-center gap-2 text-gray-400 hover:text-indigo-600 transition-colors">
-                    <ArrowLeft className="w-5 h-5" />
-                    <span className="text-[10px] font-black uppercase tracking-widest">Geri Dön</span>
+            <motion.div 
+                animate={{ width: isSidebarCollapsed ? 88 : 280 }}
+                transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+                onMouseEnter={() => setIsSidebarCollapsed(false)}
+                onMouseLeave={() => setIsSidebarCollapsed(true)}
+                className="bg-white border-r border-gray-100 flex flex-col p-6 sticky top-0 h-screen overflow-hidden group/sbar"
+            >
+                <div className="flex items-center justify-between mb-10">
+                    {!isSidebarCollapsed && (
+                        <button onClick={onClose} className="flex items-center gap-2 text-gray-400 hover:text-indigo-600 transition-colors">
+                            <ArrowLeft className="w-5 h-5" />
+                            <span className="text-[10px] font-black uppercase tracking-widest">Geri Dön</span>
+                        </button>
+                    )}
+                    {isSidebarCollapsed && (
+                        <button onClick={onClose} className="mx-auto text-gray-400 hover:text-indigo-600 transition-colors">
+                            <ArrowLeft className="w-5 h-5 shadow-sm" />
+                        </button>
+                    )}
+                </div>
+
+                <div 
+                    className={`absolute top-24 -right-1 w-2 h-16 bg-indigo-500/10 rounded-full flex items-center justify-center transition-all ${isSidebarCollapsed ? 'opacity-100' : 'opacity-0'}`}
+                >
+                    <div className="w-1 h-8 bg-indigo-600/30 rounded-full" />
+                </div>
+
+                <button 
+                    onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
+                    className={`absolute top-24 -right-4 w-8 h-8 bg-indigo-600 text-white border-2 border-white rounded-full flex items-center justify-center shadow-xl z-50 transition-all duration-500 ${isSidebarCollapsed ? 'scale-100 opacity-100' : 'scale-0 opacity-0 group-hover/sbar:scale-100 group-hover/sbar:opacity-100'}`}
+                >
+                    {isSidebarCollapsed ? <ChevronRight className="w-5 h-5" /> : <ChevronLeft className="w-5 h-5" />}
                 </button>
                 
                 <div className="space-y-1 flex-1 overflow-y-auto no-scrollbar">
@@ -193,14 +316,15 @@ function CustomerDetail({ customer, onClose }: { customer: Customer; onClose: ()
                             onClick={() => setActiveMenu(item.id)}
                             className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all font-bold text-sm
                                 ${activeMenu === item.id ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/20' : 'text-gray-500 hover:bg-gray-50'}
+                                ${isSidebarCollapsed ? 'justify-center border-none shadow-none' : ''}
                             `}
                         >
-                            <item.icon className={`w-4 h-4 ${activeMenu === item.id ? 'text-white' : 'text-gray-400'}`} />
-                            {item.label}
+                            <item.icon className={`w-4 h-4 shrink-0 ${activeMenu === item.id ? 'text-white' : 'text-gray-400'}`} />
+                            {!isSidebarCollapsed && <span className="truncate">{item.label}</span>}
                         </button>
                     ))}
                 </div>
-            </div>
+            </motion.div>
 
             {/* Main Content Area */}
             <div className="flex-1 flex flex-col">
@@ -272,7 +396,7 @@ function CustomerDetail({ customer, onClose }: { customer: Customer; onClose: ()
                                         {[
                                             { label: 'Randevu', count: appts.length, color: 'text-indigo-600', bg: 'bg-indigo-50' },
                                             { label: 'Satış', count: payments.length, color: 'text-green-600', bg: 'bg-green-50' },
-                                            { label: 'Teklif', count: 0, color: 'text-amber-600', bg: 'bg-amber-50' },
+                                            { label: 'Teklif', count: customerQuotes.length, color: 'text-amber-600', bg: 'bg-amber-50' },
                                         ].map(stat => (
                                             <div key={stat.label} className="bg-white p-4 rounded-3xl border border-gray-100 shadow-sm text-center">
                                                 <p className="text-xl font-black italic text-gray-900">{stat.count}</p>
@@ -294,7 +418,7 @@ function CustomerDetail({ customer, onClose }: { customer: Customer; onClose: ()
                                             </div>
                                             <div className="flex flex-col gap-1">
                                                 <span className="text-[10px] font-black text-gray-300 uppercase tracking-widest">Kayıt Tarihi</span>
-                                                <span className="text-sm font-bold text-gray-600">{customer.createdAt.split('T')[0]}</span>
+                                                <span className="text-sm font-bold text-gray-600">{customer.createdAt?.split('T')[0] || '---'}</span>
                                             </div>
                                             <div className="flex flex-col gap-1">
                                                 <span className="text-[10px] font-black text-gray-300 uppercase tracking-widest">Doğum Tarihi</span>
@@ -328,7 +452,7 @@ function CustomerDetail({ customer, onClose }: { customer: Customer; onClose: ()
                                             </div>
                                             <div className="flex flex-col gap-1">
                                                 <span className="text-[10px] font-black text-gray-300 uppercase tracking-widest">Kayıt Açan</span>
-                                                <span className="text-sm font-bold text-gray-600">RAMADA BURSA</span>
+                                                <span className="text-sm font-bold text-gray-600">{currentBranch?.name || 'Aura İşletme'}</span>
                                             </div>
                                             <div className="flex flex-col gap-1">
                                                 <span className="text-[10px] font-black text-gray-300 uppercase tracking-widest">Segment</span>
@@ -340,7 +464,7 @@ function CustomerDetail({ customer, onClose }: { customer: Customer; onClose: ()
                                             </div>
                                             <div className="flex flex-col gap-1">
                                                 <span className="text-[10px] font-black text-gray-300 uppercase tracking-widest">Değişiklik Tarihi</span>
-                                                <span className="text-sm font-bold text-gray-400 italic">{customer.createdAt.split('T')[0]} 21:22</span>
+                                                <span className="text-sm font-bold text-gray-400 italic">{customer.createdAt?.split('T')[0] || '---'} 21:22</span>
                                             </div>
                                         </div>
                                     </div>
@@ -395,12 +519,78 @@ function CustomerDetail({ customer, onClose }: { customer: Customer; onClose: ()
                             </motion.div>
                         )}
 
-                        {activeMenu === 'Randevu' && (
+                        {activeMenu === 'Teklif' && (
                             <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}>
                                 <div className="bg-white rounded-[2.5rem] border border-gray-100 shadow-sm overflow-hidden">
                                     <div className="p-8 border-b border-gray-50 flex justify-between items-center">
-                                        <h3 className="text-xl font-black italic tracking-tighter uppercase italic">Randevular</h3>
-                                        <button className="px-4 py-2 bg-gray-50 rounded-xl text-[10px] font-black uppercase tracking-widest text-gray-500 hover:bg-gray-100 flex items-center gap-2">
+                                        <h3 className="text-xl font-black italic tracking-tighter uppercase italic">Teklifler</h3>
+                                        <button 
+                                            onClick={() => addQuote({ customerId: customer.id, customerName: customer.name, status: 'Taslak', amount: 0, serviceName: 'Yeni Hizmet Paketi', validUntil: new Date(Date.now() + 7*24*60*60*1000).toISOString().split('T')[0] })}
+                                            className="px-4 py-2 bg-indigo-600 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-indigo-700 flex items-center gap-2"
+                                        >
+                                            <Plus className="w-4 h-4" /> Yeni Teklif
+                                        </button>
+                                    </div>
+                                    <div className="overflow-x-auto">
+                                        <table className="w-full text-left">
+                                            <thead className="bg-[#FBFCFF] text-[10px] font-black uppercase text-gray-400 tracking-widest">
+                                                <tr>
+                                                    <th className="px-8 py-5">Hizmet</th>
+                                                    <th className="px-8 py-5">Tutar</th>
+                                                    <th className="px-8 py-5">Durum</th>
+                                                    <th className="px-8 py-5">Oluşturma</th>
+                                                    <th className="px-8 py-5 text-right">İşlemler</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody className="divide-y divide-gray-50">
+                                                {customerQuotes.length === 0 ? (
+                                                    <tr>
+                                                        <td colSpan={5} className="py-20 text-center text-gray-300 font-black uppercase tracking-widest text-xs italic">Henüz teklif verilmedi</td>
+                                                    </tr>
+                                                ) : (
+                                                    customerQuotes.map(q => (
+                                                        <tr key={q.id} className="hover:bg-gray-50/50 transition-all group">
+                                                            <td className="px-8 py-5 font-bold text-gray-900">{q.serviceName}</td>
+                                                            <td className="px-8 py-5 text-indigo-600 font-black tracking-widest text-sm">₺{q.amount?.toLocaleString('tr-TR')}</td>
+                                                            <td className="px-8 py-5">
+                                                                <span className={`px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest border ${
+                                                                    q.status === 'Onaylandı' ? 'bg-green-50 text-green-600 border-green-100' :
+                                                                    q.status === 'Reddedildi' ? 'bg-red-50 text-red-600 border-red-100' :
+                                                                    'bg-gray-50 text-gray-400 border-gray-100'
+                                                                }`}>
+                                                                    {q.status}
+                                                                </span>
+                                                            </td>
+                                                            <td className="px-8 py-5 text-[10px] font-bold text-gray-400 uppercase tracking-widest">
+                                                                {new Date(q.createdAt || '').toLocaleDateString('tr-TR')}
+                                                            </td>
+                                                            <td className="px-8 py-5 text-right">
+                                                                <div className="flex justify-end gap-2 group-hover:opacity-100 transition-opacity">
+                                                                    <button 
+                                                                        onClick={() => downloadPDF(q)}
+                                                                        className="p-2 bg-indigo-600 text-white rounded-lg shadow-md hover:scale-110 transition-all"
+                                                                    >
+                                                                        <Download className="w-4 h-4" />
+                                                                    </button>
+                                                                    <button onClick={() => deleteQuote(q.id)} className="p-2 bg-white border border-gray-100 rounded-lg text-gray-400 hover:text-red-500"><Trash2 className="w-4 h-4" /></button>
+                                                                </div>
+                                                            </td>
+                                                        </tr>
+                                                    ))
+                                                )}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </motion.div>
+                        )}
+
+                        {activeMenu === 'Randevu' && (
+                            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}>
+                                <div className="bg-white rounded-[2.5rem] border border-gray-100 shadow-sm overflow-hidden">
+                                     <div className="p-8 border-b border-gray-50 flex justify-between items-center">
+                                         <h3 className="text-xl font-black italic tracking-tighter uppercase italic">Randevular</h3>
+                                         <button className="px-4 py-2 bg-gray-50 rounded-xl text-[10px] font-black uppercase tracking-widest text-gray-500 hover:bg-gray-100 flex items-center gap-2">
                                             İşlemler <ChevronRight className="w-4 h-4 rotate-90" />
                                         </button>
                                     </div>
@@ -461,6 +651,212 @@ function CustomerDetail({ customer, onClose }: { customer: Customer; onClose: ()
                             </motion.div>
                         )}
 
+                        {activeMenu === 'Düzenle' && (
+                            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="space-y-8 pb-32">
+                                <div className="flex justify-between items-center bg-white p-8 rounded-[2.5rem] border border-gray-100 shadow-sm">
+                                    <div>
+                                        <h3 className="text-2xl font-black italic tracking-tighter uppercase italic">Müşteri Düzenle</h3>
+                                        <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mt-1">Sistem Kayıt ID: #{customer.id.substring(0,8)}</p>
+                                    </div>
+                                    <div className="flex gap-4">
+                                        {saveSuccess && (
+                                            <div className="flex items-center gap-2 px-4 py-2 bg-green-50 text-green-600 rounded-xl text-[10px] font-black uppercase tracking-widest animate-bounce">
+                                                <CheckCircle className="w-4 h-4" /> Başarıyla Güncellendi
+                                            </div>
+                                        )}
+                                        <button 
+                                            onClick={handleSave}
+                                            disabled={isSaving}
+                                            className="px-10 py-4 bg-indigo-600 text-white rounded-[1.5rem] text-[10px] font-black uppercase tracking-widest shadow-xl shadow-indigo-600/20 hover:scale-105 active:scale-95 transition-all flex items-center gap-3 disabled:opacity-50"
+                                        >
+                                            {isSaving ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Shield className="w-4 h-4" />}
+                                            BİLGİLERİ GÜNCELLE
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                                    {/* Kişisel Bilgiler */}
+                                    <div className="bg-white rounded-[3rem] border border-gray-100 p-10 shadow-sm flex flex-col gap-8">
+                                        <div className="flex items-center gap-4 border-b border-gray-50 pb-6">
+                                            <div className="w-10 h-10 bg-indigo-50 rounded-2xl flex items-center justify-center text-indigo-600"><User className="w-5 h-5" /></div>
+                                            <h4 className="text-[11px] font-black uppercase tracking-widest italic">Kişisel Bilgiler</h4>
+                                        </div>
+                                        
+                                        <div className="grid grid-cols-2 gap-6">
+                                            <div className="flex flex-col gap-2">
+                                                <label className="text-[9px] font-black text-gray-400 uppercase tracking-widest ml-1">Ad Soyad</label>
+                                                <input 
+                                                    type="text" value={editForm.name} onChange={e => setEditForm({...editForm, name: e.target.value})}
+                                                    className="bg-gray-50 border border-transparent focus:bg-white focus:border-indigo-100 rounded-2xl p-4 text-sm font-bold outline-none transition-all"
+                                                />
+                                            </div>
+                                            <div className="flex flex-col gap-2">
+                                                <label className="text-[9px] font-black text-gray-400 uppercase tracking-widest ml-1">TC Kimlik / Pasaport</label>
+                                                <input 
+                                                    type="text" value={editForm.citizenshipNumber || ''} onChange={e => setEditForm({...editForm, citizenshipNumber: e.target.value})}
+                                                    className="bg-gray-50 border border-transparent focus:bg-white focus:border-indigo-100 rounded-2xl p-4 text-sm font-bold outline-none transition-all"
+                                                />
+                                            </div>
+                                            <div className="flex flex-col gap-2">
+                                                <label className="text-[9px] font-black text-gray-400 uppercase tracking-widest ml-1">Telefon</label>
+                                                <input 
+                                                    type="text" value={editForm.phone} onChange={e => setEditForm({...editForm, phone: e.target.value})}
+                                                    className="bg-gray-50 border border-transparent focus:bg-white focus:border-indigo-100 rounded-2xl p-4 text-sm font-bold outline-none transition-all"
+                                                />
+                                            </div>
+                                            <div className="flex flex-col gap-2">
+                                                <label className="text-[9px] font-black text-gray-400 uppercase tracking-widest ml-1">E-Posta</label>
+                                                <input 
+                                                    type="email" value={editForm.email} onChange={e => setEditForm({...editForm, email: e.target.value})}
+                                                    className="bg-gray-50 border border-transparent focus:bg-white focus:border-indigo-100 rounded-2xl p-4 text-sm font-bold outline-none transition-all"
+                                                />
+                                            </div>
+                                            <div className="flex flex-col gap-2">
+                                                <label className="text-[9px] font-black text-gray-400 uppercase tracking-widest ml-1">Cinsiyet</label>
+                                                <select 
+                                                    value={editForm.gender || ''} onChange={e => setEditForm({...editForm, gender: e.target.value})}
+                                                    className="bg-gray-50 border border-transparent focus:bg-white focus:border-indigo-100 rounded-2xl p-4 text-sm font-bold outline-none transition-all appearance-none"
+                                                >
+                                                    <option value="">Seçiniz</option>
+                                                    <option value="Kadın">Kadın</option>
+                                                    <option value="Erkek">Erkek</option>
+                                                    <option value="Diğer">Diğer</option>
+                                                </select>
+                                            </div>
+                                            <div className="flex flex-col gap-2">
+                                                <label className="text-[9px] font-black text-gray-400 uppercase tracking-widest ml-1">Doğum Tarihi</label>
+                                                <input 
+                                                    type="date" value={editForm.birthdate || ''} onChange={e => setEditForm({...editForm, birthdate: e.target.value})}
+                                                    className="bg-gray-50 border border-transparent focus:bg-white focus:border-indigo-100 rounded-2xl p-4 text-sm font-bold outline-none transition-all"
+                                                />
+                                            </div>
+                                            <div className="flex flex-col gap-2">
+                                                <label className="text-[9px] font-black text-gray-400 uppercase tracking-widest ml-1">Segment</label>
+                                                <select 
+                                                    value={editForm.segment} onChange={e => setEditForm({...editForm, segment: e.target.value})}
+                                                    className="bg-gray-50 border border-transparent focus:bg-white focus:border-indigo-100 rounded-2xl p-4 text-sm font-bold outline-none transition-all appearance-none"
+                                                >
+                                                    <option value="Normal">Normal</option>
+                                                    <option value="VIP">VIP</option>
+                                                    <option value="Vurgun">Vurgun</option>
+                                                </select>
+                                            </div>
+                                            <div className="flex flex-col gap-2">
+                                                <label className="text-[9px] font-black text-gray-400 uppercase tracking-widest ml-1">Satış Temsilcisi</label>
+                                                <select 
+                                                    value={editForm.salesRepId || ''} onChange={e => setEditForm({...editForm, salesRepId: e.target.value})}
+                                                    className="bg-gray-50 border border-transparent focus:bg-white focus:border-indigo-100 rounded-2xl p-4 text-sm font-bold outline-none transition-all appearance-none"
+                                                >
+                                                    <option value="">Seçiniz</option>
+                                                    {staffMembers.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                                                </select>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* Adres Bilgileri */}
+                                    <div className="bg-white rounded-[3rem] border border-gray-100 p-10 shadow-sm flex flex-col gap-8">
+                                        <div className="flex items-center gap-4 border-b border-gray-50 pb-6">
+                                            <div className="w-10 h-10 bg-indigo-50 rounded-2xl flex items-center justify-center text-indigo-600"><MapPin className="w-5 h-5" /></div>
+                                            <h4 className="text-[11px] font-black uppercase tracking-widest italic">Adres Bilgileri</h4>
+                                        </div>
+                                        
+                                        <div className="grid grid-cols-2 gap-6">
+                                            <div className="flex flex-col gap-2">
+                                                <label className="text-[9px] font-black text-gray-400 uppercase tracking-widest ml-1">Ülke</label>
+                                                <input 
+                                                    type="text" value={editForm.country || 'Türkiye'} onChange={e => setEditForm({...editForm, country: e.target.value})}
+                                                    className="bg-gray-50 border border-transparent focus:bg-white focus:border-indigo-100 rounded-2xl p-4 text-sm font-bold outline-none transition-all"
+                                                />
+                                            </div>
+                                            <div className="flex flex-col gap-2">
+                                                <label className="text-[9px] font-black text-gray-400 uppercase tracking-widest ml-1">Şehir</label>
+                                                <input 
+                                                    type="text" value={editForm.city || ''} onChange={e => setEditForm({...editForm, city: e.target.value})}
+                                                    className="bg-gray-50 border border-transparent focus:bg-white focus:border-indigo-100 rounded-2xl p-4 text-sm font-bold outline-none transition-all"
+                                                />
+                                            </div>
+                                            <div className="flex flex-col gap-2">
+                                                <label className="text-[9px] font-black text-gray-400 uppercase tracking-widest ml-1">İlçe</label>
+                                                <input 
+                                                    type="text" value={editForm.district || ''} onChange={e => setEditForm({...editForm, district: e.target.value})}
+                                                    className="bg-gray-50 border border-transparent focus:bg-white focus:border-indigo-100 rounded-2xl p-4 text-sm font-bold outline-none transition-all"
+                                                />
+                                            </div>
+                                            <div className="flex flex-col gap-2">
+                                                <label className="text-[9px] font-black text-gray-400 uppercase tracking-widest ml-1">Zaman Dilimi</label>
+                                                <select 
+                                                    value={editForm.timezone || 'Europe/Istanbul'} onChange={e => setEditForm({...editForm, timezone: e.target.value})}
+                                                    className="bg-gray-50 border border-transparent focus:bg-white focus:border-indigo-100 rounded-2xl p-4 text-sm font-bold outline-none transition-all appearance-none"
+                                                >
+                                                    <option value="Europe/Istanbul">GMT+3 (Istanbul)</option>
+                                                    <option value="Europe/London">GMT+0 (London)</option>
+                                                    <option value="America/New_York">GMT-5 (NYC)</option>
+                                                </select>
+                                            </div>
+                                            <div className="col-span-2 flex flex-col gap-2">
+                                                <label className="text-[9px] font-black text-gray-400 uppercase tracking-widest ml-1">Tam Adres</label>
+                                                <textarea 
+                                                    value={editForm.address || ''} onChange={e => setEditForm({...editForm, address: e.target.value})}
+                                                    className="bg-gray-50 border border-transparent focus:bg-white focus:border-indigo-100 rounded-3xl p-6 text-sm font-bold outline-none transition-all resize-none min-h-[120px]"
+                                                />
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* Diğer Bilgiler */}
+                                    <div className="bg-white rounded-[3rem] border border-gray-100 p-10 shadow-sm flex flex-col gap-8 md:col-span-2">
+                                        <div className="flex items-center gap-4 border-b border-gray-50 pb-6">
+                                            <div className="w-10 h-10 bg-indigo-50 rounded-2xl flex items-center justify-center text-indigo-600"><Settings className="w-5 h-5" /></div>
+                                            <h4 className="text-[11px] font-black uppercase tracking-widest italic">İletişim & Pazarlama İzinleri</h4>
+                                        </div>
+                                        
+                                        <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
+                                            <div className="flex flex-col gap-2">
+                                                <label className="text-[9px] font-black text-gray-400 uppercase tracking-widest ml-1">SMS İzni</label>
+                                                <select 
+                                                    value={editForm.smsPermission || 'Hayır'} onChange={e => setEditForm({...editForm, smsPermission: e.target.value})}
+                                                    className="bg-gray-50 border border-transparent focus:bg-white focus:border-indigo-100 rounded-2xl p-4 text-sm font-bold outline-none transition-all appearance-none"
+                                                >
+                                                    <option value="Evet">Evet, İzin Ver</option>
+                                                    <option value="Hayır">Hayır, İzin Verme</option>
+                                                </select>
+                                            </div>
+                                            <div className="flex flex-col gap-2">
+                                                <label className="text-[9px] font-black text-gray-400 uppercase tracking-widest ml-1">E-Posta İzni</label>
+                                                <select 
+                                                    value={editForm.emailPermission || 'Evet'} onChange={e => setEditForm({...editForm, emailPermission: e.target.value})}
+                                                    className="bg-gray-50 border border-transparent focus:bg-white focus:border-indigo-100 rounded-2xl p-4 text-sm font-bold outline-none transition-all appearance-none"
+                                                >
+                                                    <option value="Evet">Evet, İzin Ver</option>
+                                                    <option value="Hayır">Hayır, İzin Verme</option>
+                                                </select>
+                                            </div>
+                                            <div className="flex flex-col gap-2">
+                                                <label className="text-[9px] font-black text-gray-400 uppercase tracking-widest ml-1">İletişim Kaynağı</label>
+                                                <input 
+                                                    type="text" value={editForm.communicationSource || ''} onChange={e => setEditForm({...editForm, communicationSource: e.target.value})}
+                                                    className="bg-gray-50 border border-transparent focus:bg-white focus:border-indigo-100 rounded-2xl p-4 text-sm font-bold outline-none transition-all"
+                                                />
+                                            </div>
+                                            <div className="flex flex-col gap-2">
+                                                <label className="text-[9px] font-black text-gray-400 uppercase tracking-widest ml-1">İletişim Tercihi</label>
+                                                <select 
+                                                    value={editForm.communicationChoice || ''} onChange={e => setEditForm({...editForm, communicationChoice: e.target.value})}
+                                                    className="bg-gray-50 border border-transparent focus:bg-white focus:border-indigo-100 rounded-2xl p-4 text-sm font-bold outline-none transition-all appearance-none"
+                                                >
+                                                    <option value="">Seçiniz</option>
+                                                    <option value="Telefon">Telefon</option>
+                                                    <option value="WhatsApp">WhatsApp</option>
+                                                    <option value="Email">Email</option>
+                                                </select>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </motion.div>
+                        )}
                         {activeMenu === 'Satış & Tahsilat' && (
                             <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="space-y-6">
                                 <div className="bg-white rounded-[2.5rem] border border-gray-100 shadow-sm overflow-hidden">
@@ -489,10 +885,17 @@ function CustomerDetail({ customer, onClose }: { customer: Customer; onClose: ()
                                             <tbody className="divide-y divide-gray-50">
                                                 {payments.map(p => (
                                                     <tr key={p.id} className="hover:bg-gray-50/50 transition-all font-bold text-gray-600 group">
-                                                        <td className="px-8 py-5 text-sm">{p.date}</td>
+                                                        <td className="px-8 py-5 text-sm">
+                                                            {p.date}
+                                                            {p.createdAt && (
+                                                                <p className="text-[9px] text-gray-400 font-bold uppercase mt-1">
+                                                                    <Clock className="w-2 h-2 inline mr-1" /> {new Date(p.createdAt).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })}
+                                                                </p>
+                                                            )}
+                                                        </td>
                                                         <td className="px-8 py-5 text-sm text-gray-400">#P{p.id.split('-')[0].toUpperCase()}</td>
                                                         <td className="px-8 py-5 max-w-[200px]">
-                                                            <p className="text-[10px] font-black uppercase text-gray-900">RAMADA BURSA</p>
+                                                            <p className="text-[10px] font-black uppercase text-gray-900">{currentBranch?.name || 'Aura İşletme'}</p>
                                                             <div className="flex flex-col gap-1 mt-1">
                                                                 <span className="text-[9px] bg-gray-50 text-gray-400 px-2 py-0.5 rounded italic">1x {p.service}</span>
                                                             </div>
@@ -500,9 +903,9 @@ function CustomerDetail({ customer, onClose }: { customer: Customer; onClose: ()
                                                         <td className="px-8 py-5">
                                                             <span className="inline-block bg-cyan-400 text-white px-3 py-1 rounded-md text-[10px] font-black tracking-widest shadow-sm">₺{p.totalAmount.toLocaleString('tr-TR')} TRY</span>
                                                         </td>
-                                                        <td className="px-8 py-5 text-sm">{p.methods.some(m => m.method === 'nakit') ? `₺${p.totalAmount.toLocaleString('tr-TR')} TRY` : ''}</td>
-                                                        <td className="px-8 py-5 text-sm">{p.methods.some(m => m.method === 'kredi-karti') ? `₺${p.totalAmount.toLocaleString('tr-TR')} TRY` : ''}</td>
-                                                        <td className="px-8 py-5 text-sm">{p.methods.some(m => m.method === 'havale' || m.method === 'banka') ? `₺${p.totalAmount.toLocaleString('tr-TR')} TRY` : ''}</td>
+                                                        <td className="px-8 py-5 text-sm">{p.methods.some((m: any) => m.method === 'nakit') ? `₺${p.totalAmount.toLocaleString('tr-TR')} TRY` : ''}</td>
+                                                        <td className="px-8 py-5 text-sm">{p.methods.some((m: any) => m.method === 'kredi-karti') ? `₺${p.totalAmount.toLocaleString('tr-TR')} TRY` : ''}</td>
+                                                        <td className="px-8 py-5 text-sm">{p.methods.some((m: any) => m.method === 'havale' || m.method === 'banka') ? `₺${p.totalAmount.toLocaleString('tr-TR')} TRY` : ''}</td>
                                                         <td className="px-8 py-5"></td>
                                                         <td className="px-8 py-5">
                                                             <span className="inline-block bg-green-600 text-white px-3 py-1 rounded-md text-[10px] font-black tracking-widest shadow-sm">₺{p.totalAmount.toLocaleString('tr-TR')} TRY</span>

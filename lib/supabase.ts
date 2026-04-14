@@ -46,16 +46,32 @@ export type Database = {
       services: { Row: ServiceRow; Insert: ServiceInsert; Update: Partial<ServiceInsert> };
       audit_logs: { Row: AuditLogRow; Insert: AuditLogInsert; Update: Partial<AuditLogInsert> };
       customer_media: { Row: CustomerMediaRow; Insert: CustomerMediaInsert; Update: Partial<CustomerMediaInsert> };
+      system_announcements: { Row: SystemAnnouncementRow; Insert: SystemAnnouncementInsert; Update: Partial<SystemAnnouncementInsert> };
+      tenant_modules: { Row: TenantModuleRow; Insert: TenantModuleInsert; Update: Partial<TenantModuleInsert> };
+      booking_settings: { Row: BookingSettingsRow; Insert: BookingSettingsInsert; Update: Partial<BookingSettingsInsert> };
+      quotes: { Row: QuoteRow; Insert: QuoteInsert; Update: Partial<QuoteInsert> };
     };
   };
 };
+
+export interface SystemAnnouncementRow { id: string; business_id: string | null; title: string; content: string; type: string; is_active: boolean; expires_at: string | null; created_at: string; }
+export interface SystemAnnouncementInsert { business_id?: string | null; title: string; content: string; type?: string; is_active?: boolean; expires_at?: string | null; }
+
+export interface TenantModuleRow { id: string; business_id: string; module_name: string; is_enabled: boolean; created_at: string; }
+export interface TenantModuleInsert { business_id: string; module_name: string; is_enabled?: boolean; }
+
+export interface BookingSettingsRow { id: string; business_id: string; branch_id: string; is_public_booking_enabled: boolean; accent_color: string; created_at: string; }
+export interface BookingSettingsInsert { business_id: string; branch_id: string; is_public_booking_enabled?: boolean; accent_color?: string; }
+
+export interface QuoteRow { id: string; business_id: string; branch_id: string | null; customer_id: string; customer_name: string; service_name: string | null; amount: number; status: string; note: string | null; valid_until: string | null; created_at: string; updated_at: string; }
+export interface QuoteInsert { business_id: string; branch_id?: string | null; customer_id: string; customer_name: string; service_name?: string | null; amount?: number; status?: string; note?: string | null; valid_until?: string | null; }
 
 export interface CustomerMediaRow { id: string; business_id: string; customer_id: string; url: string; type: 'before' | 'after' | 'other'; note: string; date: string; created_at: string; }
 export interface CustomerMediaInsert { business_id: string; customer_id: string; url: string; type?: 'before' | 'after' | 'other'; note?: string; date: string; }
 
 // Row type definitions (mirrors the SQL schema)
-export interface BusinessRow { id: string; name: string; slug: string; owner_name: string; plan: string; expiry_date: string; status: string; mrr: number; max_users: number; created_at: string; }
-export interface BusinessInsert { name: string; slug: string; owner_name: string; plan?: string; expiry_date: string; status?: string; mrr?: number; max_users?: number; }
+export interface BusinessRow { id: string; name: string; slug: string; owner_name: string; plan: string; expiry_date: string; status: string; mrr: number; override_mrr: number | null; signup_price: number | null; max_users: number; created_at: string; }
+export interface BusinessInsert { name: string; slug: string; owner_name: string; plan?: string; expiry_date: string; status?: string; mrr?: number; override_mrr?: number | null; signup_price?: number | null; max_users?: number; }
 export interface BranchRow { id: string; business_id: string; name: string; location: string; created_at: string; }
 export interface BranchInsert { business_id: string; name: string; location?: string; }
 export interface AppUserRow { id: string; business_id: string; branch_id: string | null; role: string; name: string; email: string; permissions: string[]; created_at: string; }

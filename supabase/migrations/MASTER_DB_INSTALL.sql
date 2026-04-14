@@ -13,7 +13,8 @@ DROP TABLE IF EXISTS
     packages, package_definitions, services, rooms, 
     staff, customers, app_users, branches, businesses, 
     payment_definitions, bank_accounts, referral_sources, 
-    consent_form_templates, booking_settings CASCADE;
+    consent_form_templates, booking_settings, quotes,
+    system_announcements, tenant_modules CASCADE;
 
 -- 2. ÇEKİRDEK YAPI (BUSINESS & BRANCH)
 CREATE TABLE businesses (
@@ -25,6 +26,8 @@ CREATE TABLE businesses (
     expiry_date DATE,
     status TEXT DEFAULT 'Aktif',
     mrr NUMERIC DEFAULT 0,
+    override_mrr NUMERIC, -- NULL means use plan default
+    signup_price NUMERIC, -- For grandfathering logic
     max_users INT DEFAULT 3,
     max_branches INT DEFAULT 1,
     created_at TIMESTAMPTZ DEFAULT NOW()
@@ -112,7 +115,20 @@ CREATE TABLE customers (
     reference_code TEXT,
     tags TEXT[] DEFAULT '{}',
     address TEXT,
-    created_at TIMESTAMPTZ DEFAULT NOW()
+    citizenship_number TEXT,
+    gender TEXT,
+    nationality TEXT,
+    sales_rep_id UUID,
+    profession TEXT,
+    city TEXT,
+    district TEXT,
+    timezone TEXT,
+    sms_permission TEXT DEFAULT 'Hayır',
+    email_permission TEXT DEFAULT 'Evet',
+    communication_source TEXT,
+    communication_choice TEXT,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
 CREATE TABLE membership_plans (
@@ -211,6 +227,7 @@ CREATE TABLE appointments (
     membership_id UUID,
     is_paid BOOLEAN DEFAULT false,
     payment_id UUID REFERENCES payments(id),
+    note TEXT,
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
@@ -225,6 +242,21 @@ CREATE TABLE debts (
     description TEXT,
     status TEXT DEFAULT 'açık',
     created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE quotes (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    business_id UUID REFERENCES businesses(id) ON DELETE CASCADE,
+    branch_id UUID REFERENCES branches(id),
+    customer_id UUID REFERENCES customers(id) ON DELETE CASCADE,
+    customer_name TEXT NOT NULL,
+    service_name TEXT,
+    amount NUMERIC(10,2) DEFAULT 0,
+    status TEXT DEFAULT 'Taslak', -- Taslak, Gönderildi, Onaylandı, Reddedildi
+    note TEXT,
+    valid_until DATE,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
 -- 7. KASA VE GİDER (EXPENSES, Z_REPORTS, BANK_ACCOUNTS)
@@ -285,13 +317,30 @@ CREATE TABLE audit_logs (
 CREATE TABLE booking_settings (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     business_id UUID REFERENCES businesses(id) ON DELETE CASCADE,
-    is_enabled BOOLEAN DEFAULT true,
-    require_deposit BOOLEAN DEFAULT false,
-    deposit_percentage INT DEFAULT 0,
-    allow_staff_select BOOLEAN DEFAULT true,
-    booking_message TEXT,
+    branch_id UUID REFERENCES branches(id) ON DELETE CASCADE,
+    is_public_booking_enabled BOOLEAN DEFAULT true,
     accent_color TEXT DEFAULT '#4f46e5',
     created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE system_announcements (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    business_id UUID REFERENCES businesses(id) ON DELETE CASCADE, -- NULL means GLOBAL
+    title TEXT NOT NULL,
+    content TEXT NOT NULL,
+    type TEXT DEFAULT 'info', -- 'info', 'warning', 'success', 'danger'
+    is_active BOOLEAN DEFAULT true,
+    expires_at TIMESTAMPTZ,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE tenant_modules (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    business_id UUID REFERENCES businesses(id) ON DELETE CASCADE,
+    module_name TEXT NOT NULL, -- 'marketing', 'inventory', 'quotes', 'commissions'
+    is_enabled BOOLEAN DEFAULT true,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    UNIQUE(business_id, module_name)
 );
 
 -- ==========================================
@@ -325,7 +374,8 @@ DECLARE
         'package_definitions', 'commission_rules', 
         'calendar_blocks', 'notification_logs', 'z_reports',
         'payment_definitions', 'bank_accounts', 'expense_categories', 
-        'referral_sources', 'consent_form_templates'
+        'referral_sources', 'consent_form_templates', 'quotes',
+        'system_announcements', 'tenant_modules', 'booking_settings'
     ];
 BEGIN 
     FOR tbl IN SELECT unnest(tables) LOOP
@@ -362,6 +412,15 @@ ON CONFLICT DO NOTHING;
 INSERT INTO branches (id, business_id, name, location) 
 VALUES ('b2000000-0000-0000-0000-000000000000', 'b1000000-0000-0000-0000-000000000000', 'Merkez Şube', 'İstanbul') 
 ON CONFLICT DO NOTHING;
+-- 12. REALTIME PUBLICATION
+-- Supabase Realtime özelliğini aktif etmek istediğimiz tabloları ekliyoruz
+ALTER PUBLICATION supabase_realtime ADD TABLE 
+    appointments, 
+    payments, 
+    debts, 
+    customers, 
+    system_announcements, 
+    tenant_modules;
 
 INSERT INTO public.app_users (id, business_id, role, name, email, permissions) 
 SELECT id, 'b1000000-0000-0000-0000-000000000000', 'SaaS_Owner', 'Kerim Kardaş', email, '{"*"}' 

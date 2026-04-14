@@ -44,8 +44,12 @@ function StaffProfilePanel({ staff, onClose, onEdit }: { staff: any, onClose: ()
 
     // Loyal customers: unique customers who booked this staff > 1 time
     const customerCounts: Record<string, number> = {};
-    staffAppts.forEach(a => { customerCounts[a.customerId] = (customerCounts[a.customerId] || 0) + 1; });
-    const loyalCustomers = Object.values(customerCounts).filter(c => c > 1).length;
+    staffAppts.forEach(a => { 
+        if (a.customerId) {
+            customerCounts[a.customerId] = (customerCounts[a.customerId] || 0) + 1; 
+        }
+    });
+    const loyalCustomers = Object.values(customerCounts).filter((c: any) => c > 1).length;
     
     // Weekly chart data
     const weeklyData = DAYS.map((day, i) => ({
@@ -428,8 +432,8 @@ function CommissionRuleForm() {
     const handleAdd = () => {
         if (value <= 0) return;
         addCommissionRule({
-            staffId: staffId || null,
-            serviceName: serviceName || null,
+            staffId: staffId || undefined,
+            serviceName: serviceName || undefined,
             type,
             value,
         });
@@ -561,8 +565,12 @@ export default function StaffPage() {
         const noShowRate = filtered.length > 0 ? (noShow / filtered.length) * 100 : 0;
         
         const customerCounts: Record<string, number> = {};
-        filtered.forEach(a => { customerCounts[a.customerId] = (customerCounts[a.customerId] || 0) + 1; });
-        const loyalCustomers = Object.values(customerCounts).filter(c => c > 1).length;
+        filtered.forEach(a => { 
+            if (a.customerId) {
+                customerCounts[a.customerId] = (customerCounts[a.customerId] || 0) + 1; 
+            }
+        });
+        const loyalCustomers = Object.values(customerCounts).filter((c: any) => c > 1).length;
 
         return {
             ...staff,

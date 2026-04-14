@@ -7,6 +7,7 @@ import Sidebar from "@/components/Sidebar";
 import Header from "@/components/Header";
 import LicenseGuard from "@/components/LicenseGuard";
 import { Inter } from "next/font/google";
+import { Megaphone } from "lucide-react";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -31,12 +32,33 @@ const ImpersonationBanner = ({
     </div>
 );
 
+const AnnouncementBanner = ({ announcement }: { announcement: any }) => {
+    const bgColor = 
+        announcement.type === 'warning' ? 'bg-amber-500' : 
+        announcement.type === 'danger' ? 'bg-rose-600' : 
+        announcement.type === 'success' ? 'bg-emerald-600' : 'bg-indigo-600';
+    
+    return (
+        <div className={`${bgColor} text-white px-8 py-3 flex items-center justify-between sticky top-0 z-[9998] shadow-lg`}>
+            <div className="flex items-center gap-4 text-[10px] font-black uppercase tracking-widest">
+                <div className="bg-white/20 p-1.5 rounded-lg"><Megaphone size={14} /></div>
+                <span>{announcement.title}: <span className="opacity-80 ml-2">{announcement.content}</span></span>
+            </div>
+            <div className="flex items-center gap-4">
+                <span className="text-[8px] opacity-60 font-black">SİSTEM DUYURUSU</span>
+            </div>
+        </div>
+    );
+};
+
 export default function ClientWrapper({ children }: { children: React.ReactNode }) {
     const { 
         currentUser, 
         isImpersonating, 
         impersonatedBusinessId, 
         allBusinesses, 
+        allNotifs,
+        currentBusiness,
         setImpersonatedBusinessId 
     } = useStore();
     
@@ -142,16 +164,7 @@ export default function ClientWrapper({ children }: { children: React.ReactNode 
         );
     }
 
-    // Super admin dashboard view
-    if (isSuperAdminPath && isSaaSOwner && !isImpersonating) {
-        return (
-            <div className={`${inter.className} bg-[#0a0a0a] min-h-screen overflow-y-auto`}>
-                {children}
-            </div>
-        );
-    }
-
-    // Default: Regular business user panel OR Impersonation View
+    // Default: Regular business user panel OR Impersonation View OR Super Admin View
     return (
         <LicenseGuard>
             <div className={`${inter.className} bg-[#F5F5F7] text-gray-900 flex flex-col h-screen overflow-hidden`}>
@@ -161,6 +174,11 @@ export default function ClientWrapper({ children }: { children: React.ReactNode 
                         onExit={onExitImpersonation} 
                     />
                 )}
+                
+                {/* Global Announcements */}
+                {allNotifs?.filter((n: any) => n.isActive && (!n.businessId || n.businessId === currentBusiness?.id)).map((n: any, i: number) => (
+                    <AnnouncementBanner key={i} announcement={n} />
+                ))}
                 <div className="flex flex-1 h-screen overflow-hidden">
                     <Sidebar />
                     <div className="flex-1 flex flex-col h-screen overflow-hidden min-w-0">

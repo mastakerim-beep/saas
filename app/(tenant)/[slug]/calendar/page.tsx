@@ -90,11 +90,14 @@ function DraggableCustomerCard({ customer, onClick }: { customer: Customer, onCl
 
 // ---- DRAGGABLE APPOINTMENT CARD ----
 function CalendarItem({ item, type, onCheckout }: { item: Appointment | CalendarBlock, type: 'appt' | 'block', onCheckout?: (a: Appointment) => void }) {
-    const { deleteAppointment, updateAppointmentStatus, debts, rooms, packages } = useStore();
+    const { deleteAppointment, updateAppointmentStatus, debts, rooms, packages, branches, currentBranch, customers } = useStore();
     
     const isAppt = type === 'appt';
     const appt = item as Appointment;
     const block = item as CalendarBlock;
+
+    const branch = isAppt ? (branches.find(b => b.id === appt.branchId) || currentBranch) : currentBranch;
+    const branchPrefix = branch?.name?.substring(0, 3).toUpperCase() || 'SYS';
     
     // Locking Logic: Past days or Completed status
     const todayStr = formatDate(new Date());
@@ -144,7 +147,7 @@ function CalendarItem({ item, type, onCheckout }: { item: Appointment | Calendar
         }
     };
 
-    const info = isAppt ? getAppledTheme(appt.status) : { bg: 'bg-gray-50', text: 'text-gray-500', ring: 'ring-1 ring-gray-100 border-dashed', icon: <Coffee className="w-3.5 h-3.5 opacity-40" /> };
+    const info = isAppt ? getAppledTheme(appt.status as AppointmentStatus) : { bg: 'bg-gray-50', text: 'text-gray-500', ring: 'ring-1 ring-gray-100 border-dashed', icon: <Coffee className="w-3.5 h-3.5 opacity-40" /> };
 
     return (
         <>
@@ -155,59 +158,38 @@ function CalendarItem({ item, type, onCheckout }: { item: Appointment | Calendar
             {...attributes}
             onClick={(e) => { e.stopPropagation(); if (isAppt) setShowMenu(true); }}
             className={`
-                relative mx-1.5 rounded-[1.25rem] p-3.5 shadow-sm transition-all select-none
+                relative mx-1 rounded-[1rem] p-2.5 shadow-sm transition-all select-none group/item
                 ${isDragging ? 'opacity-30 scale-95 shadow-xl ring-2 ring-indigo-500/50' : 'opacity-100 hover:scale-[1.01] hover:shadow-2xl hover:shadow-indigo-100'} 
                 ${isLocked ? 'cursor-default' : 'cursor-grab active:cursor-grabbing'}
                 ${info.bg} ${info.ring} ${info.text} flex flex-col justify-between
             `}
         >
+            {/* Tooltip on hover */}
+            {isAppt && appt.note && (
+                <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-48 p-3 bg-gray-900 text-white text-[10px] font-bold rounded-2xl opacity-0 group-hover/item:opacity-100 transition-opacity pointer-events-none z-[100] shadow-2xl">
+                    <p className="text-indigo-400 font-black uppercase tracking-widest mb-1 text-[8px]">Randevu Notu</p>
+                    {appt.note}
+                    <div className="absolute top-full left-1/2 -translate-x-1/2 border-8 border-transparent border-t-gray-900" />
+                </div>
+            )}
             {isAppt && appt.syncStatus === 'syncing' && (
                 <div className="absolute inset-0 bg-white/50 flex items-center justify-center z-20 backdrop-blur-[2px] rounded-[1.25rem]">
                     <Loader2 className="w-5 h-5 text-primary animate-spin" />
                 </div>
             )}
 
-            <div className="flex justify-between items-start mb-0.5">
-                <div className="flex flex-col min-w-0 pr-1">
-                    <div className="flex items-center gap-1.5 min-w-0">
-                        <p className="font-extrabold text-xs truncate tracking-tight text-current">{isAppt ? appt.customerName : 'Meşgul'}</p>
-                        {isLocked && <ShieldCheck className="w-3 h-3 text-indigo-500/40 shrink-0" />}
-                    </div>
-                    {room && (
-                        <p className="text-[9px] font-black text-indigo-500/60 uppercase tracking-widest flex items-center gap-1 mt-0.5">
-                            <MapPin className="w-2.5 h-2.5" /> {room.name}
-                        </p>
-                    )}
-                </div>
-                <div className="flex gap-1.5 items-center shrink-0">
-                    {!isAppt ? info.icon : (
-                        appt.isPaid ? 
-                            <div className="px-1.5 py-[2px] bg-emerald-100 text-emerald-700 border border-emerald-200 rounded shadow-sm"><span className="text-[8px] font-black tracking-widest uppercase block mt-[1px]">ÖDENDİ</span></div> 
-                        : (
-                            debts.some(d => d.appointmentId === appt.id && d.status === 'açık') ? 
-                                <div className="px-1.5 py-[2px] bg-red-50 text-red-600 border border-red-100 rounded shadow-sm"><span className="text-[8px] font-black tracking-widest uppercase block mt-[1px]">BORÇLU</span></div> 
-                            :   <div className="px-1.5 py-[2px] bg-primary/10 text-primary border border-primary/20 rounded shadow-sm"><span className="text-[8px] font-black tracking-widest uppercase block mt-[1px]">ALINACAK</span></div>
-                        )
-                    )}
-                </div>
-            </div>
-            
-            <p className="text-[11px] font-bold opacity-80 truncate mb-1">
-                {isAppt ? appt.service : block.reason}
-            </p>
-            
-            {pkg && (
-                <div className="flex items-center gap-1 mb-2">
-                    <Package className="w-2.5 h-2.5 text-indigo-500/50" />
-                    <span className="text-[9px] font-black text-indigo-500/70">{pkg.usedSessions + 1}/{pkg.totalSessions} Seans</span>
-                </div>
-            )}
-
-            <div className={`flex items-center gap-1.5 mt-auto pt-1 border-t ${isDragging ? 'border-transparent' : 'border-gray-100'}`}>
-                <span className="text-[10px] font-black text-current/50">{item.time}</span>
-                <span className="w-0.5 h-0.5 rounded-full bg-current opacity-20" />
-                <span className="text-[10px] font-bold text-current/40">{item.duration}m</span>
-                {appt.status === 'completed' && <div className="ml-auto bg-emerald-500 p-0.5 rounded-full"><Plus className="w-2 h-2 text-white rotate-45" /></div>}
+            <div className="flex flex-col gap-0.5 text-center h-full justify-center">
+                <p className="text-[10px] font-bold opacity-60 uppercase">{item.time} - {new Date(new Date(`2000-01-01T${item.time}`).getTime() + item.duration * 60000).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })}</p>
+                <p className="font-black text-[11px] leading-tight uppercase">{isAppt ? appt.customerName : 'Meşgul'}</p>
+                <p className="text-[9px] font-bold opacity-80">({isAppt ? appt.service : block.reason})</p>
+                {isAppt && <p className="text-[9px] font-bold opacity-80">{appt.staffName || '---'}</p>}
+                {room && <p className="text-[9px] font-bold opacity-80">{room.name}</p>}
+                <p className="text-[9px] font-bold opacity-80">{isAppt ? (appt.status === 'pending' ? 'Beklemede' : appt.status) : ''}</p>
+                {isAppt && (
+                    <p className="text-[9px] font-black opacity-60 mt-1">
+                        ({branchPrefix}-{(customers.find(c => c.id === appt.customerId)?.id || appt.id).slice(-4).toUpperCase()})
+                    </p>
+                )}
             </div>
         </div>
 
@@ -311,7 +293,7 @@ function TimeSlot({ staffId, time, isOff, onAdd }: { staffId: string, time: stri
             className={`
                 h-[48px] border-r border-white/5 transition-all relative
                 ${isHourStart ? 'border-t-2 border-t-white/10' : 'border-t border-t-white/5'}
-                ${isOff ? 'bg-gray-50/50 cursor-not-allowed' : (isOver ? 'bg-primary/20 border-2 border-primary/50 z-10 scale-[1.01]' : 'hover:bg-primary/[0.03] cursor-pointer')}
+                ${isOff ? 'bg-[#FEF9E7]/50 cursor-not-allowed' : (isOver ? 'bg-primary/20 border-2 border-primary/50 z-10 scale-[1.01]' : 'bg-[#FEF9E7] hover:bg-primary/[0.03] cursor-pointer')}
             `}
         >
             {isOver && !isOff && (
@@ -337,6 +319,7 @@ function ServiceDropModal({ customer, staffId, time, date, onClose }: { customer
     const [selectedRegions, setSelectedRegions] = useState<string[]>([]);
     const [isSaving, setIsSaving] = useState(false);
     const [showBodyMap, setShowBodyMap] = useState(false);
+    const [note, setNote] = useState('');
 
     const staff = staffMembers.find(s => s.id === staffId);
 
@@ -359,7 +342,8 @@ function ServiceDropModal({ customer, staffId, time, date, onClose }: { customer
             price: svc.price,
             depositPaid: 0,
             isOnline: false,
-            selectedRegions
+            selectedRegions,
+            note
         });
         setIsSaving(false);
         onClose();
@@ -427,6 +411,15 @@ function ServiceDropModal({ customer, staffId, time, date, onClose }: { customer
                             {selectedRegions.length > 0 ? `${selectedRegions.length} Bölge Seçildi` : 'Vücut Notu Ekle (Opsiyonel)'}
                         </span>
                     </button>
+
+                    <div className="pt-2">
+                        <textarea 
+                            value={note}
+                            onChange={e => setNote(e.target.value)}
+                            placeholder="Örn: mb MİRA"
+                            className="w-full bg-gray-50 border border-gray-100 rounded-xl px-4 py-3 text-[11px] font-bold text-gray-900 outline-none focus:border-primary/30 transition-all resize-none min-h-[60px]"
+                        />
+                    </div>
 
                     <button
                         onClick={handleSave}
@@ -581,7 +574,7 @@ export default function CalendarPage() {
     const [checkoutAppt, setCheckoutAppt] = useState<Appointment | null>(null);
     const [activeId, setActiveId] = useState<string | null>(null);
     const [activeDragData, setActiveDragData] = useState<any>(null);
-    const [isPanelOpen, setIsPanelOpen] = useState(true);
+    const [isPanelOpen, setIsPanelOpen] = useState(false);
     const [dropPreview, setDropPreview] = useState<{ customer: Customer, staffId: string, time: string } | null>(null);
     const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
     const [isDatePickerOpen, setIsDatePickerOpen] = useState(false);
@@ -659,47 +652,52 @@ export default function CalendarPage() {
 
     return (
         <div className={`p-8 h-[calc(100vh-72px)] flex flex-col overflow-hidden bg-white animate-[fadeIn_0.5s_ease] transition-all duration-300 ${isPanelOpen ? 'pr-[352px]' : 'pr-8'}`}>
-            {/* Command Bar */}
-            <div className="flex justify-between items-center mb-10 flex-none px-2 text-gray-900 border-b border-gray-50 pb-8">
-                <div className="flex items-center gap-10">
-                    <div>
-                        <h1 className="text-4xl font-black tracking-tighter text-gray-900 mb-2 leading-none flex items-center gap-3 uppercase">
-                            <Sparkles className="text-indigo-600 w-8 h-8" /> REZERVASYON MERKEZİ
-                        </h1>
-                        <div className="flex items-center gap-4">
-                            <div className="flex items-center gap-2 px-3 py-1 bg-gray-50 rounded-full border border-gray-100">
-                                <div className={`w-1.5 h-1.5 rounded-full ${syncStatus === 'syncing' ? 'bg-amber-500 animate-pulse' : 'bg-emerald-500'}`} />
-                                <span className="text-[9px] font-black text-gray-500 uppercase tracking-widest">{syncStatus === 'syncing' ? 'Eşitleniyor' : 'Canlı Bağlantı'}</span>
-                            </div>
-                            <p className="text-gray-400 text-[10px] font-black uppercase tracking-[0.2em]">{appointments.length} Aktif Randevu</p>
-                        </div>
-                    </div>
-
-                    {/* Simple Date Navigator */}
-                    <div className="flex items-center bg-gray-50 p-1.5 rounded-[2rem] border border-gray-100 shadow-sm">
-                        <button onClick={() => { const d = new Date(selectedDate); d.setDate(d.getDate()-1); setSelectedDate(d.toISOString().split('T')[0]); }} className="p-3 hover:bg-white rounded-2xl transition-all group">
-                            <ChevronLeft className="w-5 h-5 text-gray-400 group-hover:text-indigo-600" />
+            {/* Unified Command Bar */}
+            <div className="grid grid-cols-3 items-center mb-8 flex-none px-4 text-gray-900 border-b border-gray-100 pb-6">
+                {/* Left: Dropdown */}
+                <div className="flex items-center gap-4">
+                    <div className="relative group">
+                        <button className="flex items-center gap-3 px-6 py-3 bg-white border border-gray-200 rounded-2xl text-[11px] font-black uppercase tracking-widest hover:border-indigo-600 transition-all shadow-sm">
+                            <CalendarIcon size={16} className="text-indigo-600" />
+                            Personel Takvimi
+                            <ChevronDown size={14} className="text-gray-400" />
                         </button>
-                        <div 
-                            onClick={() => {
-                                setPickerMonth(new Date(selectedDate));
-                                setIsDatePickerOpen(true);
-                            }}
-                            className="px-8 text-center min-w-[200px] relative cursor-pointer hover:bg-white hover:shadow-sm rounded-2xl transition-all group/date"
-                        >
-                            <p className="text-[10px] font-black text-indigo-600 uppercase tracking-widest mb-1 group-hover/date:scale-95 transition-transform">{new Date(selectedDate).toLocaleDateString('tr-TR', { weekday: 'long' })}</p>
-                            <p className="text-xl font-black text-gray-900 leading-none tracking-tight group-hover/date:scale-95 transition-transform">{new Date(selectedDate).toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
-                        </div>
-                        <button onClick={() => { const d = new Date(selectedDate); d.setDate(d.getDate()+1); setSelectedDate(d.toISOString().split('T')[0]); }} className="p-3 hover:bg-white rounded-2xl transition-all group">
-                            <ChevronRight className="w-5 h-5 text-gray-400 group-hover:text-indigo-600" />
-                        </button>
-                        <button onClick={() => setSelectedDate(new Date().toISOString().split('T')[0])} className="ml-2 px-6 py-3 bg-white hover:bg-indigo-600 hover:text-white rounded-[1.5rem] text-[10px] font-black uppercase tracking-widest transition-all">Bugün</button>
                     </div>
                 </div>
 
-                <div className="flex gap-4">
-                    <button onClick={() => setIsPanelOpen(!isPanelOpen)} className={`px-6 py-4 rounded-[2rem] border font-black text-[10px] uppercase tracking-widest transition-all ${isPanelOpen ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white text-gray-400 border-gray-100 hover:border-indigo-500/50'}`}>
-                        {isPanelOpen ? 'Paneli Daralt' : 'Rehberi Aç'}
+                {/* Center: Date Navigator */}
+                <div className="flex items-center justify-center gap-2">
+                    <button onClick={() => { const d = new Date(selectedDate); d.setDate(d.getDate()-1); setSelectedDate(d.toISOString().split('T')[0]); }} className="p-2 hover:bg-gray-100 rounded-xl transition-all">
+                        <ChevronLeft className="w-5 h-5 text-gray-400" />
+                    </button>
+                    <div 
+                        onClick={() => {
+                            setPickerMonth(new Date(selectedDate));
+                            setIsDatePickerOpen(true);
+                        }}
+                        className="px-6 text-center cursor-pointer hover:bg-gray-50 rounded-xl py-2"
+                    >
+                        <p className="text-sm font-black text-gray-900 tabular-nums">
+                            {new Date(selectedDate).toLocaleDateString('tr-TR', { day: '2-digit', month: '2-digit', year: 'numeric' })}
+                        </p>
+                    </div>
+                    <button onClick={() => { const d = new Date(selectedDate); d.setDate(d.getDate()+1); setSelectedDate(d.toISOString().split('T')[0]); }} className="p-2 hover:bg-gray-100 rounded-xl transition-all">
+                        <ChevronRight className="w-5 h-5 text-gray-400" />
+                    </button>
+                </div>
+
+                {/* Right: Actions */}
+                <div className="flex justify-end gap-3">
+                    <button className="flex items-center gap-3 px-6 py-3 bg-white border border-gray-200 rounded-2xl text-[11px] font-black uppercase tracking-widest hover:border-indigo-600 transition-all shadow-sm">
+                        <ChevronDown size={14} className="text-gray-400" />
+                        Renk kaynağı
+                    </button>
+                    <button className="flex items-center gap-3 px-6 py-3 bg-white border border-gray-200 rounded-2xl text-[11px] font-black uppercase tracking-widest hover:border-indigo-600 transition-all shadow-sm">
+                        <ChevronDown size={14} className="text-gray-400" />
+                        İşlemler
+                    </button>
+                    <button onClick={() => setIsPanelOpen(!isPanelOpen)} className={`p-3 rounded-2xl border transition-all ${isPanelOpen ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white text-gray-400 border-gray-200 hover:border-indigo-600'}`}>
+                        <Search size={20} />
                     </button>
                 </div>
             </div>
@@ -707,31 +705,31 @@ export default function CalendarPage() {
             <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
                 <div className="flex-1 bg-white border border-gray-100 rounded-[3.5rem] shadow-2xl flex flex-col overflow-hidden relative">
                     {/* Staff Header */}
-                    <div className="flex border-b border-gray-100 bg-gray-50/50 flex-none ml-[100px]">
+                    <div className="flex border-b border-gray-100 bg-gray-50/50 flex-none ml-[80px] sticky top-0 z-30 shadow-sm backdrop-blur-md">
                         {staffToDisplay.map(staff => (
-                            <div key={staff.id} className="flex-1 p-8 text-center border-r border-gray-100 relative group">
-                                {staff.weeklyOffDay === dayOfWeek && <div className="absolute inset-0 bg-red-500/5 flex items-center justify-center"><span className="text-[10px] font-black text-red-500 border border-red-500 px-3 py-1 rounded-full rotate-[-15deg] bg-white">İZİNLİ</span></div>}
-                                <p className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mb-2 group-hover:text-indigo-600 transition-colors uppercase">Uzman</p>
-                                <p className="font-extrabold text-gray-900 uppercase tracking-tight text-lg uppercase">{staff.name}</p>
+                            <div key={staff.id} className="flex-1 p-4 text-center border-r border-gray-100 relative group">
+                                {staff.weeklyOffDay === dayOfWeek && <div className="absolute inset-0 bg-red-500/5 flex items-center justify-center"><span className="text-[8px] font-black text-red-500 border border-red-500 px-2 py-0.5 rounded-full rotate-[-15deg] bg-white">İZİNLİ</span></div>}
+                                <p className="text-[8px] font-black text-gray-400 uppercase tracking-[0.2em] mb-1 group-hover:text-indigo-600 transition-colors uppercase">Uzman</p>
+                                <p className="font-extrabold text-gray-900 uppercase tracking-tight text-sm uppercase">{staff.name}</p>
                             </div>
                         ))}
                     </div>
 
                     <div className="flex-1 overflow-y-auto no-scrollbar relative flex">
                         {/* Time labels */}
-                        <div className="w-[100px] flex-none border-r border-gray-100 bg-white sticky left-0 z-20">
+                        <div className="w-[80px] flex-none border-r border-gray-100 bg-white sticky left-0 z-20">
                             {SLOTS.map(slot => {
                                 const isHour = slot.endsWith(':00');
                                 return (
-                                    <div key={slot} className={`h-[48px] flex items-center justify-center ${isHour ? 'border-t border-gray-50' : ''}`}>
-                                        <span className={`text-[11px] font-black ${isHour ? 'text-gray-900' : 'text-gray-300'}`}>{isHour ? slot : ''}</span>
+                                    <div key={slot} className={`h-[48px] flex items-center justify-center ${isHour ? 'border-t border-gray-100' : ''}`}>
+                                        <span className={`text-[10px] font-black ${isHour ? 'text-gray-900 italic' : 'text-gray-300'}`}>{isHour ? slot : ''}</span>
                                     </div>
                                 );
                             })}
                         </div>
 
                         {/* Grid */}
-                        <div className="flex-1 grid relative" style={{ gridTemplateColumns: `repeat(${staffToDisplay.length || 1}, 1fr)`, gridTemplateRows: `repeat(${SLOTS.length}, 48px)` }}>
+                        <div className="flex-1 grid relative bg-[#FEF9E7]" style={{ gridTemplateColumns: `repeat(${staffToDisplay.length || 1}, 1fr)`, gridTemplateRows: `repeat(${SLOTS.length}, 48px)` }}>
                             {staffToDisplay.map((staff, colIdx) => {
                                 const isOff = staff.weeklyOffDay === dayOfWeek;
                                 return SLOTS.map((slot, rowIdx) => (

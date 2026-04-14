@@ -3,66 +3,66 @@
 @tailwind utilities;
 
 :root {
-  /* Premium Palette - Modern Wellness & Spa */
-  --background: 240 20% 99%;
-  --foreground: 240 10% 3.9%;
+  /* Premium Purple/Indigo Palette - Royal Spa Aesthetic */
+  --background: 250 40% 98%;
+  --foreground: 250 50% 10%;
 
   --card: 0 0% 100%;
-  --card-foreground: 240 10% 3.9%;
+  --card-foreground: 250 50% 10%;
 
   --popover: 0 0% 100%;
-  --popover-foreground: 240 10% 3.9%;
+  --popover-foreground: 250 50% 10%;
 
-  --primary: 250 84% 60%; /* Vibrant Indigo */
-  --primary-foreground: 0 0% 98%;
+  --primary: 255 75% 55%; /* Rich Royal Purple */
+  --primary-foreground: 0 0% 100%;
 
-  --secondary: 240 4.8% 95.9%;
-  --secondary-foreground: 240 5.9% 10%;
+  --secondary: 255 30% 95%;
+  --secondary-foreground: 255 50% 20%;
 
-  --muted: 240 4.8% 95.9%;
-  --muted-foreground: 240 3.8% 46.1%;
+  --muted: 255 30% 95%;
+  --muted-foreground: 255 10% 45%;
 
-  --accent: 250 84% 60%;
-  --accent-foreground: 240 5.9% 10%;
+  --accent: 255 75% 55%;
+  --accent-foreground: 255 50% 10%;
 
-  --destructive: 0 84.2% 60.2%;
+  --destructive: 0 84% 60%;
   --destructive-foreground: 0 0% 98%;
 
-  --border: 240 5.9% 90%;
-  --input: 240 5.9% 90%;
-  --ring: 250 84% 60%;
+  --border: 255 20% 90%;
+  --input: 255 20% 90%;
+  --ring: 255 75% 55%;
 
   --radius: 1.5rem;
 }
 
 .dark {
-  --background: 240 10% 3.9%;
-  --foreground: 0 0% 98%;
+  --background: 255 45% 4%; /* Ultra Deep Indigo-Black */
+  --foreground: 255 20% 98%;
 
-  --card: 240 10% 3.9%;
-  --card-foreground: 0 0% 98%;
+  --card: 255 45% 6%;
+  --card-foreground: 255 20% 98%;
 
-  --popover: 240 10% 3.9%;
-  --popover-foreground: 0 0% 98%;
+  --popover: 255 45% 6%;
+  --popover-foreground: 255 20% 98%;
 
-  --primary: 250 84% 60%;
-  --primary-foreground: 0 0% 98%;
+  --primary: 255 75% 65%; /* Brightened Purple for Dark Mode */
+  --primary-foreground: 0 0% 100%;
 
-  --secondary: 240 3.7% 15.9%;
-  --secondary-foreground: 0 0% 98%;
+  --secondary: 255 35% 12%;
+  --secondary-foreground: 255 20% 98%;
 
-  --muted: 240 3.7% 15.9%;
-  --muted-foreground: 240 5% 64.9%;
+  --muted: 255 35% 12%;
+  --muted-foreground: 255 15% 65%;
 
-  --accent: 240 3.7% 15.9%;
-  --accent-foreground: 0 0% 98%;
+  --accent: 255 35% 15%;
+  --accent-foreground: 255 20% 98%;
 
-  --destructive: 0 62.8% 30.6%;
+  --destructive: 0 70% 45%;
   --destructive-foreground: 0 0% 98%;
 
-  --border: 240 3.7% 15.9%;
-  --input: 240 3.7% 15.9%;
-  --ring: 240 4.9% 83.9%;
+  --border: 255 35% 15%;
+  --input: 255 35% 15%;
+  --ring: 255 75% 65%;
 }
 
 body {
@@ -75,15 +75,15 @@ body {
 
 @layer utilities {
   .glass {
-    @apply bg-white/70 dark:bg-black/40 backdrop-blur-[20px] border border-white/40 dark:border-white/10 shadow-[0_8px_32px_0_rgba(31,38,135,0.07)];
+    @apply bg-white/70 dark:bg-indigo-950/40 backdrop-blur-[20px] border border-white/40 dark:border-white/10 shadow-[0_8px_32px_0_rgba(79,70,229,0.07)];
   }
   
   .glass-dark {
-    @apply bg-black/60 backdrop-blur-xl border border-white/5 shadow-2xl;
+    @apply bg-indigo-950/60 backdrop-blur-xl border border-white/5 shadow-2xl;
   }
 
   .card-apple {
-    @apply bg-white dark:bg-[#0D0D0E] border border-gray-100 dark:border-white/5 rounded-[2.5rem] shadow-[0_20px_50px_rgba(0,0,0,0.02)] hover:shadow-[0_20px_50px_rgba(0,0,0,0.05)] transition-all duration-500;
+    @apply bg-white dark:bg-indigo-950/20 border border-gray-100 dark:border-indigo-500/10 rounded-[2.5rem] shadow-[0_20px_50px_rgba(79,70,229,0.03)] hover:shadow-[0_20px_50px_rgba(79,70,229,0.05)] transition-all duration-500;
   }
   
   .btn-premium {
@@ -95,11 +95,11 @@ body {
   }
 
   .modal-premium {
-    @apply bg-white dark:bg-[#0D0D0E] border border-gray-100 dark:border-white/5 rounded-[3.5rem] shadow-2xl;
+    @apply bg-white dark:bg-[#0D0D15] border border-indigo-100 dark:border-white/5 rounded-[3.5rem] shadow-2xl;
   }
 
   .text-gradient {
-    @apply bg-clip-text text-transparent bg-gradient-to-br from-indigo-600 via-indigo-500 to-purple-600;
+    @apply bg-clip-text text-transparent bg-gradient-to-br from-indigo-500 via-purple-500 to-violet-600;
   }
 }
 
@@ -116,8 +116,8 @@ body {
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  @apply bg-gray-200 dark:bg-gray-800 rounded-full;
+  @apply bg-indigo-100 dark:bg-indigo-950/50 rounded-full;
 }
 ::-webkit-scrollbar-thumb:hover {
-  @apply bg-gray-300 dark:bg-gray-700;
+  @apply bg-indigo-200 dark:bg-indigo-900/50;
 }

@@ -16,12 +16,12 @@ export default function GunSonuPage() {
     const completedToday = appointments.filter(a => a.date === todayStr && a.status === 'completed');
     
     // Sum payments by method (across all payments)
-    const nakitGercek = todayPayments.reduce((acc, p) => 
-        acc + (p.methods?.filter(m => m.method === 'nakit').reduce((s, m) => s + (m.amount * (m.rate || 1)), 0) || 0), 0);
-    const kartGercek = todayPayments.reduce((acc, p) => 
-        acc + (p.methods?.filter(m => m.method === 'kredi-karti').reduce((s, m) => s + (m.amount * (m.rate || 1)), 0) || 0), 0);
-    const havaleGercek = todayPayments.reduce((acc, p) => 
-        acc + (p.methods?.filter(m => m.method === 'havale').reduce((s, m) => s + (m.amount * (m.rate || 1)), 0) || 0), 0);
+    const nakitGercek = todayPayments.reduce((acc: number, p) => 
+        acc + (p.methods?.filter((m: any) => m.method === 'nakit').reduce((s: number, m: any) => s + (m.amount * (m.rate || 1)), 0) || 0), 0);
+    const kartGercek = todayPayments.reduce((acc: number, p) => 
+        acc + (p.methods?.filter((m: any) => m.method === 'kredi-karti').reduce((s: number, m: any) => s + (m.amount * (m.rate || 1)), 0) || 0), 0);
+    const havaleGercek = todayPayments.reduce((acc: number, p) => 
+        acc + (p.methods?.filter((m: any) => m.method === 'havale').reduce((s: number, m: any) => s + (m.amount * (m.rate || 1)), 0) || 0), 0);
     const toplamGercek = todayPayments.reduce((s, p) => s + p.totalAmount, 0);
 
     // Manual expected input (counts from the till)
@@ -276,7 +276,7 @@ export default function GunSonuPage() {
                                             <div className="flex flex-wrap gap-2 items-center">
                                                 <span className="text-[9px] text-gray-400 font-extrabold uppercase tracking-widest">{p.service}</span>
                                                 <div className="flex gap-1.5">
-                                                    {p.methods?.map((m, idx) => (
+                                                    {p.methods?.map((m: any, idx: number) => (
                                                         <span key={idx} className="text-[8px] font-black px-2 py-1 rounded-lg bg-indigo-600 text-white shadow-sm uppercase tracking-tighter">
                                                             {m.method}
                                                         </span>
