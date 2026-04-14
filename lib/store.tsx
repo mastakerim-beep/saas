@@ -277,7 +277,11 @@ interface StoreState {
      return `${prefix}-${nextNum}`;
  };
  
- const StoreContext = createContext<StoreState | null>(null);
+ const generatePaymentRef = () => {
+    return Math.random().toString(36).substring(2, 7).toUpperCase();
+};
+
+const StoreContext = createContext<StoreState | null>(null);
  
  export function StoreProvider({ children }: { children: ReactNode }) {
      const [currentUser, setCurrentUser] = useState<AppUser | null>(null);
@@ -448,9 +452,15 @@ interface StoreState {
             });
             setAllCustomers(updatedCustomers);
             
+            const rawPayments = dataMap.payments || [];
+            const updatedPayments = rawPayments.map((p: any) => ({
+                ...p,
+                referenceCode: p.referenceCode || generatePaymentRef()
+            }));
+            setAllPayments(updatedPayments);
+
             setMembershipPlans(dataMap.membership_plans || []);
             setCustomerMemberships(dataMap.customer_memberships || []);
-            setAllPayments(dataMap.payments || []);
             setAllDebts(dataMap.debts || []);
             setAllStaff(dataMap.staff || []);
             setAllInventory(dataMap.inventory || []);
@@ -967,6 +977,7 @@ interface StoreState {
             const pay = { 
                 ...p, 
                 id: crypto.randomUUID(), 
+                referenceCode: generatePaymentRef(),
                 businessId: bizId, 
                 branchId: currentBranch?.id!, 
                 date: new Date().toISOString().split('T')[0],

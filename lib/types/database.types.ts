@@ -171,6 +171,7 @@ export interface Payment {
     syncStatus?: string;
     createdAt?: string;
     paymentDefinitionId?: string;
+    referenceCode?: string;
 }
 
 export interface Debt {
