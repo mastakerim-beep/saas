@@ -13,7 +13,7 @@ import { motion } from "framer-motion";
 export default function CashManagementPage() {
     const { 
         payments, expenses, customers, paymentDefinitions,
-        currentBranch, can, currentUser, isInitialized
+        currentBranch, can, currentUser, isInitialized, getTodayDate
     } = useStore();
 
     const [isMounted, setIsMounted] = useState(false);
@@ -23,7 +23,7 @@ export default function CashManagementPage() {
     });
     const [searchQuery, setSearchQuery] = useState("");
 
-    const today = useMemo(() => new Date().toISOString().split('T')[0], []);
+    const today = useMemo(() => isMounted ? getTodayDate() : '', [isMounted, getTodayDate]);
     
     // Permission Lock Logic
     const hasPastAccess = useMemo(() => isMounted ? can('view_past_finances') : false, [isMounted, can]);

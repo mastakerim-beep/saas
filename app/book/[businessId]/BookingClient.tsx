@@ -36,9 +36,12 @@ export default function BookingClient({
   bookedSlots: BookedSlot[];
   services?: Service[];
 }) {
+  const TRT_OFFSET = 3 * 3600000;
+  const getToday = () => new Date(new Date().getTime() + TRT_OFFSET).toISOString().split('T')[0];
+
   const [step, setStep] = useState(1);
   const [service, setService] = useState(services[0] || { name: 'Bali Masajı', duration: 60, price: 3400 });
-  const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
+  const [date, setDate] = useState(getToday());
   const [time, setTime] = useState('');
   const [selectedStaff, setSelectedStaff] = useState<Staff | null>(null);
   
@@ -50,7 +53,7 @@ export default function BookingClient({
 
   // Sadece bugünden itibaren 14 gün
   const DATES = Array.from({ length: 14 }).map((_, i) => {
-    const d = new Date();
+    const d = new Date(new Date().getTime() + TRT_OFFSET);
     d.setDate(d.getDate() + i);
     return d.toISOString().split('T')[0];
   });

@@ -15,7 +15,11 @@ interface SmartCheckoutProps {
 }
 
 export default function SmartCheckout({ appointment, onClose }: SmartCheckoutProps) {
-    const { customers, customerMemberships, membershipPlans, processCheckout, inventory, getUpsellSuggestions, paymentDefinitions } = useStore();
+    const { 
+        customers, customerMemberships, membershipPlans, 
+        processCheckout, inventory, getUpsellSuggestions, 
+        paymentDefinitions, getTodayDate 
+    } = useStore();
     const customer = customers.find(c => c.id === appointment.customerId);
     const activeMembership = customerMemberships.find(m => m.customerId === appointment.customerId && m.status === 'active' && m.remainingSessions > 0);
     const membershipPlan = activeMembership ? membershipPlans.find(p => p.id === activeMembership.planId) : null;
@@ -120,7 +124,7 @@ export default function SmartCheckout({ appointment, onClose }: SmartCheckoutPro
                 methods: methods.map(m => ({ ...m, id: crypto.randomUUID() })),
                 paymentDefinitionId: methods[0]?.toolId, // Also record primary tool at top level
                 totalAmount: totalPaid,
-                date: new Date().toISOString().split('T')[0],
+                date: getTodayDate(),
                 note: note + (discountAmount > 0 ? ` [İskonto: ₺${discountAmount}]` : '') + (tip > 0 ? ` [Bahşiş: ₺${tip}]` : '')
             },
             remaining > 0 ? { amount: remaining, dueDate } : undefined,

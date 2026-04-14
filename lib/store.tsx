@@ -217,6 +217,7 @@ interface StoreState {
     getCustomerAppointmentsByBranch: (cid: string, bid: string) => Appointment[];
     getCustomerPayments: (cid: string) => Payment[];
     getTodayPayments: () => Payment[];
+    getTodayDate: () => string;
     
     calculateCommission: (staffId: string, serviceName: string, price: number, packageId?: string) => number;
     can: (permission: string) => boolean;
@@ -279,6 +280,14 @@ interface StoreState {
  
  const generatePaymentRef = () => {
     return Math.random().toString(36).substring(2, 7).toUpperCase();
+};
+
+const getIstanbulISO = () => {
+    return new Date(new Date().getTime() + (3 * 3600000)).toISOString();
+};
+
+const getIstanbulDate = () => {
+    return getIstanbulISO().split('T')[0];
 };
 
 const StoreContext = createContext<StoreState | null>(null);
@@ -980,8 +989,8 @@ const StoreContext = createContext<StoreState | null>(null);
                 referenceCode: generatePaymentRef(),
                 businessId: bizId, 
                 branchId: currentBranch?.id!, 
-                date: new Date().toISOString().split('T')[0],
-                createdAt: new Date().toISOString()
+                date: getIstanbulDate(),
+                createdAt: getIstanbulISO()
             };
             
             // 1. Save Payment
@@ -1273,7 +1282,8 @@ const StoreContext = createContext<StoreState | null>(null);
         getCustomerAppointments: (cid) => allAppointments.filter(a => a.customerId === cid),
         getCustomerAppointmentsByBranch: (cid, bid) => allAppointments.filter(a => a.customerId === cid && a.branchId === bid),
         getCustomerPayments: (cid) => allPayments.filter(p => p.customerId === cid),
-        getTodayPayments: () => allPayments.filter(p => p.date === new Date().toISOString().split('T')[0]),
+        getTodayPayments: () => allPayments.filter(p => p.date === getIstanbulDate()),
+        getTodayDate: () => getIstanbulDate(),
         calculateCommission: (staffId, serviceName, price, packageId) => {
             if (packageId) return 0;
             const rule = allCommissionRules.find(r => r.staffId === staffId && (r.serviceName === serviceName || r.serviceName === 'Tümü'));

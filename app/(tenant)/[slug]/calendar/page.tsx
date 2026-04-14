@@ -27,7 +27,10 @@ import BookingModal from '@/components/BookingModal';
 // ---- CONFIG & UTILS ----
 const SLOT_MINUTES = 15;
 
-const formatDate = (date: Date) => date.toISOString().split('T')[0];
+const formatDate = (date: Date) => {
+    // Shifting to Istanbul time before ISO conversion
+    return new Date(date.getTime() + (3 * 3600000)).toISOString().split('T')[0];
+};
 
 const generateSlots = (start: number, end: number) => {
     const slots = [];
@@ -576,7 +579,7 @@ export default function CalendarPage() {
     const [activeDragData, setActiveDragData] = useState<any>(null);
     const [isPanelOpen, setIsPanelOpen] = useState(false);
     const [dropPreview, setDropPreview] = useState<{ customer: Customer, staffId: string, time: string } | null>(null);
-    const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
+    const [selectedDate, setSelectedDate] = useState(formatDate(new Date()));
     const [isDatePickerOpen, setIsDatePickerOpen] = useState(false);
     const [pickerMonth, setPickerMonth] = useState(new Date());
 
@@ -600,17 +603,17 @@ export default function CalendarPage() {
         const handleKeyDown = (e: KeyboardEvent) => {
             if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
 
-            if (e.key.toLowerCase() === 't') setSelectedDate(new Date().toISOString().split('T')[0]);
+            if (e.key.toLowerCase() === 't') setSelectedDate(formatDate(new Date()));
             if (e.key.toLowerCase() === 'n') setSelectedSlot({ staffId: staffToDisplay[0]?.id, time: '09:00' });
             if (e.key === 'ArrowRight') {
                 const d = new Date(selectedDate);
                 d.setDate(d.getDate() + 1);
-                setSelectedDate(d.toISOString().split('T')[0]);
+                setSelectedDate(formatDate(d));
             }
             if (e.key === 'ArrowLeft') {
                 const d = new Date(selectedDate);
                 d.setDate(d.getDate() - 1);
-                setSelectedDate(d.toISOString().split('T')[0]);
+                setSelectedDate(formatDate(d));
             }
         };
         window.addEventListener('keydown', handleKeyDown);

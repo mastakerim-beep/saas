@@ -14,11 +14,11 @@ interface EndOfDayProps {
 }
 
 export default function EndOfDayAI({ isOpen, onClose }: EndOfDayProps) {
-    const { appointments, payments, staffMembers, addLog } = useStore();
+    const { appointments, payments, staffMembers, addLog, getTodayDate } = useStore();
     const [isClosing, setIsClosing] = useState(false);
     const [isDone, setIsDone] = useState(false);
 
-    const today = new Date().toISOString().split('T')[0];
+    const today = useMemo(() => getTodayDate(), [getTodayDate]);
     const todayPayments = useMemo(() => payments.filter(p => p.date === today), [payments, today]);
     const todayAppts = useMemo(() => appointments.filter(a => a.date === today && a.status === 'completed'), [appointments, today]);
     
