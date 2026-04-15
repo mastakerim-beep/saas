@@ -135,7 +135,6 @@ export default function Sidebar() {
                             <SidebarItem isHovered={isHovered} href={currentBusiness?.slug ? `/${currentBusiness.slug}/dashboard` : '/dashboard'} icon={LayoutDashboard} label="Genel Bakış" />
                             {can('manage_appointments') && <SidebarItem isHovered={isHovered} href={currentBusiness?.slug ? `/${currentBusiness.slug}/calendar` : '/calendar'} icon={Calendar} label="Takvim" />}
                             {can('manage_customers') && <SidebarItem isHovered={isHovered} href={currentBusiness?.slug ? `/${currentBusiness.slug}/customers` : '/customers'} icon={Users} label="Müşteriler" />}
-                            <SidebarItem isHovered={isHovered} href={currentBusiness?.slug ? `/${currentBusiness.slug}/services` : '/services'} icon={LayoutGrid} label="Hizmetler" colorClass="text-indigo-500" />
                             {can('manage_staff') && <SidebarItem isHovered={isHovered} href={currentBusiness?.slug ? `/${currentBusiness.slug}/booking-settings` : '/booking-settings'} icon={Globe} label="Randevu Portalı" colorClass="text-indigo-500" />}
                             {can('manage_staff') && <SidebarItem isHovered={isHovered} href={currentBusiness?.slug ? `/${currentBusiness.slug}/staff` : '/staff'} icon={Briefcase} label="Ekip" />}
                         </div>

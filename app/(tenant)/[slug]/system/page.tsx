@@ -6,12 +6,14 @@ import {
     MapPin, FileText, Share2, Settings as SettingsIcon,
     Plus, Search, Edit2, Trash2, Check, X,
     ChevronRight, Shield, Smartphone, Calendar,
-    ExternalLink, Info, AlertCircle, Save, Layers
+    ExternalLink, Info, AlertCircle, Save, Layers, Zap
 } from "lucide-react";
 import { useState, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import CatalogSettingsView from "@/components/system/CatalogSettingsView";
 
 type SettingsTab = 
+    | 'catalog'
     | 'staff' 
     | 'payment_methods' 
     | 'bank_accounts' 
@@ -33,26 +35,29 @@ export default function SystemSettingsPage() {
         updateStaff, can, addRoom, updateRoom, deleteRoom
     } = useStore();
 
-    const [activeTab, setActiveTab] = useState<SettingsTab>('staff');
+    const [activeTab, setActiveTab] = useState<SettingsTab>('catalog');
     const [searchQuery, setSearchQuery] = useState("");
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
     const [editingItem, setEditingItem] = useState<any>(null);
 
     // Sidebar Items
     const menuItems = [
+        { group: "ENVANTER & KATALOG", items: [
+            { id: 'catalog', label: 'Hizmet Kataloğu', icon: Zap },
+        ]},
         { group: "SİSTEM", items: [
             { id: 'staff', label: 'Personeller', icon: Users },
+            { id: 'rooms', label: 'Odalar / Kabinler', icon: Layers },
+            { id: 'branches', label: 'Şubeler', icon: MapPin },
         ]},
         { group: "FİNANSAL TANIMLAMALAR", items: [
             { id: 'payment_methods', label: 'Ödeme Araçları', icon: CreditCard },
             { id: 'bank_accounts', label: 'Banka Hesapları', icon: Landmark },
             { id: 'expense_categories', label: 'Gider Kategorileri', icon: ListTree },
         ]},
-        { group: "OPERASYONEL TANIMLAMALAR", items: [
-            { id: 'branches', label: 'Şubeler', icon: MapPin },
+        { group: "DİĞER", items: [
             { id: 'consent_forms', label: 'Onam Formları', icon: FileText },
             { id: 'referral_sources', label: 'Referans Kaynakları', icon: Share2 },
-            { id: 'rooms', label: 'Odalar / Kabinler', icon: Layers },
         ]}
     ];
 
@@ -88,36 +93,36 @@ export default function SystemSettingsPage() {
     return (
         <div className="flex h-screen bg-[#FBFBFD] overflow-hidden">
             {/* Sidebar */}
-            <div className="w-72 bg-white border-r border-gray-100 flex flex-col pt-8">
+            <div className="w-72 bg-white/70 backdrop-blur-xl border-r border-gray-100 flex flex-col pt-8">
                 <div className="px-6 mb-8 flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#0071E3] to-[#00C7FF] flex items-center justify-center text-white shadow-lg shadow-blue-200">
-                        <SettingsIcon size={22} />
+                    <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-indigo-600 to-indigo-800 flex items-center justify-center text-white shadow-xl shadow-indigo-100">
+                        <SettingsIcon size={24} />
                     </div>
                     <div>
-                        <h1 className="text-lg font-semibold text-gray-900 leading-none">Sistem</h1>
-                        <p className="text-xs text-gray-500 mt-1">Ayarlar & Tanımlamalar</p>
+                        <h1 className="text-lg font-black text-gray-900 leading-none tracking-tight">CONTROL HUB</h1>
+                        <p className="text-[10px] font-black text-indigo-400 uppercase tracking-widest mt-1">Sistem Yönetimi</p>
                     </div>
                 </div>
 
                 <div className="flex-1 overflow-y-auto px-4 pb-8 custom-scrollbar">
                     {menuItems.map((group, idx) => (
                         <div key={idx} className="mb-6">
-                            <h3 className="px-4 text-[11px] font-bold text-gray-400 tracking-wider mb-2">{group.group}</h3>
+                            <h3 className="px-4 text-[10px] font-black text-gray-300 uppercase tracking-widest mb-3">{group.group}</h3>
                             <div className="space-y-1">
                                 {group.items.map((item) => (
                                     <button
                                         key={item.id}
                                         onClick={() => setActiveTab(item.id as SettingsTab)}
-                                        className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-xl transition-all duration-200 ${
+                                        className={`w-full flex items-center gap-3 px-4 py-3 rounded-2xl transition-all duration-300 ${
                                             activeTab === item.id 
-                                            ? "bg-[#0071E3] text-white shadow-md shadow-blue-100" 
-                                            : "text-gray-600 hover:bg-gray-50"
+                                            ? "bg-indigo-600 text-white shadow-xl shadow-indigo-100" 
+                                            : "text-gray-500 hover:bg-indigo-50/50 hover:text-indigo-600"
                                         }`}
                                     >
                                         <item.icon size={18} className={activeTab === item.id ? "text-white" : "text-gray-400"} />
-                                        <span className="text-sm font-medium">{item.label}</span>
+                                        <span className="text-xs font-bold uppercase tracking-tight">{item.label}</span>
                                         {activeTab === item.id && (
-                                            <motion.div layoutId="activeDot" className="ml-auto w-1.5 h-1.5 rounded-full bg-white opacity-80" />
+                                            <motion.div layoutId="activeDot" className="ml-auto w-1.5 h-1.5 rounded-full bg-white" />
                                         )}
                                     </button>
                                 ))}
@@ -129,31 +134,36 @@ export default function SystemSettingsPage() {
 
             {/* Main Content */}
             <div className="flex-1 flex flex-col min-w-0 bg-[#FBFBFD]">
-                <header className="h-20 bg-white/80 backdrop-blur-md border-b border-gray-100 px-8 flex items-center justify-between sticky top-0 z-10">
+                <header className="h-24 bg-white/50 backdrop-blur-md border-b border-gray-100 px-10 flex items-center justify-between sticky top-0 z-10">
                     <div>
-                        <h2 className="text-xl font-semibold text-gray-900 capitalize">
+                        <div className="flex items-center gap-2 text-[10px] font-black text-indigo-400 uppercase tracking-[0.2em] mb-1">
+                            <span>Sistem</span>
+                            <ChevronRight size={10} />
+                            <span className="text-gray-400">Tanımlamalar</span>
+                        </div>
+                        <h2 className="text-2xl font-black text-gray-900 tracking-tighter uppercase italic">
                             {menuItems.flatMap(g => g.items).find(i => i.id === activeTab)?.label}
                         </h2>
                     </div>
 
                     <div className="flex items-center gap-4">
                         <div className="relative group">
-                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 transition-colors group-focus-within:text-[#0071E3]" size={16} />
+                            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-300 transition-colors group-focus-within:text-indigo-600" size={16} />
                             <input 
                                 type="text"
-                                placeholder="Ara..."
+                                placeholder="Arama yapın..."
                                 value={searchQuery}
                                 onChange={(e) => setSearchQuery(e.target.value)}
-                                className="pl-10 pr-4 py-2 bg-gray-50 border-none rounded-2xl text-sm w-64 focus:ring-2 focus:ring-blue-100 outline-none transition-all"
+                                className="pl-11 pr-5 py-3 bg-white border border-gray-100 rounded-2xl text-xs font-bold w-64 focus:ring-4 focus:ring-indigo-500/5 focus:border-indigo-500/20 outline-none transition-all shadow-sm"
                             />
                         </div>
-                        {activeTab !== 'staff' && (
+                        {activeTab !== 'staff' && activeTab !== 'catalog' && (
                             <button 
                                 onClick={() => { setEditingItem(null); setIsEditModalOpen(true); }}
-                                className="flex items-center gap-2 px-5 py-2 bg-black text-white rounded-2xl text-sm font-medium hover:bg-gray-800 transition-all shadow-sm"
+                                className="flex items-center gap-2 px-6 py-3 bg-black text-white rounded-2xl text-[11px] font-black uppercase tracking-widest hover:scale-[1.02] active:scale-[0.98] transition-all shadow-xl shadow-gray-200"
                             >
                                 <Plus size={16} />
-                                <span>Yeni Ekle</span>
+                                <span>Yeni Kayıt</span>
                             </button>
                         )}
                     </div>
@@ -168,6 +178,9 @@ export default function SystemSettingsPage() {
                             exit={{ opacity: 0, y: -10 }}
                             transition={{ duration: 0.2 }}
                         >
+                            {activeTab === 'catalog' && (
+                                <CatalogSettingsView query={searchQuery} />
+                            )}
                             {activeTab === 'staff' && (
                                 <StaffSettingsView staff={staffMembers} onUpdate={updateStaff} query={searchQuery} />
                             )}
