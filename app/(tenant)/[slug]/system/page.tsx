@@ -439,48 +439,48 @@ function StaffSettingsView({ staff, onUpdate, query }: { staff: Staff[], onUpdat
     };
 
     return (
-        <div className="bg-white rounded-[32px] overflow-hidden shadow-sm border border-gray-100">
+        <div className="bg-white rounded-[3.5rem] overflow-hidden shadow-sm border border-gray-100">
             <table className="w-full text-left border-collapse">
                 <thead>
-                    <tr className="bg-gray-50/50 border-b border-gray-50">
-                        <th className="px-6 py-4 text-[11px] font-bold text-gray-400 uppercase tracking-wider">Ad Soyad</th>
-                        <th className="px-6 py-4 text-[11px] font-bold text-gray-400 uppercase tracking-wider">Yetki Grubu</th>
-                        <th className="px-6 py-4 text-[11px] font-bold text-gray-400 uppercase tracking-wider">Personel Grubu</th>
-                        <th className="px-6 py-4 text-[11px] font-bold text-gray-400 uppercase tracking-wider">Sisteme Giriş</th>
-                        <th className="px-6 py-4 text-[11px] font-bold text-gray-400 uppercase tracking-wider">Mobil</th>
-                        <th className="px-6 py-4 text-[11px] font-bold text-gray-400 uppercase tracking-wider">Takvim</th>
-                        <th className="px-6 py-4 text-right"></th>
+                    <tr className="bg-gray-50/30 border-b border-gray-50">
+                        <th className="px-10 py-6 text-[10px] font-black text-gray-400 uppercase tracking-widest">AD SOYAD</th>
+                        <th className="px-10 py-6 text-[10px] font-black text-gray-400 uppercase tracking-widest">YETKİ</th>
+                        <th className="px-10 py-6 text-[10px] font-black text-gray-400 uppercase tracking-widest">GRUP</th>
+                        <th className="px-10 py-6 text-[10px] font-black text-gray-400 uppercase tracking-widest text-center">SİSTEM</th>
+                        <th className="px-10 py-6 text-[10px] font-black text-gray-400 uppercase tracking-widest text-center">MOBİL</th>
+                        <th className="px-10 py-6 text-[10px] font-black text-gray-400 uppercase tracking-widest text-center">TAKVİM</th>
+                        <th className="px-10 py-6 text-right"></th>
                     </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-50">
                     {filtered.map((s) => (
-                        <tr key={s.id} className="hover:bg-gray-50/30 transition-colors group">
-                            <td className="px-6 py-5">
-                                <div className="flex items-center gap-3">
-                                    <div className="w-10 h-10 rounded-full bg-blue-50 text-[#0071E3] flex items-center justify-center font-semibold text-xs border border-blue-100 uppercase">
+                        <tr key={s.id} className="hover:bg-gray-50/50 transition-colors group">
+                            <td className="px-10 py-6">
+                                <div className="flex items-center gap-4">
+                                    <div className="w-12 h-12 rounded-2xl bg-indigo-50 text-indigo-600 flex items-center justify-center font-black text-xs border border-indigo-100 uppercase">
                                         {s.name.slice(0, 2)}
                                     </div>
-                                    <span className="text-sm font-semibold text-gray-900 group-hover:text-[#0071E3] transition-colors">{s.name}</span>
+                                    <span className="text-sm font-black text-gray-900 group-hover:text-indigo-600 transition-colors uppercase tracking-tight">{s.name}</span>
                                 </div>
                             </td>
-                            <td className="px-6 py-5">
-                                <span className="text-xs font-medium px-2 py-1 bg-gray-100 text-gray-600 rounded-lg">{s.role}</span>
+                            <td className="px-10 py-6">
+                                <span className="text-[10px] font-black px-3 py-1.5 bg-gray-100 text-gray-600 rounded-lg uppercase tracking-widest">{s.role}</span>
                             </td>
-                            <td className="px-6 py-5">
-                                <span className="text-xs font-medium text-gray-500">{s.staffGroup || 'Terapist'}</span>
+                            <td className="px-10 py-6">
+                                <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{s.staffGroup || 'Terapist'}</span>
                             </td>
-                            <td className="px-6 py-5">
+                            <td className="px-10 py-6 text-center">
                                 <Toggle checked={s.canLoginSystem} onChange={(v) => toggle(s.id, 'canLoginSystem', v)} />
                             </td>
-                            <td className="px-6 py-5">
+                            <td className="px-10 py-6 text-center">
                                 <Toggle checked={s.canLoginMobile} onChange={(v) => toggle(s.id, 'canLoginMobile', v)} />
                             </td>
-                            <td className="px-6 py-5">
+                            <td className="px-10 py-6 text-center">
                                 <Toggle checked={s.isVisibleOnCalendar} onChange={(v) => toggle(s.id, 'isVisibleOnCalendar', v)} />
                             </td>
-                            <td className="px-6 py-5 text-right">
-                                <button className="p-2 text-gray-400 hover:text-black transition-colors">
-                                    <Edit2 size={16} />
+                            <td className="px-10 py-6 text-right">
+                                <button className="p-3 text-gray-300 hover:text-black transition-colors">
+                                    <Edit2 size={18} />
                                 </button>
                             </td>
                         </tr>
@@ -496,46 +496,47 @@ function RoomsSettingsView({ query }: { query: string }) {
     const filtered = rooms.filter(r => r.name.toLowerCase().includes(query.toLowerCase()));
 
     return (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-10">
             {filtered.map((room) => (
-                <div key={room.id} className="bg-white p-6 rounded-[32px] shadow-sm border border-gray-100 hover:shadow-xl transition-all duration-300 group">
-                    <div className="flex justify-between items-start mb-6">
+                <div key={room.id} className="bg-white p-10 rounded-[3.5rem] shadow-sm border border-gray-100 hover:shadow-2xl transition-all duration-500 hover:-translate-y-2 group overflow-hidden relative">
+                    <div className="flex justify-between items-start mb-8">
                         <div 
-                            className="w-12 h-12 rounded-2xl flex items-center justify-center text-white shadow-lg"
+                            className="w-16 h-16 rounded-[1.8rem] flex items-center justify-center text-white shadow-xl shadow-indigo-100"
                             style={{ backgroundColor: room.color || '#6366f1' }}
                         >
-                            <Layers size={24} />
+                            <Layers size={28} />
                         </div>
                         <div className="flex gap-2">
-                             <button onClick={() => deleteRoom(room.id)} className="w-9 h-9 rounded-full bg-gray-50 flex items-center justify-center text-gray-400 hover:bg-red-500 hover:text-white transition-all">
-                                <Trash2 size={14} />
+                             <button onClick={() => deleteRoom(room.id)} className="w-10 h-10 rounded-xl bg-gray-50 flex items-center justify-center text-gray-400 hover:bg-red-500 hover:text-white transition-all">
+                                <Trash2 size={18} />
                             </button>
                         </div>
                     </div>
-                    <div className="space-y-4">
+                    <div className="space-y-6">
                         <div>
-                            <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Oda Adı</label>
-                            <div className="text-sm font-semibold text-gray-900">{room.name}</div>
+                            <label className="block text-[10px] font-black text-gray-300 uppercase tracking-[0.2em] mb-1.5">ODA ADI</label>
+                            <div className="text-xl font-black text-gray-900 uppercase tracking-tight">{room.name}</div>
                         </div>
                         <div>
-                            <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Kategori</label>
-                            <div className="text-sm font-semibold text-primary">{room.category || 'Genel'}</div>
+                            <label className="block text-[10px] font-black text-gray-300 uppercase tracking-[0.2em] mb-1.5">KATEGORİ</label>
+                            <div className="text-sm font-bold text-indigo-600 uppercase tracking-widest">{room.category || 'Genel'}</div>
                         </div>
-                        <div className="flex items-center justify-between pt-2 border-t border-gray-50">
-                             <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Durum</span>
+                        <div className="flex items-center justify-between pt-6 border-t border-gray-50">
+                             <span className="text-[10px] font-black text-gray-300 uppercase tracking-widest">AKTİF DURUM</span>
                              <Toggle checked={room.status === 'active'} onChange={(v) => updateRoom(room.id, { status: v ? 'active' : 'passive' })} />
                         </div>
                     </div>
+                    <div className="absolute -right-4 -bottom-4 w-24 h-24 bg-gray-50 rounded-full opacity-50 group-hover:scale-150 transition-transform duration-700" />
                 </div>
             ))}
             
             {filtered.length === 0 && (
-                <div className="col-span-full py-20 bg-gray-50/50 rounded-[40px] border-2 border-dashed border-gray-100 flex flex-col items-center justify-center text-center">
-                    <div className="w-20 h-20 rounded-full bg-white flex items-center justify-center text-gray-300 mb-6 shadow-sm">
-                        <Plus size={40} />
+                <div className="col-span-full py-32 bg-gray-50/50 rounded-[4rem] border-2 border-dashed border-gray-100 flex flex-col items-center justify-center text-center">
+                    <div className="w-24 h-24 rounded-[2rem] bg-white flex items-center justify-center text-gray-200 mb-8 shadow-sm">
+                        <Plus size={48} />
                     </div>
-                    <h3 className="text-lg font-medium text-gray-900">Henüz Oda Eklenmemiş</h3>
-                    <p className="text-sm text-gray-500 mt-2">Personellere atama yapabilmek için önce oda tanımlayın.</p>
+                    <h3 className="text-2xl font-black text-gray-900 uppercase italic tracking-tighter">Henüz Oda Eklenmemiş</h3>
+                    <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mt-3">Personellere atama yapabilmek için önce oda tanımlayın.</p>
                 </div>
             )}
         </div>
@@ -550,46 +551,45 @@ function GenericListView({ items, columns, onEdit, onDelete, query }: { items: a
     );
 
     return (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-10">
             {filtered.map((item) => (
-                <div key={item.id} className="bg-white p-6 rounded-[32px] shadow-sm border border-gray-100 hover:shadow-xl hover:shadow-gray-200/40 transition-all duration-300 group relative overflow-hidden">
-                    <div className="flex justify-between items-start mb-6">
-                        <div className="w-12 h-12 rounded-2xl bg-gray-50 flex items-center justify-center text-gray-400 group-hover:bg-[#0071E3] group-hover:text-white transition-all duration-300">
-                            {item.bankName ? <Landmark size={24} /> : <CreditCard size={24} />}
+                <div key={item.id} className="bg-white p-10 rounded-[3.5rem] shadow-sm border border-gray-100 hover:shadow-2xl hover:shadow-indigo-100 transition-all duration-500 hover:-translate-y-2 group relative overflow-hidden">
+                    <div className="flex justify-between items-start mb-10">
+                        <div className="w-16 h-16 rounded-[1.8rem] bg-gray-50 flex items-center justify-center text-gray-400 group-hover:bg-indigo-600 group-hover:text-white transition-all duration-500 shadow-inner">
+                            {item.bankName ? <Landmark size={28} /> : <CreditCard size={28} />}
                         </div>
-                        <div className="flex gap-2">
-                            <button onClick={() => onEdit(item)} className="w-9 h-9 rounded-full bg-gray-50 flex items-center justify-center text-gray-400 hover:bg-black hover:text-white transition-all">
-                                <Edit2 size={14} />
+                        <div className="flex gap-3">
+                            <button onClick={() => onEdit(item)} className="w-10 h-10 rounded-xl bg-gray-50 flex items-center justify-center text-gray-400 hover:bg-black hover:text-white transition-all">
+                                <Edit2 size={16} />
                             </button>
-                            <button onClick={() => onDelete(item.id)} className="w-9 h-9 rounded-full bg-gray-50 flex items-center justify-center text-gray-400 hover:bg-red-500 hover:text-white transition-all">
-                                <Trash2 size={14} />
+                            <button onClick={() => onDelete(item.id)} className="w-10 h-10 rounded-xl bg-gray-50 flex items-center justify-center text-gray-400 hover:bg-red-500 hover:text-white transition-all">
+                                <Trash2 size={16} />
                             </button>
                         </div>
                     </div>
 
-                    <div className="space-y-4">
+                    <div className="space-y-6">
                         {columns.map(col => (
                             <div key={col.key}>
-                                <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">{col.label}</label>
-                                <div className="text-sm font-semibold text-gray-900 truncate">
+                                <label className="block text-[10px] font-black text-gray-300 uppercase tracking-[0.2em] mb-1.5">{col.label}</label>
+                                <div className="text-lg font-black text-gray-900 uppercase tracking-tight truncate">
                                     {col.render ? col.render(item[col.key]) : item[col.key]}
                                 </div>
                             </div>
                         ))}
                     </div>
 
-                    {/* Subtle decoration */}
                     <div className="absolute -right-4 -bottom-4 w-24 h-24 bg-gray-50 rounded-full opacity-50 group-hover:scale-150 transition-transform duration-700" />
                 </div>
             ))}
             
             {filtered.length === 0 && (
-                <div className="col-span-full py-20 bg-gray-50/50 rounded-[40px] border-2 border-dashed border-gray-100 flex flex-col items-center justify-center text-center">
-                    <div className="w-20 h-20 rounded-full bg-white flex items-center justify-center text-gray-300 mb-6 shadow-sm">
-                        <Info size={40} />
+                <div className="col-span-full py-32 bg-gray-50/50 rounded-[4rem] border-2 border-dashed border-gray-100 flex flex-col items-center justify-center text-center">
+                    <div className="w-24 h-24 rounded-[2rem] bg-white flex items-center justify-center text-gray-300 mb-8 shadow-sm">
+                        <Info size={48} />
                     </div>
-                    <h3 className="text-lg font-medium text-gray-900">Sonuç Bulunamadı</h3>
-                    <p className="text-sm text-gray-500 mt-2 max-w-xs">Aramanıza uygun kayıt bulunamadı veya henüz eklenmemiş.</p>
+                    <h3 className="text-2xl font-black text-gray-900 uppercase italic tracking-tighter">Sonuç Bulunamadı</h3>
+                    <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mt-3 max-w-xs">Aramanıza uygun kayıt bulunamadı veya henüz eklenmemiş.</p>
                 </div>
             )}
         </div>
@@ -600,14 +600,14 @@ function Toggle({ checked, onChange }: { checked: boolean, onChange: (v: boolean
     return (
         <button 
             onClick={() => onChange(!checked)}
-            className={`w-11 h-6 rounded-full transition-all duration-300 relative px-1 ${
-                checked ? 'bg-[#0071E3]' : 'bg-gray-200'
+            className={`w-12 h-7 rounded-full transition-all duration-300 relative px-1 flex items-center ${
+                checked ? 'bg-indigo-600' : 'bg-gray-200'
             }`}
         >
             <motion.div 
                 animate={{ x: checked ? 20 : 0 }}
                 transition={{ type: "spring", stiffness: 500, damping: 30 }}
-                className="w-4 h-4 bg-white rounded-full shadow-lg absolute top-1"
+                className="w-5 h-5 bg-white rounded-full shadow-lg"
             />
         </button>
     );
