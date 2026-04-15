@@ -42,6 +42,7 @@ export interface AppUser {
     permissions: string[];
     createdAt?: string;
     allowedBranches: string[];
+    staffId?: string;
 }
 
 export interface Customer {
@@ -154,6 +155,8 @@ export interface Appointment {
     paymentId?: string;
     isPackageUsage: boolean;
     note?: string;
+    checkInTime?: string;
+    checkOutTime?: string;
 }
 
 export interface Payment {
@@ -178,6 +181,7 @@ export interface Debt {
     id: string;
     businessId?: string;
     customerId?: string;
+    customerName: string;
     appointmentId?: string;
     amount: number;
     dueDate: any;

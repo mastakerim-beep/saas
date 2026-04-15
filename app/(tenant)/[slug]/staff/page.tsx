@@ -249,39 +249,58 @@ function StaffProfilePanel({ staff, onClose, onEdit }: { staff: any, onClose: ()
 
 // ─── STAFF EDIT MODAL ─────────────────────────────────────────────────────────
 function StaffEditModal({ staff, onClose }: { staff?: Staff, onClose: () => void }) {
-    const { addStaff, updateStaff, updateStaffPermissions, allUsers, branches } = useStore();
+    const { addStaff, updateStaff, updateStaffPermissions, allUsers, branches, can } = useStore();
     const [formData, setFormData] = useState<Partial<Staff>>(staff || {
         name: '', role: 'Uzman', status: 'Aktif',
         weeklyOffDay: 1, staffType: 'Terapist',
         isVisibleOnCalendar: true, sortOrder: 0
     });
 
-    const linkedUser = allUsers.find(u => u.name === staff?.name);
-    const [perms, setPerms] = useState<string[]>(linkedUser?.permissions || []);
+    const linkedUser = useStore().allUsers.find(u => u.staffId === staff?.id || (u.name === staff?.name && !u.staffId));
+    
+    // Varsayılan yetkiler (Yeni kullanıcılar için Resepsiyonist baz alınır)
+    const RECEPTIONIST_PERMS = ['view_cash', 'move_appt', 'manage_customers'];
+    const [perms, setPerms] = useState<string[]>(linkedUser?.permissions || RECEPTIONIST_PERMS);
 
     const PERM_GROUPS = [
         {
             title: 'Finans', color: 'emerald',
             perms: [
-                { id: 'view_cash', label: 'Kasayı / Finansı Gör' },
-                { id: 'edit_prices', label: 'Fiyat Değiştir' },
+                { id: 'view_cash', label: 'Bugünün Kasasını Gör' },
+                { id: 'view_historical_finance', label: 'Geçmiş Kasayı Gör ⚠️' },
+                { id: 'manage_expenses', label: 'Gider / Ödeme Yönet' },
+                { id: 'edit_prices', label: 'Hizmet Fiyatı Değiştir' },
             ]
         },
         {
-            title: 'İşlemler', color: 'indigo',
+            title: 'Randevu & Müşteri', color: 'indigo',
             perms: [
-                { id: 'delete_appt', label: 'Randevu Sil' },
-                { id: 'manage_inventory', label: 'Stok Yönet' },
+                { id: 'delete_appt', label: 'Randevu Silme ⚠️' },
+                { id: 'move_appt', label: 'Randevu Taşıma' },
+                { id: 'manage_customers', label: 'Müşteri Kayıt Düzenle' },
+                { id: 'export_data', label: 'Verileri Dışa Aktar (Excel)' },
             ]
         },
         {
-            title: 'Sistem', color: 'rose',
+            title: 'Sistem & Stok', color: 'rose',
             perms: [
-                { id: 'view_audit_log', label: 'Güvenlik Logları' },
-                { id: 'manage_staff', label: 'Personel Yönet' },
+                { id: 'manage_inventory', label: 'Stok / Ürün Yönetimi' },
+                { id: 'manage_staff', label: 'Takvime Personel Ekle/Sil' },
+                { id: 'manage_users', label: 'Sistem Girişlerini Yönet ⚠️' },
+                { id: 'manage_business_settings', label: 'İşletme Ayarlarını Yönet ⚠️' },
+                { id: 'view_audit_logs', label: 'Güvenlik Loglarını Gör' },
             ]
         }
     ];
+
+    const applyTemplate = (role: 'manager' | 'receptionist' | 'accountant') => {
+        const templates = {
+            manager: ['view_cash', 'view_historical_finance', 'manage_expenses', 'edit_prices', 'delete_appt', 'move_appt', 'manage_customers', 'export_data', 'manage_inventory', 'manage_staff', 'manage_users', 'manage_business_settings', 'view_audit_logs'],
+            receptionist: ['view_cash', 'move_appt', 'manage_customers', 'manage_staff'],
+            accountant: ['view_cash', 'view_historical_finance', 'manage_expenses', 'export_data']
+        };
+        setPerms(templates[role]);
+    };
 
     const togglePerm = (id: string) =>
         setPerms(prev => prev.includes(id) ? prev.filter(p => p !== id) : [...prev, id]);
@@ -356,6 +375,14 @@ function StaffEditModal({ staff, onClose }: { staff?: Staff, onClose: () => void
                                     {branches.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
                                 </select>
                             )}
+                            {field('Durum',
+                                <select value={formData.status} onChange={e => setFormData({...formData, status: e.target.value as any})}
+                                    className="w-full bg-gray-50 border-2 border-transparent focus:border-indigo-500 rounded-2xl px-5 py-4 font-bold text-sm outline-none appearance-none">
+                                    <option value="Aktif">Aktif</option>
+                                    <option value="Ayrıldı">Ayrıldı / Pasif</option>
+                                    <option value="İzinli">Geçici İzinli</option>
+                                </select>
+                            )}
                         </div>
                         
                         <div className="grid grid-cols-2 gap-4 mt-4">
@@ -378,15 +405,70 @@ function StaffEditModal({ staff, onClose }: { staff?: Staff, onClose: () => void
                         </div>
                     </div>
 
-                    {/* Permissions */}
+                    {/* Permissions & Provisioning */}
                     <div>
-                        <div className="flex items-center justify-between mb-4">
-                            <p className="text-[10px] font-black text-rose-500 uppercase tracking-widest">Erişim İzinleri</p>
-                            {linkedUser 
-                                ? <span className="text-[9px] font-black bg-emerald-50 text-emerald-600 px-3 py-1 rounded-full uppercase tracking-widest">Sistem kullanıcısıyla eşleşti</span>
-                                : <span className="text-[9px] font-black bg-amber-50 text-amber-500 px-3 py-1 rounded-full uppercase tracking-widest">Sisteme giriş yok</span>
-                            }
-                        </div>
+                        {can('manage_users') && (
+                            <div className="flex items-center justify-between mb-4">
+                                <p className="text-[10px] font-black text-rose-500 uppercase tracking-widest">Sistem Erişimi & İzinler</p>
+                                <div className="flex items-center gap-2">
+                                    <div className="flex bg-gray-100 rounded-full p-1 mr-4">
+                                        <button onClick={() => applyTemplate('manager')} className="text-[8px] font-black px-3 py-1 hover:bg-white rounded-full transition-all">MÜDÜR</button>
+                                        <button onClick={() => applyTemplate('receptionist')} className="text-[8px] font-black px-3 py-1 hover:bg-white rounded-full transition-all">RESEPSİYON</button>
+                                        <button onClick={() => applyTemplate('accountant')} className="text-[8px] font-black px-3 py-1 hover:bg-white rounded-full transition-all">MUHASEBE</button>
+                                    </div>
+                                    <span className="text-[9px] font-black bg-gray-100 text-gray-400 px-3 py-1 rounded-full uppercase tracking-widest">
+                                        {(useStore().allUsers.length)} / {(useStore().currentBusiness?.maxUsers || 5)} Koltuk Dolu
+                                    </span>
+                                </div>
+                            </div>
+                        )}
+
+                        {!linkedUser && can('manage_users') && (
+                            <div className="bg-indigo-50/50 border-2 border-dashed border-indigo-100 rounded-[2rem] p-8 text-center space-y-4 mb-8">
+                                <div className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center mx-auto shadow-sm">
+                                    <ShieldCheck className="w-6 h-6 text-indigo-500" />
+                                </div>
+                                <div>
+                                    <p className="text-sm font-black text-gray-900 leading-tight">Sistem Girişi Tanımla</p>
+                                    <p className="text-xs text-gray-500 font-bold mt-1">Aşağıdaki yetkilerle bir kullanıcı oluşturulacaktır.</p>
+                                </div>
+                                <div className="grid grid-cols-2 gap-3 max-w-sm mx-auto pt-2">
+                                    <input 
+                                        type="email" 
+                                        id="provision_email"
+                                        placeholder="E-posta Adresi" 
+                                        className="w-full bg-white border-2 border-transparent focus:border-indigo-500 rounded-xl px-4 py-3 font-bold text-xs outline-none transition-all"
+                                    />
+                                    <input 
+                                        type="password" 
+                                        id="provision_password"
+                                        placeholder="Şifre Belirleyin" 
+                                        className="w-full bg-white border-2 border-transparent focus:border-indigo-500 rounded-xl px-4 py-3 font-bold text-xs outline-none transition-all"
+                                    />
+                                    <button 
+                                        onClick={async () => {
+                                            const email = (document.getElementById('provision_email') as HTMLInputElement).value;
+                                            const password = (document.getElementById('provision_password') as HTMLInputElement).value;
+                                            if (!email || !password) return alert('Lütfen email ve şifre girin.');
+                                            
+                                            const res = await useStore().provisionStaffUser({
+                                                email, password, name: formData.name!, staffId: staff!.id, permissions: perms
+                                            });
+                                            if (res.error) alert(res.error);
+                                            else {
+                                                alert('Başarıyla oluşturuldu!');
+                                                onClose();
+                                            }
+                                        }}
+                                        className="col-span-2 bg-indigo-600 text-white py-3 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-200"
+                                    >
+                                        GİRİŞ YETKİSİ OLUŞTUR (1 KOLTUK)
+                                    </button>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Always show permission checkboxes */}
                         <div className="grid grid-cols-3 gap-4">
                             {PERM_GROUPS.map(group => (
                                 <div key={group.title} className="space-y-2">
@@ -788,14 +870,18 @@ export default function StaffPage() {
                                             {staff.name.charAt(0)}
                                         </div>
                                         <div className="flex gap-1.5" onClick={e => e.stopPropagation()}>
-                                            <button onClick={() => openEdit(staff)}
-                                                className="p-2 bg-gray-50 text-gray-400 rounded-xl hover:bg-indigo-600 hover:text-white transition-all opacity-0 group-hover:opacity-100">
-                                                <Settings2 size={16} />
-                                            </button>
-                                            <button onClick={() => confirm('Personeli silmek istediğinize emin misiniz?') && deleteStaff(staff.id)}
-                                                className="p-2 bg-gray-50 text-gray-400 rounded-xl hover:bg-red-600 hover:text-white transition-all opacity-0 group-hover:opacity-100">
-                                                <Trash2 size={16} />
-                                            </button>
+                                            {(can('manage_staff') || can('manage_users')) && (
+                                                <button onClick={() => openEdit(staff)}
+                                                    className="p-2 bg-gray-50 text-gray-400 rounded-xl hover:bg-indigo-600 hover:text-white transition-all opacity-0 group-hover:opacity-100">
+                                                    <Settings2 size={16} />
+                                                </button>
+                                            )}
+                                            {can('manage_staff') && (
+                                                <button onClick={() => confirm('Personeli silmek istediğinize emin misiniz?') && deleteStaff(staff.id)}
+                                                    className="p-2 bg-gray-50 text-gray-400 rounded-xl hover:bg-red-600 hover:text-white transition-all opacity-0 group-hover:opacity-100">
+                                                    <Trash2 size={16} />
+                                                </button>
+                                            )}
                                         </div>
                                     </div>
 

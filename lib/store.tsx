@@ -57,6 +57,7 @@ export interface BusinessSettings {
     endHour: number;
     openDays: number[];
     isAutoMarketingEnabled: boolean;
+    aiApprovalMode: 'manual' | 'auto';
 }
 
 export interface CurrencyRate {
@@ -126,7 +127,7 @@ interface StoreState {
     // Actions
     login: (email: string, pass: string) => Promise<boolean>;
     logout: () => void;
-    fetchData: (bizId?: string, user?: AppUser, force?: boolean) => Promise<void>;
+    fetchData: (bizId?: string, user?: AppUser, force?: boolean, startDate?: string, endDate?: string) => Promise<void>;
     isInitialized: boolean;
     fetchPublicData: (slug: string) => Promise<void>;
     closeDay: (data: Omit<ZReport, 'id' | 'businessId' | 'branchId' | 'closedBy' | 'createdAt'>) => Promise<boolean>;
@@ -145,6 +146,7 @@ interface StoreState {
     addCustomerMedia: (m: Omit<CustomerMedia, 'id' | 'businessId'>) => void;
     deleteCustomerMedia: (id: string) => void;
     updateSettings: (s: Partial<BusinessSettings>) => void;
+    updateBusinessSettings: (s: Partial<BusinessSettings>) => void;
     
     // Room Management
     addRoom: (r: Omit<Room, 'id' | 'businessId' | 'createdAt'>) => void;
@@ -179,7 +181,6 @@ interface StoreState {
     addCommissionRule: (rule: Omit<CommissionRule, 'id' | 'businessId'>) => void;
     removeCommissionRule: (id: string) => void;
     updateRoomStatus: (id: string, status: Room['status']) => void;
-    
     // Staff Management
     addStaff: (s: Omit<Staff, 'id' | 'businessId' | 'branchId'>) => void;
     deleteStaff: (id: string) => void;
@@ -230,10 +231,18 @@ interface StoreState {
     // License
     isLicenseExpired: boolean;
 
+    // Provisioning
+    provisionStaffUser: (data: { email: string; password: string; name: string; staffId: string; permissions: string[] }) => Promise<{ success: boolean; error?: string }>;
+
     // SaaS Admin Actions
     addAnnouncement: (a: Omit<DB.SystemAnnouncement, 'id' | 'createdAt'>) => Promise<void>;
     updateModuleStatus: (bizId: string, moduleName: string, isEnabled: boolean) => Promise<void>;
     updateBusinessPricing: (id: string, updates: { plan?: string, overrideMrr?: number | null, signupPrice?: number }) => Promise<void>;
+    
+    // Currency
+    updateRates: (newRates: CurrencyRate[]) => void;
+    assignRoomToAppointment: (appointmentId: string, roomId: string) => Promise<boolean>;
+    runImperialAudit: () => { type: 'critical' | 'warning' | 'info'; title: string; desc: string; targetId?: string; table?: string }[];
 }
  
  
@@ -282,12 +291,15 @@ interface StoreState {
     return Math.random().toString(36).substring(2, 7).toUpperCase();
 };
 
-const getIstanbulISO = () => {
-    return new Date(new Date().getTime() + (3 * 3600000)).toISOString();
+const getLocalISO = () => {
+    // Current local time in ISO-like format but preserving local hours
+    const now = new Date();
+    const off = now.getTimezoneOffset() * 60000;
+    return new Date(now.getTime() - off).toISOString();
 };
 
-const getIstanbulDate = () => {
-    return getIstanbulISO().split('T')[0];
+const getTodayDate = () => {
+    return new Date().toLocaleDateString('sv-SE'); // YYYY-MM-DD in local time
 };
 
 const StoreContext = createContext<StoreState | null>(null);
@@ -348,7 +360,17 @@ const StoreContext = createContext<StoreState | null>(null);
      const [tenantModules, setTenantModules] = useState<TenantModule[]>([]);
      const [tenantSlug, setTenantSlug] = useState<string | null>(null);
      const [currentTenant, setCurrentTenant] = useState<Business | null>(null);
-     const [settings, setSettings] = useState<BusinessSettings>({ startHour: 9, endHour: 21, openDays: [1,2,3,4,5,6], isAutoMarketingEnabled: true });
+     const [settings, setSettings] = useState<BusinessSettings>({ 
+         startHour: 9, 
+         endHour: 21, 
+         openDays: [1,2,3,4,5,6], 
+         isAutoMarketingEnabled: true,
+         aiApprovalMode: 'manual'
+     });
+     const [allRates, setAllRates] = useState<CurrencyRate[]>([
+         { code: 'USD', name: 'US Dollar', rate: 44.74 },
+         { code: 'EUR', name: 'Euro', rate: 52.75 }
+     ]);
  
      const retryRequest = async <T,>(fn: () => Promise<T>, retries = 3, delay = 1000): Promise<T> => {
          try {
@@ -390,16 +412,16 @@ const StoreContext = createContext<StoreState | null>(null);
          }
      }, [tenantSlug, allBusinesses]);
  
-     const fetchData = async (bizId?: string, userOverride?: AppUser, force = false) => {
+     const fetchData = async (bizId?: string, userOverride?: AppUser, force = false, startDate?: string, endDate?: string) => {
         const activeUser = userOverride || currentUser;
         const isSaaS = activeUser?.role === 'SaaS_Owner';
         const targetId = bizId || impersonatedBusinessId || currentTenant?.id || activeUser?.businessId;
         
         if (!targetId && !isSaaS) return;
 
-        // Cache Logic: Don't refetch if last fetch was within 2 minutes (unless forced)
+        // Cache Logic: Don't refetch if last fetch was within 2 minutes (unless forced or date range used)
         const now = Date.now();
-        if (!force && lastFetch && now - lastFetch < 120000 && !bizId) {
+        if (!force && !startDate && lastFetch && now - lastFetch < 120000 && !bizId) {
             console.log("Speed Paketi: Veriler önbellekten geliyor (Cache Hit)");
             return;
         }
@@ -432,6 +454,14 @@ const StoreContext = createContext<StoreState | null>(null);
                                 if (table === 'businesses') q = q.eq('id', idToUse);
                                 else q = q.eq('business_id', idToUse);
                             }
+                        }
+
+                        // Apply date filters for large financial tables if requested
+                        if (startDate && (table === 'payments' || table === 'expenses')) {
+                            q = q.gte('date', startDate);
+                        }
+                        if (endDate && (table === 'payments' || table === 'expenses')) {
+                            q = q.lte('date', endDate);
                         }
                         
                         const { data, error } = await q;
@@ -501,8 +531,8 @@ const StoreContext = createContext<StoreState | null>(null);
             setSyncStatus('idle');
             setIsInitialized(true);
             
-            // Trigger AI analysis on data load
-            await store.analyzeSystem();
+            // Trigger AI analysis on background to avoid blocking UI
+            store.analyzeSystem();
             
             console.timeEnd("Aura Fetch Speed");
         } catch (error: any) {
@@ -566,7 +596,40 @@ const StoreContext = createContext<StoreState | null>(null);
          initAuth();
      }, []);
  
-     const login = async (email: string, pass: string) => {
+     // Realtime Sync Effect
+    useEffect(() => {
+        const bizId = getSafeBizId();
+        if (!bizId) return;
+
+        const channel = supabase
+            .channel('realtime-updates')
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'appointments', filter: `business_id=eq.${bizId}` }, (payload) => {
+                if (payload.eventType === 'INSERT') {
+                    setAllAppointments(prev => [...prev, toCamel(payload.new) as Appointment]);
+                } else if (payload.eventType === 'UPDATE') {
+                    setAllAppointments(prev => prev.map(a => a.id === payload.new.id ? { ...a, ...toCamel(payload.new) } : a));
+                } else if (payload.eventType === 'DELETE') {
+                    setAllAppointments(prev => prev.filter(a => a.id === payload.old.id));
+                }
+            })
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'rooms', filter: `business_id=eq.${bizId}` }, (payload) => {
+                if (payload.eventType === 'UPDATE') {
+                    setAllRooms(prev => prev.map(r => r.id === payload.new.id ? { ...r, ...toCamel(payload.new) } : r));
+                }
+            })
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'z_reports', filter: `business_id=eq.${bizId}` }, (payload) => {
+                if (payload.eventType === 'INSERT') {
+                    setZReports(prev => [...prev, toCamel(payload.new) as any]);
+                }
+            })
+            .subscribe();
+
+        return () => {
+            supabase.removeChannel(channel);
+        };
+    }, [currentUser, currentTenant]);
+
+    const login = async (email: string, pass: string) => {
          const { data, error } = await supabase.auth.signInWithPassword({ email, password: pass });
          if (error || !data.user) return false;
          
@@ -700,15 +763,20 @@ const StoreContext = createContext<StoreState | null>(null);
      const addAppointment = async (data: any) => {
         const safeBizId = getSafeBizId();
         const safeBranchId = currentBranch?.id || allowedBranches[0]?.id;
+        
+        // Veri Bütünlüğü: Personel ismini snapshot olarak al
+        const staff = allStaff.find(s => s.id === data.staffId);
+        const nameToSave = staff?.name || data.staffName || 'Bilinmeyen';
 
         const a = { 
             ...data, 
             id: crypto.randomUUID(), 
             businessId: safeBizId || 'SYSTEM_ERR', 
-            branchId: safeBranchId || null, // Explicit null if not found
+            branchId: safeBranchId || null,
+            staffName: nameToSave, // Snapshot ismini zorunlu kıl
             syncStatus: 'syncing' as const,
             status: 'pending' as const,
-            isPaid: false // Default
+            isPaid: false 
         };
         
         if (!a.businessId || a.businessId === 'SYSTEM_ERR') {
@@ -719,16 +787,12 @@ const StoreContext = createContext<StoreState | null>(null);
         setAllAppointments(prev => [...prev, a]);
         try {
             await syncDb('appointments', 'insert', a, a.id);
+            store.addLog('Randevu Oluşturuldu', a.customerName, '', `${a.time} - ${a.service} (${nameToSave})`);
             return true;
         } catch (e) {
             console.error('AddAppointment Sync Failed:', e);
             return false;
         }
-        
-        // Log the action
-        store.addLog('Randevu Oluşturuldu', a.customerName, '', `${a.time} - ${a.service}`);
-        
-        return true;
      };
  
      const fetchDataFull = fetchData; // Alias
@@ -766,7 +830,7 @@ const StoreContext = createContext<StoreState | null>(null);
                     if (dbError.code === '23505' && dbError.message?.includes('slug')) {
                         console.log("Slug çakışması algılandı, otomatik onarılıyor...");
                         const suffix = Math.random().toString(36).substring(2, 5);
-                        newBiz.slug = `${newBiz.slug}-${suffix}`;
+                        (newBiz as any).slug = `${(newBiz as any).slug}-${suffix}`;
                         // İkinci deneme
                         await syncDb('businesses', 'insert', newBiz, newBizId);
                     } else {
@@ -784,9 +848,19 @@ const StoreContext = createContext<StoreState | null>(null);
                 };
                 await syncDb('branches', 'insert', defaultBranch, defaultBranch.id);
 
-                // 3. Başarılıysa state güncelle
+                // 3. Varsayılan Ödeme Tanımları (Nakit & Banka)
+                const defaultPayments = [
+                    { id: crypto.randomUUID(), business_id: newBizId, name: 'Kasa (Nakit)', type: 'cash', is_active: true },
+                    { id: crypto.randomUUID(), business_id: newBizId, name: 'Banka / POS', type: 'bank', is_active: true }
+                ];
+                for (const dp of defaultPayments) {
+                    await syncDb('payment_definitions', 'insert', dp, dp.id);
+                }
+
+                // 4. Başarılıysa state güncelle
                 setAllBusinesses(prev => [...prev, newBiz as any]);
                 setAllowedBranches(prev => [...prev, defaultBranch as any]);
+                setPaymentDefinitions(prev => [...prev, ...toCamel(defaultPayments)]);
                 
                 return newBiz as any;
             } catch (error) {
@@ -837,7 +911,7 @@ const StoreContext = createContext<StoreState | null>(null);
         services: allServices,
         packageDefinitions: allPackageDefinitions,
         commissionRules: allCommissionRules,
-        rates: [],
+        rates: allRates,
         expenses: expenses,
         zReports,
         settings,
@@ -886,11 +960,14 @@ const StoreContext = createContext<StoreState | null>(null);
                 createdAt: new Date().toISOString() 
             };
             setAllCustomers(prev => [...prev, nc]);
+            store.addLog('Müşteri Kaydedildi', nc.name, '', 'Yeni Kayıt');
             syncDb('customers', 'insert', nc, nc.id);
             return nc;
         },
         updateCustomer: (id, updates) => {
+            const old = allCustomers.find(x => x.id === id);
             setAllCustomers(prev => prev.map(c => c.id === id ? { ...c, ...updates } : c));
+            store.addLog('Müşteri Güncellendi', old?.name || 'Bilinmeyen', 'Eski Bilgiler', 'Güncellendi');
             syncDb('customers', 'update', updates, id);
         },
         addPackage: (p) => {
@@ -911,16 +988,25 @@ const StoreContext = createContext<StoreState | null>(null);
         addAppointment,
         moveAppointment: async (id, newTime, newStaffId) => {
             const appt = allAppointments.find(a => a.id === id);
-            setAllAppointments(prev => prev.map(a => a.id === id ? { ...a, time: newTime, staffId: newStaffId } : a));
-            syncDb('appointments', 'update', { time: newTime, staffId: newStaffId }, id);
+            
+            // Yeni terapist ismini bul ve snapshot al
+            const newStaff = allStaff.find(s => s.id === newStaffId);
+            const newStaffName = newStaff?.name || appt?.staffName || 'Bilinmeyen';
+
+            setAllAppointments(prev => prev.map(a => a.id === id ? { ...a, time: newTime, staffId: newStaffId, staffName: newStaffName } : a));
+            syncDb('appointments', 'update', { time: newTime, staff_id: newStaffId, staff_name: newStaffName }, id);
             
             if (appt) {
-                store.addLog('Randevu Taşındı', appt.customerName, appt.time, newTime);
+                store.addLog('Randevu Taşındı', appt.customerName, `${appt.time} (${appt.staffName})`, `${newTime} (${newStaffName})`);
             }
             return true;
         },
         deleteAppointment: async (id) => {
+            const appt = allAppointments.find(a => a.id === id);
             setAllAppointments(prev => prev.filter(a => a.id !== id));
+            if (appt) {
+                store.addLog('Randevu Silindi', appt.customerName, `${appt.time} (${appt.staffName})`, 'SİLİNDİ');
+            }
             syncDb('appointments', 'delete', {}, id);
             return true;
         },
@@ -966,6 +1052,7 @@ const StoreContext = createContext<StoreState | null>(null);
             syncDb('customer_media', 'delete', {}, id);
         },
         updateSettings: (s) => setSettings(prev => ({ ...prev, ...s })),
+        updateBusinessSettings: (s) => setSettings(prev => ({ ...prev, ...s })),
         addRoom: (r) => {
             const nr = { ...r, id: crypto.randomUUID(), businessId: getSafeBizId()!, createdAt: new Date().toISOString() };
             setAllRooms(prev => [...prev, nr as any]);
@@ -989,8 +1076,8 @@ const StoreContext = createContext<StoreState | null>(null);
                 referenceCode: generatePaymentRef(),
                 businessId: bizId, 
                 branchId: currentBranch?.id!, 
-                date: getIstanbulDate(),
-                createdAt: getIstanbulISO()
+                date: getTodayDate(),
+                createdAt: getLocalISO()
             };
             
             // 1. Save Payment
@@ -1106,6 +1193,7 @@ const StoreContext = createContext<StoreState | null>(null);
         addProduct: (p) => {
             const np = { ...p, id: crypto.randomUUID(), businessId: getSafeBizId()! };
             setAllInventory(prev => [...prev, np]);
+            store.addLog('Stok Kaydedildi', np.name, '', 'Yeni Ürün');
             syncDb('inventory', 'insert', np, np.id);
         },
         updateProduct: (id, updates) => {
@@ -1115,19 +1203,25 @@ const StoreContext = createContext<StoreState | null>(null);
         addExpense: (e) => {
             const ne = { ...e, id: crypto.randomUUID(), businessId: getSafeBizId()!, branchId: e.branchId || currentBranch?.id || null };
             setAllExpenses(prev => [...prev, ne as any]);
+            store.addLog('Gider Kaydedildi', ne.desc, '', `₺${ne.amount}`);
             syncDb('expenses', 'insert', ne, ne.id);
         },
         addService: (s) => {
             const ns = { ...s, id: crypto.randomUUID(), businessId: getSafeBizId()! };
             setAllServices(prev => [...prev, ns]);
+            store.addLog('Hizmet Eklendi', ns.name, '', `₺${ns.price}`);
             syncDb('services', 'insert', ns, ns.id);
         },
         updateService: (id, updates) => {
+            const old = allServices.find(s => s.id === id);
             setAllServices(prev => prev.map(s => s.id === id ? { ...s, ...updates } : s));
+            store.addLog('Hizmet Güncellendi', old?.name || 'Hizmet', 'Eski Bilgiler', 'Güncellendi');
             syncDb('services', 'update', updates, id);
         },
         removeService: (id) => {
+            const old = allServices.find(s => s.id === id);
             setAllServices(prev => prev.filter(s => s.id !== id));
+            store.addLog('Hizmet Silindi', old?.name || 'Hizmet', old?.name, 'SİLİNDİ');
             syncDb('services', 'delete', {}, id);
         },
         addPackageDefinition: (p) => {
@@ -1144,21 +1238,41 @@ const StoreContext = createContext<StoreState | null>(null);
             syncDb('package_definitions', 'delete', {}, id);
         },
         deleteCustomer: async (id) => {
+            const old = allCustomers.find(x => x.id === id);
             setAllCustomers(prev => prev.filter(c => c.id !== id));
+            if (old) {
+                store.addLog('Müşteri Silindi', old.name, old.name, 'SİLİNDİ');
+            }
             syncDb('customers', 'delete', {}, id);
             return true;
         },
-        updateBusinessLicense: (id, max) => {},
+        updateBusinessLicense: (id, max) => {
+            setAllBusinesses(prev => prev.map(b => b.id === id ? { ...b, maxUsers: max } : b));
+            syncDb('businesses', 'update', { max_users: max }, id);
+        },
         updateBusinessBranches: async (id, max) => {
             setAllBusinesses(prev => prev.map(b => b.id === id ? { ...b, maxBranches: max } : b));
             syncDb('businesses', 'update', { max_branches: max }, id);
         },
-        payDebt: async (id, amt, meth) => true,
-        addCommissionRule: (rule) => {},
-        removeCommissionRule: (id) => {},
-        updateRoomStatus: (id, status) => {
-            setAllRooms(prev => prev.map(r => r.id === id ? { ...r, status } : r));
-            syncDb('rooms', 'update', { status }, id);
+        payDebt: async (id, amt, meth) => {
+            const debt = allDebts.find(d => d.id === id);
+            if (!debt) return false;
+            
+            setAllDebts(prev => prev.map(d => d.id === id ? { ...d, status: 'kapalı' } : d));
+            syncDb('debts', 'update', { status: 'kapalı' }, id);
+            
+            // Opsiyonel: Tahsilat logu ekle
+            store.addLog('Borç Tahsil Edildi', debt.customerName, `₺${debt.amount}`, 'ÖDENDİ');
+            return true;
+        },
+        addCommissionRule: (rule) => {
+            const nr = { ...rule, id: crypto.randomUUID(), businessId: getSafeBizId()! };
+            setAllCommissionRules(prev => [...prev, nr as any]);
+            syncDb('commission_rules', 'insert', nr, nr.id);
+        },
+        removeCommissionRule: (id) => {
+            setAllCommissionRules(prev => prev.filter(r => r.id !== id));
+            syncDb('commission_rules', 'delete', {}, id);
         },
         addStaff: (s) => {
             const bizId = getSafeBizId();
@@ -1172,14 +1286,19 @@ const StoreContext = createContext<StoreState | null>(null);
             }
             const ns = { ...s, id: crypto.randomUUID(), businessId: getSafeBizId()!, branchId: currentBranch?.id!, status: 'Aktif' as const };
             setAllStaff(prev => [...prev, ns as any]);
+            store.addLog('Personel Eklendi', (ns as any).name, '', 'Yeni Kayıt');
             syncDb('staff', 'insert', ns, ns.id);
         },
         deleteStaff: (id) => {
+            const old = allStaff.find(s => s.id === id);
             setAllStaff(prev => prev.filter(s => s.id !== id));
+            store.addLog('Personel Silindi', old?.name || 'Personel', old?.name, 'SİLİNDİ');
             syncDb('staff', 'delete', {}, id);
         },
         updateStaff: (id, staff) => {
+            const old = allStaff.find(s => s.id === id);
             setAllStaff(prev => prev.map(s => s.id === id ? { ...s, ...staff } : s));
+            store.addLog('Personel Güncellendi', old?.name || 'Personel', 'Eski Bilgiler', 'Güncellendi');
             syncDb('staff', 'update', staff, id);
         },
         updateStaffPermissions: (userId, perms) => {
@@ -1282,8 +1401,8 @@ const StoreContext = createContext<StoreState | null>(null);
         getCustomerAppointments: (cid) => allAppointments.filter(a => a.customerId === cid),
         getCustomerAppointmentsByBranch: (cid, bid) => allAppointments.filter(a => a.customerId === cid && a.branchId === bid),
         getCustomerPayments: (cid) => allPayments.filter(p => p.customerId === cid),
-        getTodayPayments: () => allPayments.filter(p => p.date === getIstanbulDate()),
-        getTodayDate: () => getIstanbulDate(),
+        getTodayPayments: () => allPayments.filter(p => p.date === getTodayDate()),
+        getTodayDate: () => getTodayDate(),
         calculateCommission: (staffId, serviceName, price, packageId) => {
             if (packageId) return 0;
             const rule = allCommissionRules.find(r => r.staffId === staffId && (r.serviceName === serviceName || r.serviceName === 'Tümü'));
@@ -1294,7 +1413,8 @@ const StoreContext = createContext<StoreState | null>(null);
         },
         can: (p) => {
             if (!currentUser) return false;
-            if (currentUser.role === 'SaaS_Owner' || currentUser.role === 'Business_Owner') return true;
+            const role = currentUser.role?.toLowerCase();
+            if (role === 'saas_owner' || role === 'business_owner') return true;
             return currentUser.permissions.includes(p);
         },
         getUpsellSuggestions: (s) => [],
@@ -1373,12 +1493,9 @@ const StoreContext = createContext<StoreState | null>(null);
             syncDb('quotes', 'delete', {}, id);
         },
         addAnnouncement: async (announcement: any) => {
-            const { data, error } = await supabase.from('system_announcements').insert(toSnake(announcement)).select().single();
-            if (error) {
-                console.error("Announcement error:", error);
-                return;
-            }
-            setAllNotifs(prev => [...prev, toCamel(data)]);
+            const na = { ...announcement, id: crypto.randomUUID(), businessId: announcement.businessId || null, isActive: true };
+            setAllNotifs(prev => [...prev, na]);
+            syncDb('system_announcements', 'insert', na, na.id);
         },
         updateModuleStatus: async (bizId: string, moduleName: string, isEnabled: boolean) => {
             const { error } = await supabase.from('tenant_modules').upsert(toSnake({ businessId: bizId, moduleName, isEnabled }), { onConflict: 'business_id,module_name' });
@@ -1390,9 +1507,101 @@ const StoreContext = createContext<StoreState | null>(null);
             if (error) console.error("Pricing update error:", error);
             else setAllBusinesses(prev => prev.map(b => b.id === id ? { ...b, ...updates } : b));
         },
+        provisionStaffUser: async (data) => {
+            const { data: { session } } = await supabase.auth.getSession();
+            const res = await fetch('/api/business/provision-staff', {
+                method: 'POST',
+                headers: { 
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${session?.access_token}`
+                },
+                body: JSON.stringify(data)
+            });
+            const result = await res.json();
+            if (result.success) await fetchData(); // Kayıt sonrası verileri yenile
+            return result;
+        },
         systemAnnouncements,
         tenantModules,
-        isLicenseExpired: false
+        isLicenseExpired: false,
+        updateRates: (newRates) => {
+            setAllRates(newRates);
+        },
+        assignRoomToAppointment: async (appointmentId, roomId) => {
+            const oldAppt = allAppointments.find(a => a.id === appointmentId);
+            if (!oldAppt) return false;
+
+            const updatedAppt = { ...oldAppt, roomId, status: 'arrived' };
+            setAllAppointments(prev => prev.map(a => a.id === appointmentId ? updatedAppt : a));
+
+            try {
+                await syncDb('appointments', 'update', { roomId, status: 'arrived' }, appointmentId);
+                await syncDb('rooms', 'update', { status: 'occupied' }, roomId);
+                store.addLog('Oda Ataması (DND)', oldAppt.customerName, '', `${roomId} nolu odaya atandı`);
+                return true;
+            } catch (err) {
+                console.error('Room assignment sync error:', err);
+                return false;
+            }
+        },
+        runImperialAudit: () => {
+            const alerts: { type: 'critical' | 'warning' | 'info'; title: string; desc: string; targetId?: string; table?: string }[] = [];
+            const now = new Date();
+            const todayStr = now.toISOString().split('T')[0];
+
+            // 1. Ghost Room Check (Oda dolu ama randevu yok)
+            allRooms.forEach(room => {
+                if (room.status === 'occupied') {
+                    const activeAppt = allAppointments.find(a => (a as any).roomId === room.id && (a.status === 'arrived' || a.status === 'pending')); // arrived veya pending (eğer oda atanmışsa)
+                    if (!activeAppt) {
+                        alerts.push({
+                            type: 'critical',
+                            title: 'Hayalet Oda Tespiti',
+                            desc: `${room.name} dolu görünüyor ancak aktif bir randevu atanmamış. Kaçak işlem olabilir!`,
+                            targetId: room.id,
+                            table: 'rooms'
+                        });
+                    }
+                }
+            });
+
+            // 2. Forgotten Completion Check (Randevu saati geçti ama hala aktif)
+            allAppointments.filter(a => a.date === todayStr && (a.status === 'pending' || a.status === 'arrived')).forEach(appt => {
+                const [h, m] = appt.time.split(':').map(Number);
+                const apptDate = new Date(now);
+                apptDate.setHours(h, m, 0, 0);
+                const endDate = new Date(apptDate.getTime() + (appt.duration || 60) * 60000);
+
+                if (now > endDate) {
+                    alerts.push({
+                        type: 'warning',
+                        title: 'Tamamlanmamış İşlem',
+                        desc: `${appt.customerName} için planlanan ${appt.service} süresi doldu ancak işlem kapatılmadı. Terapist çıkışı yapılmamış olabilir.`,
+                        targetId: appt.id,
+                        table: 'appointments'
+                    });
+                }
+            });
+
+            // 3. Therapist Activity Check (Tablet entegrasyonu hazırlığı)
+            allAppointments.filter(a => a.date === todayStr && a.status === 'arrived').forEach(appt => {
+                if (!appt.checkInTime) {
+                    alerts.push({
+                        type: 'info',
+                        title: 'Terapist Bekleniyor',
+                        desc: `${appt.customerName} geldi olarak işaretlendi ancak henüz odaya/terapiste yönlendirilmedi (Check-in eksik).`,
+                        targetId: appt.id,
+                        table: 'appointments'
+                    });
+                }
+            });
+
+            return alerts;
+        },
+        updateRoomStatus: (id, status) => {
+            setAllRooms(prev => prev.map(r => r.id === id ? { ...r, status } : r));
+            syncDb('rooms', 'update', { status }, id);
+        },
     };
  
      return (

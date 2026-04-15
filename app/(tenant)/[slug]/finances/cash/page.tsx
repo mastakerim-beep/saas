@@ -13,10 +13,11 @@ import { motion } from "framer-motion";
 export default function CashManagementPage() {
     const { 
         payments, expenses, customers, paymentDefinitions,
-        currentBranch, can, currentUser, isInitialized, getTodayDate
+        currentBranch, can, currentUser, isInitialized, getTodayDate, fetchData
     } = useStore();
 
     const [isMounted, setIsMounted] = useState(false);
+    const [isRefreshing, setIsRefreshing] = useState(false);
     const [dateRange, setDateRange] = useState({ 
         start: '', 
         end: '' 
@@ -26,19 +27,38 @@ export default function CashManagementPage() {
     const today = useMemo(() => isMounted ? getTodayDate() : '', [isMounted, getTodayDate]);
     
     // Permission Lock Logic
-    const hasPastAccess = useMemo(() => isMounted ? can('view_past_finances') : false, [isMounted, can]);
+    const hasPastAccess = useMemo(() => {
+        if (!isMounted) return false;
+        // Business Owner veya SaaS Owner ise her zaman true
+        if (currentUser?.role?.toLowerCase() === 'saas_owner' || currentUser?.role?.toLowerCase() === 'business_owner') return true;
+        return can('view_historical_finance');
+    }, [isMounted, currentUser, can]);
 
     useEffect(() => {
         setIsMounted(true);
-        setDateRange({ start: today, end: today });
-    }, [today]);
+    }, []);
 
-    // If permission is missing, force today's date
+    // Tarih aralığını sadece bir kez (ilk açılışta) ayarla
     useEffect(() => {
-        if (isMounted && !hasPastAccess) {
-            setDateRange({ start: today, end: today });
+        if (isMounted && isInitialized && !dateRange.start) {
+            const todayStr = getTodayDate();
+            setDateRange({ start: todayStr, end: todayStr });
         }
-    }, [hasPastAccess, today, isMounted]);
+    }, [isMounted, isInitialized, getTodayDate, dateRange.start]);
+
+    // Hatalı auto-reset useEffect kaldırıldı.
+
+    const handleSearch = async () => {
+        setIsRefreshing(true);
+        try {
+            await fetchData(undefined, undefined, true, dateRange.start, dateRange.end);
+        } catch (err) {
+            console.error("Search failed:", err);
+        } finally {
+            // Küçük bir gecikme ekleyerek UI sıçramalarını önleyelim
+            setTimeout(() => setIsRefreshing(false), 300);
+        }
+    };
 
     // Combined Transactions (Payments + Expenses)
     const transactions = useMemo(() => {
@@ -132,8 +152,11 @@ export default function CashManagementPage() {
                     <h1 className="text-xl font-bold text-gray-800 tracking-tight">Kasa</h1>
                 </div>
                 <div className="flex gap-2">
-                    <button className="flex items-center gap-2 px-4 py-2 bg-gray-50 text-gray-600 rounded-lg text-xs font-bold border border-gray-200 hover:bg-gray-100 transition-all">
-                        İşlemler <ChevronDown size={14} />
+                    <button 
+                        onClick={() => window.print()}
+                        className="flex items-center gap-2 px-4 py-2 bg-gray-50 text-gray-600 rounded-lg text-xs font-bold border border-gray-200 hover:bg-gray-100 transition-all shadow-sm"
+                    >
+                        Yazdır / Dışa Aktar <ChevronDown size={14} />
                     </button>
                 </div>
             </div>
@@ -184,12 +207,21 @@ export default function CashManagementPage() {
                                 <span className="text-[10px] font-black uppercase">Geçmiş Veri Kilidi Aktif</span>
                             </div>
                         )}
-                        <button className="p-2.5 text-rose-500 bg-rose-50 rounded-lg hover:bg-rose-100 transition-all border border-rose-100">
+                        <button 
+                            onClick={() => setDateRange({ start: today, end: today })}
+                            title="Tarihi Sıfırla"
+                            className="p-2.5 text-rose-500 bg-rose-50 rounded-lg hover:bg-rose-100 transition-all border border-rose-100"
+                        >
                             <Trash2 size={16} />
                         </button>
                     </div>
-                    <button className="px-10 py-3 bg-[#1ABE9D] text-white rounded-xl text-xs font-black uppercase tracking-widest hover:bg-[#158C73] transition-all shadow-lg shadow-emerald-100 flex items-center gap-2 ml-auto">
-                        <Search size={16} /> Ara
+                    <button 
+                        onClick={handleSearch}
+                        disabled={isRefreshing}
+                        className="px-10 py-3 bg-[#1ABE9D] text-white rounded-xl text-xs font-black uppercase tracking-widest hover:bg-[#158C73] transition-all shadow-lg shadow-emerald-100 flex items-center gap-2 ml-auto disabled:opacity-50"
+                    >
+                        {isRefreshing ? <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> : <Search size={16} />} 
+                        {isRefreshing ? 'GÜNCELLENİYOR...' : 'Ara'}
                     </button>
                 </div>
             </div>

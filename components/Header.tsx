@@ -96,7 +96,7 @@ export default function Header() {
                 <div className="relative">
                     <div 
                         onClick={() => setShowProfileMenu(!showProfileMenu)}
-                        className="w-12 h-12 bg-gray-900 rounded-full flex items-center justify-center text-white font-black text-sm cursor-pointer hover:scale-105 active:scale-95 transition-all shadow-xl shadow-gray-200 border-4 border-white"
+                        className="w-12 h-12 bg-gradient-to-br from-indigo-600 to-purple-600 rounded-full flex items-center justify-center text-white font-black text-sm cursor-pointer hover:scale-105 active:scale-95 transition-all shadow-xl shadow-indigo-100 border-4 border-white"
                     >
                         {currentUser.name?.substring(0, 2).toUpperCase()}
                     </div>
@@ -109,10 +109,10 @@ export default function Header() {
                                 exit={{ opacity: 0, y: 20, scale: 0.95 }}
                                 className="absolute top-16 right-0 w-72 bg-white border border-gray-100 rounded-[2.5rem] shadow-2xl p-4 z-[200] overflow-hidden"
                             >
-                                <div className="p-6 bg-gray-900 rounded-[2rem] text-white mb-3">
-                                    <p className="text-[10px] font-black opacity-50 uppercase tracking-[0.2em] mb-1">Yönetici Paneli</p>
+                                <div className="p-6 bg-gradient-to-br from-indigo-600 to-purple-700 rounded-[2rem] text-white mb-3 shadow-lg shadow-indigo-100">
+                                    <p className="text-[10px] font-black opacity-60 uppercase tracking-[0.2em] mb-1">Yönetici Paneli</p>
                                     <p className="font-black text-lg tracking-tight mb-1">{currentUser.name}</p>
-                                    <div className="inline-block px-3 py-1 bg-white/10 rounded-full text-[9px] font-black uppercase tracking-widest">{currentUser.role.replace('_', ' ')}</div>
+                                    <div className="inline-block px-3 py-1 bg-white/20 rounded-full text-[9px] font-black uppercase tracking-widest">{currentUser.role.replace('_', ' ')}</div>
                                 </div>
                                 <div className="space-y-1">
                                     <button className="w-full flex items-center gap-4 p-4 text-xs font-black text-gray-700 hover:bg-gray-50 rounded-3xl transition-all">

@@ -50,6 +50,7 @@ export type Database = {
       tenant_modules: { Row: TenantModuleRow; Insert: TenantModuleInsert; Update: Partial<TenantModuleInsert> };
       booking_settings: { Row: BookingSettingsRow; Insert: BookingSettingsInsert; Update: Partial<BookingSettingsInsert> };
       quotes: { Row: QuoteRow; Insert: QuoteInsert; Update: Partial<QuoteInsert> };
+      z_reports: { Row: ZReportRow; Insert: ZReportInsert; Update: Partial<ZReportInsert> };
     };
   };
 };
@@ -78,8 +79,8 @@ export interface AppUserRow { id: string; business_id: string; branch_id: string
 export interface AppUserInsert { business_id: string; branch_id?: string | null; role: string; name: string; email: string; permissions?: string[]; }
 export interface CustomerRow { id: string; business_id: string; name: string; phone: string; email: string; birthdate: string; segment: string; note: string; is_churn_risk: boolean; created_at: string; }
 export interface CustomerInsert { business_id: string; name: string; phone: string; email?: string; birthdate?: string; segment?: string; note?: string; is_churn_risk?: boolean; }
-export interface AppointmentRow { id: string; business_id: string; branch_id: string; customer_id: string; customer_name: string; service: string; staff_name: string; staff_id: string; room_id: string | null; date: string; time: string; duration: number; status: string; price: number; deposit_paid: number; is_online: boolean; package_id: string | null; membership_id: string | null; selected_regions: string[]; sync_status: string; created_at: string; }
-export interface AppointmentInsert { business_id: string; branch_id: string; customer_id: string; customer_name: string; service: string; staff_name?: string; staff_id?: string; room_id?: string | null; date: string; time: string; duration?: number; status?: string; price: number; deposit_paid?: number; is_online?: boolean; selected_regions?: string[]; }
+export interface AppointmentRow { id: string; business_id: string; branch_id: string; customer_id: string; customer_name: string; service: string; staff_name: string; staff_id: string; room_id: string | null; date: string; time: string; duration: number; status: string; price: number; deposit_paid: number; is_online: boolean; package_id: string | null; membership_id: string | null; selected_regions: string[]; sync_status: string; check_in_time: string | null; check_out_time: string | null; created_at: string; }
+export interface AppointmentInsert { business_id: string; branch_id: string; customer_id: string; customer_name: string; service: string; staff_name?: string; staff_id?: string; room_id?: string | null; date: string; time: string; duration?: number; status?: string; price: number; deposit_paid?: number; is_online?: boolean; selected_regions?: string[]; check_in_time?: string | null; check_out_time?: string | null; }
 export interface PaymentRow { id: string; business_id: string; branch_id: string; appointment_id: string; customer_id: string; customer_name: string; service: string; methods: object; total_amount: number; date: string; note: string; sync_status: string; created_at: string; }
 export interface PaymentInsert { business_id: string; branch_id: string; appointment_id: string; customer_id: string; customer_name: string; service: string; methods: object; total_amount: number; date: string; note?: string; }
 export interface DebtRow { id: string; business_id: string; customer_id: string; appointment_id: string | null; amount: number; due_date: string; description: string; status: string; created_at: string; }
@@ -100,3 +101,6 @@ export interface ServiceRow { id: string; business_id: string; name: string; dur
 export interface ServiceInsert { business_id: string; name: string; duration: number; price: number; color?: string; consumables?: Record<string, number>; }
 export interface AuditLogRow { id: string; business_id: string; date: string; customer_name: string; action: string; old_value: string | null; new_value: string | null; user: string; created_at: string; }
 export interface AuditLogInsert { business_id: string; customer_name?: string; action: string; old_value?: string | null; new_value?: string | null; user: string; }
+
+export interface ZReportRow { id: string; business_id: string; branch_id: string; report_date: string; expected_nakit: number; actual_nakit: number; expected_kart: number; actual_kart: number; expected_havale: number; actual_havale: number; total_difference: number; closed_by: string; notes: string | null; audit_log: any; created_at: string; }
+export interface ZReportInsert { business_id: string; branch_id: string; report_date?: string; expected_nakit?: number; actual_nakit?: number; expected_kart?: number; actual_kart?: number; expected_havale?: number; actual_havale?: number; total_difference?: number; closed_by: string; notes?: string | null; audit_log?: any; }

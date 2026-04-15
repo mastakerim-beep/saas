@@ -179,6 +179,7 @@ export default function Sidebar() {
                         {isHovered && <p className="px-4 text-[10px] font-black text-indigo-400 uppercase tracking-widest mb-4 opacity-50 overflow-hidden whitespace-nowrap">Sistem & Paket</p>}
                         <div className="space-y-1">
                             <SidebarItem isHovered={isHovered} href={currentBusiness?.slug ? `/${currentBusiness.slug}/billing` : '/billing'} icon={CreditCard} label="Platform Üyelik" colorClass="text-emerald-500" />
+                            <SidebarItem isHovered={isHovered} href={currentBusiness?.slug ? `/${currentBusiness.slug}/logs` : '/logs'} icon={Terminal} label="Kernel Log" colorClass="text-gray-900" />
                             <SidebarItem isHovered={isHovered} href={currentBusiness?.slug ? `/${currentBusiness.slug}/users` : '/users'} icon={UserCog} label="Kullanıcı Yetkileri" />
                         </div>
                     </div>

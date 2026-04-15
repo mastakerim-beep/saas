@@ -95,7 +95,7 @@ body {
   }
 
   .modal-premium {
-    @apply bg-white dark:bg-[#0D0D15] border border-indigo-100 dark:border-white/5 rounded-[3.5rem] shadow-2xl;
+    @apply bg-white dark:bg-[#0A0A1F] border border-indigo-100 dark:border-white/5 rounded-[3.5rem] shadow-2xl;
   }
 
   .text-gradient {

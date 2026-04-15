@@ -1,21 +1,29 @@
 "use client";
 
-import { useState } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useStore } from '@/lib/store';
-import { Banknote, CreditCard, Building2, Lock, CheckCircle, AlertCircle, Sparkles, Send, History } from 'lucide-react';
-import { motion } from 'framer-motion';
+import { 
+    Banknote, CreditCard, Building2, Lock, CheckCircle, AlertCircle, 
+    Sparkles, Send, History, ShieldAlert, Bot, RefreshCw, Box, UserCheck 
+} from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 
 export default function GunSonuPage() {
-    const { getTodayPayments, appointments, closeDay, zReports } = useStore();
+    const { getTodayPayments, appointments, closeDay, zReports, runImperialAudit, updateRoomStatus } = useStore();
     const todayPayments = getTodayPayments();
     const [isSaving, setIsSaving] = useState(false);
     const [note, setNote] = useState('');
+    const [auditResults, setAuditResults] = useState<{ type: 'critical' | 'warning' | 'info'; title: string; desc: string; targetId?: string; table?: string }[]>([]);
 
-    // Calculate expected amounts from completed appointments today
+    // Calculate expected amounts
     const todayStr = new Date().toISOString().split('T')[0];
     const completedToday = appointments.filter(a => a.date === todayStr && a.status === 'completed');
     
-    // Sum payments by method (across all payments)
+    useEffect(() => {
+        const results = runImperialAudit();
+        setAuditResults(results);
+    }, [appointments]); // Re-run audit when appointments change
+
     const nakitGercek = todayPayments.reduce((acc: number, p) => 
         acc + (p.methods?.filter((m: any) => m.method === 'nakit').reduce((s: number, m: any) => s + (m.amount * (m.rate || 1)), 0) || 0), 0);
     const kartGercek = todayPayments.reduce((acc: number, p) => 
@@ -24,7 +32,6 @@ export default function GunSonuPage() {
         acc + (p.methods?.filter((m: any) => m.method === 'havale').reduce((s: number, m: any) => s + (m.amount * (m.rate || 1)), 0) || 0), 0);
     const toplamGercek = todayPayments.reduce((s, p) => s + p.totalAmount, 0);
 
-    // Manual expected input (counts from the till)
     const [nakitSayılan, setNakitSayılan] = useState('');
     const [kartSayılan, setKartSayılan] = useState('');
     const [havaleSayılan, setHavaleSayılan] = useState('');
@@ -42,9 +49,18 @@ export default function GunSonuPage() {
             alert('Lütfen en az bir sayım sonucu giriniz.');
             return;
         }
+
+        const criticalAlerts = auditResults.filter(a => a.type === 'critical');
+        if (criticalAlerts.length > 0) {
+            const proceed = confirm(`Sistemde ${criticalAlerts.length} adet KRİTİK kaçak tespit edildi! Kapatmadan önce bunları düzeltmeniz önerilir.\n\nDevam etmek istiyor musunuz?`);
+            if (!proceed) return;
+        }
+
         if (isAlreadyClosed && !confirm('Bugün için zaten bir kapanış raporu mevcut. Yenisini eklemek istiyor musunuz?')) return;
 
         setIsSaving(true);
+        const auditLogText = auditResults.map(a => `[${a.type.toUpperCase()}] ${a.title}: ${a.desc}`).join('\n');
+        
         const success = await closeDay({
             reportDate: todayStr,
             expectedNakit: nakitGercek,
@@ -54,16 +70,13 @@ export default function GunSonuPage() {
             expectedHavale: havaleGercek,
             actualHavale: Number(havaleSayılan || 0),
             totalDifference: toplamFark,
-            notes: note
+            notes: note + (auditLogText ? `\n\n--- AI DENETIM RAPORU ---\n${auditLogText}` : '')
         });
         
         setIsSaving(false);
         if (success) {
-            alert('Gün sonu başarıyla kaydedildi ve kasa kapatıldı.');
-            setNakitSayılan('');
-            setKartSayılan('');
-            setHavaleSayılan('');
-            setNote('');
+            alert('Gün sonu başarıyla kaydedildi.');
+            setNakitSayılan(''); setKartSayılan(''); setHavaleSayılan(''); setNote('');
         }
     };
 
@@ -74,10 +87,15 @@ export default function GunSonuPage() {
     };
 
     return (
-        <div className="p-8 max-w-[1400px] mx-auto pb-32">
-            <div className="flex justify-between items-end mb-10">
+        <div className="p-8 max-w-[1500px] mx-auto pb-32 font-sans">
+            <div className="flex justify-between items-end mb-12">
                 <div>
-                    <h1 className="text-4xl font-black tracking-tighter mb-2 text-gray-900 italic uppercase">Gün Sonu Kasası</h1>
+                    <div className="flex items-center gap-3 mb-2">
+                        <div className="bg-indigo-600 text-white p-2.5 rounded-2xl shadow-lg shadow-indigo-200">
+                            <Lock size={20} />
+                        </div>
+                        <h1 className="text-3xl md:text-5xl font-black tracking-tighter text-gray-900 uppercase italic">Gün Sonu Kasası</h1>
+                    </div>
                     <p className="text-gray-500 text-xs font-black uppercase tracking-widest flex items-center gap-2">
                         <History size={14} className="text-indigo-500" />
                         {new Date().toLocaleDateString('tr-TR', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
@@ -85,231 +103,191 @@ export default function GunSonuPage() {
                     </p>
                 </div>
                 {isAlreadyClosed && (
-                    <div className="px-4 py-2 bg-emerald-100 text-emerald-700 rounded-xl text-[10px] font-black uppercase tracking-widest flex items-center gap-2 border border-emerald-200">
+                    <div className="px-5 py-2.5 bg-emerald-50 text-emerald-600 rounded-2xl text-[10px] font-black uppercase tracking-widest flex items-center gap-2 border border-emerald-100 shadow-sm">
                         <CheckCircle size={14} /> BUGÜN KAPATILDI
                     </div>
                 )}
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
-                {[
-                    { label: 'Nakit Tahsilat', val: nakitGercek, icon: Banknote, color: 'text-emerald-500', bg: 'bg-emerald-50' },
-                    { label: 'Kart Tahsilat', val: kartGercek, icon: CreditCard, color: 'text-indigo-500', bg: 'bg-indigo-50' },
-                    { label: 'Havale Tahsilat', val: havaleGercek, icon: Building2, color: 'text-blue-500', bg: 'bg-blue-50' }
-                ].map((stat, i) => (
-                    <div key={i} className="bg-white border border-gray-100 rounded-[2.5rem] p-8 flex flex-col items-center shadow-lg shadow-gray-200/20 group hover:border-indigo-200 transition-all">
-                        <div className={`p-4 ${stat.bg} ${stat.color} rounded-2xl mb-4 group-hover:scale-110 transition-transform`}>
-                            <stat.icon size={28} />
-                        </div>
-                        <p className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400 mb-2">{stat.label}</p>
-                        <p className="text-4xl font-black text-gray-900 italic tracking-tighter">₺{stat.val.toLocaleString('tr-TR')}</p>
-                    </div>
-                ))}
-            </div>
-
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
-                {/* Left: Reconciliation Form */}
-                <div className="space-y-8">
-                    <div className="bg-white border border-gray-100 rounded-[3rem] p-10 shadow-xl shadow-gray-200/40 relative overflow-hidden">
-                        <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-500/5 rounded-full -mr-16 -mt-16 blur-2xl" />
-                        
-                        <h2 className="text-2xl font-black mb-8 flex items-center gap-4 italic uppercase tracking-tighter">
-                            <div className="p-3 bg-indigo-600 rounded-2xl text-white shadow-lg shadow-indigo-200"><Lock size={20} /></div>
-                            Kasa Mutabakatı
-                        </h2>
-                        
-                        <div className="space-y-6">
-                            {[
-                                { label: 'NAKİT SAYIM', val: nakitSayılan, set: setNakitSayılan, gercek: nakitGercek, fark: nakitFark, icon: Banknote },
-                                { label: 'KART POS TOPLAM', val: kartSayılan, set: setKartSayılan, gercek: kartGercek, fark: kartFark, icon: CreditCard },
-                                { label: 'HAVALE TOPLAM', val: havaleSayılan, set: setHavaleSayılan, gercek: havaleGercek, fark: havaleFark, icon: Building2 },
-                            ].map(({ label, val, set, gercek, fark, icon: Icon }) => (
-                                <div key={label} className="group bg-gray-50/50 rounded-[2rem] p-6 border border-gray-50 transition-all hover:bg-white hover:border-indigo-100 hover:shadow-xl hover:shadow-indigo-50/20">
-                                    <div className="flex justify-between items-center mb-4">
-                                        <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest flex items-center gap-2">
-                                            <Icon className="w-4 h-4 text-indigo-400" /> {label}
-                                        </label>
-                                        <FarkBadge fark={fark} />
-                                    </div>
-                                    <div className="flex items-center gap-6">
-                                        <div className="flex-1">
-                                            <div className="flex justify-between items-end mb-2">
-                                                <p className="text-[10px] font-bold text-gray-300 uppercase italic">Sistem Kaydı: ₺{gercek.toLocaleString('tr-TR')}</p>
-                                            </div>
-                                            <input 
-                                                type="number" 
-                                                value={val} 
-                                                onChange={e => set(e.target.value)}
-                                                placeholder="Sayım sonucu..."
-                                                className="w-full bg-white border border-gray-200 rounded-2xl px-6 py-4 text-sm font-black focus:outline-none focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-400 transition-all" 
-                                            />
-                                        </div>
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-
-                        <div className="mt-8 space-y-4">
-                            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Kapanış Notları (Opsiyonel)</label>
-                            <textarea 
-                                value={note}
-                                onChange={e => setNote(e.target.value)}
-                                placeholder="Eksik/Fazla açıklaması veya gün özeti..."
-                                className="w-full bg-gray-50 border border-gray-100 rounded-2xl p-5 text-xs font-bold min-h-[100px] outline-none focus:bg-white focus:border-indigo-200 transition-all"
-                            />
-                        </div>
-
-                        {hasInputs && (
-                            <motion.div 
-                                initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
-                                className={`mt-10 p-8 rounded-[2.5rem] border-4 flex items-center justify-between transition-all ${toplamFark === 0 ? 'bg-emerald-50 border-emerald-500/20 text-emerald-900 shadow-xl shadow-emerald-50' : 'bg-red-50 border-red-500/20 text-red-900'}`}
-                            >
-                                <div className="flex items-center gap-5">
-                                    <div className={`p-4 rounded-2xl shadow-lg ${toplamFark === 0 ? 'bg-emerald-500 text-white shadow-emerald-200' : 'bg-red-500 text-white shadow-red-200'}`}>
-                                        {toplamFark === 0 ? <CheckCircle className="w-8 h-8" /> : <AlertCircle className="w-8 h-8" />}
-                                    </div>
-                                    <div>
-                                        <h4 className="font-black text-lg uppercase tracking-tighter italic">{toplamFark === 0 ? 'Kasa Kusursuz' : 'Kasa Farkı Mevcut'}</h4>
-                                        <p className="text-[10px] font-black opacity-60 uppercase tracking-widest">{toplamFark === 0 ? 'MUTABAKAT SAĞLANDI' : 'KONTROL EDİLMELİ'}</p>
-                                    </div>
-                                </div>
-                                <span className="text-4xl font-black italic tabular-nums">
-                                    {toplamFark > 0 ? '+' : ''}{toplamFark.toLocaleString('tr-TR')} ₺
-                                </span>
-                            </motion.div>
-                        )}
-
-                        <button 
-                            disabled={!hasInputs || isSaving}
-                            onClick={handleCloseDay}
-                            className="w-full mt-10 py-6 bg-indigo-600 text-white rounded-[2rem] font-black text-xs uppercase tracking-[0.3em] shadow-2xl shadow-indigo-200 hover:bg-indigo-700 active:scale-95 transition-all disabled:opacity-50 flex items-center justify-center gap-4 group"
-                        >
-                            {isSaving ? (
-                                <>KAYDEDİLİYOR...</>
-                            ) : (
-                                <>
-                                    <Send size={18} className="group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform" /> 
-                                    GÜNÜ KAPAT VE RAPORU KAYDET
-                                </>
-                            )}
-                        </button>
-                    </div>
-
-                    {/* AI Analytics Placeholder - Dynamic */}
-                    <div className="bg-[#0f172a] rounded-[3rem] p-10 text-white shadow-2xl relative overflow-hidden group border border-white/5">
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
+                {/* Left: AI Audit Center */}
+                <div className="lg:col-span-4 space-y-8">
+                    <div className="bg-[#0f172a] rounded-[3rem] p-8 text-white shadow-2xl relative overflow-hidden group border border-white/5">
                         <div className="absolute top-0 right-0 w-96 h-96 bg-indigo-500/10 rounded-full -mr-48 -mt-48 blur-[100px]" />
                         <div className="relative z-10">
                             <div className="flex items-center justify-between mb-8">
                                 <div className="flex items-center gap-4">
                                     <div className="p-3 bg-indigo-500/20 rounded-2xl backdrop-blur-md border border-white/10">
-                                        <Sparkles className="w-6 h-6 text-indigo-400" />
+                                        <Bot className="w-6 h-6 text-indigo-400" />
                                     </div>
-                                    <h3 className="text-sm font-black uppercase tracking-[0.2em] text-indigo-300 italic">Akıllı Performans Analizi</h3>
+                                    <h3 className="text-sm font-black uppercase tracking-[0.2em] text-indigo-300 italic">Imperial Audit</h3>
                                 </div>
-                                <span className="text-[10px] font-black bg-indigo-500/20 px-3 py-1 rounded-full border border-indigo-500/20 uppercase">V4.0 Engine</span>
+                                <div className="animate-pulse flex items-center gap-2">
+                                    <div className="w-2 h-2 rounded-full bg-emerald-500" />
+                                    <span className="text-[10px] font-black text-emerald-400 uppercase tracking-widest">Canlı Denetim</span>
+                                </div>
                             </div>
                             
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                                <div className="space-y-4">
-                                    <p className="text-[10px] font-black text-gray-500 uppercase tracking-widest">Kapasite Verimliliği</p>
-                                    <div className="flex items-end gap-3">
-                                        <span className="text-4xl font-black italic">%74</span>
-                                        <span className="text-[10px] font-black text-emerald-400 mb-2 uppercase tracking-tighter shadow-sm">+12% GEÇEN HAFTA</span>
+                            <div className="space-y-4 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
+                                {auditResults.length > 0 ? (
+                                    auditResults.map((alert, idx) => (
+                                        <motion.div 
+                                            initial={{ opacity: 0, x: -20 }}
+                                            animate={{ opacity: 1, x: 0 }}
+                                            key={idx} 
+                                            className={`p-5 rounded-3xl border ${alert.type === 'critical' ? 'bg-red-500/10 border-red-500/20' : 'bg-amber-500/10 border-amber-500/20'}`}
+                                        >
+                                            <div className="flex items-start gap-4">
+                                                <div className={`mt-1 ${alert.type === 'critical' ? 'text-red-400' : 'text-amber-400'}`}>
+                                                    <ShieldAlert size={18} />
+                                                </div>
+                                                <div className="flex-1">
+                                                    <p className="text-[11px] font-black uppercase tracking-wider mb-1">{alert.title}</p>
+                                                    <p className="text-xs text-gray-400 font-bold leading-relaxed mb-3">{alert.desc}</p>
+                                                    
+                                                    {alert.table === 'rooms' && (
+                                                        <button 
+                                                            onClick={async () => {
+                                                                if (alert.targetId) {
+                                                                    await updateRoomStatus(alert.targetId, 'available');
+                                                                    setAuditResults(prev => prev.filter(a => a.targetId !== alert.targetId));
+                                                                }
+                                                            }}
+                                                            className="flex items-center gap-2 px-3 py-1.5 bg-white/10 hover:bg-white/20 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all"
+                                                        >
+                                                            <RefreshCw size={12} /> Odayı Boşalt
+                                                        </button>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        </motion.div>
+                                    ))
+                                ) : (
+                                    <div className="py-20 text-center opacity-30">
+                                        <UserCheck className="w-12 h-12 mx-auto mb-4 text-emerald-400" />
+                                        <p className="text-[10px] font-black uppercase tracking-[0.3em]">Hata/Kaçak tespiti yok</p>
                                     </div>
-                                    <div className="h-1.5 w-full bg-white/5 rounded-full overflow-hidden">
-                                        <div className="h-full bg-indigo-500 rounded-full w-[74%]" />
-                                    </div>
-                                </div>
-                                <div className="space-y-4">
-                                    <p className="text-[10px] font-black text-gray-500 uppercase tracking-widest">Müşteri Memnuniyeti</p>
-                                    <div className="flex items-end gap-3">
-                                        <span className="text-4xl font-black italic">4.9</span>
-                                        <span className="text-[10px] font-black text-indigo-300 mb-2 uppercase tracking-tighter">MÜKEMMEL</span>
-                                    </div>
-                                    <div className="flex gap-1">
-                                        {[1,2,3,4,5].map(s => <Sparkles key={s} className="w-4 h-4 text-amber-400 fill-amber-400" />)}
-                                    </div>
-                                </div>
+                                )}
                             </div>
 
-                            <div className="mt-10 pt-8 border-t border-white/5 flex gap-10">
-                                <div>
-                                    <p className="text-[10px] font-black text-indigo-400 uppercase mb-2">Önerilen Aksiyon</p>
-                                    <p className="text-xs font-bold text-gray-300 leading-relaxed max-w-xs"> Bali Masajı talebi pik noktada. Yarın için ek terapist mesaisi planlanabilir. </p>
-                                </div>
-                                <div className="flex-1 bg-white/5 rounded-2xl p-4 border border-white/5 text-center">
-                                    <p className="text-[10px] font-black text-gray-500 uppercase mb-2">Yarınki Beklenti</p>
-                                    <p className="text-xl font-black italic">₺42.500</p>
+                            <div className="mt-8 pt-8 border-t border-white/5">
+                                <p className="text-[10px] font-black text-indigo-400 uppercase mb-4 tracking-widest">AI Önerisi</p>
+                                <div className="bg-white/5 rounded-2xl p-5 border border-white/5">
+                                    <p className="text-xs font-bold text-gray-300 leading-relaxed italic">
+                                        {auditResults.filter(a => a.type === 'critical').length > 0 
+                                            ? "Dikkat! Hayalet odalar tespit edildi. Kapatmadan önce odaları 'Müsait' yaparak kasa kaçaklarını önleyin."
+                                            : "Tüm operasyonel veriler mutabık. Kasayı güvenle kapatabilirsiniz."}
+                                    </p>
                                 </div>
                             </div>
                         </div>
+                    </div>
+
+                    <div className="card-apple p-10 bg-white/40 shadow-xl border-white underline-none">
+                         <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-6 text-center italic">Operasyonel Skor</h4>
+                         <div className="flex flex-col items-center">
+                            <div className="relative w-40 h-40 flex items-center justify-center">
+                                <svg className="w-full h-full rotate-[-90deg]">
+                                    <circle cx="80" cy="80" r="72" stroke="currentColor" strokeWidth="8" fill="transparent" className="text-gray-100" />
+                                    <circle cx="80" cy="80" r="72" stroke="currentColor" strokeWidth="8" fill="transparent" strokeDasharray="452.3" strokeDashoffset={452.3 - (452.3 * 92 / 100)} className="text-indigo-600 transition-all duration-1000" />
+                                </svg>
+                                <span className="absolute text-5xl font-black italic tracking-tighter">92</span>
+                            </div>
+                            <p className="mt-6 text-[10px] font-black text-indigo-600 uppercase tracking-[0.3em]">Hatasızlık Oranı</p>
+                         </div>
                     </div>
                 </div>
 
-                {/* Right: Transaction Detailed Feed */}
-                <div className="bg-white border border-gray-100 rounded-[3rem] p-10 shadow-xl shadow-gray-200/40 h-fit sticky top-8">
-                    <div className="flex justify-between items-center mb-10">
-                        <div>
-                            <h2 className="text-2xl font-black text-gray-900 leading-none italic uppercase tracking-tighter">İşlem Beslemesi</h2>
-                            <p className="text-[10px] font-black text-gray-400 mt-2 uppercase tracking-[0.2em]">GERÇEK ZAMANLI KAYITLAR</p>
+                {/* Right: Reconciliation & Feed */}
+                <div className="lg:col-span-8 space-y-8">
+                    <div className="bg-white border border-gray-100 rounded-[3rem] p-10 shadow-xl shadow-gray-200/40">
+                        <div className="flex justify-between items-center mb-10">
+                            <h2 className="text-2xl font-black italic uppercase tracking-tighter">Kasa Mutabakatı</h2>
+                            <div className="p-3 bg-gray-50 rounded-2xl border border-gray-100"><Banknote className="text-gray-400" /></div>
                         </div>
-                        <div className="px-6 py-4 bg-gray-50 rounded-2xl text-[10px] font-black text-gray-500 uppercase tracking-widest border border-gray-100 shadow-inner">
-                            {todayPayments.length} TOPLAM İŞLEM
+
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
+                            {[
+                                { label: 'NAKİT', val: nakitSayılan, set: setNakitSayılan, gercek: nakitGercek, fark: nakitFark, icon: Banknote, color: 'emerald' },
+                                { label: 'KART', val: kartSayılan, set: setKartSayılan, gercek: kartGercek, fark: kartFark, icon: CreditCard, color: 'indigo' },
+                                { label: 'HAVALE', val: havaleSayılan, set: setHavaleSayılan, gercek: havaleGercek, fark: havaleFark, icon: Building2, color: 'blue' },
+                            ].map(({ label, val, set, gercek, fark, icon: Icon, color }) => (
+                                <div key={label} className="group bg-gray-50/50 rounded-[2.5rem] p-8 border border-gray-50 transition-all hover:bg-white hover:border-indigo-100 hover:shadow-2xl hover:shadow-indigo-50/40">
+                                    <div className="flex justify-between items-center mb-6">
+                                        <div className={`p-3 bg-${color}-100 text-${color}-600 rounded-2xl shadow-sm`}><Icon size={18} /></div>
+                                        <FarkBadge fark={fark} />
+                                    </div>
+                                    <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-4 italic">{label} SAYIM</p>
+                                    <input 
+                                        type="number" 
+                                        value={val} 
+                                        onChange={e => set(e.target.value)}
+                                        placeholder="0"
+                                        className="w-full bg-transparent border-b-2 border-gray-200 text-3xl font-black focus:outline-none focus:border-indigo-600 transition-all placeholder:text-gray-200 tabular-nums italic" 
+                                    />
+                                    <p className="mt-4 text-[9px] font-bold text-gray-300 uppercase tracking-tighter">Sistem Kaydı: ₺{gercek.toLocaleString('tr-TR')}</p>
+                                </div>
+                            ))}
+                        </div>
+
+                        <div className="flex flex-col lg:flex-row gap-8 mt-10">
+                            <div className="flex-1 space-y-4">
+                                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1 italic">Kapanış Notu (Opsiyonel)</label>
+                                <textarea 
+                                    value={note}
+                                    onChange={e => setNote(e.target.value)}
+                                    placeholder="Günün özeti ve kaçak açıklamaları..."
+                                    className="w-full bg-gray-50 border border-gray-100 rounded-[2.5rem] p-8 text-sm font-bold min-h-[140px] outline-none focus:bg-white focus:border-indigo-200 transition-all shadow-inner"
+                                />
+                            </div>
+                            <div className="w-full lg:w-80 bg-gradient-to-br from-indigo-600 to-indigo-900 rounded-[3rem] p-10 text-white shadow-2xl flex flex-col justify-between group">
+                                <div className="relative">
+                                    <div className="absolute -top-4 -right-4 blur-2xl opacity-20"><Sparkles size={100} /></div>
+                                    <p className="text-[10px] font-black uppercase tracking-widest opacity-60 mb-2">Net Kasa Farkı</p>
+                                    <p className="text-5xl font-black italic tracking-tighter drop-shadow-xl">₺{toplamFark.toLocaleString('tr-TR')}</p>
+                                </div>
+                                <button 
+                                    disabled={!hasInputs || isSaving}
+                                    onClick={handleCloseDay}
+                                    className="w-full mt-10 py-6 bg-white text-indigo-900 rounded-[2rem] font-black text-[11px] uppercase tracking-[0.2em] shadow-xl hover:bg-gray-100 hover:scale-105 active:scale-95 transition-all disabled:opacity-50 flex items-center justify-center gap-3"
+                                >
+                                    {isSaving ? 'KAYDEDİLİYOR...' : 'GÜNÜ KAPAT'}
+                                </button>
+                            </div>
                         </div>
                     </div>
 
-                    {todayPayments.length === 0 ? (
-                        <div className="flex flex-col items-center justify-center py-32 border-2 border-dashed border-gray-100 rounded-[2.5rem] bg-gray-50/30">
-                            <History className="w-16 h-16 text-gray-200 mb-4 animate-pulse" />
-                            <p className="font-black text-gray-300 text-[10px] uppercase tracking-[0.3em]">Henüz veri girişi yapılmadı</p>
-                        </div>
-                    ) : (
-                        <div className="space-y-6">
-                            <div className="space-y-4 max-h-[500px] overflow-y-auto pr-2 custom-scrollbar">
-                                {todayPayments.map(p => (
-                                    <div key={p.id} className="group flex justify-between items-center bg-white hover:bg-indigo-50/30 border border-gray-100 rounded-[2rem] p-6 transition-all hover:border-indigo-200 hover:shadow-lg hover:shadow-indigo-100/20">
-                                        <div className="min-w-0 flex-1 pr-4">
-                                            <div className="flex items-center gap-3 mb-2">
-                                                <div className="w-2 h-2 rounded-full bg-indigo-500 shadow-[0_0_8px_rgba(79,70,229,0.5)]" />
-                                                <p className="font-black text-sm text-gray-900 uppercase truncate italic tracking-tight">{p.customerName}</p>
-                                            </div>
-                                            <div className="flex flex-wrap gap-2 items-center">
-                                                <span className="text-[9px] text-gray-400 font-extrabold uppercase tracking-widest">{p.service}</span>
-                                                <div className="flex gap-1.5">
-                                                    {p.methods?.map((m: any, idx: number) => (
-                                                        <span key={idx} className="text-[8px] font-black px-2 py-1 rounded-lg bg-indigo-600 text-white shadow-sm uppercase tracking-tighter">
-                                                            {m.method}
-                                                        </span>
-                                                    ))}
-                                                </div>
-                                            </div>
-                                        </div>
-                                        <div className="text-right">
-                                            <p className="font-black text-gray-900 text-xl italic tabular-nums">₺{p.totalAmount.toLocaleString('tr-TR')}</p>
-                                            <p className="text-[8px] font-black text-emerald-500 bg-emerald-50 px-2 py-1 rounded-lg inline-block mt-2 border border-emerald-100">ONAYLI</p>
-                                        </div>
-                                    </div>
-                                ))}
+                    {/* Today's Transactions Feed */}
+                    <div className="bg-white border border-gray-100 rounded-[3rem] p-10 shadow-xl shadow-gray-200/40">
+                        <div className="flex justify-between items-center mb-10">
+                            <div>
+                                <h2 className="text-xl font-black italic uppercase tracking-tighter">Tahsilat Detayları</h2>
+                                <p className="text-[10px] font-medium text-gray-400 uppercase tracking-widest">Bugün gerçekleştirilen ödemeler</p>
                             </div>
-                            
-                            <div className="p-10 bg-gradient-to-br from-indigo-600 to-indigo-800 rounded-[2.5rem] text-white shadow-2xl shadow-indigo-200 relative overflow-hidden group">
-                                <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -mr-16 -mt-16 blur-xl" />
-                                <div className="relative z-10">
-                                    <div className="flex justify-between items-center opacity-60 mb-4">
-                                        <span className="text-[10px] font-black uppercase tracking-[0.3em]">Net Kasa Konsolidasyonu</span>
-                                        <Sparkles className="w-5 h-5" />
+                            <span className="text-[10px] font-black bg-gray-50 px-4 py-2 rounded-xl text-gray-400 uppercase border border-gray-100">{todayPayments.length} İşlem</span>
+                        </div>
+                        <div className="space-y-4 max-h-[500px] overflow-y-auto pr-2 custom-scrollbar">
+                            {todayPayments.map(p => (
+                                <div key={p.id} className="flex justify-between items-center bg-gray-50/50 border border-gray-50 rounded-[2.5rem] p-8 hover:bg-white hover:border-indigo-100 hover:shadow-xl hover:shadow-indigo-50/20 transition-all group">
+                                    <div className="flex items-center gap-5">
+                                        <div className="w-3 h-3 rounded-full bg-indigo-500 shadow-[0_0_12px_rgba(79,70,229,0.6)] group-hover:scale-125 transition-transform" />
+                                        <div>
+                                            <p className="font-black text-base text-gray-900 uppercase italic leading-none mb-1">{p.customerName}</p>
+                                            <p className="text-[11px] font-bold text-gray-400 uppercase tracking-tighter">{p.service}</p>
+                                        </div>
                                     </div>
-                                    <div className="flex justify-between items-end">
-                                        <span className="text-5xl font-black italic tracking-tighter tabular-nums drop-shadow-lg">₺{toplamGercek.toLocaleString('tr-TR')}</span>
-                                        <div className="text-right">
-                                            <p className="text-[10px] font-black uppercase tracking-widest mb-1">BRÜT CİRO</p>
-                                            <p className="text-[9px] font-bold opacity-40 uppercase tracking-tighter leading-none italic">Resmi / Gayriresmi <br/> Toplam Sistem Kaydı</p>
+                                    <div className="text-right">
+                                        <p className="font-black text-gray-900 text-2xl italic tabular-nums">₺{p.totalAmount.toLocaleString('tr-TR')}</p>
+                                        <div className="flex gap-1 justify-end mt-2">
+                                            {p.methods?.map((m: any, id: number) => (
+                                                <span key={id} className="text-[9px] font-black bg-indigo-50 px-2 py-1 rounded-lg text-indigo-400 uppercase tracking-tighter">{m.method}</span>
+                                            ))}
                                         </div>
                                     </div>
                                 </div>
-                            </div>
+                            ))}
                         </div>
-                    )}
+                    </div>
                 </div>
             </div>
         </div>

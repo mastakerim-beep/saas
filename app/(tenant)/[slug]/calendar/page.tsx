@@ -108,11 +108,23 @@ function CalendarItem({ item, type, onCheckout }: { item: Appointment | Calendar
     const isCompleted = isAppt && appt.status === 'completed';
     const isLocked = isPast || isCompleted;
 
-    const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
+    const { attributes, listeners, setNodeRef: setDraggableRef, transform, isDragging } = useDraggable({
         id: item.id,
         data: { type: 'appointment', item },
         disabled: (isAppt && appt.syncStatus === 'syncing') || isLocked
     });
+
+    const { setNodeRef: setDroppableRef, isOver } = useDroppable({
+        id: `drop-${item.id}`,
+        data: { type: 'appointment', item },
+        disabled: isLocked
+    });
+
+    // Combinative ref for dnd-kit
+    const setNodeRefs = (node: HTMLElement | null) => {
+        setDraggableRef(node);
+        setDroppableRef(node);
+    };
 
     const [showMenu, setShowMenu] = useState(false);
 
@@ -155,7 +167,7 @@ function CalendarItem({ item, type, onCheckout }: { item: Appointment | Calendar
     return (
         <>
         <div 
-            ref={setNodeRef} 
+            ref={setNodeRefs} 
             style={style} 
             {...listeners} 
             {...attributes}
@@ -163,16 +175,17 @@ function CalendarItem({ item, type, onCheckout }: { item: Appointment | Calendar
             className={`
                 relative mx-1 rounded-[1rem] p-2.5 shadow-sm transition-all select-none group/item
                 ${isDragging ? 'opacity-30 scale-95 shadow-xl ring-2 ring-indigo-500/50' : 'opacity-100 hover:scale-[1.01] hover:shadow-2xl hover:shadow-indigo-100'} 
+                ${isOver ? 'ring-2 ring-indigo-400 bg-indigo-50/50 scale-[1.02]' : ''}
                 ${isLocked ? 'cursor-default' : 'cursor-grab active:cursor-grabbing'}
                 ${info.bg} ${info.ring} ${info.text} flex flex-col justify-between
             `}
         >
             {/* Tooltip on hover */}
             {isAppt && appt.note && (
-                <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-48 p-3 bg-gray-900 text-white text-[10px] font-bold rounded-2xl opacity-0 group-hover/item:opacity-100 transition-opacity pointer-events-none z-[100] shadow-2xl">
-                    <p className="text-indigo-400 font-black uppercase tracking-widest mb-1 text-[8px]">Randevu Notu</p>
+                <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-48 p-3 bg-indigo-600 text-white text-[10px] font-bold rounded-2xl opacity-0 group-hover/item:opacity-100 transition-opacity pointer-events-none z-[100] shadow-2xl shadow-indigo-200">
+                    <p className="text-white/60 font-black uppercase tracking-widest mb-1 text-[8px]">Randevu Notu</p>
                     {appt.note}
-                    <div className="absolute top-full left-1/2 -translate-x-1/2 border-8 border-transparent border-t-gray-900" />
+                    <div className="absolute top-full left-1/2 -translate-x-1/2 border-8 border-transparent border-t-indigo-600" />
                 </div>
             )}
             {isAppt && appt.syncStatus === 'syncing' && (
@@ -206,7 +219,7 @@ function CalendarItem({ item, type, onCheckout }: { item: Appointment | Calendar
                         animate={{ opacity: 1 }} 
                         exit={{ opacity: 0 }} 
                         onClick={(e) => { e.stopPropagation(); setShowMenu(false); }}
-                        className="absolute inset-0 bg-black/40 backdrop-blur-md"
+                        className="absolute inset-0 bg-indigo-950/30 backdrop-blur-md"
                     />
                     
                     {/* Action Sheet Card */}
@@ -594,9 +607,24 @@ export default function CalendarPage() {
 
     const staffToDisplay = useMemo(() => {
         return staffMembers
-            .filter(s => s.isVisibleOnCalendar !== false)
+            .filter(s => {
+                const isActive = s.status === 'Aktif';
+                const hasApptToday = appointments.some(a => a.staffId === s.id && a.date === selectedDate);
+                const isExplicitlyHidden = s.isVisibleOnCalendar === false;
+                
+                // 1. Eğer açıkça gizlenmişse gösterme (Örn: Sadece arkada çalışanlar)
+                if (isExplicitlyHidden) return false;
+
+                // 2. Aktifse göster
+                if (isActive) return true;
+                
+                // 3. Pasif/Ayrıldı olsa bile o gün randevusu varsa "Akıllı Görünürlük" gereği göster
+                if (hasApptToday) return true;
+                
+                return false;
+            })
             .sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0));
-    }, [staffMembers]);
+    }, [staffMembers, appointments, selectedDate]);
 
     // Keyboard Shortcuts
     useEffect(() => {
@@ -647,6 +675,25 @@ export default function CalendarPage() {
         if (activeData?.type === 'appointment' && overData?.type === 'slot') {
             const [staffId, time] = [overData.staffId, overData.time];
             await moveAppointment(active.id as string, time, staffId);
+        }
+
+        // --- NEW: Handle Dropping an Appointment onto another (for Cell Splitting) ---
+        if (activeData?.type === 'appointment' && overData?.type === 'appointment') {
+            const targetItem = overData.item;
+            if (targetItem && targetItem.id !== active.id && targetItem.staffId && targetItem.time) {
+                await moveAppointment(active.id as string, targetItem.time, targetItem.staffId);
+            }
+        }
+        // --- NEW: Handle Dropping a Customer onto an Appointment ---
+        if (activeData?.type === 'customer' && overData?.type === 'appointment') {
+            const targetItem = overData.item;
+            if (targetItem && targetItem.staffId && targetItem.time) {
+                setDropPreview({
+                    customer: activeData.customer,
+                    staffId: targetItem.staffId,
+                    time: targetItem.time,
+                });
+            }
         }
     };
 
@@ -742,29 +789,54 @@ export default function CalendarPage() {
                                 ));
                             })}
 
-                            {/* Appointments */}
-                            {appointments.filter(a => a.date === selectedDate).map(appt => {
-                                const staffIdx = staffToDisplay.findIndex(s => s.id === appt.staffId);
-                                if (staffIdx === -1) return null;
-                                const slotIdx = SLOTS.indexOf(appt.time);
-                                return (
-                                    <div key={appt.id} style={{ gridColumn: staffIdx + 1, gridRowStart: slotIdx + 1, position: 'relative' }}>
-                                        <CalendarItem item={appt} type="appt" onCheckout={setCheckoutAppt} />
-                                    </div>
-                                );
-                            })}
+                            {/* Grouped Appointments & Blocks for Splitting Cells */}
+                            {(() => {
+                                const todayAppts = appointments.filter(a => a.date === selectedDate);
+                                const todayBlocks = blocks.filter(b => b.date === selectedDate);
+                                
+                                // Group by staffId + time
+                                const groups: Record<string, { staffId: string, time: string, items: any[] }> = {};
+                                
+                                [...todayAppts.map(a => ({...a, _type: 'appt'})), ...todayBlocks.map(b => ({...b, _type: 'block'}))].forEach(item => {
+                                    if (!item.staffId || !item.time) return;
+                                    const key = `${item.staffId}-${item.time}`;
+                                    if (!groups[key]) groups[key] = { staffId: item.staffId as string, time: item.time as string, items: [] };
+                                    groups[key].items.push(item);
+                                });
 
-                            {/* Blocks */}
-                            {blocks.filter(b => b.date === selectedDate).map(block => {
-                                const staffIdx = staffToDisplay.findIndex(s => s.id === block.staffId);
-                                if (staffIdx === -1) return null;
-                                const slotIdx = SLOTS.indexOf(block.time);
-                                return (
-                                    <div key={block.id} style={{ gridColumn: staffIdx + 1, gridRowStart: slotIdx + 1, position: 'relative' }}>
-                                        <CalendarItem item={block} type="block" />
-                                    </div>
-                                );
-                            })}
+                                return Object.values(groups).map(group => {
+                                    const staffIdx = staffToDisplay.findIndex(s => s.id === group.staffId);
+                                    if (staffIdx === -1) return null;
+                                    const slotIdx = SLOTS.indexOf(group.time);
+                                    if (slotIdx === -1) return null;
+
+                                    return (
+                                        <div 
+                                            key={`${group.staffId}-${group.time}`} 
+                                            style={{ 
+                                                gridColumn: staffIdx + 1, 
+                                                gridRowStart: slotIdx + 1, 
+                                                gridRowEnd: `span ${Math.max(...group.items.map(i => Math.ceil(i.duration / SLOT_MINUTES)))}`,
+                                                position: 'relative',
+                                                display: 'flex',
+                                                gap: '2px',
+                                                padding: '2px',
+                                                zIndex: 10
+                                            }}
+                                        >
+                                            {group.items.map((item) => (
+                                                <div key={item.id} className="flex-1 min-w-0 h-full">
+                                                    <CalendarItem 
+                                                        item={item} 
+                                                        type={item._type as any} 
+                                                        onCheckout={setCheckoutAppt} 
+                                                    />
+                                                </div>
+                                            ))}
+                                        </div>
+                                    );
+                                });
+                            })()}
                         </div>
                     </div>
 

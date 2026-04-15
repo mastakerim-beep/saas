@@ -15,13 +15,26 @@ import { motion, AnimatePresence } from 'framer-motion';
 import EndOfDayAI from "@/components/EndOfDayAI";
 
 export default function Dashboard() {
-    const { appointments, payments, staffMembers, customers, debts, aiInsights, currentUser, can } = useStore();
+    const { 
+        appointments, payments, staffMembers, customers, debts, aiInsights, 
+        currentUser, can, rates, allLogs 
+    } = useStore();
     const [isEndOfDayOpen, setIsEndOfDayOpen] = useState(false);
     const [mounted, setMounted] = useState(false);
+    const [currency, setCurrency] = useState<'TRY' | 'USD' | 'EUR'>('TRY');
 
     useEffect(() => {
         setMounted(true);
     }, []);
+
+    const getRate = (code: string) => rates.find(r => r.code === code)?.rate || 1;
+
+    const formatPrice = (val: number) => {
+        if (currency === 'TRY') return `₺${val.toLocaleString('tr-TR')}`;
+        const rate = getRate(currency);
+        const converted = val / rate;
+        return `${currency === 'USD' ? '$' : '€'}${converted.toLocaleString('tr-TR', { maximumFractionDigits: 2 })}`;
+    };
 
     // 1. Stats Calculation
     const today = new Date().toISOString().split('T')[0];
@@ -102,6 +115,17 @@ export default function Dashboard() {
                 </div>
                 
                 <div className="flex gap-3">
+                    <div className="flex bg-gray-100/50 p-1 rounded-2xl border border-gray-100 mr-2">
+                        {['TRY', 'USD', 'EUR'].map((c) => (
+                            <button
+                                key={c}
+                                onClick={() => setCurrency(c as any)}
+                                className={`px-4 py-1.5 rounded-xl text-[10px] font-black transition-all ${currency === c ? 'bg-white text-primary shadow-sm scale-105' : 'text-gray-400 hover:text-gray-600'}`}
+                            >
+                                {c}
+                            </button>
+                        ))}
+                    </div>
                     <button className="h-12 w-12 bg-white border border-gray-100 rounded-2xl flex items-center justify-center shadow-sm hover:shadow-md hover:scale-105 active:scale-95 transition-all text-gray-400 hover:text-primary">
                         <MessageSquare className="w-5 h-5" />
                     </button>
@@ -121,18 +145,18 @@ export default function Dashboard() {
 
             {/* Core Stats Bento Grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                <motion.div variants={itemVariants} className="card-apple p-6 relative overflow-hidden group">
+                <motion.div variants={itemVariants} className="card-apple p-6 relative overflow-hidden group bg-white/40 backdrop-blur-xl border-white/60">
                     <div className="absolute top-0 right-0 p-6 opacity-0 group-hover:opacity-10 transition-opacity">
                         <TrendingUp size={80} className="text-emerald-500" />
                     </div>
                     <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Bugünkü Ciro</p>
-                    <h3 className="text-3xl font-black text-gray-900 tracking-tighter">₺{dailyRevenue.toLocaleString('tr-TR')}</h3>
+                    <h3 className="text-3xl font-black text-gray-900 tracking-tighter">{formatPrice(dailyRevenue)}</h3>
                     <div className="mt-4 inline-flex items-center gap-1 px-2 py-0.5 bg-emerald-50 text-emerald-600 rounded-lg text-[10px] font-black uppercase tracking-tighter">
                         <ArrowUpRight className="w-3 h-3" /> +12% vs Dün
                     </div>
                 </motion.div>
 
-                <motion.div variants={itemVariants} className="card-apple p-6 group">
+                <motion.div variants={itemVariants} className="card-apple p-6 group bg-white/40 backdrop-blur-xl border-white/60">
                     <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Bekleyen İşlem</p>
                     <h3 className="text-3xl font-black text-gray-900 tracking-tighter">{pendingAppointments} <span className="text-lg font-bold text-gray-300 tracking-normal">Randevu</span></h3>
                     <div className="mt-4 flex -space-x-2">
@@ -146,7 +170,7 @@ export default function Dashboard() {
                         <DollarSign size={80} />
                     </div>
                     <p className="text-[10px] font-black text-white/70 uppercase tracking-widest mb-1 leading-none">Aylık Hedef</p>
-                    <h3 className="text-3xl font-black text-white tracking-tighter">₺{monthlyRevenue.toLocaleString('tr-TR')}</h3>
+                    <h3 className="text-3xl font-black text-white tracking-tighter">{formatPrice(monthlyRevenue)}</h3>
                     <div className="w-full h-1.5 bg-white/20 rounded-full mt-5 overflow-hidden">
                         <motion.div initial={{ width: 0 }} animate={{ width: '65%' }} transition={{ duration: 1.5, delay: 0.5 }} className="h-full bg-white" />
                     </div>
@@ -156,7 +180,7 @@ export default function Dashboard() {
                     </div>
                 </motion.div>
 
-                <motion.div variants={itemVariants} className="card-apple p-6 group">
+                <motion.div variants={itemVariants} className="card-apple p-6 group bg-white/40 backdrop-blur-xl border-white/60">
                     <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Güvenlik & Churn</p>
                     <h3 className="text-3xl font-black text-amber-600 tracking-tighter">{suspiciousCount + churnRiskCount} <span className="text-lg font-bold text-gray-300 tracking-normal">Risk</span></h3>
                     <div className="mt-4 flex gap-2">
@@ -169,7 +193,7 @@ export default function Dashboard() {
             {/* AI Advisor & Chart Section */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                 {/* Visual Analytics */}
-                <motion.div variants={itemVariants} className="lg:col-span-2 card-apple p-8 md:p-10">
+                <motion.div variants={itemVariants} className="lg:col-span-2 card-apple p-8 md:p-10 bg-white/40 backdrop-blur-xl border-white/60">
                     <div className="flex justify-between items-center mb-10">
                         <div>
                             <h3 className="text-xl font-black text-gray-900 tracking-tight">Performans Analitiği</h3>
@@ -206,7 +230,7 @@ export default function Dashboard() {
                     </div>
                 </motion.div>
 
-                {/* AI & Automation Panel */}
+                {/* AI & Activity Panel */}
                 <div className="space-y-8">
                    <motion.div variants={itemVariants} className="bg-gradient-to-br from-indigo-700 to-indigo-900 text-white rounded-[2.5rem] p-8 shadow-2xl relative overflow-hidden group">
                         <div className="absolute -top-10 -right-10 w-40 h-40 bg-white/10 blur-[80px] group-hover:bg-white/20 transition-all duration-500" />
@@ -223,18 +247,30 @@ export default function Dashboard() {
                         </div>
                    </motion.div>
 
-                   <motion.div variants={itemVariants} className="card-apple p-8">
-                        <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-6">Son İşlem Kayıtları</h4>
-                        <div className="space-y-5">
-                            {aiInsights.slice(0, 3).map((insight, i) => (
-                                <div key={i} className="flex gap-4 items-start">
-                                    <div className="w-2 h-2 rounded-full bg-primary mt-1.5 shrink-0" />
-                                    <div>
-                                        <p className="text-xs font-black text-gray-900 leading-tight">{insight.title}</p>
-                                        <p className="text-[10px] text-gray-400 font-bold mt-1 uppercase tracking-tighter">{insight.category}</p>
+                   <motion.div variants={itemVariants} className="card-apple p-8 bg-white/40 backdrop-blur-xl border-white/60">
+                        <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-6">Canlı Şube Hareketleri</h4>
+                        <div className="space-y-5 max-h-[350px] overflow-y-auto no-scrollbar">
+                            {allLogs.slice(0, 10).map((log, i) => (
+                                <div key={i} className="flex gap-4 items-start border-b border-gray-50 pb-4 last:border-0">
+                                    <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 ${log.action.includes('Randevu') ? 'bg-blue-50 text-blue-500' : 'bg-green-50 text-green-500'}`}>
+                                        <Activity className="w-4 h-4" />
+                                    </div>
+                                    <div className="flex-1 min-w-0">
+                                        <p className="text-[11px] font-black text-gray-900 leading-tight truncate">{log.action}</p>
+                                        <p className="text-[10px] text-gray-400 font-bold mt-0.5 truncate">{log.customerName || 'Sistem Kararı'}</p>
+                                        <div className="flex justify-between items-center mt-2">
+                                            <span className="text-[8px] font-black text-gray-300 uppercase">{new Date(log.date).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })}</span>
+                                            <span className="text-[8px] font-black text-primary uppercase cursor-pointer hover:underline">Detay</span>
+                                        </div>
                                     </div>
                                 </div>
                             ))}
+                            {allLogs.length === 0 && (
+                                <div className="text-center py-10 opacity-30">
+                                    <Clock className="w-8 h-8 mx-auto mb-2" />
+                                    <p className="text-[10px] font-black uppercase">Henüz hareket yok</p>
+                                </div>
+                            )}
                         </div>
                    </motion.div>
                 </div>

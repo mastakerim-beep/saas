@@ -25,22 +25,60 @@ export default function SuperAdminPage() {
     currentUser, allBusinesses, allPayments, allLogs, allNotifs, tenantModules,
     updateBusinessLicense, updateBusinessStatus, updateBusinessBranches, deleteBusiness, addBusiness,
     setImpersonatedBusinessId, logout, fetchData, syncStatus, isInitialized,
-    addAnnouncement, updateModuleStatus, updateBusinessPricing
+    addAnnouncement, updateModuleStatus, updateBusinessPricing, provisionBusinessUser
   } = useStore();
 
   const [activeTab, setActiveTab] = useState<'monitor' | 'tenants' | 'announcements' | 'pricing' | 'terminal'>('monitor');
   const [searchTerm, setSearchTerm] = useState('');
   const [isAddBizModalOpen, setIsAddBizModalOpen] = useState(false);
-  const [newBiz, setNewBiz] = useState({ name: '', slug: '', ownerName: '', plan: 'Basic' as Business['plan'], expiryDate: '', maxUsers: 5 });
+  const [newBiz, setNewBiz] = useState({ 
+    name: '', 
+    slug: '', 
+    ownerName: '', 
+    plan: 'Basic' as Business['plan'], 
+    expiryDate: '', 
+    maxUsers: 5,
+    mrr: 0,
+    overrideMrr: 0,
+    signupPrice: 0
+  });
 
   const [announcementForm, setAnnouncementForm] = useState({ title: '', content: '', type: 'info' as any });
   const [isPublishing, setIsPublishing] = useState(false);
+  
+  // Provisioning State
+  const [isProvisionModalOpen, setIsProvisionModalOpen] = useState(false);
+  const [selectedBizForUser, setSelectedBizForUser] = useState<string | null>(null);
+  const [provisionForm, setProvisionForm] = useState({ name: '', email: '', password: '' });
+  const [isProvisioning, setIsProvisioning] = useState(false);
 
   useEffect(() => {
     if (currentUser?.role === 'SaaS_Owner') {
         fetchData();
     }
   }, [currentUser]);
+
+  const handleProvisionUser = async () => {
+    if (!selectedBizForUser) return;
+    setIsProvisioning(true);
+    try {
+        const res = await provisionBusinessUser({
+            ...provisionForm,
+            businessId: selectedBizForUser
+        });
+        if (res.success) {
+            alert('Kullanıcı başarıyla oluşturuldu ve işletmeye bağlandı.');
+            setIsProvisionModalOpen(false);
+            setProvisionForm({ name: '', email: '', password: '' });
+        } else {
+            alert('Hata: ' + res.error);
+        }
+    } catch (e) {
+        alert('İşlem başarısız oldu.');
+    } finally {
+        setIsProvisioning(false);
+    }
+  };
 
   const router = useRouter();
 
@@ -156,7 +194,6 @@ export default function SuperAdminPage() {
                             ))}
                         </div>
 
-                        {/* Chart could go here, omitting for brevity in initial push */}
                         <div className="bg-indigo-600 rounded-[3rem] p-12 text-white relative overflow-hidden shadow-2xl shadow-indigo-600/30">
                             <div className="absolute top-0 right-0 w-96 h-96 bg-white/10 blur-[100px] rounded-full -mr-20 -mt-20" />
                             <div className="relative z-10">
@@ -190,6 +227,7 @@ export default function SuperAdminPage() {
                                             <th className="px-10 py-8">İşletme</th>
                                             <th className="px-10 py-8">Abonelik & Fiyat</th>
                                             <th className="px-10 py-8 text-center">Modüller</th>
+                                            <th className="px-10 py-8 text-center">Limitler</th>
                                             <th className="px-10 py-8 text-right">Aksiyonlar</th>
                                         </tr>
                                     </thead>
@@ -229,8 +267,38 @@ export default function SuperAdminPage() {
                                                         })}
                                                     </div>
                                                 </td>
+                                                <td className="px-10 py-8 text-center">
+                                                     <div className="flex flex-col gap-2 items-center">
+                                                         <div className="flex items-center gap-3 bg-gray-50 border border-gray-100 px-3 py-1.5 rounded-xl">
+                                                            <button onClick={() => updateBusinessLicense(b.id, Math.max(1, (b.maxUsers || 5) - 1))} className="p-1 hover:text-indigo-600 transition-colors"><Minus size={12}/></button>
+                                                            <div className="flex items-center gap-2 text-[10px] font-black text-gray-900 min-w-[60px] justify-center">
+                                                                <Users size={12} className="text-gray-400" /> {b.maxUsers || 5}
+                                                            </div>
+                                                            <button onClick={() => updateBusinessLicense(b.id, (b.maxUsers || 5) + 1)} className="p-1 hover:text-indigo-600 transition-colors"><Plus size={12}/></button>
+                                                         </div>
+                                                         
+                                                         <div className="flex items-center gap-3 bg-gray-50 border border-gray-100 px-3 py-1.5 rounded-xl">
+                                                            <button onClick={() => updateBusinessBranches(b.id, Math.max(1, (b.maxBranches || 1) - 1))} className="p-1 hover:text-indigo-600 transition-colors"><Minus size={12}/></button>
+                                                            <div className="flex items-center gap-2 text-[10px] font-black text-gray-900 min-w-[60px] justify-center">
+                                                                <Building2 size={12} className="text-gray-400" /> {b.maxBranches || 1}
+                                                            </div>
+                                                            <button onClick={() => updateBusinessBranches(b.id, (b.maxBranches || 1) + 1)} className="p-1 hover:text-indigo-600 transition-colors"><Plus size={12}/></button>
+                                                         </div>
+                                                     </div>
+                                                </td>
                                                 <td className="px-10 py-8 text-right">
                                                     <div className="flex justify-end gap-2">
+                                                        <button 
+                                                            onClick={() => {
+                                                                setSelectedBizForUser(b.id);
+                                                                setProvisionForm({ ...provisionForm, name: b.ownerName || '' });
+                                                                setIsProvisionModalOpen(true);
+                                                            }}
+                                                            className="p-3 bg-emerald-50 text-emerald-600 rounded-xl hover:bg-emerald-600 hover:text-white transition-all"
+                                                            title="Kullanıcı Tanımla / Şifre Ver"
+                                                        >
+                                                            <UserPlus size={16} />
+                                                        </button>
                                                         <button 
                                                             onClick={() => setImpersonatedBusinessId(b.id)}
                                                             className="p-3 bg-indigo-50 text-indigo-600 rounded-xl hover:bg-indigo-600 hover:text-white transition-all"
@@ -258,7 +326,6 @@ export default function SuperAdminPage() {
                 {activeTab === 'announcements' && (
                     <motion.div key="announcements" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}>
                         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                            {/* Create Form */}
                             <div className="bg-white border border-gray-100 rounded-[3rem] p-10 shadow-sm">
                                 <h3 className="text-2xl font-black tracking-tighter uppercase italic text-gray-900 mb-8 flex items-center gap-3">
                                     <Megaphone className="text-indigo-600" /> Duyuru Yayınla
@@ -282,28 +349,6 @@ export default function SuperAdminPage() {
                                             placeholder="Tüm kullanıcılarımız artık yeni raporlama modülünü kullanabilir..." 
                                         />
                                     </div>
-                                    <div className="flex gap-4">
-                                        <div className="flex-1 space-y-2">
-                                            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Tip</label>
-                                            <select 
-                                                value={announcementForm.type}
-                                                onChange={e => setAnnouncementForm({...announcementForm, type: e.target.value})}
-                                                className="w-full bg-gray-50 border border-gray-100 rounded-2xl px-6 py-4 text-xs font-bold outline-none focus:border-indigo-500"
-                                            >
-                                                <option value="info">Bilgi (Info)</option>
-                                                <option value="warning">Uyarı (Warning)</option>
-                                                <option value="success">Başarı (Success)</option>
-                                                <option value="danger">Kritik (Danger)</option>
-                                            </select>
-                                        </div>
-                                        <div className="flex-1 space-y-2">
-                                            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Durum</label>
-                                            <div className="flex items-center gap-3 bg-gray-50 p-4 rounded-2xl border border-gray-100">
-                                                <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                                                <span className="text-[10px] font-black text-gray-900 uppercase">AKTİF YAYIN</span>
-                                            </div>
-                                        </div>
-                                    </div>
                                     <button 
                                         disabled={isPublishing || !announcementForm.title}
                                         onClick={async () => {
@@ -319,7 +364,6 @@ export default function SuperAdminPage() {
                                 </div>
                             </div>
                             
-                            {/* History */}
                             <div className="space-y-4">
                                 <h3 className="text-xl font-black text-gray-400 uppercase tracking-widest mb-6">Aktif Duyurular</h3>
                                 {allNotifs.slice(0, 5).map((n: any, i) => (
@@ -327,11 +371,10 @@ export default function SuperAdminPage() {
                                         <div className="flex gap-4 items-center">
                                             <div className="p-3 bg-amber-50 text-amber-500 rounded-xl"><Megaphone size={18}/></div>
                                             <div>
-                                                <p className="font-black text-gray-900 group-hover:text-indigo-600 transition-colors uppercase italic">{n.title || 'Sistemsel Güncelleme'}</p>
+                                                <p className="font-black text-gray-900 uppercase italic leading-tight">{n.title || 'Sistemsel Güncelleme'}</p>
                                                 <p className="text-[9px] text-gray-400 font-bold uppercase tracking-widest">{new Date().toLocaleDateString('tr-TR')}</p>
                                             </div>
                                         </div>
-                                        <button className="text-gray-300 hover:text-red-500 transition-colors"><Trash2 size={16}/></button>
                                     </div>
                                 ))}
                             </div>
@@ -341,34 +384,8 @@ export default function SuperAdminPage() {
 
                 {activeTab === 'pricing' && (
                     <motion.div key="pricing" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}>
-                        <div className="max-w-4xl mx-auto space-y-8">
-                            <div className="bg-rose-600 rounded-[3rem] p-12 text-white shadow-2xl shadow-rose-600/20 flex items-center justify-between">
-                                <div className="max-w-md">
-                                    <h2 className="text-3xl font-black uppercase italic tracking-tighter mb-4 flex items-center gap-4">
-                                        <AlertTriangle size={32} /> Fiyat Güncelleme Modülü
-                                    </h2>
-                                    <p className="text-[10px] text-white/70 font-bold uppercase tracking-[0.2em] leading-relaxed">
-                                        Fiyat değişimleri tüm sistemde geçerli olur. Mevcut üyeler (Grandfathered) eski fiyatlarından devam eder, yeni kayıtlar güncel fiyattan faturalandırılır.
-                                    </p>
-                                </div>
-                                <Activity size={80} className="text-white/10" />
-                            </div>
-
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                                {['Basic', 'Pro', 'Premium'].map(plan => (
-                                    <div key={plan} className="bg-white border border-gray-100 rounded-[3rem] p-10 shadow-sm hover:border-indigo-500 transition-all text-center group">
-                                         <h4 className="text-2xl font-black text-gray-900 mb-2 italic uppercase">{plan}</h4>
-                                         <p className="text-[9px] text-gray-400 font-black uppercase tracking-widest mb-8">GLOBAL STANDART FİYAT</p>
-                                         <div className="flex items-center justify-center gap-2 mb-10">
-                                            <span className="text-4xl font-black text-gray-900 tabular-nums">₺{plan === 'Premium' ? '2.490' : plan === 'Pro' ? '1.490' : '490'}</span>
-                                            <span className="text-xs text-gray-400 font-black">/ ay</span>
-                                         </div>
-                                         <button className="w-full py-4 bg-gray-50 text-gray-400 rounded-2xl text-[9px] font-black uppercase tracking-widest group-hover:bg-indigo-600 group-hover:text-white transition-all shadow-xl group-hover:shadow-indigo-600/20">
-                                            FİYATI REVİZE ET
-                                         </button>
-                                    </div>
-                                ))}
-                            </div>
+                        <div className="max-w-4xl mx-auto space-y-8 text-center text-gray-400 font-black uppercase tracking-[0.2em]">
+                             Abonelik sistemleri için Stripe entegrasyonu bekleniyor...
                         </div>
                     </motion.div>
                 )}
@@ -377,37 +394,19 @@ export default function SuperAdminPage() {
                     <motion.div key="terminal" initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.98 }}>
                          <div id="logs" className="bg-[#050505] rounded-[3rem] p-10 shadow-2xl shadow-black/50 border border-white/5 scroll-mt-24 min-h-[600px] flex flex-col">
                             <div className="flex justify-between items-center mb-8 border-b border-white/5 pb-8">
-                                <div>
-                                    <h3 className="text-2xl font-black tracking-tighter uppercase italic flex items-center gap-4 text-white">
-                                        <TerminalIcon className="text-indigo-500" /> Platform Kernel Logs
-                                    </h3>
-                                    <div className="flex gap-2 mt-2">
-                                        <span className="px-2 py-0.5 bg-emerald-500/10 text-emerald-500 text-[8px] font-black rounded uppercase border border-emerald-500/20">Sync: Online</span>
-                                        <span className="px-2 py-0.5 bg-indigo-500/10 text-indigo-500 text-[8px] font-black rounded uppercase border border-indigo-500/20">DB: Connected</span>
-                                    </div>
-                                </div>
-                                <div className="flex gap-2">
-                                    <input className="bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-[10px] text-white font-mono outline-none focus:border-indigo-500 w-64" placeholder="Filter logs..." />
-                                    <button className="px-6 py-2 bg-indigo-600 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-indigo-500 transition-all">Clear</button>
-                                </div>
+                                <h3 className="text-2xl font-black tracking-tighter uppercase italic flex items-center gap-4 text-white">
+                                    <TerminalIcon className="text-indigo-500" /> Platform Kernel Logs
+                                </h3>
                             </div>
                             
-                            <div className="flex-1 font-mono text-[11px] space-y-2 overflow-y-auto custom-scrollbar pr-4">
+                            <div className="flex-1 font-mono text-[11px] space-y-2 overflow-y-auto custom-scrollbar pr-4 text-white/50">
                                 {allLogs.slice(-50).reverse().map((log: AuditLog, i: number) => (
-                                    <div key={i} className="flex gap-6 group hover:bg-white/5 py-1 px-4 rounded-lg transition-all border-b border-white/5 last:border-0 border-l-2 border-l-transparent hover:border-l-indigo-500">
-                                        <span className="text-gray-600 font-bold opacity-50 shrink-0">[{new Date(log.date).toLocaleTimeString()}]</span>
-                                        <span className={`shrink-0 font-black uppercase tracking-tighter w-24 flex items-center gap-2 ${log.action.includes('ERROR') ? 'text-rose-500' : 'text-indigo-400'}`}>
-                                            <ShieldCheck size={10}/> SYS_{log.action.split(' ')[0]}
-                                        </span>
-                                        <span className="text-gray-300 flex-1 leading-relaxed">
-                                            <span className="text-white font-medium mr-2">{log.customerName || 'USER'}</span>
-                                            <span className="text-gray-500 opacity-80">{log.action.toLowerCase()}</span>
-                                            {log.newValue && <span className="text-emerald-400/70 ml-2">→ {log.newValue.substring(0, 30)}...</span>}
-                                        </span>
-                                        <span className="text-emerald-500 font-black text-[9px] opacity-40">OK</span>
+                                    <div key={i} className="flex gap-4 border-b border-white/5 pb-1">
+                                        <span className="opacity-30">[{new Date(log.date).toLocaleTimeString()}]</span>
+                                        <span className="text-indigo-400">{log.action}</span>
+                                        <span>{log.customerName}</span>
                                     </div>
                                 ))}
-                                {allLogs.length === 0 && <div className="text-gray-800 italic p-10 text-center">Await system telemetry...</div>}
                             </div>
                         </div>
                     </motion.div>
@@ -416,33 +415,125 @@ export default function SuperAdminPage() {
 
         </div>
 
-        {/* REUSED MODALS (Condensed) */}
+        {/* MODALS */}
+        <AnimatePresence>
+            {isProvisionModalOpen && (
+                <div className="fixed inset-0 z-[2000] flex items-center justify-center p-6 bg-black/60 backdrop-blur-xl">
+                    <motion.div 
+                        initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }}
+                        className="bg-white rounded-[3rem] p-12 max-w-xl w-full shadow-2xl relative"
+                    >
+                        <button onClick={() => setIsProvisionModalOpen(false)} className="absolute top-8 right-8 text-gray-400 hover:text-gray-900"><X size={24}/></button>
+                        
+                        <div className="mb-10">
+                            <h3 className="text-3xl font-black tracking-tighter uppercase italic">Kullanıcı Kurulumu</h3>
+                            <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mt-2">İşletme sahibi için giriş yetkisi tanımla</p>
+                        </div>
+                        
+                        <div className="space-y-6 mb-10">
+                            <div className="space-y-2">
+                                <label className="text-[10px] font-black uppercase text-gray-400 ml-1">Kullanıcı Adı / Ad Soyad</label>
+                                <input 
+                                    value={provisionForm.name}
+                                    onChange={e => setProvisionForm({...provisionForm, name: e.target.value})}
+                                    className="w-full bg-gray-50 border border-gray-100 rounded-2xl px-6 py-4 font-bold text-xs outline-none focus:border-indigo-500" 
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <label className="text-[10px] font-black uppercase text-gray-400 ml-1">Email (Giriş Adresi)</label>
+                                <input 
+                                    value={provisionForm.email}
+                                    onChange={e => setProvisionForm({...provisionForm, email: e.target.value})}
+                                    className="w-full bg-gray-50 border border-gray-100 rounded-2xl px-6 py-4 font-bold text-xs outline-none focus:border-indigo-500" 
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <label className="text-[10px] font-black uppercase text-gray-400 ml-1">Geçici Şifre</label>
+                                <input 
+                                    type="password"
+                                    value={provisionForm.password}
+                                    onChange={e => setProvisionForm({...provisionForm, password: e.target.value})}
+                                    placeholder="Belirlemek istediğiniz şifre"
+                                    className="w-full bg-gray-50 border border-gray-100 rounded-2xl px-6 py-4 font-bold text-xs outline-none focus:border-indigo-500" 
+                                />
+                            </div>
+                        </div>
+                        
+                        <button 
+                            onClick={handleProvisionUser}
+                            disabled={isProvisioning || !provisionForm.email || !provisionForm.password}
+                            className="w-full py-6 bg-indigo-600 text-white rounded-3xl font-black uppercase tracking-widest shadow-xl shadow-indigo-600/20 hover:bg-indigo-500 transition-all disabled:opacity-50"
+                        >
+                            {isProvisioning ? 'KURULUM YAPILIYOR...' : 'YETKİLERİ ONAYLA VE OLUŞTUR'}
+                        </button>
+                    </motion.div>
+                </div>
+            )}
+        </AnimatePresence>
+
         <AnimatePresence>
             {isAddBizModalOpen && (
                 <div className="fixed inset-0 z-[2000] flex items-center justify-center p-6 bg-black/60 backdrop-blur-xl">
                     <motion.div 
                         initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }}
-                        className="bg-white rounded-[3rem] p-12 max-w-2xl w-full shadow-2xl"
+                        className="bg-white rounded-[3rem] p-12 max-w-2xl w-full shadow-2xl relative"
                     >
-                        <div className="flex justify-between items-center mb-10">
-                            <h3 className="text-3xl font-black tracking-tighter uppercase italic">Lisans Dağıtımı</h3>
-                            <button onClick={() => setIsAddBizModalOpen(false)}><X size={24}/></button>
+                        <button onClick={() => setIsAddBizModalOpen(false)} className="absolute top-8 right-8 text-gray-400 hover:text-gray-900"><X size={24}/></button>
+                        
+                        <div className="mb-10">
+                            <h3 className="text-3xl font-black tracking-tighter uppercase italic">Yeni Lisans Dağıtımı</h3>
+                            <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mt-2">Yeni bir tenant altyapısı oluştur</p>
                         </div>
+                        
                         <div className="grid grid-cols-2 gap-6 mb-10">
                             <div className="space-y-2">
-                                <label className="text-[10px] font-black uppercase text-gray-400">Şirket Adı</label>
-                                <input className="w-full bg-gray-50 border border-gray-100 rounded-2xl px-6 py-4 font-bold text-xs" />
+                                <label className="text-[10px] font-black uppercase text-gray-400 ml-1">Şirket Adı</label>
+                                <input 
+                                    value={newBiz.name}
+                                    onChange={e => setNewBiz({...newBiz, name: e.target.value, slug: e.target.value.toLowerCase().replace(/ /g, '-')})}
+                                    placeholder="Örn: Aura Beauty Spa"
+                                    className="w-full bg-gray-50 border border-gray-100 rounded-2xl px-6 py-4 font-bold text-xs outline-none focus:border-indigo-500" 
+                                />
                             </div>
                             <div className="space-y-2">
-                                <label className="text-[10px] font-black uppercase text-gray-400">Üyelik Planı</label>
-                                <select className="w-full bg-gray-50 border border-gray-100 rounded-2xl px-6 py-4 font-bold text-xs">
-                                    <option>Basic</option>
-                                    <option>Pro</option>
-                                    <option>Premium</option>
+                                <label className="text-[10px) font-black uppercase text-gray-400 ml-1">Panel Slug (URL)</label>
+                                <input 
+                                    value={newBiz.slug}
+                                    onChange={e => setNewBiz({...newBiz, slug: e.target.value})}
+                                    className="w-full bg-gray-50 border border-gray-100 rounded-2xl px-6 py-4 font-bold text-xs" 
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <label className="text-[10px] font-black uppercase text-gray-400 ml-1">Üyelik Planı</label>
+                                <select 
+                                    value={newBiz.plan}
+                                    onChange={e => setNewBiz({...newBiz, plan: e.target.value as any})}
+                                    className="w-full bg-gray-50 border border-gray-100 rounded-2xl px-6 py-4 font-bold text-xs outline-none focus:border-indigo-500"
+                                >
+                                    <option value="Basic">Basic</option>
+                                    <option value="Pro">Pro</option>
+                                    <option value="Premium">Premium</option>
                                 </select>
                             </div>
+                            <div className="space-y-2">
+                                <label className="text-[10px] font-black uppercase text-gray-400 ml-1">Kullanıcı Limiti</label>
+                                <input 
+                                    type="number"
+                                    value={newBiz.maxUsers}
+                                    onChange={e => setNewBiz({...newBiz, maxUsers: parseInt(e.target.value)})}
+                                    className="w-full bg-gray-50 border border-gray-100 rounded-2xl px-6 py-4 font-bold text-xs" 
+                                />
+                            </div>
                         </div>
-                        <button className="w-full py-6 bg-indigo-600 text-white rounded-3xl font-black uppercase tracking-widest shadow-xl shadow-indigo-600/20">LİSANSI ONAYLA</button>
+                        <button 
+                            onClick={async () => {
+                                await addBusiness(newBiz);
+                                setIsAddBizModalOpen(false);
+                            }}
+                            className="w-full py-6 bg-indigo-600 text-white rounded-3xl font-black uppercase tracking-widest shadow-xl shadow-indigo-600/20 hover:bg-indigo-500 transition-all"
+                        >
+                            LİSANSI ONAYLA VE DAĞIT
+                        </button>
                     </motion.div>
                 </div>
             )}

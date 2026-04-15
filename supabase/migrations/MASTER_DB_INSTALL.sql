@@ -49,6 +49,7 @@ CREATE TABLE app_users (
     id UUID PRIMARY KEY,
     business_id UUID REFERENCES businesses(id) ON DELETE CASCADE,
     branch_id UUID REFERENCES branches(id),
+    staff_id UUID REFERENCES staff(id) ON DELETE SET NULL,
     role TEXT DEFAULT 'Staff',
     name TEXT NOT NULL,
     email TEXT UNIQUE,
@@ -215,6 +216,7 @@ CREATE TABLE appointments (
     customer_name TEXT NOT NULL,
     service TEXT NOT NULL,
     staff_id UUID REFERENCES staff(id),
+    staff_name TEXT DEFAULT '',
     room_id UUID REFERENCES rooms(id),
     date DATE NOT NULL,
     time TEXT NOT NULL,
@@ -226,6 +228,7 @@ CREATE TABLE appointments (
     package_id UUID,
     membership_id UUID,
     is_paid BOOLEAN DEFAULT false,
+    is_package_usage BOOLEAN DEFAULT false,
     payment_id UUID REFERENCES payments(id),
     note TEXT,
     created_at TIMESTAMPTZ DEFAULT NOW()
