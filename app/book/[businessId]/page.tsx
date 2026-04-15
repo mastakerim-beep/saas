@@ -26,7 +26,7 @@ export default async function BookingPage({ params }: { params: { businessId: st
     .from('staff')
     .select('*')
     .eq('business_id', businessId)
-    .eq('status', 'Aktif');
+    .eq('status', 'active');
 
   // Fetch existing appointments to block slots (for today and next 7 days in a real app, but let's fetch all future for MVP)
   const today = new Date(new Date().getTime() + (3 * 3600000)).toISOString().split('T')[0];

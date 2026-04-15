@@ -233,14 +233,14 @@ function StaffProfilePanel({ staff, onClose, onEdit }: { staff: any, onClose: ()
                     <Edit3 className="w-4 h-4" /> Düzenle
                 </button>
                 <button
-                    onClick={() => updateStaff(staff.id, { status: staff.status === 'Aktif' ? 'İzinli' : 'Aktif' })}
+                    onClick={() => updateStaff(staff.id, { status: staff.status === 'active' ? 'İzinli' : 'active' })}
                     className={`px-6 py-4 rounded-2xl font-black text-xs uppercase tracking-widest transition-all ${
-                        staff.status === 'Aktif' 
+                        staff.status === 'active' 
                             ? 'bg-amber-50 text-amber-600 hover:bg-amber-100'
                             : 'bg-emerald-50 text-emerald-600 hover:bg-emerald-100'
                     }`}
                 >
-                    {staff.status === 'Aktif' ? 'İzne Al' : 'Aktifleştir'}
+                    {staff.status === 'active' ? 'İzne Al' : 'Aktifleştir'}
                 </button>
             </div>
         </motion.div>
@@ -251,7 +251,7 @@ function StaffProfilePanel({ staff, onClose, onEdit }: { staff: any, onClose: ()
 function StaffEditModal({ staff, onClose }: { staff?: Staff, onClose: () => void }) {
     const { addStaff, updateStaff, updateStaffPermissions, allUsers, branches, can } = useStore();
     const [formData, setFormData] = useState<Partial<Staff>>(staff || {
-        name: '', role: 'Uzman', status: 'Aktif',
+        name: '', role: 'Uzman', status: 'active',
         weeklyOffDay: 1, staffType: 'Terapist',
         isVisibleOnCalendar: true, sortOrder: 0
     });
@@ -625,7 +625,7 @@ export default function StaffPage() {
     const [selectedStaff, setSelectedStaff] = useState<Staff | null>(null);
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
     const [isProfileOpen, setIsProfileOpen] = useState(false);
-    const [statusFilter, setStatusFilter] = useState<'all' | 'Aktif' | 'İzinli'>('all');
+    const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'İzinli'>('all');
     const [perfFilter, setPerfFilter] = useState<'all' | 'month' | 'today'>('all');
     const [sortBy, setSortBy] = useState<'revenue' | 'appointments' | 'commission'>('revenue');
 
@@ -717,7 +717,7 @@ export default function StaffPage() {
                     {/* KPIs */}
                     <div className="grid grid-cols-4 gap-5 mb-10">
                         {[
-                            { label: 'Ekip Büyüklüğü', val: staffMembers.length, sub: `${staffMembers.filter(s => s.status === 'Aktif').length} aktif`, icon: Users, color: 'bg-indigo-50 text-indigo-600' },
+                            { label: 'Ekip Büyüklüğü', val: staffMembers.length, sub: `${staffMembers.filter(s => s.status === 'active').length} aktif`, icon: Users, color: 'bg-indigo-50 text-indigo-600' },
                             { label: 'Toplam Ciro', val: `₺${totalRevenue.toLocaleString('tr-TR')}`, sub: 'Tamamlanan randevular', icon: TrendingUp, color: 'bg-emerald-50 text-emerald-600' },
                             { label: 'Toplam Prim', val: `₺${totalCommission.toLocaleString('tr-TR')}`, sub: `${commissionRules.length} aktif kural`, icon: Award, color: 'bg-indigo-50 text-indigo-600' },
                             { label: 'Tamamlanan', val: totalAppts, sub: 'Randevu', icon: CheckCircle2, color: 'bg-purple-50 text-purple-600' },
@@ -833,7 +833,7 @@ export default function StaffPage() {
                 <div className="animate-[slideUp_0.4s_ease]">
                     {/* Filter bar */}
                     <div className="flex gap-3 mb-6">
-                        {['all', 'Aktif', 'İzinli'].map(f => (
+                        {['all', 'active', 'İzinli'].map(f => (
                             <button key={f} onClick={() => setStatusFilter(f as any)}
                                 className={`px-5 py-2.5 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all border-2 ${statusFilter === f ? 'bg-primary text-white border-primary shadow-lg shadow-primary/20' : 'border-gray-100 text-gray-400 hover:border-gray-300'}`}>
                                 {f === 'all' ? 'Tümü' : f} {f !== 'all' && `(${staffMembers.filter(s => s.status === f).length})`}
@@ -905,10 +905,10 @@ export default function StaffPage() {
                                         </div>
                                         {/* Status quick toggle */}
                                         <button
-                                            onClick={(e) => { e.stopPropagation(); updateStaff(staff.id, { status: staff.status === 'Aktif' ? 'İzinli' : 'Aktif' }); }}
-                                            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all ${staff.status === 'Aktif' ? 'bg-emerald-50 text-emerald-600 hover:bg-amber-50 hover:text-amber-600' : 'bg-amber-50 text-amber-600 hover:bg-emerald-50 hover:text-emerald-600'}`}
+                                            onClick={(e) => { e.stopPropagation(); updateStaff(staff.id, { status: staff.status === 'active' ? 'İzinli' : 'active' }); }}
+                                            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all ${staff.status === 'active' ? 'bg-emerald-50 text-emerald-600 hover:bg-amber-50 hover:text-amber-600' : 'bg-amber-50 text-amber-600 hover:bg-emerald-50 hover:text-emerald-600'}`}
                                         >
-                                            <div className={`w-1.5 h-1.5 rounded-full ${staff.status === 'Aktif' ? 'bg-emerald-500' : 'bg-amber-500'}`} />
+                                            <div className={`w-1.5 h-1.5 rounded-full ${staff.status === 'active' ? 'bg-emerald-500' : 'bg-amber-500'}`} />
                                             {staff.status}
                                         </button>
                                     </div>

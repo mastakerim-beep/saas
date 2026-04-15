@@ -294,22 +294,22 @@ function CalendarItem({ item, type, onCheckout }: { item: Appointment | Calendar
 }
 
 // ---- DROPPABLE SLOT ----
-function TimeSlot({ staffId, time, isOff, onAdd }: { staffId: string, time: string, isOff: boolean, onAdd: (s: string, t: string) => void }) {
+function TimeSlot({ staffId, roomId, time, isOff, onAdd }: { staffId?: string, roomId?: string, time: string, isOff: boolean, onAdd: (id: string, t: string) => void }) {
     const isHourStart = time.endsWith(':00');
     const { isOver, setNodeRef } = useDroppable({
-        id: `slot-${staffId}-${time}`,
-        data: { type: 'slot', staffId, time },
+        id: `slot-${staffId || roomId}-${time}`,
+        data: { type: 'slot', staffId, roomId, time },
         disabled: isOff
     });
 
     return (
         <div 
             ref={setNodeRef}
-            onClick={() => !isOff && onAdd(staffId, time)}
+            onClick={() => !isOff && onAdd(staffId || roomId || '', time)}
             className={`
                 h-[48px] border-r border-white/5 transition-all relative
                 ${isHourStart ? 'border-t-2 border-t-white/10' : 'border-t border-t-white/5'}
-                ${isOff ? 'bg-[#FEF9E7]/50 cursor-not-allowed' : (isOver ? 'bg-primary/20 border-2 border-primary/50 z-10 scale-[1.01]' : 'bg-[#FEF9E7] hover:bg-primary/[0.03] cursor-pointer')}
+                ${isOff ? 'bg-secondary/30 cursor-not-allowed opacity-40' : (isOver ? 'bg-primary/20 border-2 border-primary/50 z-10 scale-[1.01]' : 'hover:bg-primary/[0.03] cursor-pointer')}
             `}
         >
             {isOver && !isOff && (
@@ -328,19 +328,18 @@ function TimeSlot({ staffId, time, isOff, onAdd }: { staffId: string, time: stri
 }
 
 // ---- SERVICE SELECTION MODAL (müşteri sürükleyince çıkar) ----
-function ServiceDropModal({ customer, staffId, time, date, onClose }: { customer: Customer, staffId: string, time: string, date: string, onClose: () => void }) {
+function ServiceDropModal({ customer, staffId, roomId, time, date, onClose }: { customer: Customer, staffId?: string, roomId?: string, time: string, date: string, onClose: () => void }) {
     const { addAppointment, staffMembers, services, rooms } = useStore();
     const [selectedService, setSelectedService] = useState<string>(services[0]?.name || '');
-    const [selectedRoomId, setSelectedRoomId] = useState<string | null>(rooms[0]?.id || null);
+    const [selectedRoomId, setSelectedRoomId] = useState<string | null>(roomId || rooms[0]?.id || null);
     const [selectedRegions, setSelectedRegions] = useState<string[]>([]);
     const [isSaving, setIsSaving] = useState(false);
     const [showBodyMap, setShowBodyMap] = useState(false);
     const [note, setNote] = useState('');
 
-    const staff = staffMembers.find(s => s.id === staffId);
+    const staff = staffId ? staffMembers.find(s => s.id === staffId) : null;
 
     const handleSave = async () => {
-        if (!staff) return;
         setIsSaving(true);
         const svc = services.find(s => s.name === selectedService);
         if(!svc) return;
@@ -348,8 +347,8 @@ function ServiceDropModal({ customer, staffId, time, date, onClose }: { customer
             customerId: customer.id,
             customerName: customer.name,
             service: svc.name,
-            staffId: staff.id,
-            staffName: staff.name,
+            staffId: staff?.id || null,
+            staffName: staff?.name || null,
             roomId: selectedRoomId,
             date,
             time,
@@ -366,51 +365,54 @@ function ServiceDropModal({ customer, staffId, time, date, onClose }: { customer
     };
 
     return (
-        <div className="fixed inset-0 bg-background/80 backdrop-blur-md z-[200] flex items-center justify-center p-4 animate-[fadeIn_0.2s_ease]">
-            <div className="modal-premium w-full max-w-md overflow-hidden animate-[slideUp_0.3s_ease]">
-                <div className="p-8 border-b border-gray-100 bg-gray-50/50 flex justify-between items-center">
+        <div className="fixed inset-0 bg-indigo-950/40 backdrop-blur-xl z-[200] flex items-center justify-center p-4 animate-[fadeIn_0.2s_ease]">
+            <div className="modal-premium w-full max-w-lg overflow-hidden animate-[slideUp_0.3s_ease] !bg-white">
+                <div className="p-10 border-b border-indigo-50 bg-gradient-to-br from-white to-indigo-50/30 flex justify-between items-center bg-white">
                     <div>
-                        <div className="flex items-center gap-2 mb-1">
-                            <Sparkles className="w-3 h-3 text-primary" />
-                            <p className="text-[10px] font-black text-primary uppercase tracking-widest">Hızlı Randevu Kaydı</p>
+                        <div className="flex items-center gap-2 mb-2">
+                            <Sparkles className="w-4 h-4 text-primary animate-pulse" />
+                            <p className="text-[10px] font-black text-primary uppercase tracking-[0.2em] leading-none">Hızlı Randevu Kaydı</p>
                         </div>
-                        <h3 className="text-xl font-black text-gray-900 leading-none">{customer.name}</h3>
-                        <div className="flex items-center gap-2 mt-2">
-                             <span className="text-[10px] font-black bg-gray-100 px-2 py-0.5 rounded text-gray-400 uppercase">{staff?.name}</span>
-                             <span className="text-[10px] font-black bg-primary/10 px-2 py-0.5 rounded text-primary uppercase">{time}</span>
+                        <h3 className="text-2xl font-black text-gray-900 leading-none tracking-tight uppercase italic">{customer.name}</h3>
+                        <div className="flex items-center gap-2 mt-4">
+                             {staff && <span className="text-[10px] font-black bg-indigo-600 text-white px-3 py-1 rounded-full uppercase shadow-lg shadow-indigo-200">{staff.name}</span>}
+                             {selectedRoomId && <span className="text-[10px] font-black bg-purple-600 text-white px-3 py-1 rounded-full uppercase shadow-lg shadow-purple-200">{rooms.find(r => r.id === selectedRoomId)?.name}</span>}
+                             <span className="text-[10px] font-black bg-white border border-gray-100 px-3 py-1 rounded-full text-primary uppercase shadow-sm">{time}</span>
                         </div>
                     </div>
-                    <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-xl transition">
-                        <X className="w-5 h-5 text-gray-400" />
+                    <button onClick={onClose} className="p-3 hover:bg-red-50 rounded-2xl transition group">
+                        <X className="w-6 h-6 text-gray-300 group-hover:text-red-500 transition-all" />
                     </button>
                 </div>
 
-                <div className="p-8 space-y-3">
-                    <p className="text-[10px] font-black text-gray-500 uppercase tracking-widest ml-1">Hizmet Seçimi</p>
-                    <div className="grid grid-cols-1 gap-2">
-                        {services.map(s => (
-                            <button
-                                key={s.id}
-                                onClick={() => setSelectedService(s.name)}
-                                className={`group w-full p-4 rounded-2xl border-2 flex justify-between items-center transition-all ${selectedService === s.name ? 'bg-primary border-primary text-white shadow-xl shadow-primary/20 scale-[1.02]' : 'bg-gray-50 border-transparent text-gray-500 hover:border-primary/30'}`}
-                            >
-                                <div className="flex items-center gap-3">
-                                    <div className={`w-2.5 h-2.5 rounded-full ${s.color} ${selectedService === s.name ? 'bg-white' : ''}`} />
-                                    <span className="text-sm font-black">{s.name}</span>
-                                </div>
-                                <span className={`text-[10px] font-bold ${selectedService === s.name ? 'opacity-80' : 'opacity-40'}`}>{s.duration} dk • ₺{s.price.toLocaleString('tr-TR')}</span>
-                            </button>
-                        ))}
+                <div className="p-10 space-y-6">
+                    <div>
+                        <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1 mb-3">Hizmet Seçimi</p>
+                        <div className="grid grid-cols-1 gap-3 max-h-[30vh] overflow-y-auto pr-2 no-scrollbar">
+                            {services.map(s => (
+                                <button
+                                    key={s.id}
+                                    onClick={() => setSelectedService(s.name)}
+                                    className={`group w-full p-5 rounded-[1.5rem] border-2 flex justify-between items-center transition-all duration-300 ${selectedService === s.name ? 'bg-primary border-primary text-white shadow-xl shadow-primary/30 scale-[1.02]' : 'bg-white border-gray-100 text-gray-500 hover:border-primary/20 hover:bg-indigo-50/30'}`}
+                                >
+                                    <div className="flex items-center gap-4">
+                                        <div className={`w-3 h-3 rounded-full ${s.color} ${selectedService === s.name ? 'ring-2 ring-white ring-offset-2 ring-offset-primary' : ''}`} />
+                                        <span className="text-sm font-black uppercase tracking-tight">{s.name}</span>
+                                    </div>
+                                    <span className={`text-[10px] font-black ${selectedService === s.name ? 'text-white' : 'text-primary'}`}>{s.duration} dk • ₺{s.price.toLocaleString('tr-TR')}</span>
+                                </button>
+                            ))}
+                        </div>
                     </div>
 
-                    <div className="pt-4 space-y-3">
-                        <p className="text-[10px] font-black text-gray-500 uppercase tracking-widest ml-1">Oda Atama</p>
-                        <div className="flex flex-wrap gap-2">
+                    <div className="space-y-3">
+                        <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Oda Atama {roomId && '(Önerilen)'}</p>
+                        <div className="flex flex-wrap gap-2.5">
                             {rooms.map(room => (
                                 <button 
                                     key={room.id}
                                     onClick={() => setSelectedRoomId(room.id)}
-                                    className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase transition-all border-2 ${selectedRoomId === room.id ? 'bg-primary border-primary text-white shadow-lg shadow-primary/20' : 'bg-gray-50 border-transparent text-gray-400 hover:border-primary/20'}`}
+                                    className={`px-5 py-3 rounded-2xl text-[10px] font-black uppercase transition-all duration-300 border-2 ${selectedRoomId === room.id ? 'bg-purple-600 border-purple-600 text-white shadow-xl shadow-purple-200 scale-105' : 'bg-white border-gray-100 text-gray-400 hover:border-purple-200'}`}
                                 >
                                     {room.name}
                                 </button>
@@ -418,51 +420,52 @@ function ServiceDropModal({ customer, staffId, time, date, onClose }: { customer
                         </div>
                     </div>
 
-                    <button 
-                        onClick={() => setShowBodyMap(true)}
-                        className={`w-full p-4 rounded-2xl border-2 border-dashed flex items-center justify-center gap-3 transition-all ${selectedRegions.length > 0 ? 'bg-primary/10 border-primary/30 text-primary' : 'bg-gray-50 border-gray-100 text-gray-400 hover:border-primary/30'}`}
-                    >
-                        <Activity className="w-4 h-4" />
-                        <span className="text-xs font-black">
-                            {selectedRegions.length > 0 ? `${selectedRegions.length} Bölge Seçildi` : 'Vücut Notu Ekle (Opsiyonel)'}
-                        </span>
-                    </button>
-
-                    <div className="pt-2">
+                    <div className="grid grid-cols-1 gap-4">
+                        <button 
+                            onClick={() => setShowBodyMap(true)}
+                            className={`w-full p-5 rounded-[1.5rem] border-2 border-dashed flex items-center justify-center gap-4 transition-all duration-300 ${selectedRegions.length > 0 ? 'bg-indigo-50 border-primary text-primary' : 'bg-white border-gray-100 text-gray-400 hover:border-primary'}`}
+                        >
+                            <Activity className="w-5 h-5" />
+                            <span className="text-xs font-black uppercase tracking-widest">
+                                {selectedRegions.length > 0 ? `${selectedRegions.length} Bölge Seçildi` : 'Vücut Notu Ekle (Opsiyonel)'}
+                            </span>
+                        </button>
                         <textarea 
                             value={note}
                             onChange={e => setNote(e.target.value)}
                             placeholder="Örn: mb MİRA"
-                            className="w-full bg-gray-50 border border-gray-100 rounded-xl px-4 py-3 text-[11px] font-bold text-gray-900 outline-none focus:border-primary/30 transition-all resize-none min-h-[60px]"
+                            className="w-full bg-white border-2 border-gray-50 rounded-[1.5rem] px-6 py-4 text-sm font-bold text-gray-900 outline-none focus:border-primary transition-all resize-none min-h-[80px] shadow-inner"
                         />
                     </div>
 
                     <button
                         onClick={handleSave}
                         disabled={isSaving}
-                        className="w-full mt-4 py-5 rounded-3xl font-black text-sm shadow-xl flex items-center justify-center gap-3 bg-primary text-white hover:bg-primary/90 active:scale-[0.98] transition-all disabled:opacity-50 shadow-primary/20"
+                        className="w-full py-6 rounded-[2rem] font-black text-xs uppercase tracking-[0.2em] shadow-2xl flex items-center justify-center gap-4 bg-primary text-white hover:bg-indigo-700 active:scale-[0.98] transition-all disabled:opacity-50 shadow-primary/30"
                     >
-                        {isSaving ? <Loader2 className="w-5 h-5 animate-spin" /> : <ShieldCheck className="w-5 h-5 text-white" />}
+                        {isSaving ? <Loader2 className="w-6 h-6 animate-spin" /> : <ShieldCheck className="w-6 h-6 text-white" />}
                         {isSaving ? 'Rezervasyon İşleniyor...' : 'Takvime İşle ✓'}
                     </button>
 
-                    {showBodyMap && (
-                        <div className="fixed inset-0 bg-background/90 backdrop-blur-md z-[250] flex items-center justify-center p-4 animate-[fadeIn_0.2s_ease]">
-                            <div className="modal-premium p-8 max-w-sm w-full relative animate-[zoomIn_0.3s_ease]">
-                                <button onClick={() => setShowBodyMap(false)} className="absolute top-6 right-6 p-2 text-gray-400 hover:text-red-500"><X /></button>
-                                <div className="p-2 bg-gray-50 rounded-3xl mb-4">
-                                    <BodyMap 
-                                        selectedRegions={selectedRegions} 
-                                        onToggleRegion={(id) => setSelectedRegions(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id])} 
-                                    />
-                                </div>
-                                <button onClick={() => setShowBodyMap(false)} className="w-full mt-2 py-5 bg-primary text-white rounded-3xl font-black text-sm shadow-xl shadow-primary/20 transition-transform active:scale-95">Notu Onayla</button>
-                            </div>
-                        </div>
-                    )}
-                    <p className="text-[9px] text-gray-600 text-center font-bold uppercase tracking-widest mt-4">Onay mesajı otomatik gönderilecek</p>
+                    <p className="text-[9px] text-gray-400 text-center font-black uppercase tracking-widest">Onay mesajı otomatik gönderilecek</p>
                 </div>
             </div>
+
+            {showBodyMap && (
+                <div className="fixed inset-0 bg-indigo-950/80 backdrop-blur-2xl z-[300] flex items-center justify-center p-4 animate-[fadeIn_0.2s_ease]">
+                    <div className="modal-premium p-10 max-w-md w-full relative animate-[zoomIn_0.3s_ease] !bg-white">
+                        <button onClick={() => setShowBodyMap(false)} className="absolute top-8 right-8 p-2 text-gray-400 hover:text-red-500"><X className="w-6 h-6" /></button>
+                        <h4 className="text-xl font-black text-gray-900 mb-8 uppercase italic tracking-tight">Vücut Haritası</h4>
+                        <div className="p-4 bg-gray-50 rounded-[2.5rem] mb-8">
+                            <BodyMap 
+                                selectedRegions={selectedRegions} 
+                                onToggleRegion={(id) => setSelectedRegions(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id])} 
+                            />
+                        </div>
+                        <button onClick={() => setShowBodyMap(false)} className="w-full py-5 bg-primary text-white rounded-[1.5rem] font-black text-xs uppercase tracking-widest shadow-xl shadow-primary/20 transition-all active:scale-95">Değişiklikleri Kaydet</button>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }
@@ -585,13 +588,14 @@ function CustomerPanel({ isOpen, onClose }: { isOpen: boolean, onClose: () => vo
 
 // ---- MAIN PAGE: RECEPTION COMMAND CENTER ----
 export default function CalendarPage() {
-    const { staffMembers, appointments, blocks, settings, moveAppointment, syncStatus, customers, isOnline } = useStore();
-    const [selectedSlot, setSelectedSlot] = useState<{staffId: string, time: string} | null>(null);
+    const { staffMembers, appointments, blocks, settings, moveAppointment, syncStatus, customers, isOnline, rooms } = useStore();
+    const [viewMode, setViewMode] = useState<'staff' | 'room'>('staff');
+    const [selectedSlot, setSelectedSlot] = useState<{staffId?: string, roomId?: string, time: string} | null>(null);
     const [checkoutAppt, setCheckoutAppt] = useState<Appointment | null>(null);
     const [activeId, setActiveId] = useState<string | null>(null);
     const [activeDragData, setActiveDragData] = useState<any>(null);
     const [isPanelOpen, setIsPanelOpen] = useState(false);
-    const [dropPreview, setDropPreview] = useState<{ customer: Customer, staffId: string, time: string } | null>(null);
+    const [dropPreview, setDropPreview] = useState<{ customer: Customer, staffId?: string, roomId?: string, time: string } | null>(null);
     const [selectedDate, setSelectedDate] = useState(formatDate(new Date()));
     const [isDatePickerOpen, setIsDatePickerOpen] = useState(false);
     const [pickerMonth, setPickerMonth] = useState(new Date());
@@ -603,12 +607,12 @@ export default function CalendarPage() {
     );
 
     const SLOTS = useMemo(() => generateSlots(settings.startHour, settings.endHour), [settings]);
-    const dayOfWeek = new Date(selectedDate).getDay();
+    const dayOfWeek = new Date(selectedDate + 'T00:00:00').getDay();
 
     const staffToDisplay = useMemo(() => {
         return staffMembers
             .filter(s => {
-                const isActive = s.status === 'Aktif';
+                const isActive = s.status === 'active';
                 const hasApptToday = appointments.some(a => a.staffId === s.id && a.date === selectedDate);
                 const isExplicitlyHidden = s.isVisibleOnCalendar === false;
                 
@@ -625,6 +629,12 @@ export default function CalendarPage() {
             })
             .sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0));
     }, [staffMembers, appointments, selectedDate]);
+
+    const roomsToDisplay = useMemo(() => {
+        return (rooms || []).filter(r => r.status !== 'passive');
+    }, [rooms]);
+
+    const columnsToDisplay = viewMode === 'staff' ? staffToDisplay : roomsToDisplay;
 
     // Keyboard Shortcuts
     useEffect(() => {
@@ -667,14 +677,19 @@ export default function CalendarPage() {
             setDropPreview({
                 customer: activeData.customer,
                 staffId: overData.staffId,
+                roomId: overData.roomId,
                 time: overData.time,
             });
             return;
         }
 
         if (activeData?.type === 'appointment' && overData?.type === 'slot') {
-            const [staffId, time] = [overData.staffId, overData.time];
-            await moveAppointment(active.id as string, time, staffId);
+            const [id, time] = [overData.staffId || overData.roomId, overData.time];
+            if (viewMode === 'staff') {
+                await moveAppointment(active.id as string, time, id);
+            } else {
+                await moveAppointment(active.id as string, time, undefined, id);
+            }
         }
 
         // --- NEW: Handle Dropping an Appointment onto another (for Cell Splitting) ---
@@ -707,11 +722,17 @@ export default function CalendarPage() {
                 {/* Left: Dropdown */}
                 <div className="flex items-center gap-4">
                     <div className="relative group">
-                        <button className="flex items-center gap-3 px-6 py-3 bg-white border border-gray-200 rounded-2xl text-[11px] font-black uppercase tracking-widest hover:border-indigo-600 transition-all shadow-sm">
-                            <CalendarIcon size={16} className="text-indigo-600" />
-                            Personel Takvimi
+                        <select 
+                            value={viewMode}
+                            onChange={(e) => setViewMode(e.target.value as any)}
+                            className="bg-white border border-gray-200 rounded-2xl px-6 py-3 text-[11px] font-black uppercase tracking-widest hover:border-indigo-600 transition-all shadow-sm outline-none appearance-none cursor-pointer pr-10"
+                        >
+                            <option value="staff">Uzman Görünümü</option>
+                            <option value="room">Oda Görünümü</option>
+                        </select>
+                        <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none">
                             <ChevronDown size={14} className="text-gray-400" />
-                        </button>
+                        </div>
                     </div>
                 </div>
 
@@ -754,13 +775,19 @@ export default function CalendarPage() {
 
             <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
                 <div className="flex-1 bg-white border border-gray-100 rounded-[3.5rem] shadow-2xl flex flex-col overflow-hidden relative">
-                    {/* Staff Header */}
+                    {/* Header Columns */}
                     <div className="flex border-b border-gray-100 bg-gray-50/50 flex-none ml-[80px] sticky top-0 z-30 shadow-sm backdrop-blur-md">
-                        {staffToDisplay.map(staff => (
-                            <div key={staff.id} className="flex-1 p-4 text-center border-r border-gray-100 relative group">
-                                {staff.weeklyOffDay === dayOfWeek && <div className="absolute inset-0 bg-red-500/5 flex items-center justify-center"><span className="text-[8px] font-black text-red-500 border border-red-500 px-2 py-0.5 rounded-full rotate-[-15deg] bg-white">İZİNLİ</span></div>}
-                                <p className="text-[8px] font-black text-gray-400 uppercase tracking-[0.2em] mb-1 group-hover:text-indigo-600 transition-colors uppercase">Uzman</p>
-                                <p className="font-extrabold text-gray-900 uppercase tracking-tight text-sm uppercase">{staff.name}</p>
+                        {columnsToDisplay.map(col => (
+                            <div key={col.id} className="flex-1 p-4 text-center border-r border-gray-100 relative group">
+                                {viewMode === 'staff' && (col as Staff).weeklyOffDay === dayOfWeek && (
+                                    <div className="absolute inset-0 bg-red-500/5 flex items-center justify-center">
+                                        <span className="text-[8px] font-black text-red-500 border border-red-500 px-2 py-0.5 rounded-full rotate-[-15deg] bg-white">İZİNLİ</span>
+                                    </div>
+                                )}
+                                <p className="text-[8px] font-black text-gray-400 uppercase tracking-[0.2em] mb-1 group-hover:text-indigo-600 transition-colors uppercase">
+                                    {viewMode === 'staff' ? 'Uzman' : 'Oda'}
+                                </p>
+                                <p className="font-extrabold text-gray-900 uppercase tracking-tight text-sm uppercase">{col.name}</p>
                             </div>
                         ))}
                     </div>
@@ -779,12 +806,16 @@ export default function CalendarPage() {
                         </div>
 
                         {/* Grid */}
-                        <div className="flex-1 grid relative bg-[#FEF9E7]" style={{ gridTemplateColumns: `repeat(${staffToDisplay.length || 1}, 1fr)`, gridTemplateRows: `repeat(${SLOTS.length}, 48px)` }}>
-                            {staffToDisplay.map((staff, colIdx) => {
-                                const isOff = staff.weeklyOffDay === dayOfWeek;
+                        <div className="flex-1 grid relative bg-[#FEF9E7]" style={{ gridTemplateColumns: `repeat(${columnsToDisplay.length || 1}, 1fr)`, gridTemplateRows: `repeat(${SLOTS.length}, 48px)` }}>
+                            {columnsToDisplay.map((col, colIdx) => {
+                                const isOff = viewMode === 'staff' && (col as Staff).weeklyOffDay === dayOfWeek;
                                 return SLOTS.map((slot, rowIdx) => (
-                                    <div key={`${staff.id}-${slot}`} style={{ gridColumn: colIdx + 1, gridRow: rowIdx + 1 }}>
-                                        <TimeSlot staffId={staff.id} time={slot} isOff={isOff} onAdd={(s, t) => setSelectedSlot({ staffId: s, time: t })} />
+                                    <div key={`${col.id}-${slot}`} style={{ gridColumn: colIdx + 1, gridRow: rowIdx + 1 }}>
+                                        {viewMode === 'staff' ? (
+                                            <TimeSlot staffId={col.id} time={slot} isOff={isOff} onAdd={(s, t) => setSelectedSlot({ staffId: s, time: t })} />
+                                        ) : (
+                                            <TimeSlot roomId={col.id} time={slot} isOff={isOff} onAdd={(r, t) => setSelectedSlot({ roomId: r, time: t })} />
+                                        )}
                                     </div>
                                 ));
                             })}
@@ -794,29 +825,32 @@ export default function CalendarPage() {
                                 const todayAppts = appointments.filter(a => a.date === selectedDate);
                                 const todayBlocks = blocks.filter(b => b.date === selectedDate);
                                 
-                                // Group by staffId + time
-                                const groups: Record<string, { staffId: string, time: string, items: any[] }> = {};
+                                // Group by staffId + time OR roomId + time
+                                const groups: Record<string, { staffId?: string, roomId?: string, time: string, items: any[] }> = {};
                                 
-                                [...todayAppts.map(a => ({...a, _type: 'appt'})), ...todayBlocks.map(b => ({...b, _type: 'block'}))].forEach(item => {
-                                    if (!item.staffId || !item.time) return;
-                                    const key = `${item.staffId}-${item.time}`;
-                                    if (!groups[key]) groups[key] = { staffId: item.staffId as string, time: item.time as string, items: [] };
+                                [...todayAppts.map(a => ({...a, _type: 'appt'})), ...todayBlocks.map(b => ({...b, _type: 'block'}))].forEach((item: any) => {
+                                    const colId = viewMode === 'staff' ? item.staffId : item.roomId;
+                                    const key = `${colId}-${item.time}`;
+                                    if (!colId || !item.time) return;
+
+                                    if (!groups[key]) groups[key] = { staffId: item.staffId, roomId: item.roomId, time: item.time, items: [] };
                                     groups[key].items.push(item);
                                 });
 
-                                return Object.values(groups).map(group => {
-                                    const staffIdx = staffToDisplay.findIndex(s => s.id === group.staffId);
-                                    if (staffIdx === -1) return null;
+                                return Object.values(groups).map((group: any) => {
+                                    const colId = viewMode === 'staff' ? group.staffId : group.roomId;
+                                    const colIdx = columnsToDisplay.findIndex(c => c.id === colId);
+                                    if (colIdx === -1) return null;
                                     const slotIdx = SLOTS.indexOf(group.time);
                                     if (slotIdx === -1) return null;
 
                                     return (
                                         <div 
-                                            key={`${group.staffId}-${group.time}`} 
+                                            key={`${colId}-${group.time}`} 
                                             style={{ 
-                                                gridColumn: staffIdx + 1, 
+                                                gridColumn: colIdx + 1, 
                                                 gridRowStart: slotIdx + 1, 
-                                                gridRowEnd: `span ${Math.max(...group.items.map(i => Math.ceil(i.duration / SLOT_MINUTES)))}`,
+                                                gridRowEnd: `span ${Math.max(...group.items.map((i: any) => Math.ceil(i.duration / SLOT_MINUTES)))}`,
                                                 position: 'relative',
                                                 display: 'flex',
                                                 gap: '2px',
@@ -824,7 +858,7 @@ export default function CalendarPage() {
                                                 zIndex: 10
                                             }}
                                         >
-                                            {group.items.map((item) => (
+                                            {group.items.map((item: any) => (
                                                 <div key={item.id} className="flex-1 min-w-0 h-full">
                                                     <CalendarItem 
                                                         item={item} 
@@ -858,12 +892,23 @@ export default function CalendarPage() {
                 <CustomerPanel isOpen={isPanelOpen} onClose={() => setIsPanelOpen(false)} />
             </DndContext>
 
-            {selectedSlot && <BookingModal initialData={selectedSlot} date={selectedDate} onClose={() => setSelectedSlot(null)} />}
+            {selectedSlot && (
+                <BookingModal 
+                    initialData={{ 
+                        staffId: selectedSlot.staffId || '', 
+                        roomId: selectedSlot.roomId || '', 
+                        time: selectedSlot.time 
+                    }} 
+                    date={selectedDate} 
+                    onClose={() => setSelectedSlot(null)} 
+                />
+            )}
             {checkoutAppt && <SmartCheckout appointment={checkoutAppt} onClose={() => setCheckoutAppt(null)} />}
             {dropPreview && (
                 <ServiceDropModal
                     customer={dropPreview.customer}
                     staffId={dropPreview.staffId}
+                    roomId={dropPreview.roomId}
                     time={dropPreview.time}
                     date={selectedDate}
                     onClose={() => setDropPreview(null)}

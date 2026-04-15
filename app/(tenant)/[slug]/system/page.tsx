@@ -6,11 +6,13 @@ import {
     MapPin, FileText, Share2, Settings as SettingsIcon,
     Plus, Search, Edit2, Trash2, Check, X,
     ChevronRight, Shield, Smartphone, Calendar,
-    ExternalLink, Info, AlertCircle, Save, Layers, Zap
+    ExternalLink, Info, AlertCircle, Save, Layers, Zap, Clock
 } from "lucide-react";
 import { useState, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import CatalogSettingsView from "@/components/system/CatalogSettingsView";
+
+const DAYS = ['Pazar', 'Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma', 'Cumartesi'];
 
 type SettingsTab = 
     | 'catalog'
@@ -21,7 +23,8 @@ type SettingsTab =
     | 'branches' 
     | 'consent_forms' 
     | 'referral_sources'
-    | 'rooms';
+    | 'rooms'
+    | 'security';
 
 export default function SystemSettingsPage() {
     const { 
@@ -32,7 +35,8 @@ export default function SystemSettingsPage() {
         addExpenseCategory, updateExpenseCategory, removeExpenseCategory,
         addReferralSource, updateReferralSource, removeReferralSource,
         addConsentFormTemplate, updateConsentFormTemplate, removeConsentFormTemplate,
-        updateStaff, can, addRoom, updateRoom, deleteRoom
+        updateStaff, can, addRoom, updateRoom, deleteRoom,
+        currentBusiness, updateBusiness
     } = useStore();
 
     const [activeTab, setActiveTab] = useState<SettingsTab>('catalog');
@@ -49,6 +53,7 @@ export default function SystemSettingsPage() {
             { id: 'staff', label: 'Personeller', icon: Users },
             { id: 'rooms', label: 'Odalar / Kabinler', icon: Layers },
             { id: 'branches', label: 'Şubeler', icon: MapPin },
+            { id: 'security', label: 'Güvenlik & PIN', icon: Shield },
         ]},
         { group: "FİNANSAL TANIMLAMALAR", items: [
             { id: 'payment_methods', label: 'Ödeme Araçları', icon: CreditCard },
@@ -262,8 +267,11 @@ export default function SystemSettingsPage() {
                                     ]}
                                 />
                             )}
-                            {activeTab === 'rooms' && (
+                            { activeTab === 'rooms' && (
                                 <RoomsSettingsView query={searchQuery} />
+                            )}
+                            { activeTab === 'security' && (
+                                <SecuritySettingsView />
                             )}
                         </motion.div>
                     </AnimatePresence>
@@ -449,6 +457,7 @@ function StaffSettingsView({ staff, onUpdate, query }: { staff: Staff[], onUpdat
                         <th className="px-10 py-6 text-[10px] font-black text-gray-400 uppercase tracking-widest text-center">SİSTEM</th>
                         <th className="px-10 py-6 text-[10px] font-black text-gray-400 uppercase tracking-widest text-center">MOBİL</th>
                         <th className="px-10 py-6 text-[10px] font-black text-gray-400 uppercase tracking-widest text-center">TAKVİM</th>
+                        <th className="px-10 py-6 text-[10px] font-black text-gray-400 uppercase tracking-widest text-center whitespace-nowrap">İZİN GÜNÜ</th>
                         <th className="px-10 py-6 text-right"></th>
                     </tr>
                 </thead>
@@ -477,6 +486,17 @@ function StaffSettingsView({ staff, onUpdate, query }: { staff: Staff[], onUpdat
                             </td>
                             <td className="px-10 py-6 text-center">
                                 <Toggle checked={s.isVisibleOnCalendar} onChange={(v) => toggle(s.id, 'isVisibleOnCalendar', v)} />
+                            </td>
+                            <td className="px-10 py-6 text-center">
+                                <select 
+                                    value={s.weeklyOffDay ?? 0}
+                                    onChange={(e) => onUpdate(s.id, { weeklyOffDay: Number(e.target.value) })}
+                                    className="bg-gray-50 border border-gray-100 rounded-lg px-3 py-1.5 text-[10px] font-black uppercase tracking-widest outline-none focus:border-indigo-500 transition-all"
+                                >
+                                    {DAYS.map((day, i) => (
+                                        <option key={i} value={i}>{day}</option>
+                                    ))}
+                                </select>
                             </td>
                             <td className="px-10 py-6 text-right">
                                 <button className="p-3 text-gray-300 hover:text-black transition-colors">
@@ -592,6 +612,68 @@ function GenericListView({ items, columns, onEdit, onDelete, query }: { items: a
                     <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mt-3 max-w-xs">Aramanıza uygun kayıt bulunamadı veya henüz eklenmemiş.</p>
                 </div>
             )}
+        </div>
+    );
+}
+
+function SecuritySettingsView() {
+    const { currentBusiness, updateBusiness } = useStore();
+    const [pin, setPin] = useState(currentBusiness?.managerPin || "");
+    const [isSaving, setIsSaving] = useState(false);
+
+    const handlePinSave = async () => {
+        setIsSaving(true);
+        const success = await updateBusiness({ managerPin: pin });
+        setIsSaving(false);
+        if (success) alert("Yönetici PIN başarıyla güncellendi.");
+    };
+
+    return (
+        <div className="max-w-2xl mx-auto space-y-10 py-10">
+            <div className="bg-white p-12 rounded-[4rem] shadow-sm border border-gray-100 text-center relative overflow-hidden">
+                <div className="w-24 h-24 bg-indigo-50 text-indigo-600 rounded-[2.5rem] flex items-center justify-center mx-auto mb-8 shadow-inner">
+                    <Shield size={48} />
+                </div>
+                <h3 className="text-3xl font-black text-gray-900 uppercase italic tracking-tighter mb-4">Müdür Onay PIN</h3>
+                <p className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mb-12 max-w-sm mx-auto leading-relaxed">
+                    Hediye/İkram gibi özel yetki gerektiren işlemler için kullanılacak 4 haneli PIN kodunu belirleyin.
+                </p>
+
+                <div className="space-y-8">
+                    <div className="relative max-w-[280px] mx-auto">
+                        <input 
+                            type="password" 
+                            maxLength={4}
+                            value={pin}
+                            onChange={(e) => setPin(e.target.value)}
+                            placeholder="••••"
+                            className="w-full bg-gray-50 border-none rounded-[2rem] px-8 py-6 text-center text-4xl font-black tracking-[1em] outline-none focus:ring-4 focus:ring-indigo-500/10 transition-all placeholder:text-gray-200"
+                        />
+                    </div>
+                    
+                    <button 
+                        onClick={handlePinSave}
+                        disabled={isSaving || pin.length !== 4}
+                        className="w-full max-w-[280px] py-6 bg-black text-white rounded-[2rem] font-black text-xs uppercase tracking-[0.2em] hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-3 disabled:opacity-30 disabled:hover:scale-100 shadow-2xl shadow-gray-200"
+                    >
+                        {isSaving ? "KAYDEDİLİYOR..." : <><Save size={18} /> PIN KODUNU KAYDET</>}
+                    </button>
+                </div>
+
+                <div className="absolute -left-10 -bottom-10 w-40 h-40 bg-indigo-50 opacity-20 rounded-full" />
+            </div>
+
+            <div className="bg-amber-50 rounded-[3rem] p-10 border border-amber-100 flex items-start gap-6">
+                <div className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center text-amber-500 shadow-sm shrink-0">
+                    <Info size={24} />
+                </div>
+                <div>
+                    <h4 className="text-sm font-black text-amber-900 uppercase tracking-tight mb-2">GÜVENLİK TAVSİYESİ</h4>
+                    <p className="text-xs font-bold text-amber-700 leading-relaxed">
+                        PIN kodunu sadece şube müdürü ve yetkili personelle paylaşın. Bu kod, finansal verileri etkileyen "Hediye" süreçlerini doğrulamak için kullanılır.
+                    </p>
+                </div>
+            </div>
         </div>
     );
 }

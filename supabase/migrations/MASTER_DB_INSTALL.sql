@@ -1,10 +1,11 @@
 -- AURA SPA SaaS ERP - ULTIMATE MASTER INSTALLATION (CONSOLIDATED)
--- Tarih: 2026-04-13
--- Açıklama: Tüm modülleri (Kasa, Finans, Randevu, CRM) içeren, RLS uyumlu nihai şema.
+-- Tarih: 2026-04-15
+-- MOD: GÜVENLİ MOD (SAFE MODE) - Mevcut verileri korur.
 
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
--- 1. TEMİZLİK (Sıfırdan temiz kurulum için - Dikkat: Mevcut veriler silinir!)
+-- 1. TEMİZLİK (DEVRE DIŞI - Mevcut verileri silmek isterseniz aşağıdaki DROP bloğunu aktifleştirin)
+/*
 DROP TABLE IF EXISTS 
     z_reports, audit_logs, notification_logs, ai_insights, 
     commission_rules, calendar_blocks, customer_media, 
@@ -15,16 +16,17 @@ DROP TABLE IF EXISTS
     payment_definitions, bank_accounts, referral_sources, 
     consent_form_templates, booking_settings, quotes,
     system_announcements, tenant_modules CASCADE;
+*/
 
 -- 2. ÇEKİRDEK YAPI (BUSINESS & BRANCH)
-CREATE TABLE businesses (
+CREATE TABLE IF NOT EXISTS businesses (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     name TEXT NOT NULL,
     owner_name TEXT,
     slug TEXT UNIQUE,
     plan TEXT DEFAULT 'Basic',
     expiry_date DATE,
-    status TEXT DEFAULT 'Aktif',
+    status TEXT DEFAULT 'active',
     mrr NUMERIC DEFAULT 0,
     override_mrr NUMERIC, -- NULL means use plan default
     signup_price NUMERIC, -- For grandfathering logic
@@ -33,7 +35,7 @@ CREATE TABLE businesses (
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
-CREATE TABLE branches (
+CREATE TABLE IF NOT EXISTS branches (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     business_id UUID REFERENCES businesses(id) ON DELETE CASCADE,
     name TEXT NOT NULL,
@@ -45,7 +47,7 @@ CREATE TABLE branches (
 );
 
 -- 3. KULLANICI VE YETKİLENDİRME
-CREATE TABLE app_users (
+CREATE TABLE IF NOT EXISTS app_users (
     id UUID PRIMARY KEY,
     business_id UUID REFERENCES businesses(id) ON DELETE CASCADE,
     branch_id UUID REFERENCES branches(id),
@@ -58,14 +60,22 @@ CREATE TABLE app_users (
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
+-- 3.1 KULLANICI ŞUBE YETKİLERİ (USER BRANCH ACCESS)
+CREATE TABLE IF NOT EXISTS user_branch_access (
+    user_id UUID REFERENCES app_users(id) ON DELETE CASCADE,
+    business_id UUID REFERENCES businesses(id) ON DELETE CASCADE,
+    branch_id UUID REFERENCES branches(id) ON DELETE CASCADE,
+    PRIMARY KEY (user_id, branch_id)
+);
+
 -- 4. OPERASYONEL TABLOLAR (STAFF, SERVICES, ROOMS)
-CREATE TABLE staff (
+CREATE TABLE IF NOT EXISTS staff (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     business_id UUID REFERENCES businesses(id) ON DELETE CASCADE,
     branch_id UUID REFERENCES branches(id),
     name TEXT NOT NULL,
     role TEXT,
-    status TEXT DEFAULT 'Aktif',
+    status TEXT DEFAULT 'active',
     weekly_off_day INT DEFAULT 0,
     staff_type TEXT DEFAULT 'Terapist',
     is_visible_on_calendar BOOLEAN DEFAULT true,
@@ -77,9 +87,10 @@ CREATE TABLE staff (
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
-CREATE TABLE services (
+CREATE TABLE IF NOT EXISTS services (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     business_id UUID REFERENCES businesses(id) ON DELETE CASCADE,
+    branch_id UUID REFERENCES branches(id) ON DELETE CASCADE,
     name TEXT NOT NULL,
     duration INT DEFAULT 60,
     price NUMERIC(10,2) DEFAULT 0,
@@ -91,17 +102,31 @@ CREATE TABLE services (
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
-CREATE TABLE rooms (
+-- 4.1 ENVANTER (INVENTORY)
+CREATE TABLE IF NOT EXISTS inventory (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     business_id UUID REFERENCES businesses(id) ON DELETE CASCADE,
     branch_id UUID REFERENCES branches(id) ON DELETE CASCADE,
     name TEXT NOT NULL,
-    status TEXT DEFAULT 'Boş',
+    category TEXT DEFAULT 'Genel',
+    price NUMERIC(10,2) DEFAULT 0,
+    stock INT DEFAULT 0,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS rooms (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    business_id UUID REFERENCES businesses(id) ON DELETE CASCADE,
+    branch_id UUID REFERENCES branches(id) ON DELETE CASCADE,
+    name TEXT NOT NULL,
+    category TEXT DEFAULT 'Masaj',
+    color TEXT DEFAULT '#6366f1',
+    status TEXT DEFAULT 'active',
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
 -- 5. CRM (CUSTOMERS, MEMBERSHIPS, PACKAGES)
-CREATE TABLE customers (
+CREATE TABLE IF NOT EXISTS customers (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     business_id UUID REFERENCES businesses(id) ON DELETE CASCADE,
     name TEXT NOT NULL,
@@ -132,7 +157,18 @@ CREATE TABLE customers (
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
-CREATE TABLE membership_plans (
+-- 5.1 MÜŞTERİ DOSYALARI (CUSTOMER MEDIA)
+CREATE TABLE IF NOT EXISTS customer_media (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    business_id UUID REFERENCES businesses(id) ON DELETE CASCADE,
+    customer_id UUID REFERENCES customers(id) ON DELETE CASCADE,
+    file_url TEXT NOT NULL,
+    file_type TEXT,
+    note TEXT,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS membership_plans (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     business_id UUID REFERENCES businesses(id) ON DELETE CASCADE,
     name TEXT NOT NULL,
@@ -144,7 +180,15 @@ CREATE TABLE membership_plans (
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
-CREATE TABLE customer_memberships (
+-- 4.6 REFERANS KAYNAKLARI (REFERRAL SOURCES)
+CREATE TABLE IF NOT EXISTS referral_sources (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    business_id UUID REFERENCES businesses(id) ON DELETE CASCADE,
+    name TEXT NOT NULL,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS customer_memberships (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     business_id UUID REFERENCES businesses(id) ON DELETE CASCADE,
     customer_id UUID REFERENCES customers(id) ON DELETE CASCADE,
@@ -156,7 +200,7 @@ CREATE TABLE customer_memberships (
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
-CREATE TABLE package_definitions (
+CREATE TABLE IF NOT EXISTS package_definitions (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     business_id UUID REFERENCES businesses(id) ON DELETE CASCADE,
     name TEXT NOT NULL,
@@ -168,7 +212,7 @@ CREATE TABLE package_definitions (
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
-CREATE TABLE packages (
+CREATE TABLE IF NOT EXISTS packages (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     business_id UUID REFERENCES businesses(id) ON DELETE CASCADE,
     customer_id UUID REFERENCES customers(id) ON DELETE CASCADE,
@@ -183,7 +227,7 @@ CREATE TABLE packages (
 );
 
 -- 6. FİNANS VE RANDEVU (APPOINTMENTS, PAYMENTS, DEBTS)
-CREATE TABLE payment_definitions (
+CREATE TABLE IF NOT EXISTS payment_definitions (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     business_id UUID REFERENCES businesses(id) ON DELETE CASCADE,
     name TEXT NOT NULL,
@@ -192,7 +236,7 @@ CREATE TABLE payment_definitions (
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
-CREATE TABLE payments (
+CREATE TABLE IF NOT EXISTS payments (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     business_id UUID REFERENCES businesses(id) ON DELETE CASCADE,
     branch_id UUID REFERENCES branches(id) ON DELETE CASCADE,
@@ -208,7 +252,7 @@ CREATE TABLE payments (
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
-CREATE TABLE appointments (
+CREATE TABLE IF NOT EXISTS appointments (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     business_id UUID REFERENCES businesses(id) ON DELETE CASCADE,
     branch_id UUID REFERENCES branches(id) ON DELETE CASCADE,
@@ -234,7 +278,20 @@ CREATE TABLE appointments (
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
-CREATE TABLE debts (
+-- 6.2 AJANDA BLOKLARI (CALENDAR BLOCKS)
+CREATE TABLE IF NOT EXISTS calendar_blocks (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    business_id UUID REFERENCES businesses(id) ON DELETE CASCADE,
+    branch_id UUID REFERENCES branches(id) ON DELETE CASCADE,
+    staff_id UUID REFERENCES staff(id) ON DELETE CASCADE,
+    date DATE NOT NULL,
+    time TEXT NOT NULL,
+    duration INT DEFAULT 60,
+    reason TEXT,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS debts (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     business_id UUID REFERENCES businesses(id) ON DELETE CASCADE,
     branch_id UUID REFERENCES branches(id),
@@ -247,7 +304,7 @@ CREATE TABLE debts (
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
-CREATE TABLE quotes (
+CREATE TABLE IF NOT EXISTS quotes (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     business_id UUID REFERENCES businesses(id) ON DELETE CASCADE,
     branch_id UUID REFERENCES branches(id),
@@ -262,8 +319,18 @@ CREATE TABLE quotes (
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
+-- 6.1 ONAM FORMU TASLAKLARI (CONSENT FORM TEMPLATES)
+CREATE TABLE IF NOT EXISTS consent_form_templates (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    business_id UUID REFERENCES businesses(id) ON DELETE CASCADE,
+    name TEXT NOT NULL,
+    content JSONB,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
 -- 7. KASA VE GİDER (EXPENSES, Z_REPORTS, BANK_ACCOUNTS)
-CREATE TABLE bank_accounts (
+CREATE TABLE IF NOT EXISTS bank_accounts (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     business_id UUID REFERENCES businesses(id) ON DELETE CASCADE,
     bank_name TEXT NOT NULL,
@@ -275,7 +342,7 @@ CREATE TABLE bank_accounts (
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
-CREATE TABLE expenses (
+CREATE TABLE IF NOT EXISTS expenses (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     business_id UUID REFERENCES businesses(id) ON DELETE CASCADE,
     branch_id UUID REFERENCES branches(id),
@@ -287,7 +354,16 @@ CREATE TABLE expenses (
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
-CREATE TABLE z_reports (
+-- 7.1 GİDER KATEGORİLERİ (EXPENSE CATEGORIES)
+CREATE TABLE IF NOT EXISTS expense_categories (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    business_id UUID REFERENCES businesses(id) ON DELETE CASCADE,
+    name TEXT NOT NULL,
+    description TEXT,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS z_reports (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     business_id UUID REFERENCES businesses(id) ON DELETE CASCADE,
     branch_id UUID REFERENCES branches(id) ON DELETE CASCADE,
@@ -305,7 +381,7 @@ CREATE TABLE z_reports (
 );
 
 -- 8. SİSTEM (LOGS, SETTINGS)
-CREATE TABLE audit_logs (
+CREATE TABLE IF NOT EXISTS audit_logs (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     business_id UUID REFERENCES businesses(id) ON DELETE CASCADE,
     date TIMESTAMPTZ DEFAULT NOW(),
@@ -317,7 +393,29 @@ CREATE TABLE audit_logs (
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
-CREATE TABLE booking_settings (
+-- 8.1 YAPAY ZEKA VE KOMİSYON (AI & COMMISSIONS)
+CREATE TABLE IF NOT EXISTS ai_insights (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    business_id UUID REFERENCES businesses(id) ON DELETE CASCADE,
+    title TEXT NOT NULL,
+    "desc" TEXT NOT NULL,
+    impact TEXT,
+    category TEXT,
+    suggested_action TEXT,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS commission_rules (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    business_id UUID REFERENCES businesses(id) ON DELETE CASCADE,
+    staff_id UUID REFERENCES staff(id) ON DELETE CASCADE,
+    service_name TEXT,
+    type TEXT DEFAULT 'Yüzde',
+    value DECIMAL DEFAULT 0,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS booking_settings (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     business_id UUID REFERENCES businesses(id) ON DELETE CASCADE,
     branch_id UUID REFERENCES branches(id) ON DELETE CASCADE,
@@ -326,7 +424,7 @@ CREATE TABLE booking_settings (
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
-CREATE TABLE system_announcements (
+CREATE TABLE IF NOT EXISTS system_announcements (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     business_id UUID REFERENCES businesses(id) ON DELETE CASCADE, -- NULL means GLOBAL
     title TEXT NOT NULL,
@@ -337,7 +435,7 @@ CREATE TABLE system_announcements (
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
-CREATE TABLE tenant_modules (
+CREATE TABLE IF NOT EXISTS tenant_modules (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     business_id UUID REFERENCES businesses(id) ON DELETE CASCADE,
     module_name TEXT NOT NULL, -- 'marketing', 'inventory', 'quotes', 'commissions'
@@ -378,7 +476,10 @@ DECLARE
         'calendar_blocks', 'notification_logs', 'z_reports',
         'payment_definitions', 'bank_accounts', 'expense_categories', 
         'referral_sources', 'consent_form_templates', 'quotes',
-        'system_announcements', 'tenant_modules', 'booking_settings'
+        'system_announcements', 'tenant_modules', 'booking_settings',
+        'ai_insights', 'marketing_rules', 'dynamic_pricing_rules', 
+        'customer_wallets', 'wallet_transactions', 'consultation_body_maps', 
+        'inventory_usage_norms', 'user_branch_access'
     ];
 BEGIN 
     FOR tbl IN SELECT unnest(tables) LOOP
@@ -404,7 +505,9 @@ DROP POLICY IF EXISTS "allow_self_read" ON public.app_users;
 CREATE POLICY "allow_self_read" ON public.app_users FOR SELECT TO authenticated USING (id = auth.uid());
 DROP POLICY IF EXISTS "allow_admin_manage_all" ON public.app_users;
 CREATE POLICY "allow_admin_manage_all" ON public.app_users FOR ALL TO authenticated USING (get_my_role() = 'SaaS_Owner');
+DROP POLICY IF EXISTS "admin_insert_branches_global" ON public.branches;
 CREATE POLICY "admin_insert_branches_global" ON public.branches FOR INSERT TO authenticated WITH CHECK (get_my_role() = 'SaaS_Owner');
+DROP POLICY IF EXISTS "admin_insert_app_users_global" ON public.app_users;
 CREATE POLICY "admin_insert_app_users_global" ON public.app_users FOR INSERT TO authenticated WITH CHECK (get_my_role() = 'SaaS_Owner');
 
 -- 11. SEED DATA (Başlangıç Ayarları)
@@ -416,14 +519,26 @@ INSERT INTO branches (id, business_id, name, location)
 VALUES ('b2000000-0000-0000-0000-000000000000', 'b1000000-0000-0000-0000-000000000000', 'Merkez Şube', 'İstanbul') 
 ON CONFLICT DO NOTHING;
 -- 12. REALTIME PUBLICATION
--- Supabase Realtime özelliğini aktif etmek istediğimiz tabloları ekliyoruz
-ALTER PUBLICATION supabase_realtime ADD TABLE 
-    appointments, 
-    payments, 
-    debts, 
-    customers, 
-    system_announcements, 
-    tenant_modules;
+-- Re-run safe: Only add tables if they are not already in the publication
+DO $$ 
+DECLARE
+    tbl TEXT;
+    target_tables TEXT[] := ARRAY[
+        'appointments', 'payments', 'debts', 'customers', 
+        'system_announcements', 'tenant_modules', 'inventory',
+        'marketing_rules', 'dynamic_pricing_rules', 'customer_wallets', 
+        'wallet_transactions', 'consultation_body_maps', 'inventory_usage_norms',
+        'rooms', 'staff', 'services', 'audit_logs'
+    ];
+BEGIN 
+    FOR tbl IN SELECT unnest(target_tables) LOOP
+        IF EXISTS (SELECT 1 FROM pg_tables WHERE tablename = tbl AND schemaname = 'public') THEN
+            IF NOT EXISTS (SELECT 1 FROM pg_publication_tables WHERE pubname = 'supabase_realtime' AND tablename = tbl) THEN
+                EXECUTE format('ALTER PUBLICATION supabase_realtime ADD TABLE public.%I', tbl);
+            END IF;
+        END IF;
+    END LOOP;
+END $$;
 
 INSERT INTO public.app_users (id, business_id, role, name, email, permissions) 
 SELECT id, 'b1000000-0000-0000-0000-000000000000', 'SaaS_Owner', 'Kerim Kardaş', email, '{"*"}' 

@@ -18,7 +18,14 @@ export type PackageDefinition = DB.PackageDefinition;
 export type Appointment = DB.Appointment;
 export type CalendarBlock = DB.CalendarBlock;
 export type Debt = DB.Debt;
-export type Payment = DB.Payment;
+export interface Payment extends Omit<DB.Payment, 'methods'> {
+    methods: PaymentMethod[];
+    isGift?: boolean;
+    originalPrice?: number;
+    authorizedBy?: string;
+    giftNote?: string;
+    soldProducts?: any;
+}
 export type BookingSettings = DB.BookingSettings;
 export type Staff = DB.Staff;
 export type PaymentDefinition = DB.PaymentDefinition;
@@ -39,6 +46,12 @@ export type ZReport = DB.ZReport;
 export type Quote = DB.Quote;
 export type SystemAnnouncement = DB.SystemAnnouncement;
 export type TenantModule = DB.TenantModule;
+export type MarketingRule = DB.MarketingRule;
+export type DynamicPricingRule = DB.DynamicPricingRule;
+export type CustomerWallet = DB.CustomerWallet;
+export type WalletTransaction = DB.WalletTransaction;
+export type ConsultationBodyMap = DB.ConsultationBodyMap;
+export type InventoryUsageNorm = DB.InventoryUsageNorm;
 
 export type AppointmentStatus = 'pending' | 'completed' | 'no-show' | 'cancelled' | 'excused' | 'arrived';
 
@@ -123,6 +136,12 @@ interface StoreState {
     quotes: Quote[];
     systemAnnouncements: SystemAnnouncement[];
     tenantModules: TenantModule[];
+    marketingRules: MarketingRule[];
+    pricingRules: DynamicPricingRule[];
+    wallets: CustomerWallet[];
+    walletTransactions: WalletTransaction[];
+    bodyMaps: ConsultationBodyMap[];
+    usageNorms: InventoryUsageNorm[];
     
     // Actions
     login: (email: string, pass: string) => Promise<boolean>;
@@ -137,7 +156,7 @@ interface StoreState {
     addMembershipPlan: (p: any) => void;
     assignMembership: (cid: string, pid: string) => void;
     addAppointment: (a: any) => Promise<boolean>;
-    moveAppointment: (id: string, newTime: string, newStaffId: string) => Promise<boolean>;
+    moveAppointment: (id: string, newTime: string, newStaffId?: string, newRoomId?: string) => Promise<boolean>;
     deleteAppointment: (id: string) => Promise<boolean>;
     updateAppointmentStatus: (id: string, status: AppointmentStatus) => Promise<boolean>;
     calculateDynamicPrice: (servicePrice: number, timeStr: string) => { price: number, reason: string | null };
@@ -147,6 +166,7 @@ interface StoreState {
     deleteCustomerMedia: (id: string) => void;
     updateSettings: (s: Partial<BusinessSettings>) => void;
     updateBusinessSettings: (s: Partial<BusinessSettings>) => void;
+    updateBusiness: (updates: Partial<Business>) => Promise<boolean>;
     
     // Room Management
     addRoom: (r: Omit<Room, 'id' | 'businessId' | 'createdAt'>) => void;
@@ -158,6 +178,7 @@ interface StoreState {
     sendNotification: (customerId: string, type: NotificationLog['type'], content: string) => void;
     addLog: (action: string, customer: string, oldValue?: string, newValue?: string) => void;
     addProduct: (p: any) => void;
+    transferProduct: (productId: string, fromBranchId: string, toBranchId: string, amount: number) => Promise<boolean>;
     addExpense: (e: any) => void;
     addService: (s: any) => void;
     updateService: (id: string, s: Partial<Service>) => void;
@@ -206,6 +227,30 @@ interface StoreState {
     addConsentFormTemplate: (t: any) => void;
     updateConsentFormTemplate: (id: string, t: Partial<ConsentFormTemplate>) => void;
     removeConsentFormTemplate: (id: string) => void;
+
+    // Marketing Rules
+    addMarketingRule: (rule: Omit<MarketingRule, 'id' | 'businessId'>) => Promise<void>;
+    updateMarketingRule: (id: string, updates: Partial<MarketingRule>) => Promise<void>;
+    deleteMarketingRule: (id: string) => Promise<void>;
+
+    // Intelligence
+    addPricingRule: (rule: Omit<DynamicPricingRule, 'id' | 'businessId'>) => Promise<void>;
+    updatePricingRule: (id: string, updates: Partial<DynamicPricingRule>) => Promise<void>;
+    deletePricingRule: (id: string) => Promise<void>;
+    
+    getWallet: (customerId: string) => CustomerWallet | undefined;
+    loadWallet: (customerId: string, amount: number, desc?: string) => Promise<void>;
+    spendFromWallet: (customerId: string, amount: number, desc?: string) => Promise<boolean>;
+    
+    addBodyMap: (map: Omit<ConsultationBodyMap, 'id' | 'businessId'>) => Promise<void>;
+    updateBodyMap: (id: string, mapData: any) => Promise<void>;
+    
+    addUsageNorm: (norm: Omit<InventoryUsageNorm, 'id' | 'businessId'>) => Promise<void>;
+    updateUsageNorm: (id: string, updates: Partial<InventoryUsageNorm>) => Promise<void>;
+    
+    getRecommendedStaff: (serviceId: string, customerId?: string) => Staff[];
+    getEffectivePrice: (serviceId: string) => number;
+    predictInventory: () => any[];
 
     // Branches
     addBranch: (branch: Partial<Branch>) => Promise<void>;
@@ -358,6 +403,12 @@ const StoreContext = createContext<StoreState | null>(null);
       const [allQuotes, setAllQuotes] = useState<Quote[]>([]);
      const [systemAnnouncements, setSystemAnnouncements] = useState<SystemAnnouncement[]>([]);
      const [tenantModules, setTenantModules] = useState<TenantModule[]>([]);
+    const [marketingRules, setMarketingRules] = useState<MarketingRule[]>([]);
+    const [pricingRules, setPricingRules] = useState<DynamicPricingRule[]>([]);
+    const [wallets, setWallets] = useState<CustomerWallet[]>([]);
+    const [walletTransactions, setWalletTransactions] = useState<WalletTransaction[]>([]);
+    const [bodyMaps, setBodyMaps] = useState<ConsultationBodyMap[]>([]);
+    const [usageNorms, setUsageNorms] = useState<InventoryUsageNorm[]>([]);
      const [tenantSlug, setTenantSlug] = useState<string | null>(null);
      const [currentTenant, setCurrentTenant] = useState<Business | null>(null);
      const [settings, setSettings] = useState<BusinessSettings>({ 
@@ -435,7 +486,8 @@ const StoreContext = createContext<StoreState | null>(null);
             'services', 'app_users', 'audit_logs', 'customer_media', 
             'packages', 'package_definitions', 'commission_rules', 'calendar_blocks', 'notification_logs', 'z_reports',
             'payment_definitions', 'bank_accounts', 'expense_categories', 'referral_sources', 'consent_form_templates', 'quotes',
-            'system_announcements', 'tenant_modules'
+            'system_announcements', 'tenant_modules', 'marketing_rules', 'dynamic_pricing_rules', 'customer_wallets', 'wallet_transactions',
+            'consultation_body_maps', 'inventory_usage_norms'
         ];
 
         const dataMap: any = {};
@@ -519,6 +571,13 @@ const StoreContext = createContext<StoreState | null>(null);
             setAllQuotes((dataMap.quotes || []).map(toCamel));
             setSystemAnnouncements(dataMap.system_announcements || []);
             setTenantModules(dataMap.tenant_modules || []);
+            setMarketingRules(dataMap.marketing_rules || []);
+            setPricingRules(toCamel(dataMap.dynamic_pricing_rules || []));
+            setWallets(toCamel(dataMap.customer_wallets || []));
+            setWalletTransactions(toCamel(dataMap.wallet_transactions || []));
+            setBodyMaps(toCamel(dataMap.consultation_body_maps || []));
+            setUsageNorms(toCamel(dataMap.inventory_usage_norms || []));
+            setAllNotifs(dataMap.notification_logs || []);
             
             // ... rest of the function or state updates
             if (currentUser && dataMap.branches?.length > 0) {
@@ -613,8 +672,36 @@ const StoreContext = createContext<StoreState | null>(null);
                 }
             })
             .on('postgres_changes', { event: '*', schema: 'public', table: 'rooms', filter: `business_id=eq.${bizId}` }, (payload) => {
-                if (payload.eventType === 'UPDATE') {
-                    setAllRooms(prev => prev.map(r => r.id === payload.new.id ? { ...r, ...toCamel(payload.new) } : r));
+                if (payload.eventType === 'UPDATE' || payload.eventType === 'INSERT') {
+                    toCamel(payload.new);
+                    setAllRooms(prev => {
+                        const exists = prev.find(r => r.id === payload.new.id);
+                        if (exists) return prev.map(r => r.id === payload.new.id ? { ...r, ...toCamel(payload.new) } : r);
+                        return [...prev, toCamel(payload.new) as Room];
+                    });
+                } else if (payload.eventType === 'DELETE') {
+                    setAllRooms(prev => prev.filter(r => r.id === payload.old.id));
+                }
+            })
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'staff', filter: `business_id=eq.${bizId}` }, (payload) => {
+                if (payload.eventType === 'INSERT') {
+                    setAllStaff(prev => [...prev, toCamel(payload.new) as Staff]);
+                } else if (payload.eventType === 'UPDATE') {
+                    setAllStaff(prev => prev.map(s => s.id === payload.new.id ? { ...s, ...toCamel(payload.new) } : s));
+                }
+            })
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'services', filter: `business_id=eq.${bizId}` }, (payload) => {
+                if (payload.eventType === 'INSERT') {
+                    setAllServices(prev => [...prev, toCamel(payload.new) as Service]);
+                } else if (payload.eventType === 'UPDATE') {
+                    setAllServices(prev => prev.map(s => s.id === payload.new.id ? { ...s, ...toCamel(payload.new) } : s));
+                }
+            })
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'inventory', filter: `business_id=eq.${bizId}` }, (payload) => {
+                if (payload.eventType === 'INSERT') {
+                    setAllInventory(prev => [...prev, toCamel(payload.new) as Product]);
+                } else if (payload.eventType === 'UPDATE') {
+                    setAllInventory(prev => prev.map(p => p.id === payload.new.id ? { ...p, ...toCamel(payload.new) } : p));
                 }
             })
             .on('postgres_changes', { event: '*', schema: 'public', table: 'z_reports', filter: `business_id=eq.${bizId}` }, (payload) => {
@@ -667,10 +754,13 @@ const StoreContext = createContext<StoreState | null>(null);
          return list.filter(i => i.businessId === activeBizId);
      };
  
-     const appointments = useMemo(() => filterByBiz(allAppointments).filter(a => !currentBranch?.id || a.branchId === currentBranch.id), [allAppointments, currentBranch]);
+     const appointments = useMemo(() => filterByBiz(allAppointments).filter(a => !currentBranch?.id || a.branchId === currentBranch.id), [allAppointments, currentBranch, currentUser, currentTenant]);
      const customers = useMemo(() => filterByBiz(allCustomers), [allCustomers, currentUser, currentTenant]);
-     const currentBusiness = useMemo(() => allBusinesses.find(b => b.id === (currentTenant?.id || currentUser?.businessId)) || null, [currentUser, allBusinesses, currentTenant]);
-    const expenses = useMemo(() => filterByBiz(allExpenses).filter(e => !currentBranch?.id || e.branchId === currentBranch.id), [allExpenses, currentBranch, currentUser, currentTenant]);
+     const rooms = useMemo(() => filterByBiz(allRooms).filter(r => !currentBranch?.id || r.branchId === currentBranch.id), [allRooms, currentBranch, currentUser, currentTenant]);
+      const services = useMemo(() => filterByBiz(allServices).filter(s => !currentBranch?.id || s.branchId === currentBranch.id), [allServices, currentBranch, currentUser, currentTenant]);
+      const inventory = useMemo(() => filterByBiz(allInventory).filter(p => !currentBranch?.id || p.branchId === currentBranch.id), [allInventory, currentBranch, currentUser, currentTenant]);
+      const currentBusiness = useMemo(() => allBusinesses.find(b => b.id === (currentTenant?.id || currentUser?.businessId)) || null, [currentUser, allBusinesses, currentTenant]);
+     const expenses = useMemo(() => filterByBiz(allExpenses).filter(e => !currentBranch?.id || e.branchId === currentBranch.id), [allExpenses, currentBranch, currentUser, currentTenant]);
  
      // Safe business ID resolver: ensures we always use a valid businessId from the DB
      const getSafeBizId = (): string | undefined => {
@@ -728,7 +818,14 @@ const StoreContext = createContext<StoreState | null>(null);
                   }, {});
 
                   // Auto-inject business_id if missing and required for tenant isolation
-                  const tenantTables = ['branches', 'appointments', 'customers', 'membership_plans', 'customer_memberships', 'payments', 'debts', 'staff', 'inventory', 'rooms', 'expenses', 'services', 'audit_logs', 'customer_media', 'packages', 'package_definitions', 'commission_rules', 'calendar_blocks', 'notification_logs', 'z_reports', 'payment_definitions', 'bank_accounts'];
+                  const tenantTables = [
+                      'branches', 'appointments', 'customers', 'membership_plans', 'customer_memberships', 
+                      'payments', 'debts', 'staff', 'inventory', 'rooms', 'expenses', 'services', 
+                      'audit_logs', 'customer_media', 'packages', 'package_definitions', 'commission_rules', 
+                      'calendar_blocks', 'notification_logs', 'z_reports', 'payment_definitions', 'bank_accounts',
+                      'marketing_rules', 'dynamic_pricing_rules', 'customer_wallets', 'wallet_transactions',
+                      'consultation_body_maps', 'inventory_usage_norms'
+                  ];
                   if (op === 'insert' && tenantTables.includes(table) && !finalizedPayload.business_id) {
                       finalizedPayload.business_id = activeId;
                   }
@@ -740,7 +837,11 @@ const StoreContext = createContext<StoreState | null>(null);
                       if (op === 'delete') res = await supabase.from(table).delete().eq('id', id);
                       
                       if (res?.error) {
-                          console.error(`DB Error [${table} ${op}]:`, res.error);
+                          console.error(`🔴 DB Error [${table} ${op}]:`, res.error.message, res.error.details, res.error.hint);
+                          // Provide specific Turkish feedback for missing columns
+                          if (res.error.code === '42703') {
+                              console.error(`Kritik: ${table} tablosunda bir sütun eksik. Lütfen SQL güncellemelerini çalıştırın.`);
+                          }
                           throw res.error;
                       }
                       return res;
@@ -819,7 +920,7 @@ const StoreContext = createContext<StoreState | null>(null);
         },
         addBusiness: async (b) => {
             let newBizId = crypto.randomUUID();
-            let newBiz = { ...b, id: newBizId, status: 'Aktif' as const, maxBranches: 1 };
+            let newBiz = { ...b, id: newBizId, status: 'active' as const, maxBranches: 1 };
             
             try {
                 // 1. İlk Kayıt Denemesi
@@ -844,7 +945,7 @@ const StoreContext = createContext<StoreState | null>(null);
                     business_id: newBizId,
                     name: 'Merkez Şube',
                     location: 'Belirtilmedi',
-                    status: 'Aktif' as const
+                    status: 'active' as const
                 };
                 await syncDb('branches', 'insert', defaultBranch, defaultBranch.id);
 
@@ -904,10 +1005,16 @@ const StoreContext = createContext<StoreState | null>(null);
         branches: allowedBranches,
         allLogs,
         allNotifs,
+        marketingRules,
+        pricingRules,
+        wallets,
+        walletTransactions,
+        bodyMaps,
+        usageNorms,
         aiInsights,
         customerMedia: allCustomerMedia,
         inventory: allInventory,
-        rooms: allRooms,
+        rooms,
         services: allServices,
         packageDefinitions: allPackageDefinitions,
         commissionRules: allCommissionRules,
@@ -932,7 +1039,7 @@ const StoreContext = createContext<StoreState | null>(null);
             
             const { data: branches } = await supabase.from('branches').select('*').eq('business_id', business.id);
             const { data: services } = await supabase.from('services').select('*').eq('business_id', business.id).eq('is_public', true);
-            const { data: staff } = await supabase.from('staff').select('*').eq('business_id', business.id).eq('status', 'Aktif');
+            const { data: staff } = await supabase.from('staff').select('*').eq('business_id', business.id).eq('status', 'active');
             const { data: settings } = await supabase.from('booking_settings').select('*').eq('business_id', business.id).single();
 
             setAllBusinesses([toCamel(business)]);
@@ -986,18 +1093,27 @@ const StoreContext = createContext<StoreState | null>(null);
             syncDb('customer_memberships', 'insert', m, m.id);
         },
         addAppointment,
-        moveAppointment: async (id, newTime, newStaffId) => {
+        moveAppointment: async (id: string, newTime: string, newStaffId?: string, newRoomId?: string) => {
             const appt = allAppointments.find(a => a.id === id);
             
-            // Yeni terapist ismini bul ve snapshot al
-            const newStaff = allStaff.find(s => s.id === newStaffId);
-            const newStaffName = newStaff?.name || appt?.staffName || 'Bilinmeyen';
+            // Veri hazırlığı
+            const updates: any = { time: newTime };
+            if (newStaffId) {
+                const newStaff = allStaff.find(s => s.id === newStaffId);
+                updates.staffId = newStaffId;
+                updates.staffName = newStaff?.name || appt?.staffName || 'Bilinmeyen';
+            }
+            if (newRoomId) {
+                updates.roomId = newRoomId;
+            }
 
-            setAllAppointments(prev => prev.map(a => a.id === id ? { ...a, time: newTime, staffId: newStaffId, staffName: newStaffName } : a));
-            syncDb('appointments', 'update', { time: newTime, staff_id: newStaffId, staff_name: newStaffName }, id);
+            setAllAppointments(prev => prev.map(a => a.id === id ? { ...a, ...updates } : a));
+            syncDb('appointments', 'update', toSnake(updates), id);
             
             if (appt) {
-                store.addLog('Randevu Taşındı', appt.customerName, `${appt.time} (${appt.staffName})`, `${newTime} (${newStaffName})`);
+                const staffChange = updates.staffName ? ` (${updates.staffName})` : '';
+                const roomChange = updates.roomId ? ` [Oda: ${updates.roomId}]` : '';
+                store.addLog('Randevu Taşındı', appt.customerName, `${appt.time}`, `${newTime}${staffChange}${roomChange}`);
             }
             return true;
         },
@@ -1024,6 +1140,14 @@ const StoreContext = createContext<StoreState | null>(null);
                     setAllPackages(prev => prev.map(p => p.id === pkg.id ? { ...p, usedSessions: newUsed } : p));
                     syncDb('packages', 'update', { used_sessions: newUsed }, pkg.id);
                     store.addLog('Paket Seansı Kullanıldı', appt.customerName, `${pkg.usedSessions}/${pkg.totalSessions}`, `${newUsed}/${pkg.totalSessions}`);
+
+                    // Marketing Automation: Low Balance Check
+                    const remaining = pkg.totalSessions - newUsed;
+                    const rule = marketingRules.find(r => r.triggerType === 'low_package_balance' && r.isActive && remaining <= (r.threshold || 0));
+                    if (rule && appt.customerId) {
+                        const message = rule.messageTemplate.replace('{customer_name}', appt.customerName).replace('{remaining}', remaining.toString());
+                        store.sendNotification(appt.customerId, 'WHATSAPP', message);
+                    }
                 }
             }
 
@@ -1052,9 +1176,14 @@ const StoreContext = createContext<StoreState | null>(null);
             syncDb('customer_media', 'delete', {}, id);
         },
         updateSettings: (s) => setSettings(prev => ({ ...prev, ...s })),
-        updateBusinessSettings: (s) => setSettings(prev => ({ ...prev, ...s })),
         addRoom: (r) => {
-            const nr = { ...r, id: crypto.randomUUID(), businessId: getSafeBizId()!, createdAt: new Date().toISOString() };
+            const nr = { 
+                ...r, 
+                id: crypto.randomUUID(), 
+                businessId: getSafeBizId()!, 
+                branchId: currentBranch?.id || null, 
+                createdAt: new Date().toISOString() 
+            };
             setAllRooms(prev => [...prev, nr as any]);
             syncDb('rooms', 'insert', nr, nr.id);
         },
@@ -1077,11 +1206,12 @@ const StoreContext = createContext<StoreState | null>(null);
                 businessId: bizId, 
                 branchId: currentBranch?.id!, 
                 date: getTodayDate(),
-                createdAt: getLocalISO()
+                createdAt: getLocalISO(),
+                soldProducts: s || []
             };
             
             // 1. Save Payment
-            setAllPayments(prev => [...prev, pay]);
+            setAllPayments(prev => [...prev, pay as any]);
             syncDb('payments', 'insert', pay, pay.id);
             
             // 2. Handle Debts (Connection)
@@ -1113,7 +1243,11 @@ const StoreContext = createContext<StoreState | null>(null);
                 });
             }
             
-            store.addLog('Ödeme Alındı', pay.customerName, '', `₺${pay.totalAmount}`);
+            if (pay.isGift) {
+                store.addLog('🎁 Hediye Edildi', pay.customerName, `₺${pay.originalPrice}`, '₺0');
+            } else {
+                store.addLog('Ödeme Alındı', pay.customerName, '', `₺${pay.totalAmount}`);
+            }
             
             // Trigger AI Re-analysis after checkout
             store.analyzeSystem();
@@ -1168,6 +1302,24 @@ const StoreContext = createContext<StoreState | null>(null);
                 });
             }
 
+            // --- MARKETING AUTOMATIONS (Run on analysis) ---
+            
+            // Birthday Automation
+            const birthdayRule = marketingRules.find(r => r.triggerType === 'birthday' && r.isActive);
+            if (birthdayRule) {
+                const birthdayCustomers = store.getBirthdaysToday();
+                birthdayCustomers.forEach(c => {
+                    // Check if already sent today to avoid spamming
+                    const todayStr = new Date().toISOString().split('T')[0];
+                    const alreadySent = allNotifs.some(n => n.customerId === c.id && n.sentAt.startsWith(todayStr) && n.content === birthdayRule.messageTemplate.replace('{customer_name}', c.name));
+                    
+                    if (!alreadySent) {
+                        const message = birthdayRule.messageTemplate.replace('{customer_name}', c.name);
+                        store.sendNotification(c.id, 'WHATSAPP', message);
+                    }
+                });
+            }
+
             // Update local state and Sync with DB
             // We'll replace old insights for this business to avoid duplication
             setAiInsights(insights.map(i => ({ ...i, id: crypto.randomUUID() })) as any);
@@ -1175,7 +1327,23 @@ const StoreContext = createContext<StoreState | null>(null);
             // In a real scenario, we'd clear old insights for this business in DB first
             // For now, we rely on the setAiInsights to update the dashboard.
         },
-        sendNotification: (cid, type, content) => {},
+        sendNotification: async (cid, type, content) => {
+            const bizId = getSafeBizId();
+            if (!bizId) return;
+
+            const n: Omit<NotificationLog, 'id'> = {
+                businessId: bizId,
+                customerId: cid,
+                type,
+                content,
+                status: 'sent',
+                sentAt: new Date().toISOString()
+            };
+            const id = crypto.randomUUID();
+            const fullNotif = { ...n, id };
+            setAllNotifs(prev => [fullNotif, ...prev]);
+            syncDb('notification_logs', 'insert', fullNotif, id);
+        },
         addLog: (action, customer, oldValue, newValue) => {
             const log = {
                 id: crypto.randomUUID(),
@@ -1191,10 +1359,41 @@ const StoreContext = createContext<StoreState | null>(null);
             syncDb('audit_logs', 'insert', log, log.id);
         },
         addProduct: (p) => {
-            const np = { ...p, id: crypto.randomUUID(), businessId: getSafeBizId()! };
+            const np = { ...p, id: crypto.randomUUID(), businessId: getSafeBizId()!, branchId: currentBranch?.id };
             setAllInventory(prev => [...prev, np]);
             store.addLog('Stok Kaydedildi', np.name, '', 'Yeni Ürün');
             syncDb('inventory', 'insert', np, np.id);
+        },
+        transferProduct: async (productId, fromBranchId, toBranchId, amount) => {
+            const sourceProduct = allInventory.find(p => p.id === productId);
+            if (!sourceProduct || sourceProduct.stock < amount) return false;
+
+            // 1. Reduce stock in source
+            const newSourceStock = sourceProduct.stock - amount;
+            setAllInventory(prev => prev.map(p => p.id === productId ? { ...p, stock: newSourceStock } : p));
+            await syncDb('inventory', 'update', { stock: newSourceStock }, productId);
+
+            // 2. Add stock to target
+            const targetProduct = allInventory.find(p => p.name === sourceProduct.name && p.branchId === toBranchId);
+            if (targetProduct) {
+                const newTargetStock = targetProduct.stock + amount;
+                setAllInventory(prev => prev.map(p => p.id === targetProduct.id ? { ...p, stock: newTargetStock } : p));
+                await syncDb('inventory', 'update', { stock: newTargetStock }, targetProduct.id);
+            } else {
+                // Clone product to target branch
+                const newProduct = { 
+                    ...sourceProduct, 
+                    id: crypto.randomUUID(), 
+                    branchId: toBranchId, 
+                    stock: amount, 
+                    createdAt: new Date().toISOString() 
+                };
+                setAllInventory(prev => [...prev, newProduct]);
+                await syncDb('inventory', 'insert', newProduct, newProduct.id);
+            }
+
+            store.addLog('Stok Transferi', sourceProduct.name, `${fromBranchId} -> ${toBranchId}`, `${amount} adet`);
+            return true;
         },
         updateProduct: (id, updates) => {
             setAllInventory(prev => prev.map(p => p.id === id ? { ...p, ...updates } : p));
@@ -1207,7 +1406,7 @@ const StoreContext = createContext<StoreState | null>(null);
             syncDb('expenses', 'insert', ne, ne.id);
         },
         addService: (s) => {
-            const ns = { ...s, id: crypto.randomUUID(), businessId: getSafeBizId()! };
+            const ns = { ...s, id: crypto.randomUUID(), businessId: getSafeBizId()!, branchId: currentBranch?.id };
             setAllServices(prev => [...prev, ns]);
             store.addLog('Hizmet Eklendi', ns.name, '', `₺${ns.price}`);
             syncDb('services', 'insert', ns, ns.id);
@@ -1284,7 +1483,7 @@ const StoreContext = createContext<StoreState | null>(null);
                     return;
                 }
             }
-            const ns = { ...s, id: crypto.randomUUID(), businessId: getSafeBizId()!, branchId: currentBranch?.id!, status: 'Aktif' as const };
+            const ns = { ...s, id: crypto.randomUUID(), businessId: getSafeBizId()!, branchId: currentBranch?.id!, status: 'active' as const };
             setAllStaff(prev => [...prev, ns as any]);
             store.addLog('Personel Eklendi', (ns as any).name, '', 'Yeni Kayıt');
             syncDb('staff', 'insert', ns, ns.id);
@@ -1397,6 +1596,21 @@ const StoreContext = createContext<StoreState | null>(null);
             setAllowedBranches(prev => prev.filter(b => b.id !== id));
             syncDb('branches', 'delete', {}, id);
         },
+        updateBusinessSettings: (s) => {
+            const bizId = getSafeBizId();
+            if (bizId) {
+                setAllBusinesses(prev => prev.map(b => b.id === bizId ? { ...b, ...s } : b));
+                syncDb('businesses', 'update', s, bizId);
+            }
+        },
+        updateBusiness: async (updates) => {
+            const bizId = getSafeBizId();
+            if (!bizId) return false;
+            setAllBusinesses(prev => prev.map(b => b.id === bizId ? { ...b, ...updates } : b));
+            syncDb('businesses', 'update', updates, bizId);
+            store.addLog('İşletme Güncellendi', '', '', 'Yönetici PIN veya Bilgiler');
+            return true;
+        },
         getCustomerPackages: (cid) => allPackages.filter(p => p.customerId === cid),
         getCustomerAppointments: (cid) => allAppointments.filter(a => a.customerId === cid),
         getCustomerAppointmentsByBranch: (cid, bid) => allAppointments.filter(a => a.customerId === cid && a.branchId === bid),
@@ -1492,6 +1706,123 @@ const StoreContext = createContext<StoreState | null>(null);
             setAllQuotes(prev => prev.filter(q => q.id !== id));
             syncDb('quotes', 'delete', {}, id);
         },
+        addMarketingRule: async (rule) => {
+            const bizId = getSafeBizId();
+            if (!bizId) return;
+            const nr = { ...rule, id: crypto.randomUUID(), businessId: bizId, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() };
+            setMarketingRules(prev => [...prev, nr as any]);
+            syncDb('marketing_rules', 'insert', nr, nr.id);
+        },
+        updateMarketingRule: async (id, updates) => {
+            const upds = { ...updates, updatedAt: new Date().toISOString() };
+            setMarketingRules(prev => prev.map(r => r.id === id ? { ...r, ...upds } : r));
+            syncDb('marketing_rules', 'update', upds, id);
+        },
+        deleteMarketingRule: async (id) => {
+            setMarketingRules(prev => prev.filter(r => r.id !== id));
+            syncDb('marketing_rules', 'delete', {}, id);
+        },
+        
+        // Intelligence & Loyalty
+        addPricingRule: async (rule) => {
+            const bizId = getSafeBizId();
+            if (!bizId) return;
+            const nr = { ...rule, id: crypto.randomUUID(), business_id: bizId, created_at: new Date().toISOString() };
+            setPricingRules(prev => [...prev, toCamel(nr) as any]);
+            syncDb('dynamic_pricing_rules', 'insert', nr, nr.id);
+        },
+        updatePricingRule: async (id, updates) => {
+            setPricingRules(prev => prev.map(r => r.id === id ? { ...r, ...updates } : r));
+            syncDb('dynamic_pricing_rules', 'update', updates, id);
+        },
+        deletePricingRule: async (id) => {
+            setPricingRules(prev => prev.filter(r => r.id !== id));
+            syncDb('dynamic_pricing_rules', 'delete', {}, id);
+        },
+
+        getWallet: (cid) => wallets.find(w => w.customerId === cid),
+        loadWallet: async (cid, amount, desc) => {
+            const bizId = getSafeBizId();
+            const existing = store.getWallet(cid);
+            const id = existing?.id || crypto.randomUUID();
+            const newBalance = (existing?.balance || 0) + amount;
+            
+            const walletData = { id, business_id: bizId, customer_id: cid, balance: newBalance, updated_at: new Date().toISOString() };
+            setWallets(prev => existing ? prev.map(w => w.id === id ? toCamel(walletData) as any : w) : [...prev, toCamel(walletData) as any]);
+            syncDb('customer_wallets', existing ? 'update' : 'insert', walletData, id);
+            
+            const tx = { id: crypto.randomUUID(), business_id: bizId, wallet_id: id, type: 'LOAD', amount, description: desc || 'Bakiye Yükleme', created_at: new Date().toISOString() };
+            setWalletTransactions(prev => [toCamel(tx) as any, ...prev]);
+            syncDb('wallet_transactions', 'insert', tx, tx.id);
+        },
+        spendFromWallet: async (cid, amount, desc) => {
+            const existing = store.getWallet(cid);
+            if (!existing || existing.balance < amount) return false;
+            
+            const newBalance = existing.balance - amount;
+            const walletData = { balance: newBalance, updated_at: new Date().toISOString() };
+            setWallets(prev => prev.map(w => w.id === existing.id ? { ...w, ...walletData } : w));
+            syncDb('customer_wallets', 'update', walletData, existing.id);
+            
+            // Point Earning Logic (Infrastructure added, but inactive as per user request)
+            const tx = { id: crypto.randomUUID(), business_id: existing.businessId, wallet_id: existing.id, type: 'SPEND', amount, description: desc || 'Harcama', created_at: new Date().toISOString() };
+            setWalletTransactions(prev => [toCamel(tx) as any, ...prev]);
+            syncDb('wallet_transactions', 'insert', tx, tx.id);
+            return true;
+        },
+
+        addBodyMap: async (map) => {
+            const bizId = getSafeBizId();
+            const nm = { ...map, id: crypto.randomUUID(), business_id: bizId, created_at: new Date().toISOString() };
+            setBodyMaps(prev => [...prev, toCamel(nm) as any]);
+            syncDb('consultation_body_maps', 'insert', nm, nm.id);
+        },
+        updateBodyMap: async (id, mapData) => {
+            setBodyMaps(prev => prev.map(m => m.id === id ? { ...m, mapData } : m));
+            syncDb('consultation_body_maps', 'update', { map_data: mapData }, id);
+        },
+
+        addUsageNorm: async (norm) => {
+            const bizId = getSafeBizId();
+            const nn = { ...norm, id: crypto.randomUUID(), business_id: bizId, created_at: new Date().toISOString() };
+            setUsageNorms(prev => [...prev, toCamel(nn) as any]);
+            syncDb('inventory_usage_norms', 'insert', nn, nn.id);
+        },
+        updateUsageNorm: async (id, updates) => {
+            setUsageNorms(prev => prev.map(n => n.id === id ? { ...n, ...updates } : n));
+            syncDb('inventory_usage_norms', 'update', updates, id);
+        },
+
+        getRecommendedStaff: (sid, cid) => {
+            const service = allServices.find(s => s.id === sid);
+            const myStaff = allStaff.filter(s => s.businessId === getSafeBizId());
+            
+            // 1. Skill Match (Primary)
+            const skilled = myStaff.filter(s => s.staffGroup?.toLowerCase().includes(service?.category?.toLowerCase() || ''));
+            
+            // 2. Familiarity (User requirement: Prioritize familiar, suggest novelty)
+            const previousTherapists = cid ? allAppointments.filter(a => a.customerId === cid && a.status === 'completed').map(a => a.staffId) : [];
+            const familiar = skilled.filter(s => previousTherapists.includes(s.id));
+            const newOnes = skilled.filter(s => !previousTherapists.includes(s.id));
+            
+            return [...familiar, ...newOnes]; // Familiar first, then novelty
+        },
+        getEffectivePrice: (sid) => {
+            const svc = allServices.find(s => s.id === sid);
+            if (!svc) return 0;
+            
+            const now = new Date();
+            const activeRule = pricingRules.find(r => 
+                r.isActive && 
+                (r.dayOfWeek === undefined || r.dayOfWeek === now.getDay())
+                // Time check logic can be added here
+            );
+            
+            if (activeRule) {
+                return svc.price * (1 + activeRule.modifierPercent / 100);
+            }
+            return svc.price;
+        },
         addAnnouncement: async (announcement: any) => {
             const na = { ...announcement, id: crypto.randomUUID(), businessId: announcement.businessId || null, isActive: true };
             setAllNotifs(prev => [...prev, na]);
@@ -1583,20 +1914,45 @@ const StoreContext = createContext<StoreState | null>(null);
                 }
             });
 
-            // 3. Therapist Activity Check (Tablet entegrasyonu hazırlığı)
-            allAppointments.filter(a => a.date === todayStr && a.status === 'arrived').forEach(appt => {
-                if (!appt.checkInTime) {
-                    alerts.push({
-                        type: 'info',
-                        title: 'Terapist Bekleniyor',
-                        desc: `${appt.customerName} geldi olarak işaretlendi ancak henüz odaya/terapiste yönlendirilmedi (Check-in eksik).`,
-                        targetId: appt.id,
-                        table: 'appointments'
+            return alerts;
+        },
+        predictInventory: () => {
+            const predictions: any[] = [];
+            const last30Days = new Date();
+            last30Days.setDate(last30Days.getDate() - 30);
+
+            allInventory.forEach(product => {
+                const associatedNorms = usageNorms.filter(n => n.productId === product.id);
+                if (associatedNorms.length === 0) return;
+
+                let weeklyUsage = 0;
+                associatedNorms.forEach(norm => {
+                    const serviceAppts = allAppointments.filter(a => 
+                        a.service === allServices.find(s => s.id === norm.serviceId)?.name &&
+                        new Date(a.date) >= last30Days
+                    ).length;
+                    
+                    const monthlyUsage = serviceAppts * (norm.amountPerService || 1);
+                    weeklyUsage += monthlyUsage / 4;
+                });
+
+                if (weeklyUsage > 0) {
+                    const weeksLeft = (product.stock || 0) / weeklyUsage;
+                    const runoutDate = new Date();
+                    runoutDate.setDate(runoutDate.getDate() + (weeksLeft * 7));
+                    
+                    predictions.push({
+                        productId: product.id,
+                        productName: product.name,
+                        currentStock: product.stock,
+                        weeklyUsage,
+                        daysLeft: Math.round(weeksLeft * 7),
+                        runoutDate: runoutDate.toISOString().split('T')[0]
                     });
                 }
             });
 
-            return alerts;
+            return predictions;
         },
         updateRoomStatus: (id, status) => {
             setAllRooms(prev => prev.map(r => r.id === id ? { ...r, status } : r));

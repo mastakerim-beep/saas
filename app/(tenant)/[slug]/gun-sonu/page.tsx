@@ -31,6 +31,7 @@ export default function GunSonuPage() {
     const havaleGercek = todayPayments.reduce((acc: number, p) => 
         acc + (p.methods?.filter((m: any) => m.method === 'havale').reduce((s: number, m: any) => s + (m.amount * (m.rate || 1)), 0) || 0), 0);
     const toplamGercek = todayPayments.reduce((s, p) => s + p.totalAmount, 0);
+    const toplamHediye = todayPayments.reduce((s, p) => s + (p.isGift ? (p.originalPrice || 0) - p.totalAmount : 0), 0);
 
     const [nakitSayılan, setNakitSayılan] = useState('');
     const [kartSayılan, setKartSayılan] = useState('');
@@ -228,6 +229,15 @@ export default function GunSonuPage() {
                                     <p className="mt-4 text-[9px] font-bold text-gray-300 uppercase tracking-tighter">Sistem Kaydı: ₺{gercek.toLocaleString('tr-TR')}</p>
                                 </div>
                             ))}
+                            <div className="group bg-rose-50/50 rounded-[2.5rem] p-8 border border-rose-100/50 transition-all hover:bg-white hover:border-rose-200 hover:shadow-2xl hover:shadow-rose-50/40">
+                                <div className="flex justify-between items-center mb-6">
+                                    <div className="p-3 bg-rose-100 text-rose-600 rounded-2xl shadow-sm"><CheckCircle size={18} /></div>
+                                    <span className="text-[9px] font-black text-rose-600 bg-rose-100 px-2 py-0.5 rounded-full">IKRAM</span>
+                                </div>
+                                <p className="text-[10px] font-black text-rose-400 uppercase tracking-widest mb-4 italic">HEDİYE EDİLEN</p>
+                                <div className="text-3xl font-black text-rose-900 tabular-nums italic">₺{toplamHediye.toLocaleString('tr-TR')}</div>
+                                <p className="mt-4 text-[9px] font-bold text-rose-300 uppercase tracking-tighter leading-tight">Bu tutar cirodan düşülmüş,<br/>ancak hizmet verilmiştir.</p>
+                            </div>
                         </div>
 
                         <div className="flex flex-col lg:flex-row gap-8 mt-10">
