@@ -6,10 +6,10 @@ import {
     ShieldCheck, Loader2, Banknote, ChevronDown, Package 
 } from 'lucide-react';
 import { useStore, Customer } from '@/lib/store';
-import BodyMap from './BodyMap';
+import BodyMap from '../crm/BodyMap';
 
 interface BookingModalProps {
-    initialData: { staffId: string, roomId?: string, time: string, customerId?: string };
+    initialData: { staffId: string, roomId?: string, time: string, customerId?: string, duration?: number };
     date: string;
     onClose: () => void;
 }
@@ -38,6 +38,7 @@ export default function BookingModal({ initialData, onClose, date }: BookingModa
     const [isSaving, setIsSaving] = useState(false);
     const [blockReason, setBlockReason] = useState('Toplantı');
     const [note, setNote] = useState('');
+    const [overrideDuration, setOverrideDuration] = useState<number | null>(initialData.duration || null);
 
     const toggleRegion = (id: string) => {
         setSelectedRegions(prev => prev.includes(id) ? prev.filter(r => r !== id) : [...prev, id]);
@@ -94,7 +95,7 @@ export default function BookingModal({ initialData, onClose, date }: BookingModa
                 roomId: currentRoomId,
                 packageId: currentPackageId,
                 price: currentPackageId ? 0 : price,
-                duration: services.find(s => s.name === currentService)?.duration || 60,
+                duration: overrideDuration || services.find(s => s.name === currentService)?.duration || 60,
                 isPackageUsage: !!currentPackageId,
                 note: note,
                 regions: selectedRegions
@@ -146,12 +147,14 @@ export default function BookingModal({ initialData, onClose, date }: BookingModa
                 setIsSaving(false);
             }
         } else {
-            addBlock({ 
-                staffId: initialData.staffId, 
-                date, 
-                time: initialData.time, 
-                duration: 60, 
-                reason: blockReason 
+            if (isSaving) return;
+            setIsSaving(true);
+            await addBlock({
+                staffId: currentStaffId,
+                date,
+                time: initialData.time,
+                duration: overrideDuration || 60,
+                reason: blockReason
             });
             setIsSaving(false);
             onClose();
@@ -159,7 +162,7 @@ export default function BookingModal({ initialData, onClose, date }: BookingModa
     };
 
     return (
-        <div className="fixed inset-0 bg-indigo-950/40 backdrop-blur-xl z-[200] flex items-center justify-center p-4 antialiased animate-[fadeIn_0.3s_ease]">
+        <div className="fixed inset-0 bg-indigo-950/40 backdrop-blur-xl z-[900] flex items-center justify-center p-4 antialiased animate-[fadeIn_0.3s_ease]">
             <div className="modal-premium w-full max-w-4xl max-h-[95vh] overflow-hidden animate-[slideUp_0.4s_ease] border-indigo-100 shadow-2xl flex flex-col !bg-white">
                 {/* Header */}
                 <div className="p-8 border-b border-indigo-50 bg-gradient-to-br from-white to-indigo-50/20 flex justify-between items-center flex-shrink-0">
@@ -304,7 +307,7 @@ export default function BookingModal({ initialData, onClose, date }: BookingModa
                                                 <textarea 
                                                     value={note}
                                                     onChange={e => setNote(e.target.value)}
-                                                    placeholder="Terapiste notunuz..."
+                                                    placeholder="Randevu notlarınızı veya özel isteklerinizi buraya ekleyebilirsiniz..."
                                                     className="w-full bg-white border border-gray-100 rounded-2xl px-6 py-5 text-sm font-bold text-gray-900 outline-none focus:border-primary transition-all shadow-inner min-h-[100px] resize-none"
                                                 />
                                             </div>

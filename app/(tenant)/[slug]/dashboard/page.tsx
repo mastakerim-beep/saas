@@ -12,7 +12,7 @@ import {
     AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, 
 } from 'recharts';
 import { motion, AnimatePresence } from 'framer-motion';
-import EndOfDayAI from "@/components/EndOfDayAI";
+import EndOfDayAI from "@/components/ai/EndOfDayAI";
 
 export default function Dashboard() {
     const { 

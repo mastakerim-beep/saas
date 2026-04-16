@@ -10,7 +10,7 @@ import {
     ArrowUpRight, Info, Plus, FileText, Gift, Settings, AlertCircle, Edit2, Globe, Languages, Users, ArrowDownRight
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import BookingModal from '@/components/BookingModal';
+import BookingModal from '@/components/calendar/BookingModal';
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
 

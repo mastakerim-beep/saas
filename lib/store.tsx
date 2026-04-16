@@ -161,7 +161,9 @@ interface StoreState {
     updateAppointmentStatus: (id: string, status: AppointmentStatus) => Promise<boolean>;
     calculateDynamicPrice: (servicePrice: number, timeStr: string) => { price: number, reason: string | null };
     addBlock: (b: any) => void;
+    updateBlock: (id: string, updates: any) => Promise<boolean>;
     removeBlock: (id: string) => void;
+    updateAppointment: (id: string, updates: any) => Promise<boolean>;
     addCustomerMedia: (m: Omit<CustomerMedia, 'id' | 'businessId'>) => void;
     deleteCustomerMedia: (id: string) => void;
     updateSettings: (s: Partial<BusinessSettings>) => void;
@@ -174,7 +176,7 @@ interface StoreState {
     deleteRoom: (id: string) => void;
     
     analyzeSystem: () => Promise<void>;
-    processCheckout: (p: any, debtInfo?: { amount: number, dueDate: string }, soldProducts?: { productId: string, quantity: number }[]) => Promise<boolean>;
+    processCheckout: (p: any, installments?: { amount: number, dueDate: string }[], soldProducts?: { productId: string, quantity: number, isGift?: boolean }[], earnedPoints?: number, tipAmount?: number, pointsUsed?: number) => Promise<boolean>;
     sendNotification: (customerId: string, type: NotificationLog['type'], content: string) => void;
     addLog: (action: string, customer: string, oldValue?: string, newValue?: string) => void;
     addProduct: (p: any) => void;
@@ -578,12 +580,23 @@ const StoreContext = createContext<StoreState | null>(null);
             setBodyMaps(toCamel(dataMap.consultation_body_maps || []));
             setUsageNorms(toCamel(dataMap.inventory_usage_norms || []));
             setAllNotifs(dataMap.notification_logs || []);
+            setAllBlocks(dataMap.calendar_blocks || []);
             
             // ... rest of the function or state updates
-            if (currentUser && dataMap.branches?.length > 0) {
+            // Branch setup: Prioritize saved branch, then user's staff branch, then first available
+            if (dataMap.branches?.length > 0) {
                 const savedBranchId = localStorage.getItem('aura_last_branch');
-                const branchToUse = (dataMap.branches.some((b: any) => b.id === savedBranchId)) ? savedBranchId : dataMap.branches[0].id;
-                setCurrentBranchState(dataMap.branches.find((b: any) => b.id === branchToUse));
+                const userBranchId = (currentUser as any)?.branchId;
+                
+                let branchToUse = dataMap.branches[0]; // fallback
+                
+                if (savedBranchId && dataMap.branches.some((b: any) => b.id === savedBranchId)) {
+                    branchToUse = dataMap.branches.find((b: any) => b.id === savedBranchId);
+                } else if (userBranchId && dataMap.branches.some((b: any) => b.id === userBranchId)) {
+                    branchToUse = dataMap.branches.find((b: any) => b.id === userBranchId);
+                }
+                
+                setCurrentBranchState(branchToUse);
             }
 
             setLastFetch(Date.now());
@@ -761,6 +774,7 @@ const StoreContext = createContext<StoreState | null>(null);
       const inventory = useMemo(() => filterByBiz(allInventory).filter(p => !currentBranch?.id || p.branchId === currentBranch.id), [allInventory, currentBranch, currentUser, currentTenant]);
       const currentBusiness = useMemo(() => allBusinesses.find(b => b.id === (currentTenant?.id || currentUser?.businessId)) || null, [currentUser, allBusinesses, currentTenant]);
      const expenses = useMemo(() => filterByBiz(allExpenses).filter(e => !currentBranch?.id || e.branchId === currentBranch.id), [allExpenses, currentBranch, currentUser, currentTenant]);
+      const staffMembers = useMemo(() => filterByBiz(allStaff).filter(s => !currentBranch?.id || s.branchId === currentBranch.id), [allStaff, currentBranch, currentUser, currentTenant]);
  
      // Safe business ID resolver: ensures we always use a valid businessId from the DB
      const getSafeBizId = (): string | undefined => {
@@ -869,15 +883,21 @@ const StoreContext = createContext<StoreState | null>(null);
         const staff = allStaff.find(s => s.id === data.staffId);
         const nameToSave = staff?.name || data.staffName || 'Bilinmeyen';
 
+        // Branch ID Resolver: Priority 1: Data, Priority 2: Staff's branch, Priority 3: Current State
+        let finalBranchId = data.branchId || safeBranchId;
+        if (staff && staff.branchId) {
+            finalBranchId = staff.branchId;
+        }
+
         const a = { 
             ...data, 
             id: crypto.randomUUID(), 
             businessId: safeBizId || 'SYSTEM_ERR', 
-            branchId: safeBranchId || null,
+            branchId: finalBranchId || null,
             staffName: nameToSave, // Snapshot ismini zorunlu kıl
             syncStatus: 'syncing' as const,
-            status: 'pending' as const,
-            isPaid: false 
+            status: data.status || 'pending',
+            isPaid: data.isPaid || false 
         };
         
         if (!a.businessId || a.businessId === 'SYSTEM_ERR') {
@@ -1000,7 +1020,7 @@ const StoreContext = createContext<StoreState | null>(null);
         appointments,
         blocks: allBlocks,
         payments: allPayments,
-        staffMembers: allStaff,
+        staffMembers,
         debts: allDebts,
         branches: allowedBranches,
         allLogs,
@@ -1117,6 +1137,18 @@ const StoreContext = createContext<StoreState | null>(null);
             }
             return true;
         },
+        updateAppointment: async (id: string, updates: any) => {
+            const old = allAppointments.find(a => a.id === id);
+            setAllAppointments(prev => prev.map(a => a.id === id ? { ...a, ...updates } : a));
+            syncDb('appointments', 'update', toSnake(updates), id);
+            store.addLog('Randevu Güncellendi', old?.customerName || 'Bilinmeyen', 'Resized/Updated', 'Güncellendi');
+            return true;
+        },
+        updateBlock: async (id: string, updates: any) => {
+            setAllBlocks(prev => prev.map(b => b.id === id ? { ...b, ...updates } : b));
+            syncDb('calendar_blocks', 'update', toSnake(updates), id);
+            return true;
+        },
         deleteAppointment: async (id) => {
             const appt = allAppointments.find(a => a.id === id);
             setAllAppointments(prev => prev.filter(a => a.id !== id));
@@ -1195,7 +1227,7 @@ const StoreContext = createContext<StoreState | null>(null);
             setAllRooms(prev => prev.filter(r => r.id !== id));
             syncDb('rooms', 'delete', {}, id);
         },
-        processCheckout: async (p, d, s) => {
+        processCheckout: async (p, installments, s, earnedPoints, tipAmount = 0, pointsUsed = 0) => {
             const bizId = getSafeBizId();
             if (!bizId) return false;
 
@@ -1207,31 +1239,61 @@ const StoreContext = createContext<StoreState | null>(null);
                 branchId: currentBranch?.id!, 
                 date: getTodayDate(),
                 createdAt: getLocalISO(),
-                soldProducts: s || []
+                soldProducts: s || [],
+                tipAmount,
+                totalAmount: p.totalAmount - tipAmount // Net business revenue
             };
             
             // 1. Save Payment
             setAllPayments(prev => [...prev, pay as any]);
             syncDb('payments', 'insert', pay, pay.id);
             
-            // 2. Handle Debts (Connection)
-            if (d && d.amount > 0) {
-                const debtRecord = {
-                    id: crypto.randomUUID(),
-                    businessId: bizId,
-                    customerId: pay.customerId,
-                    customerName: pay.customerName,
-                    amount: d.amount,
-                    dueDate: d.dueDate,
-                    status: 'açık',
-                    createdAt: new Date().toISOString()
-                };
-                setAllDebts(prev => [...prev, debtRecord as any]);
-                syncDb('debts', 'insert', debtRecord, debtRecord.id);
-                store.addLog('Borç Kaydedildi', pay.customerName, '', `₺${d.amount}`);
+            // 2. Handle Debts (Installments)
+            if (installments && installments.length > 0) {
+                for (const inst of installments) {
+                    if (inst.amount <= 0) continue;
+                    
+                    const debtRecord = {
+                        id: crypto.randomUUID(),
+                        businessId: bizId,
+                        branchId: currentBranch?.id!,
+                        customerId: pay.customerId,
+                        customerName: pay.customerName,
+                        amount: inst.amount,
+                        dueDate: inst.dueDate,
+                        status: 'açık',
+                        createdAt: getLocalISO()
+                    };
+                    
+                    setAllDebts(prev => [...prev, debtRecord as any]);
+                    syncDb('debts', 'insert', debtRecord, debtRecord.id);
+                    store.addLog('Borç Kaydedildi', pay.customerName, `Taksit`, `₺${inst.amount}`);
+                }
             }
 
-            // 3. Handle Inventory (Connection)
+            // 3. Update Customer Loyalty Points
+            const customer = allCustomers.find(c => c.id === pay.customerId);
+            if (customer) {
+                let currentPoints = customer.loyaltyPoints || 0;
+                
+                // Deduct used points
+                if (pointsUsed > 0) {
+                    currentPoints -= pointsUsed;
+                }
+                
+                // Add earned points
+                if (earnedPoints && earnedPoints > 0) {
+                    currentPoints += earnedPoints;
+                }
+                
+                if (pointsUsed > 0 || (earnedPoints && earnedPoints > 0)) {
+                    store.updateCustomer(customer.id, { loyaltyPoints: currentPoints });
+                    if (pointsUsed > 0) store.addLog('Sadakat Puanı Harcandı', customer.name, `${customer.loyaltyPoints}`, `${currentPoints}`);
+                    if (earnedPoints && earnedPoints > 0) store.addLog('Sadakat Puanı Kazanıldı', customer.name, `${customer.loyaltyPoints}`, `${currentPoints}`);
+                }
+            }
+
+            // 4. Handle Inventory (Connection)
             if (s && s.length > 0) {
                 s.forEach(item => {
                     const prod = allInventory.find(iv => iv.id === item.productId);
@@ -1246,7 +1308,8 @@ const StoreContext = createContext<StoreState | null>(null);
             if (pay.isGift) {
                 store.addLog('🎁 Hediye Edildi', pay.customerName, `₺${pay.originalPrice}`, '₺0');
             } else {
-                store.addLog('Ödeme Alındı', pay.customerName, '', `₺${pay.totalAmount}`);
+                const tipLog = tipAmount > 0 ? ` (+ ₺${tipAmount} Bahşiş)` : '';
+                store.addLog('Ödeme Alındı', pay.customerName, '', `₺${pay.totalAmount}${tipLog}`);
             }
             
             // Trigger AI Re-analysis after checkout

@@ -16,13 +16,13 @@ import {
 } from '@dnd-kit/core';
 import { 
     X, Plus, Sparkles, AlertCircle, Clock, User, 
-    ChevronRight, ChevronLeft, Package, ShieldCheck, Target, Ban, Coffee, Info, Banknote, RefreshCcw, Cloud, CloudOff, Loader2, Trash2, MoreHorizontal, Search, Star, UserPlus, ChevronDown, Activity, HeartHandshake, MapPin, Calendar as CalendarIcon
+    ChevronRight, ChevronLeft, Package, ShieldCheck, Target, Ban, Coffee, Info, Banknote, RefreshCcw, Cloud, CloudOff, Loader2, Trash2, GripVertical, MoreHorizontal, Search, Star, UserPlus, ChevronDown, Activity, HeartHandshake, MapPin, Calendar as CalendarIcon
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import SmartCheckout from '@/components/SmartCheckout';
-import BodyMap from '@/components/BodyMap';
-import CustomerGallery from '@/components/CustomerGallery';
-import BookingModal from '@/components/BookingModal';
+import SmartCheckout from '@/components/checkout/SmartCheckout';
+import BodyMap from '@/components/crm/BodyMap';
+import CustomerGallery from '@/components/crm/CustomerGallery';
+import BookingModal from '@/components/calendar/BookingModal';
 
 // ---- CONFIG & UTILS ----
 const SLOT_MINUTES = 15;
@@ -91,9 +91,16 @@ function DraggableCustomerCard({ customer, onClick }: { customer: Customer, onCl
     );
 }
 
-// ---- DRAGGABLE APPOINTMENT CARD ----
-function CalendarItem({ item, type, onCheckout }: { item: Appointment | CalendarBlock, type: 'appt' | 'block', onCheckout?: (a: Appointment) => void }) {
-    const { deleteAppointment, updateAppointmentStatus, debts, rooms, packages, branches, currentBranch, customers } = useStore();
+function CalendarItem({ item, type, onCheckout, onAction, onResizeStart, onResizeUpdate, onResizeEnd }: { 
+    item: Appointment | CalendarBlock, 
+    type: 'appt' | 'block', 
+    onCheckout?: (a: Appointment) => void, 
+    onAction?: (a: Appointment) => void,
+    onResizeStart?: (id: string, initialDuration: number) => void,
+    onResizeUpdate?: (id: string, currentDuration: number) => void,
+    onResizeEnd?: () => void
+}) {
+    const { currentUser, deleteAppointment, updateAppointmentStatus, updateAppointment, updateBlock, removeBlock, debts, rooms, packages, branches, currentBranch, customers } = useStore();
     
     const isAppt = type === 'appt';
     const appt = item as Appointment;
@@ -108,10 +115,19 @@ function CalendarItem({ item, type, onCheckout }: { item: Appointment | Calendar
     const isCompleted = isAppt && appt.status === 'completed';
     const isLocked = isPast || isCompleted;
 
+    const [localDuration, setLocalDuration] = useState(item.duration);
+    const [isResizing, setIsResizing] = useState(false);
+
+    useEffect(() => {
+        if (!isResizing) {
+            setLocalDuration(item.duration);
+        }
+    }, [item.duration, isResizing]);
+
     const { attributes, listeners, setNodeRef: setDraggableRef, transform, isDragging } = useDraggable({
         id: item.id,
-        data: { type: 'appointment', item },
-        disabled: (isAppt && appt.syncStatus === 'syncing') || isLocked
+        data: { type: isAppt ? 'appointment' : 'block', item },
+        disabled: (isAppt && appt.syncStatus === 'syncing') || isLocked || isResizing
     });
 
     const { setNodeRef: setDroppableRef, isOver } = useDroppable({
@@ -126,7 +142,7 @@ function CalendarItem({ item, type, onCheckout }: { item: Appointment | Calendar
         setDroppableRef(node);
     };
 
-    const [showMenu, setShowMenu] = useState(false);
+    // const [showMenu, setShowMenu] = useState(false); // REMOVED
 
     const span = Math.ceil(item.duration / SLOT_MINUTES);
 
@@ -137,20 +153,58 @@ function CalendarItem({ item, type, onCheckout }: { item: Appointment | Calendar
         transform: `translate3d(${transform.x}px, ${transform.y}px, 0)`,
         zIndex: 100,
     } : {
-        gridRow: `span ${span}`,
-        zIndex: 10
+        gridRow: `span ${Math.ceil(localDuration / SLOT_MINUTES)}`,
+        zIndex: isResizing ? 50 : 10,
+        position: 'relative' as const
+    };
+
+    const handleResizeMouseDown = (e: React.MouseEvent) => {
+        if (isLocked) return;
+        e.stopPropagation();
+        e.preventDefault();
+        setIsResizing(true);
+        onResizeStart?.(item.id, localDuration);
+
+        const startY = e.pageY;
+        const startDuration = localDuration;
+        let latestDuration = startDuration;
+
+        const onMouseMove = (moveEvent: MouseEvent) => {
+            const deltaY = moveEvent.pageY - startY;
+            const deltaSlots = Math.round(deltaY / 48); // 48px per 15 min slot
+            const newDuration = Math.max(15, startDuration + (deltaSlots * 15));
+            setLocalDuration(newDuration);
+            latestDuration = newDuration;
+            onResizeUpdate?.(item.id, newDuration);
+        };
+
+        const onMouseUp = async () => {
+            setIsResizing(false);
+            onResizeEnd?.(); 
+            window.removeEventListener('mousemove', onMouseMove);
+            window.removeEventListener('mouseup', onMouseUp);
+            
+            if (latestDuration !== item.duration) {
+                if (isAppt) {
+                    await updateAppointment(item.id, { duration: latestDuration });
+                } else {
+                    await updateBlock(item.id, { duration: latestDuration });
+                }
+            }
+        };
+
+        window.addEventListener('mousemove', onMouseMove);
+        window.addEventListener('mouseup', onMouseUp);
     };
 
     const handleDelete = async () => {
         if (confirm("Bu randevuyu kalıcı olarak silmek istediğinize emin misiniz?")) {
             await deleteAppointment(appt.id);
         }
-        setShowMenu(false);
     };
 
     const setStatus = async (status: AppointmentStatus) => {
         await updateAppointmentStatus(appt.id, status);
-        setShowMenu(false);
     };
 
     const getAppledTheme = (s: AppointmentStatus) => {
@@ -169,17 +223,46 @@ function CalendarItem({ item, type, onCheckout }: { item: Appointment | Calendar
         <div 
             ref={setNodeRefs} 
             style={style} 
-            {...listeners} 
-            {...attributes}
-            onClick={(e) => { e.stopPropagation(); if (isAppt) setShowMenu(true); }}
+            onClick={(e) => { e.stopPropagation(); if (isAppt) onAction?.(appt); }}
             className={`
                 relative mx-1 rounded-[1rem] p-2.5 shadow-sm transition-all select-none group/item
                 ${isDragging ? 'opacity-30 scale-95 shadow-xl ring-2 ring-indigo-500/50' : 'opacity-100 hover:scale-[1.01] hover:shadow-2xl hover:shadow-indigo-100'} 
                 ${isOver ? 'ring-2 ring-indigo-400 bg-indigo-50/50 scale-[1.02]' : ''}
-                ${isLocked ? 'cursor-default' : 'cursor-grab active:cursor-grabbing'}
                 ${info.bg} ${info.ring} ${info.text} flex flex-col justify-between
             `}
         >
+            {/* Drag Handle & Quick Actions */}
+            {!isLocked && (
+                <div 
+                    onMouseDown={(e) => e.stopPropagation()} // Grid seçimini tetiklemesini engelle
+                    className="absolute top-2 left-2 right-2 flex justify-between items-start opacity-0 group-hover/item:opacity-100 transition-opacity z-40"
+                >
+                    <div 
+                        {...listeners} 
+                        {...attributes} 
+                        className="p-1.5 bg-white/80 backdrop-blur-sm rounded-lg shadow-sm cursor-grab active:cursor-grabbing hover:bg-white text-indigo-400 hover:text-indigo-600 transition-all"
+                    >
+                        <GripVertical size={12} />
+                    </div>
+                    
+                    {/* Delete button: Restricted for Appointments, Open for Blocks */}
+                    {(!isAppt || ['Admin', 'Manager', 'Owner', 'superadmin'].includes(currentUser?.role || 'Staff')) && (
+                        <button 
+                            onMouseDown={(e) => e.stopPropagation()}
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                if (confirm(isAppt ? "Bu randevuyu silmek istediğinize emin misiniz?" : "Bu bloklamayı/molayı silmek istediğinize emin misiniz?")) {
+                                    if (isAppt) deleteAppointment(appt.id);
+                                    else removeBlock(block.id);
+                                }
+                            }}
+                            className="p-1.5 bg-white/80 backdrop-blur-sm rounded-lg shadow-sm hover:bg-red-50 text-gray-300 hover:text-red-500 transition-all"
+                        >
+                            <Trash2 size={12} />
+                        </button>
+                    )}
+                </div>
+            )}
             {/* Tooltip on hover */}
             {isAppt && appt.note && (
                 <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-48 p-3 bg-indigo-600 text-white text-[10px] font-bold rounded-2xl opacity-0 group-hover/item:opacity-100 transition-opacity pointer-events-none z-[100] shadow-2xl shadow-indigo-200">
@@ -207,94 +290,35 @@ function CalendarItem({ item, type, onCheckout }: { item: Appointment | Calendar
                     </p>
                 )}
             </div>
-        </div>
 
-        {/* Apple Style Action Sheet / Modal */}
-        <AnimatePresence>
-            {showMenu && isAppt && (
-                <div className="fixed inset-0 z-[999] flex items-end sm:items-center justify-center p-3 sm:p-0 pointer-events-auto">
-                    {/* Backdrop */}
-                    <motion.div 
-                        initial={{ opacity: 0 }} 
-                        animate={{ opacity: 1 }} 
-                        exit={{ opacity: 0 }} 
-                        onClick={(e) => { e.stopPropagation(); setShowMenu(false); }}
-                        className="absolute inset-0 bg-indigo-950/30 backdrop-blur-md"
-                    />
-                    
-                    {/* Action Sheet Card */}
-                    <motion.div 
-                        initial={{ opacity: 0, y: 100, scale: 0.95 }} 
-                        animate={{ opacity: 1, y: 0, scale: 1 }} 
-                        exit={{ opacity: 0, y: 100, scale: 0.95 }}
-                        transition={{ type: "spring", damping: 28, stiffness: 300 }}
-                        className="relative w-full max-w-sm bg-gray-50/95 backdrop-blur-2xl shadow-2xl rounded-[2.5rem] p-6 pb-8 sm:pb-6 flex flex-col gap-3 font-sans"
-                    >
-                        {/* Drag indicator (mobile) */}
-                        <div className="w-12 h-1.5 bg-gray-300/80 rounded-full mx-auto mb-2 sm:hidden" />
-                        
-                        <div className="text-center mb-2">
-                            <h3 className="font-black text-xl text-gray-900 leading-tight mb-0.5">{appt.customerName}</h3>
-                            <p className="text-xs font-semibold text-gray-500 uppercase tracking-widest">{appt.service} <span className="mx-1">•</span> {item.time} ({item.duration}dk)</p>
-                        </div>
-
-                        {/* Pay Action - Huge, Prominent */}
-                        {!appt.isPaid && (
-                            <button 
-                                onClick={(e) => { e.stopPropagation(); setShowMenu(false); onCheckout?.(appt); }}
-                                className="w-full bg-indigo-600 text-white rounded-[2rem] p-5 shadow-xl shadow-indigo-200 flex items-center justify-center gap-3 transition-transform active:scale-95 group relative overflow-hidden"
-                            >
-                                <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:scale-150 transition-transform duration-500"><Banknote size={64}/></div>
-                                <div className="bg-white/20 p-2.5 rounded-2xl group-active:scale-90 transition-transform relative z-10"><Banknote className="w-6 h-6" /></div>
-                                <span className="font-black text-xl tracking-tight relative z-10">Kasa & Ödeme Al</span>
-                            </button>
-                        )}
-                        
-                        {/* Status Actions */}
-                        <div className="grid grid-cols-2 gap-3 mt-2">
-                            <button 
-                                onClick={(e) => { e.stopPropagation(); setStatus('arrived'); }}
-                                className={`p-4 rounded-3xl font-bold text-xs uppercase tracking-widest flex flex-col items-center gap-2 transition-transform active:scale-95 ${appt.status === 'arrived' ? 'bg-indigo-100 text-indigo-700 ring-2 ring-indigo-500/20' : 'bg-white shadow-sm text-gray-600 border border-gray-100'}`}
-                            >
-                                <User className={`w-6 h-6 ${appt.status === 'arrived' ? 'text-indigo-600' : 'text-gray-400'}`} /> Salona Geldi
-                            </button>
-                            <button 
-                                onClick={(e) => { e.stopPropagation(); setStatus('no-show'); }}
-                                className={`p-4 rounded-3xl font-bold text-xs uppercase tracking-widest flex flex-col items-center gap-2 transition-transform active:scale-95 ${appt.status === 'no-show' ? 'bg-red-100 text-red-700 ring-2 ring-red-500/20' : 'bg-white shadow-sm text-gray-600 border border-gray-100'}`}
-                            >
-                                <Ban className={`w-6 h-6 ${appt.status === 'no-show' ? 'text-red-600' : 'text-gray-400'}`} />
-                                <div className="flex flex-col items-center gap-1">
-                                    <span>Gelmedi</span>
-                                    <span className="text-[8px] font-black bg-red-100 text-red-600 px-1.5 py-0.5 rounded-full">Paketten Düşer</span>
-                                </div>
-                            </button>
-                            <button 
-                                onClick={(e) => { e.stopPropagation(); setStatus('excused'); }}
-                                className={`col-span-2 p-4 rounded-3xl font-bold text-xs uppercase tracking-widest flex items-center justify-center gap-2 transition-transform active:scale-95 ${appt.status === 'excused' ? 'bg-primary/10 text-primary ring-2 ring-primary/20' : 'bg-white shadow-sm text-gray-600 border border-gray-100'}`}
-                            >
-                                <HeartHandshake className={`w-5 h-5 ${appt.status === 'excused' ? 'text-primary' : 'text-gray-400'}`} />
-                                Mazeretli İptal
-                                <span className="text-[9px] font-black bg-primary/10 text-primary px-2 py-0.5 rounded-full ml-1">Paketten Düşmez</span>
-                            </button>
-                        </div>
-
-                        {/* Delete Action */}
-                        <button 
-                            onClick={(e) => { e.stopPropagation(); handleDelete(); }} 
-                            className="mt-2 w-full p-4 bg-white border border-red-100 text-red-500 rounded-3xl font-black text-xs uppercase tracking-widest flex items-center justify-center gap-2 transition-transform active:scale-95 shadow-sm"
-                        >
-                            <Trash2 className="w-4 h-4" /> Randevuyu Sil
-                        </button>
-                    </motion.div>
+            {/* Resize Handle */}
+            {!isLocked && (
+                <div 
+                    onMouseDown={handleResizeMouseDown}
+                    data-no-dnd="true"
+                    className="absolute bottom-0 left-0 right-0 h-4 cursor-ns-resize flex items-center justify-center group/resize z-30"
+                >
+                    <div className="w-8 h-1 bg-gray-200 rounded-full group-hover/resize:bg-indigo-400 transition-colors" />
                 </div>
             )}
-        </AnimatePresence>
+        </div>
+
+        {/* Modal removed from here to top-level */}
         </>
     );
 }
 
 // ---- DROPPABLE SLOT ----
-function TimeSlot({ staffId, roomId, time, isOff, onAdd }: { staffId?: string, roomId?: string, time: string, isOff: boolean, onAdd: (id: string, t: string) => void }) {
+function TimeSlot({ staffId, roomId, time, isOff, onAdd, onSelectionStart, onSelectionEnter, isSelected }: { 
+    staffId?: string, 
+    roomId?: string, 
+    time: string, 
+    isOff: boolean, 
+    onAdd: (id: string, t: string) => void,
+    onSelectionStart: (id: string, t: string) => void,
+    onSelectionEnter: (t: string) => void,
+    isSelected: boolean
+}) {
     const isHourStart = time.endsWith(':00');
     const { isOver, setNodeRef } = useDroppable({
         id: `slot-${staffId || roomId}-${time}`,
@@ -305,11 +329,17 @@ function TimeSlot({ staffId, roomId, time, isOff, onAdd }: { staffId?: string, r
     return (
         <div 
             ref={setNodeRef}
-            onClick={() => !isOff && onAdd(staffId || roomId || '', time)}
+            onMouseDown={(e) => {
+                if (!isOff && e.button === 0) onSelectionStart(staffId || roomId || '', time);
+            }}
+            onMouseEnter={() => {
+                if (!isOff) onSelectionEnter(time);
+            }}
             className={`
-                h-[48px] border-r border-white/5 transition-all relative
-                ${isHourStart ? 'border-t-2 border-t-white/10' : 'border-t border-t-white/5'}
-                ${isOff ? 'bg-secondary/30 cursor-not-allowed opacity-40' : (isOver ? 'bg-primary/20 border-2 border-primary/50 z-10 scale-[1.01]' : 'hover:bg-primary/[0.03] cursor-pointer')}
+                h-[48px] border-r border-gray-200/50 transition-all relative
+                ${isHourStart ? 'border-t-[1.5px] border-t-gray-300' : 'border-t border-t-gray-200/60 border-dashed'}
+                ${isOff ? 'bg-secondary/30 cursor-not-allowed opacity-40' : (isOver ? 'bg-indigo-50/50 border-2 border-indigo-200 z-10 scale-[1.01]' : 'hover:bg-indigo-50/10 cursor-pointer')}
+                ${isSelected ? 'bg-indigo-600/20 ring-2 ring-indigo-500/50 z-20' : ''}
             `}
         >
             {isOver && !isOff && (
@@ -329,7 +359,7 @@ function TimeSlot({ staffId, roomId, time, isOff, onAdd }: { staffId?: string, r
 
 // ---- SERVICE SELECTION MODAL (müşteri sürükleyince çıkar) ----
 function ServiceDropModal({ customer, staffId, roomId, time, date, onClose }: { customer: Customer, staffId?: string, roomId?: string, time: string, date: string, onClose: () => void }) {
-    const { addAppointment, staffMembers, services, rooms } = useStore();
+    const { addAppointment, staffMembers, services, rooms, addBodyMap } = useStore();
     const [selectedService, setSelectedService] = useState<string>(services[0]?.name || '');
     const [selectedRoomId, setSelectedRoomId] = useState<string | null>(roomId || rooms[0]?.id || null);
     const [selectedRegions, setSelectedRegions] = useState<string[]>([]);
@@ -342,13 +372,17 @@ function ServiceDropModal({ customer, staffId, roomId, time, date, onClose }: { 
     const handleSave = async () => {
         setIsSaving(true);
         const svc = services.find(s => s.name === selectedService);
-        if(!svc) return;
-        await addAppointment({
+        if(!svc) {
+            setIsSaving(false);
+            return;
+        }
+
+        const success = await addAppointment({
             customerId: customer.id,
             customerName: customer.name,
             service: svc.name,
-            staffId: staff?.id || null,
-            staffName: staff?.name || null,
+            staffId: staff?.id || staffId || null,
+            staffName: staff?.name || 'Bilinmeyen',
             roomId: selectedRoomId,
             date,
             time,
@@ -357,15 +391,30 @@ function ServiceDropModal({ customer, staffId, roomId, time, date, onClose }: { 
             price: svc.price,
             depositPaid: 0,
             isOnline: false,
-            selectedRegions,
             note
         });
-        setIsSaving(false);
-        onClose();
+
+        if (success) {
+            // Save Body Map if any regions selected
+            if (selectedRegions.length > 0) {
+                addBodyMap({
+                    customerId: customer.id,
+                    appointmentId: '', 
+                    mapData: { regions: selectedRegions, notes: note },
+                    isCritical: true,
+                    createdAt: new Date().toISOString()
+                });
+            }
+            setIsSaving(false);
+            onClose();
+        } else {
+            setIsSaving(false);
+            alert("Randevu kaydedilemedi! Lütfen eksik alanları veya bağlantınızı kontrol edin.");
+        }
     };
 
     return (
-        <div className="fixed inset-0 bg-indigo-950/40 backdrop-blur-xl z-[200] flex items-center justify-center p-4 animate-[fadeIn_0.2s_ease]">
+        <div className="fixed inset-0 bg-indigo-950/40 backdrop-blur-xl z-[900] flex items-center justify-center p-4 animate-[fadeIn_0.2s_ease]">
             <div className="modal-premium w-full max-w-lg overflow-hidden animate-[slideUp_0.3s_ease] !bg-white">
                 <div className="p-10 border-b border-indigo-50 bg-gradient-to-br from-white to-indigo-50/30 flex justify-between items-center bg-white">
                     <div>
@@ -433,7 +482,7 @@ function ServiceDropModal({ customer, staffId, roomId, time, date, onClose }: { 
                         <textarea 
                             value={note}
                             onChange={e => setNote(e.target.value)}
-                            placeholder="Örn: mb MİRA"
+                            placeholder="Randevu notlarınızı veya özel isteklerinizi buraya ekleyebilirsiniz..."
                             className="w-full bg-white border-2 border-gray-50 rounded-[1.5rem] px-6 py-4 text-sm font-bold text-gray-900 outline-none focus:border-primary transition-all resize-none min-h-[80px] shadow-inner"
                         />
                     </div>
@@ -452,7 +501,7 @@ function ServiceDropModal({ customer, staffId, roomId, time, date, onClose }: { 
             </div>
 
             {showBodyMap && (
-                <div className="fixed inset-0 bg-indigo-950/80 backdrop-blur-2xl z-[300] flex items-center justify-center p-4 animate-[fadeIn_0.2s_ease]">
+                <div className="fixed inset-0 bg-indigo-950/80 backdrop-blur-2xl z-[1000] flex items-center justify-center p-4 animate-[fadeIn_0.2s_ease]">
                     <div className="modal-premium p-10 max-w-md w-full relative animate-[zoomIn_0.3s_ease] !bg-white">
                         <button onClick={() => setShowBodyMap(false)} className="absolute top-8 right-8 p-2 text-gray-400 hover:text-red-500"><X className="w-6 h-6" /></button>
                         <h4 className="text-xl font-black text-gray-900 mb-8 uppercase italic tracking-tight">Vücut Haritası</h4>
@@ -588,10 +637,13 @@ function CustomerPanel({ isOpen, onClose }: { isOpen: boolean, onClose: () => vo
 
 // ---- MAIN PAGE: RECEPTION COMMAND CENTER ----
 export default function CalendarPage() {
-    const { staffMembers, appointments, blocks, settings, moveAppointment, syncStatus, customers, isOnline, rooms } = useStore();
+    const { staffMembers, appointments, blocks, settings, moveAppointment, syncStatus, customers, isOnline, rooms, currentBranch, updateAppointmentStatus, deleteAppointment, updateBlock } = useStore();
     const [viewMode, setViewMode] = useState<'staff' | 'room'>('staff');
-    const [selectedSlot, setSelectedSlot] = useState<{staffId?: string, roomId?: string, time: string} | null>(null);
+    const [selectedSlot, setSelectedSlot] = useState<{staffId?: string, roomId?: string, time: string, duration?: number} | null>(null);
+    const [selection, setSelection] = useState<{ staffId?: string, roomId?: string, start: string, end: string } | null>(null);
+    const [isSelecting, setIsSelecting] = useState(false);
     const [checkoutAppt, setCheckoutAppt] = useState<Appointment | null>(null);
+    const [actionAppt, setActionAppt] = useState<Appointment | null>(null);
     const [activeId, setActiveId] = useState<string | null>(null);
     const [activeDragData, setActiveDragData] = useState<any>(null);
     const [isPanelOpen, setIsPanelOpen] = useState(false);
@@ -600,8 +652,21 @@ export default function CalendarPage() {
     const [isDatePickerOpen, setIsDatePickerOpen] = useState(false);
     const [pickerMonth, setPickerMonth] = useState(new Date());
 
+    // --- NEW: Global Resizing State for Visual Feedback ---
+    const [resizingId, setResizingId] = useState<string | null>(null);
+    const [resizingDuration, setResizingDuration] = useState<number>(0);
+
     const sensors = useSensors(
-        useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+        useSensor(PointerSensor, { 
+            activationConstraint: { distance: 5 },
+            // Prevent dragging when clicking on elements with data-no-dnd
+            onActivation: ({ event }) => {
+                const target = event.target as HTMLElement;
+                if (target?.closest('[data-no-dnd="true"]')) {
+                    return false;
+                }
+            }
+        }),
         useSensor(MouseSensor),
         useSensor(TouchSensor, { activationConstraint: { delay: 150, tolerance: 5 } })
     );
@@ -612,23 +677,26 @@ export default function CalendarPage() {
     const staffToDisplay = useMemo(() => {
         return staffMembers
             .filter(s => {
+                // Enforce branch filtering
+                if (currentBranch?.id && s.branchId !== currentBranch.id) return false;
+
                 const isActive = s.status === 'active';
                 const hasApptToday = appointments.some(a => a.staffId === s.id && a.date === selectedDate);
                 const isExplicitlyHidden = s.isVisibleOnCalendar === false;
                 
-                // 1. Eğer açıkça gizlenmişse gösterme (Örn: Sadece arkada çalışanlar)
+                // 1. Eğer açıkça gizlenmişse gösterme
                 if (isExplicitlyHidden) return false;
 
                 // 2. Aktifse göster
                 if (isActive) return true;
                 
-                // 3. Pasif/Ayrıldı olsa bile o gün randevusu varsa "Akıllı Görünürlük" gereği göster
+                // 3. Pasif olsa bile o gün randevusu varsa göster
                 if (hasApptToday) return true;
                 
                 return false;
             })
             .sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0));
-    }, [staffMembers, appointments, selectedDate]);
+    }, [staffMembers, appointments, selectedDate, currentBranch]);
 
     const roomsToDisplay = useMemo(() => {
         return (rooms || []).filter(r => r.status !== 'passive');
@@ -657,6 +725,61 @@ export default function CalendarPage() {
         window.addEventListener('keydown', handleKeyDown);
         return () => window.removeEventListener('keydown', handleKeyDown);
     }, [selectedDate, staffToDisplay]);
+
+    // Range Selection Handlers
+    const handleAddClick = (id: string, time: string) => {
+        setSelectedSlot({
+            staffId: viewMode === 'staff' ? id : undefined,
+            roomId: viewMode === 'room' ? id : undefined,
+            time
+        });
+    };
+
+    const handleSelectionStart = (id: string, time: string) => {
+        setSelection({
+            staffId: viewMode === 'staff' ? id : undefined,
+            roomId: viewMode === 'room' ? id : undefined,
+            start: time,
+            end: time
+        });
+        setIsSelecting(true);
+    };
+
+    const handleSelectionEnter = (time: string) => {
+        if (isSelecting && selection) {
+            setSelection({ ...selection, end: time });
+        }
+    };
+
+    useEffect(() => {
+        const handleGlobalMouseUp = () => {
+            if (isSelecting && selection) {
+                const startIdx = SLOTS.indexOf(selection.start);
+                const endIdx = SLOTS.indexOf(selection.end);
+                
+                const finalStart = SLOTS[Math.min(startIdx, endIdx)];
+                const finalEnd = SLOTS[Math.max(startIdx, endIdx)];
+                
+                // At least 15 minutes
+                const duration = Math.max(15, (Math.abs(startIdx - endIdx) + 1) * SLOT_MINUTES);
+                
+                setSelectedSlot({
+                    staffId: selection.staffId,
+                    roomId: selection.roomId,
+                    time: finalStart,
+                    duration
+                });
+                
+                setSelection(null);
+                setIsSelecting(false);
+            }
+        };
+
+        if (isSelecting) {
+            window.addEventListener('mouseup', handleGlobalMouseUp);
+            return () => window.removeEventListener('mouseup', handleGlobalMouseUp);
+        }
+    }, [isSelecting, selection, SLOTS, SLOT_MINUTES]);
 
     const handleDragStart = (event: any) => {
         setActiveId(event.active.id as string);
@@ -690,6 +813,14 @@ export default function CalendarPage() {
             } else {
                 await moveAppointment(active.id as string, time, undefined, id);
             }
+        }
+
+        if (activeData?.type === 'block' && overData?.type === 'slot') {
+            const [targetId, time] = [overData.staffId || overData.roomId, overData.time];
+            const updates: any = { time };
+            if (viewMode === 'staff') updates.staffId = targetId;
+            else updates.roomId = targetId;
+            await updateBlock(active.id as string, updates);
         }
 
         // --- NEW: Handle Dropping an Appointment onto another (for Cell Splitting) ---
@@ -776,7 +907,7 @@ export default function CalendarPage() {
             <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
                 <div className="flex-1 bg-white border border-gray-100 rounded-[3.5rem] shadow-2xl flex flex-col overflow-hidden relative">
                     {/* Header Columns */}
-                    <div className="flex border-b border-gray-100 bg-gray-50/50 flex-none ml-[80px] sticky top-0 z-30 shadow-sm backdrop-blur-md">
+                    <div className="flex border-b border-gray-100 bg-gray-50/50 flex-none ml-[100px] sticky top-0 z-30 shadow-sm backdrop-blur-md">
                         {columnsToDisplay.map(col => (
                             <div key={col.id} className="flex-1 p-4 text-center border-r border-gray-100 relative group">
                                 {viewMode === 'staff' && (col as Staff).weeklyOffDay === dayOfWeek && (
@@ -794,12 +925,24 @@ export default function CalendarPage() {
 
                     <div className="flex-1 overflow-y-auto no-scrollbar relative flex">
                         {/* Time labels */}
-                        <div className="w-[80px] flex-none border-r border-gray-100 bg-white sticky left-0 z-20">
+                        <div className="w-[100px] flex-none border-r border-gray-100 bg-white sticky left-0 z-20 shadow-[4px_0_24px_rgba(0,0,0,0.02)]">
                             {SLOTS.map(slot => {
-                                const isHour = slot.endsWith(':00');
+                                const [h, m] = slot.split(':');
+                                const isHour = m === '00';
+                                const isHalf = m === '30';
+                                
                                 return (
-                                    <div key={slot} className={`h-[48px] flex items-center justify-center ${isHour ? 'border-t border-gray-100' : ''}`}>
-                                        <span className={`text-[10px] font-black ${isHour ? 'text-gray-900 italic' : 'text-gray-300'}`}>{isHour ? slot : ''}</span>
+                                    <div key={slot} className={`h-[48px] flex flex-col items-center justify-center transition-colors ${isHour ? 'bg-gray-50/30' : ''}`}>
+                                        <span className={`
+                                            transition-all duration-300 tabular-nums
+                                            ${isHour ? 'text-[13px] font-black text-gray-900 italic' : 'text-[10px] font-bold text-gray-300'}
+                                            ${isHalf ? 'text-gray-400' : ''}
+                                        `}>
+                                            {slot}
+                                        </span>
+                                        {isHour && (
+                                            <div className="w-1 h-1 bg-indigo-500 rounded-full mt-1 animate-pulse" />
+                                        )}
                                     </div>
                                 );
                             })}
@@ -809,13 +952,22 @@ export default function CalendarPage() {
                         <div className="flex-1 grid relative bg-[#FEF9E7]" style={{ gridTemplateColumns: `repeat(${columnsToDisplay.length || 1}, 1fr)`, gridTemplateRows: `repeat(${SLOTS.length}, 48px)` }}>
                             {columnsToDisplay.map((col, colIdx) => {
                                 const isOff = viewMode === 'staff' && (col as Staff).weeklyOffDay === dayOfWeek;
-                                return SLOTS.map((slot, rowIdx) => (
-                                    <div key={`${col.id}-${slot}`} style={{ gridColumn: colIdx + 1, gridRow: rowIdx + 1 }}>
-                                        {viewMode === 'staff' ? (
-                                            <TimeSlot staffId={col.id} time={slot} isOff={isOff} onAdd={(s, t) => setSelectedSlot({ staffId: s, time: t })} />
-                                        ) : (
-                                            <TimeSlot roomId={col.id} time={slot} isOff={isOff} onAdd={(r, t) => setSelectedSlot({ roomId: r, time: t })} />
-                                        )}
+                                return SLOTS.map((time, rowIdx) => (
+                                    <div key={`${col.id}-${time}`} style={{ gridColumn: colIdx + 1, gridRow: rowIdx + 1 }}>
+                                        <TimeSlot 
+                                            staffId={viewMode === 'staff' ? col.id : undefined}
+                                            roomId={viewMode === 'room' ? col.id : undefined}
+                                            time={time}
+                                            isOff={isOff}
+                                            onAdd={handleAddClick}
+                                            onSelectionStart={handleSelectionStart}
+                                            onSelectionEnter={handleSelectionEnter}
+                                            isSelected={selection ? (
+                                                (selection.staffId === col.id || selection.roomId === col.id) &&
+                                                SLOTS.indexOf(time) >= Math.min(SLOTS.indexOf(selection.start), SLOTS.indexOf(selection.end)) &&
+                                                SLOTS.indexOf(time) <= Math.max(SLOTS.indexOf(selection.start), SLOTS.indexOf(selection.end))
+                                            ) : false}
+                                        />
                                     </div>
                                 ));
                             })}
@@ -844,18 +996,24 @@ export default function CalendarPage() {
                                     const slotIdx = SLOTS.indexOf(group.time);
                                     if (slotIdx === -1) return null;
 
+                                    // Dinamik Span: Eğer içindeki bir eleman şu an büyütülüyorsa, kapsayıcıyı da büyüt
+                                    let maxSpan = Math.max(...group.items.map((i: any) => Math.ceil(i.duration / SLOT_MINUTES)));
+                                    if (resizingId && group.items.some((i: any) => i.id === resizingId)) {
+                                        maxSpan = Math.max(maxSpan, Math.ceil(resizingDuration / SLOT_MINUTES));
+                                    }
+
                                     return (
                                         <div 
                                             key={`${colId}-${group.time}`} 
                                             style={{ 
                                                 gridColumn: colIdx + 1, 
                                                 gridRowStart: slotIdx + 1, 
-                                                gridRowEnd: `span ${Math.max(...group.items.map((i: any) => Math.ceil(i.duration / SLOT_MINUTES)))}`,
+                                                gridRowEnd: `span ${maxSpan}`,
                                                 position: 'relative',
                                                 display: 'flex',
                                                 gap: '2px',
                                                 padding: '2px',
-                                                zIndex: 10
+                                                zIndex: resizingId && group.items.some((i: any) => i.id === resizingId) ? 100 : 10
                                             }}
                                         >
                                             {group.items.map((item: any) => (
@@ -864,6 +1022,18 @@ export default function CalendarPage() {
                                                         item={item} 
                                                         type={item._type as any} 
                                                         onCheckout={setCheckoutAppt} 
+                                                        onAction={setActionAppt}
+                                                        onResizeStart={(id, dur) => {
+                                                            setResizingId(id);
+                                                            setResizingDuration(dur);
+                                                        }}
+                                                        onResizeUpdate={(id, dur) => {
+                                                            setResizingDuration(dur);
+                                                        }}
+                                                        onResizeEnd={() => {
+                                                            setResizingId(null);
+                                                            setResizingDuration(0);
+                                                        }}
                                                     />
                                                 </div>
                                             ))}
@@ -897,7 +1067,8 @@ export default function CalendarPage() {
                     initialData={{ 
                         staffId: selectedSlot.staffId || '', 
                         roomId: selectedSlot.roomId || '', 
-                        time: selectedSlot.time 
+                        time: selectedSlot.time,
+                        duration: selectedSlot.duration
                     }} 
                     date={selectedDate} 
                     onClose={() => setSelectedSlot(null)} 
@@ -1049,6 +1220,74 @@ export default function CalendarPage() {
                                     })()}
                                 </div>
                             </div>
+                        </motion.div>
+                    </div>
+                )}
+            </AnimatePresence>
+
+            {/* Appointment Action Modal (Centralized) */}
+            <AnimatePresence>
+                {actionAppt && (
+                    <div className="fixed inset-0 z-[2000] flex items-end sm:items-center justify-center p-3 sm:p-0 pointer-events-auto">
+                        <motion.div 
+                            initial={{ opacity: 0 }} 
+                            animate={{ opacity: 1 }} 
+                            exit={{ opacity: 0 }} 
+                            onClick={() => setActionAppt(null)}
+                            className="absolute inset-0 bg-indigo-950/40 backdrop-blur-xl"
+                        />
+                        
+                        <motion.div 
+                            initial={{ opacity: 0, y: 100, scale: 0.95 }} 
+                            animate={{ opacity: 1, y: 0, scale: 1 }} 
+                            exit={{ opacity: 0, y: 100, scale: 0.95 }}
+                            transition={{ type: "spring", damping: 28, stiffness: 300 }}
+                            className="relative w-full max-w-sm bg-white shadow-2xl rounded-[3rem] p-8 flex flex-col gap-4 font-sans border border-indigo-50"
+                        >
+                            <div className="w-12 h-1.5 bg-gray-200 rounded-full mx-auto mb-2 sm:hidden" />
+                            
+                            <div className="text-center mb-4">
+                                <h3 className="font-black text-2xl text-gray-900 leading-tight mb-1 uppercase italic tracking-tighter">{actionAppt.customerName}</h3>
+                                <p className="text-[10px] font-black text-indigo-600 uppercase tracking-[0.2em]">{actionAppt.service} • {actionAppt.time} ({actionAppt.duration}dk)</p>
+                            </div>
+
+                            {!actionAppt.isPaid && (
+                                <button 
+                                    onClick={() => { setActionAppt(null); setCheckoutAppt(actionAppt); }}
+                                    className="w-full bg-indigo-600 text-white rounded-[2rem] p-6 shadow-2xl shadow-indigo-600/30 flex items-center justify-center gap-4 transition-all hover:scale-[1.02] active:scale-95 group relative overflow-hidden"
+                                >
+                                    <Banknote className="w-7 h-7" />
+                                    <span className="font-black text-xl tracking-tight uppercase italic">Ödeme Al</span>
+                                </button>
+                            )}
+                            
+                            <div className="grid grid-cols-2 gap-3">
+                                <button 
+                                    onClick={async () => { await updateAppointmentStatus(actionAppt.id, 'arrived'); setActionAppt(null); }}
+                                    className={`p-5 rounded-[2rem] font-black text-[10px] uppercase tracking-widest flex flex-col items-center gap-3 transition-all active:scale-95 ${actionAppt.status === 'arrived' ? 'bg-indigo-600 text-white shadow-xl shadow-indigo-600/20' : 'bg-gray-50 text-gray-400 border border-gray-100 hover:bg-white hover:border-indigo-600 hover:text-indigo-600'}`}
+                                >
+                                    <User className="w-6 h-6" /> Salona Geldi
+                                </button>
+                                <button 
+                                    onClick={async () => { await updateAppointmentStatus(actionAppt.id, 'no-show'); setActionAppt(null); }}
+                                    className={`p-5 rounded-[2rem] font-black text-[10px] uppercase tracking-widest flex flex-col items-center gap-3 transition-all active:scale-95 ${actionAppt.status === 'no-show' ? 'bg-red-600 text-white shadow-xl shadow-red-600/20' : 'bg-gray-50 text-gray-400 border border-gray-100 hover:bg-white hover:border-red-600 hover:text-red-600'}`}
+                                >
+                                    <Ban className="w-6 h-6" /> Gelmedi
+                                </button>
+                                <button 
+                                    onClick={async () => { await updateAppointmentStatus(actionAppt.id, 'excused'); setActionAppt(null); }}
+                                    className={`col-span-2 p-5 rounded-[2rem] font-black text-[10px] uppercase tracking-widest flex items-center justify-center gap-4 transition-all active:scale-95 ${actionAppt.status === 'excused' ? 'bg-primary text-white shadow-xl shadow-primary/20' : 'bg-gray-50 text-gray-400 border border-gray-100 hover:bg-white hover:border-primary hover:text-primary'}`}
+                                >
+                                    <HeartHandshake className="w-5 h-5" /> Mazeretli İptal
+                                </button>
+                            </div>
+
+                            <button 
+                                onClick={async () => { if(confirm("Emin misiniz?")) { await deleteAppointment(actionAppt.id); setActionAppt(null); } }} 
+                                className="w-full p-5 bg-white border-2 border-red-50 text-red-500 rounded-[2rem] font-black text-[10px] uppercase tracking-widest flex items-center justify-center gap-3 transition-all hover:bg-red-50 active:scale-95 shadow-sm"
+                            >
+                                <Trash2 className="w-4 h-4" /> Randevuyu Sil
+                            </button>
                         </motion.div>
                     </div>
                 )}

@@ -3,9 +3,9 @@
 import { useStore } from "@/lib/store";
 import { useRouter, usePathname } from "next/navigation";
 import { useEffect, useState, useMemo } from "react";
-import Sidebar from "@/components/Sidebar";
-import Header from "@/components/Header";
-import LicenseGuard from "@/components/LicenseGuard";
+import Sidebar from "@/components/layout/Sidebar";
+import Header from "@/components/layout/Header";
+import LicenseGuard from "@/components/layout/LicenseGuard";
 import { Inter } from "next/font/google";
 import { Megaphone } from "lucide-react";
 

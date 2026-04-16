@@ -153,6 +153,7 @@ CREATE TABLE IF NOT EXISTS customers (
     email_permission TEXT DEFAULT 'Evet',
     communication_source TEXT,
     communication_choice TEXT,
+    loyalty_points NUMERIC DEFAULT 0,
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
@@ -249,6 +250,10 @@ CREATE TABLE IF NOT EXISTS payments (
     payment_definition_id UUID REFERENCES payment_definitions(id),
     date DATE DEFAULT CURRENT_DATE,
     note TEXT,
+    tip_amount NUMERIC(10,2) DEFAULT 0,
+    is_gift BOOLEAN DEFAULT false,
+    original_price NUMERIC(10,2) DEFAULT 0,
+    sold_products JSONB DEFAULT '[]',
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
@@ -301,6 +306,7 @@ CREATE TABLE IF NOT EXISTS debts (
     due_date DATE,
     description TEXT,
     status TEXT DEFAULT 'açık',
+    customer_name TEXT,
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 

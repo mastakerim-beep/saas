@@ -74,6 +74,7 @@ export interface Customer {
     emailPermission?: string;
     communicationSource?: string;
     communicationChoice?: string;
+    loyaltyPoints?: number;
 }
 
 export interface Staff {

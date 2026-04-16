@@ -170,7 +170,7 @@ export default function BalancesPage() {
             <div className="flex justify-between items-end">
                 <div>
                     <h1 className="text-4xl font-black tracking-tight mb-2 text-indigo-950 dark:text-white">Açık Hesap & Bakiye</h1>
-                    <p className="text-indigo-500/60 text-sm font-bold flex items-center gap-2">
+                    <p className="text-indigo-600/60 text-sm font-bold flex items-center gap-2">
                         <TrendingUp className="w-4 h-4" /> Alacak takibi ve vadelendirme merkezi
                     </p>
                 </div>
@@ -182,13 +182,13 @@ export default function BalancesPage() {
             
             <div className="card-apple overflow-hidden border-indigo-100/50">
                 <table className="w-full text-left">
-                    <thead className="bg-indigo-50/50 dark:bg-indigo-900/20 border-b border-indigo-100 dark:border-indigo-500/10">
+                    <thead className="bg-indigo-50 dark:bg-indigo-900/40 border-b border-indigo-100 dark:border-indigo-500/20">
                         <tr>
-                            <th className="p-6 text-[10px] font-black uppercase text-indigo-400 tracking-widest">Danışan</th>
-                            <th className="p-6 text-[10px] font-black uppercase text-indigo-400 tracking-widest">Vade Durumu</th>
-                            <th className="p-6 text-[10px] font-black uppercase text-indigo-400 tracking-widest text-center">Toplam Borç</th>
-                            <th className="p-6 text-[10px] font-black uppercase text-indigo-400 tracking-widest text-center">Gelen Ödeme</th>
-                            <th className="p-6 text-[10px] font-black uppercase text-indigo-400 tracking-widest text-right">Kalan Bakiye</th>
+                            <th className="p-6 text-[10px] font-black uppercase text-indigo-600 dark:text-indigo-400 tracking-widest">Danışan</th>
+                            <th className="p-6 text-[10px] font-black uppercase text-indigo-600 dark:text-indigo-400 tracking-widest">Vade Durumu</th>
+                            <th className="p-6 text-[10px] font-black uppercase text-indigo-600 dark:text-indigo-400 tracking-widest text-center">Toplam Borç</th>
+                            <th className="p-6 text-[10px] font-black uppercase text-indigo-600 dark:text-indigo-400 tracking-widest text-center">Gelen Ödeme</th>
+                            <th className="p-6 text-[10px] font-black uppercase text-indigo-600 dark:text-indigo-400 tracking-widest text-right">Kalan Bakiye</th>
                             <th className="p-6 w-20"></th>
                         </tr>
                     </thead>
@@ -255,7 +255,7 @@ export default function BalancesPage() {
                         <div className="w-16 h-16 bg-white dark:bg-indigo-900/50 rounded-3xl flex items-center justify-center shadow-indigo-100 shadow-xl"><Hourglass className="w-8 h-8 text-indigo-500" /></div>
                         <div>
                             <p className="text-[10px] font-black text-indigo-400 uppercase tracking-widest mb-1">Geciken Borçlu Sayısı</p>
-                            <h2 className="text-3xl font-black text-red-600">{balanceList.filter(c => c.isOverdue).length} Girişimci</h2>
+                            <h2 className="text-4xl font-black text-red-600 italic tracking-tighter">{balanceList.filter(c => c.isOverdue).length} Girişimci</h2>
                         </div>
                     </div>
                 </div>
