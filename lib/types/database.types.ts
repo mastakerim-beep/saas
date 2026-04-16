@@ -20,6 +20,8 @@ export interface Business {
     slug: string;
     maxBranches: number;
     managerPin?: string;
+    calendarStartHour?: number;
+    calendarEndHour?: number;
 }
 
 export interface Branch {

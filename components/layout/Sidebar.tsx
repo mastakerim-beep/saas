@@ -37,7 +37,7 @@ const SidebarItem = memo(({ href, icon: Icon, label, badge, colorClass, isHovere
                     {isActive && (
                         <motion.div 
                             layoutId="active-glow"
-                            className="absolute -left-8 w-2 h-8 bg-primary rounded-full blur-[2px] shadow-[0_0_15px_rgba(79,70,229,0.8)]"
+                            className="absolute -left-8 w-2 h-8 bg-indigo-500 rounded-full blur-[2px] shadow-[0_0_15px_rgba(79,70,229,0.8)]"
                         />
                     )}
                 </div>
@@ -67,7 +67,7 @@ const SidebarItem = memo(({ href, icon: Icon, label, badge, colorClass, isHovere
                 {isActive && (
                     <motion.div 
                         layoutId="sidebar-active"
-                        className="absolute inset-0 bg-primary rounded-2xl shadow-xl shadow-primary/20"
+                        className="absolute inset-0 bg-indigo-600 rounded-2xl shadow-xl shadow-indigo-500/20"
                         initial={false}
                         transition={{ type: "spring", stiffness: 400, damping: 35 }}
                     />
@@ -206,7 +206,7 @@ export default function Sidebar() {
             </div>
 
             {/* Profile / Bottom Action */}
-            <div className="p-4 mt-auto border-t border-indigo-100/50">
+            <div className="p-4 border-t border-indigo-100/50">
                 <div className={`
                     p-3 rounded-[1.75rem] flex items-center gap-3 group cursor-pointer hover:bg-gray-50 transition-all duration-300
                     ${!isHovered ? 'justify-center' : ''}
@@ -226,6 +226,20 @@ export default function Sidebar() {
                     )}
                 </div>
             </div>
+
+            {/* SECURITY BADGE */}
+            {isHovered && (
+                <div className="px-6 pb-6 mt-2">
+                    <div className="p-5 bg-indigo-50 dark:bg-indigo-950/40 rounded-[2rem] border border-indigo-100 dark:border-indigo-500/10 shadow-sm relative overflow-hidden group/audit">
+                        <div className="flex items-center gap-3 mb-1">
+                            <ShieldCheck className="w-3.5 h-3.5 text-indigo-600 animate-pulse" />
+                            <span className="text-[8px] font-black text-indigo-950 dark:text-white uppercase tracking-[0.2em]">SECURITY PROTOCOL</span>
+                        </div>
+                        <p className="text-[9px] font-black text-indigo-600 uppercase tracking-widest pl-7">ACTIVE</p>
+                        <div className="absolute -right-2 -bottom-2 w-10 h-10 bg-indigo-600/5 rounded-full group-hover/audit:scale-150 transition-transform duration-700" />
+                    </div>
+                </div>
+            )}
 
             {/* EXPAND INDICATOR: Make "that mark" more prominent */}
             {!isHovered && (

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useMemo, useEffect } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { useStore, Appointment, Staff, CalendarBlock, Customer, AppointmentStatus, Service } from '@/lib/store';
 import { 
     DndContext, 
@@ -658,7 +659,13 @@ function CustomerPanel({ isOpen, onClose }: { isOpen: boolean, onClose: () => vo
 // ---- MAIN PAGE: RECEPTION COMMAND CENTER ----
 export default function CalendarPage() {
     const { staffMembers, appointments, blocks, settings, moveAppointment, syncStatus, customers, isOnline, rooms, currentBranch, updateAppointmentStatus, deleteAppointment, updateBlock } = useStore();
-    const [viewMode, setViewMode] = useState<'staff' | 'room'>('staff');
+    const searchParams = useSearchParams();
+    
+    // URL Params Sync
+    const initialView = searchParams.get('view') === 'room' ? 'room' : 'staff';
+    const initialDate = searchParams.get('date') || formatDate(new Date());
+
+    const [viewMode, setViewMode] = useState<'staff' | 'room'>(initialView);
     const [selectedSlot, setSelectedSlot] = useState<{staffId?: string, roomId?: string, time: string, duration?: number} | null>(null);
     const [selection, setSelection] = useState<{ staffId?: string, roomId?: string, start: string, end: string } | null>(null);
     const [isSelecting, setIsSelecting] = useState(false);
@@ -668,7 +675,7 @@ export default function CalendarPage() {
     const [activeDragData, setActiveDragData] = useState<any>(null);
     const [isPanelOpen, setIsPanelOpen] = useState(false);
     const [dropPreview, setDropPreview] = useState<{ customer: Customer, staffId?: string, roomId?: string, time: string } | null>(null);
-    const [selectedDate, setSelectedDate] = useState(formatDate(new Date()));
+    const [selectedDate, setSelectedDate] = useState(initialDate);
     const [isDatePickerOpen, setIsDatePickerOpen] = useState(false);
     const [pickerMonth, setPickerMonth] = useState(new Date());
 

@@ -1679,6 +1679,16 @@ const StoreContext = createContext<StoreState | null>(null);
             const bizId = getSafeBizId();
             if (!bizId) return false;
             setAllBusinesses(prev => prev.map(b => b.id === bizId ? { ...b, ...updates } : b));
+            
+            // Sync local settings for immediate UI reflection (Calendar)
+            if (updates.calendarStartHour !== undefined || updates.calendarEndHour !== undefined) {
+                setSettings(prev => ({
+                    ...prev,
+                    startHour: updates.calendarStartHour ?? prev.startHour,
+                    endHour: updates.calendarEndHour ?? prev.endHour
+                }));
+            }
+
             syncDb('businesses', 'update', updates, bizId);
             store.addLog('İşletme Güncellendi', '', '', 'Yönetici PIN veya Bilgiler');
             return true;

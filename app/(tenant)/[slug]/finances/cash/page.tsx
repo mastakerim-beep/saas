@@ -5,10 +5,10 @@ import {
     Wallet, Search, Calendar, Filter, ArrowUpRight, 
     Landmark, Banknote, Users, Info, ChevronDown,
     Plus, Minus, Download, Save, History, Activity,
-    TrendingUp, Scale, Receipt, Trash2, Edit3
+    TrendingUp, Scale, Receipt, Trash2, Edit3, ChevronRight, RefreshCcw
 } from "lucide-react";
 import { useState, useMemo, useEffect } from "react";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 
 export default function CashManagementPage() {
     const { 
@@ -29,7 +29,6 @@ export default function CashManagementPage() {
     // Permission Lock Logic
     const hasPastAccess = useMemo(() => {
         if (!isMounted) return false;
-        // Business Owner veya SaaS Owner ise her zaman true
         if (currentUser?.role?.toLowerCase() === 'saas_owner' || currentUser?.role?.toLowerCase() === 'business_owner') return true;
         return can('view_historical_finance');
     }, [isMounted, currentUser, can]);
@@ -38,15 +37,12 @@ export default function CashManagementPage() {
         setIsMounted(true);
     }, []);
 
-    // Tarih aralığını sadece bir kez (ilk açılışta) ayarla
     useEffect(() => {
         if (isMounted && isInitialized && !dateRange.start) {
             const todayStr = getTodayDate();
             setDateRange({ start: todayStr, end: todayStr });
         }
     }, [isMounted, isInitialized, getTodayDate, dateRange.start]);
-
-    // Hatalı auto-reset useEffect kaldırıldı.
 
     const handleSearch = async () => {
         setIsRefreshing(true);
@@ -55,12 +51,10 @@ export default function CashManagementPage() {
         } catch (err) {
             console.error("Search failed:", err);
         } finally {
-            // Küçük bir gecikme ekleyerek UI sıçramalarını önleyelim
             setTimeout(() => setIsRefreshing(false), 300);
         }
     };
 
-    // Combined Transactions (Payments + Expenses)
     const transactions = useMemo(() => {
         const pMap = payments
             .filter(p => {
@@ -99,7 +93,7 @@ export default function CashManagementPage() {
                 type: 'Para çıkışı' as const,
                 info: e.category || 'Gider',
                 refCode: e.id.substring(0, 5).toUpperCase(),
-                method: 'nakit', // Expenses usually cash but could be extended
+                method: 'nakit',
                 toolId: null,
                 note: e.desc,
                 amount: e.amount,
@@ -109,7 +103,6 @@ export default function CashManagementPage() {
         return [...pMap, ...eMap].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
     }, [payments, expenses, dateRange, currentBranch, searchQuery]);
 
-    // Totals Breakdown
     const stats = useMemo(() => {
         const totalIncome = transactions.filter(t => t.type === 'Para girişi').reduce((s, t) => s + t.amount, 0);
         const totalExpense = transactions.filter(t => t.type === 'Para çıkışı').reduce((s, t) => s + t.amount, 0);
@@ -137,232 +130,247 @@ export default function CashManagementPage() {
 
     if (!isMounted || !isInitialized) {
         return (
-            <div className="flex-1 flex flex-col items-center justify-center bg-[#F3F4F6] min-h-screen">
-                <div className="w-12 h-12 border-4 border-[#1ABE9D] border-t-transparent rounded-full animate-spin mb-4" />
-                <p className="text-xs font-black text-gray-400 uppercase tracking-widest animate-pulse">Veriler Hazırlanıyor...</p>
+            <div className="flex-1 flex flex-col items-center justify-center bg-white min-h-screen">
+                <RefreshCcw className="w-12 h-12 text-indigo-600 animate-spin mb-4" />
+                <p className="text-[10px] font-black text-indigo-400 uppercase tracking-widest animate-pulse">Kasa Başlatılıyor...</p>
             </div>
         );
     }
 
     return (
-        <div className="flex-1 flex flex-col bg-[#F3F4F6] min-h-screen">
+        <div className="flex-1 flex flex-col bg-[#FBFBFD] min-h-screen p-10 space-y-10">
             {/* Page Header */}
-            <div className="bg-white px-8 py-5 border-b border-gray-200 shadow-sm flex justify-between items-center">
-                <div className="flex items-center gap-3">
-                    <h1 className="text-xl font-bold text-gray-800 tracking-tight">Kasa</h1>
-                </div>
-                <div className="flex gap-2">
+            <header className="flex justify-between items-end">
+                <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }}>
+                    <div className="flex items-center gap-3 text-[10px] font-black text-indigo-400 uppercase tracking-[0.3em] mb-2">
+                        <Wallet className="w-4 h-4" />
+                        <span>Resmi Kayıtlar</span>
+                    </div>
+                    <h1 className="text-5xl font-black tracking-tight text-indigo-950 uppercase italic italic-indigo">
+                        Günün <span className="text-indigo-600">Kasası</span>
+                    </h1>
+                </motion.div>
+                
+                <div className="flex gap-4">
                     <button 
                         onClick={() => window.print()}
-                        className="flex items-center gap-2 px-4 py-2 bg-gray-50 text-gray-600 rounded-lg text-xs font-bold border border-gray-200 hover:bg-gray-100 transition-all shadow-sm"
+                        className="flex items-center gap-2 px-6 py-4 bg-white text-indigo-950 rounded-[1.5rem] text-[10px] font-black uppercase tracking-widest border border-indigo-50 hover:bg-indigo-50 transition-all shadow-xl shadow-indigo-100/20"
                     >
-                        Yazdır / Dışa Aktar <ChevronDown size={14} />
+                        <Download size={14} /> Dışa Aktar
+                    </button>
+                    <button className="flex items-center gap-2 px-8 py-4 bg-indigo-950 text-white rounded-[1.5rem] text-[10px] font-black uppercase tracking-widest hover:scale-[1.02] active:scale-95 transition-all shadow-2xl shadow-indigo-200">
+                        <Plus size={16} /> Yeni İşlem
                     </button>
                 </div>
-            </div>
+            </header>
 
             {/* Filter Section */}
-            <div className="bg-white m-6 p-6 rounded-2xl shadow-sm border border-gray-100 space-y-6">
-                <div className="flex flex-wrap items-center gap-4">
-                    <div className="relative flex-1 min-w-[300px]">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
-                        <input 
-                            type="text" 
-                            placeholder="Arama kriterleri"
-                            value={searchQuery}
-                            onChange={(e) => setSearchQuery(e.target.value)}
-                            className="w-full pl-10 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-[#1ABE9D]/20 outline-none"
-                        />
-                    </div>
-                    <button className="px-5 py-2.5 bg-white border border-[#1ABE9D] text-[#1ABE9D] rounded-xl text-xs font-bold flex items-center gap-2 hover:bg-[#1ABE9D]/5 transition-all">
-                        <Save size={14} /> Aramayı kaydet
-                    </button>
+            <motion.div 
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="bg-white p-8 rounded-[3rem] shadow-2xl shadow-indigo-100/50 border border-indigo-50 grid grid-cols-1 lg:grid-cols-3 gap-8 items-center"
+            >
+                <div className="relative group col-span-1">
+                    <Search className="absolute left-5 top-1/2 -translate-y-1/2 text-indigo-300 group-focus-within:text-indigo-600 transition-colors" size={18} />
+                    <input 
+                        type="text" 
+                        placeholder="İşlem veya Danışan Ara"
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        className="w-full pl-14 pr-6 py-4 bg-indigo-50/50 border-none rounded-2xl text-sm font-bold focus:ring-4 focus:ring-indigo-500/5 outline-none transition-all placeholder:text-indigo-200"
+                    />
                 </div>
 
-                <div className="flex items-center gap-8 pt-4 border-t border-gray-50">
-                    <div className="flex items-center gap-4">
-                        <span className="text-xs font-bold text-gray-500 uppercase tracking-wider">Tarih aralığı</span>
-                        <div className={`flex items-center gap-2 bg-gray-50 p-1 rounded-xl border border-gray-100 ${!hasPastAccess ? 'opacity-50 cursor-not-allowed' : ''}`}>
-                            <input 
-                                type="date" 
-                                value={dateRange.start}
-                                max={today}
-                                disabled={!hasPastAccess}
-                                onChange={(e) => setDateRange(prev => ({ ...prev, start: e.target.value }))}
-                                className="bg-transparent text-sm font-bold text-gray-700 p-2 outline-none cursor-pointer disabled:cursor-not-allowed"
-                            />
-                            <div className="w-4 h-[2px] bg-gray-300" />
-                            <input 
-                                type="date" 
-                                value={dateRange.end}
-                                max={today}
-                                disabled={!hasPastAccess}
-                                onChange={(e) => setDateRange(prev => ({ ...prev, end: e.target.value }))}
-                                className="bg-transparent text-sm font-bold text-gray-700 p-2 outline-none cursor-pointer disabled:cursor-not-allowed"
-                            />
+                <div className="flex items-center gap-4 bg-indigo-50/50 p-2 rounded-[2rem] border border-indigo-50 group">
+                    <Calendar className="ml-3 text-indigo-300" size={18} />
+                    <input 
+                        type="date" 
+                        value={dateRange.start}
+                        max={today}
+                        disabled={!hasPastAccess}
+                        onChange={(e) => setDateRange(prev => ({ ...prev, start: e.target.value }))}
+                        className="bg-transparent text-[11px] font-black text-indigo-950 p-2 outline-none cursor-pointer disabled:opacity-30 uppercase tracking-widest"
+                    />
+                    <div className="w-4 h-[2px] bg-indigo-200" />
+                    <input 
+                        type="date" 
+                        value={dateRange.end}
+                        max={today}
+                        disabled={!hasPastAccess}
+                        onChange={(e) => setDateRange(prev => ({ ...prev, end: e.target.value }))}
+                        className="bg-transparent text-[11px] font-black text-indigo-950 p-2 outline-none cursor-pointer disabled:opacity-30 uppercase tracking-widest"
+                    />
+                    {!hasPastAccess && (
+                        <div className="px-3 text-rose-500" title="Geçmiş Veri Kilidi">
+                            <History size={16} className="animate-pulse" />
                         </div>
-                        {!hasPastAccess && (
-                            <div className="flex items-center gap-2 text-rose-500">
-                                <History size={14} className="animate-pulse" />
-                                <span className="text-[10px] font-black uppercase">Geçmiş Veri Kilidi Aktif</span>
-                            </div>
-                        )}
-                        <button 
-                            onClick={() => setDateRange({ start: today, end: today })}
-                            title="Tarihi Sıfırla"
-                            className="p-2.5 text-rose-500 bg-rose-50 rounded-lg hover:bg-rose-100 transition-all border border-rose-100"
-                        >
-                            <Trash2 size={16} />
-                        </button>
-                    </div>
+                    )}
+                </div>
+
+                <div className="flex items-center gap-4 justify-end">
+                    <button 
+                        onClick={() => setDateRange({ start: today, end: today })}
+                        className="p-4 text-rose-500 bg-rose-50 rounded-2xl hover:bg-rose-100 transition-all border border-rose-100"
+                    >
+                        <Trash2 size={18} />
+                    </button>
                     <button 
                         onClick={handleSearch}
                         disabled={isRefreshing}
-                        className="px-10 py-3 bg-[#1ABE9D] text-white rounded-xl text-xs font-black uppercase tracking-widest hover:bg-[#158C73] transition-all shadow-lg shadow-emerald-100 flex items-center gap-2 ml-auto disabled:opacity-50"
+                        className="flex-1 lg:flex-none px-12 py-4 bg-indigo-600 text-white rounded-[1.5rem] text-[10px] font-black uppercase tracking-[0.2em] hover:bg-indigo-700 transition-all shadow-xl shadow-indigo-100 flex items-center justify-center gap-3 disabled:opacity-50"
                     >
-                        {isRefreshing ? <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> : <Search size={16} />} 
-                        {isRefreshing ? 'GÜNCELLENİYOR...' : 'Ara'}
+                        {isRefreshing ? <RefreshCcw size={16} className="animate-spin" /> : <Search size={16} />} 
+                        {isRefreshing ? 'GÜNCELLENİYOR...' : 'FİLTRELE'}
                     </button>
                 </div>
+            </motion.div>
+
+            {/* Summary Cards */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-10">
+                <motion.div 
+                    whileHover={{ y: -5 }}
+                    className="bg-white p-10 rounded-[3.5rem] shadow-2xl shadow-indigo-100/50 border border-indigo-50 relative overflow-hidden group"
+                >
+                    <div className="relative z-10 flex flex-col items-center">
+                        <div className="w-16 h-16 bg-emerald-50 text-emerald-600 rounded-[1.5rem] flex items-center justify-center mb-6 shadow-inner"><TrendingUp size={32} /></div>
+                        <p className="text-[10px] font-black text-indigo-400 uppercase tracking-widest mb-1.5 opacity-60">Toplam Gelir</p>
+                        <p className="text-4xl font-black text-indigo-950 tracking-tighter">₺{stats.income.toLocaleString('tr-TR')}</p>
+                    </div>
+                    <div className="absolute -right-4 -bottom-4 w-24 h-24 bg-emerald-50 rounded-full opacity-50 group-hover:scale-150 transition-transform duration-700" />
+                </motion.div>
+
+                <motion.div 
+                    whileHover={{ y: -5 }}
+                    className="bg-white p-10 rounded-[3.5rem] shadow-2xl shadow-indigo-100/50 border border-indigo-50 relative overflow-hidden group"
+                >
+                    <div className="relative z-10 flex flex-col items-center">
+                        <div className="w-16 h-16 bg-rose-50 text-rose-600 rounded-[1.5rem] flex items-center justify-center mb-6 shadow-inner"><Minus size={32} strokeWidth={3} /></div>
+                        <p className="text-[10px] font-black text-indigo-400 uppercase tracking-widest mb-1.5 opacity-60">Toplam Gider</p>
+                        <p className="text-4xl font-black text-indigo-950 tracking-tighter">₺{stats.expense.toLocaleString('tr-TR')}</p>
+                    </div>
+                    <div className="absolute -right-4 -bottom-4 w-24 h-24 bg-rose-50 rounded-full opacity-50 group-hover:scale-150 transition-transform duration-700" />
+                </motion.div>
+
+                <motion.div 
+                    whileHover={{ y: -5 }}
+                    className="bg-indigo-950 p-10 rounded-[3.5rem] shadow-2xl shadow-indigo-900/20 text-white relative overflow-hidden group"
+                >
+                    <div className="relative z-10 flex flex-col items-center">
+                        <div className="w-16 h-16 bg-white/10 text-white rounded-[1.5rem] flex items-center justify-center mb-6 shadow-xl backdrop-blur-md border border-white/20"><Scale size={32} /></div>
+                        <p className="text-[10px] font-black text-indigo-300 uppercase tracking-widest mb-1.5 opacity-60">Net Mutabakat</p>
+                        <p className="text-4xl font-black tracking-tighter">₺{stats.net.toLocaleString('tr-TR')}</p>
+                    </div>
+                    <Activity className="absolute -right-6 -bottom-6 w-32 h-32 text-white/5 rotate-12 group-hover:rotate-0 group-hover:scale-110 transition-all duration-1000" />
+                </motion.div>
             </div>
 
-            <div className="px-6 space-y-8 pb-20">
-                {/* Summary Cards */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div className="bg-white p-8 rounded-[2rem] border border-gray-100 shadow-sm flex flex-col items-center justify-center relative overflow-hidden group">
-                        <TrendingUp className="absolute -right-4 -bottom-4 w-24 h-24 text-emerald-50 opacity-50 group-hover:scale-110 transition-transform" />
-                        <div className="w-12 h-12 bg-emerald-50 text-[#1ABE9D] rounded-2xl flex items-center justify-center mb-4"><TrendingUp size={24} /></div>
-                        <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-1">Gelir</p>
-                        <p className="text-3xl font-black text-gray-900 leading-none">{stats.income.toLocaleString('tr-TR')} TRY</p>
-                    </div>
-                    <div className="bg-white p-8 rounded-[2rem] border border-gray-100 shadow-sm flex flex-col items-center justify-center relative overflow-hidden group">
-                        <Scale className="absolute -right-4 -bottom-4 w-24 h-24 text-blue-50 opacity-50 group-hover:scale-110 transition-transform" />
-                        <div className="w-12 h-12 bg-blue-50 text-blue-500 rounded-2xl flex items-center justify-center mb-4"><Scale size={24} /></div>
-                        <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-1">Net</p>
-                        <p className="text-3xl font-black text-gray-900 leading-none">{stats.net.toLocaleString('tr-TR')} TRY</p>
-                    </div>
-                </div>
-
-                {/* Detail Panels */}
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                    {/* Income Details */}
-                    <div className="bg-white rounded-[2.5rem] shadow-sm border border-gray-100 overflow-hidden flex flex-col">
-                        <div className="bg-[#1ABE9D] px-8 py-5 flex items-center gap-3 text-white">
-                            <Plus size={20} className="stroke-[3]" />
-                            <h3 className="font-black text-lg">Gelir - Detaylar</h3>
-                        </div>
-                        <div className="grid grid-cols-2 flex-1 divide-x divide-gray-50">
-                            <div className="p-8">
-                                <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-6 flex items-center gap-2">
-                                    <Banknote size={14} className="text-[#1ABE9D]" /> Ödeme Yöntemleri
-                                </h4>
-                                <div className="space-y-4">
-                                    {stats.methods.map(([method, amount]: any) => (
-                                        <div key={method} className="flex justify-between items-center">
-                                            <span className="text-xs font-bold text-gray-600 capitalize">{method}</span>
-                                            <span className="text-xs font-black text-gray-900">{amount.toLocaleString('tr-TR')} TRY</span>
-                                        </div>
-                                    ))}
-                                    {stats.methods.length === 0 && <p className="text-[10px] text-gray-300 italic">Veri bulunmuyor</p>}
-                                </div>
-                            </div>
-                            <div className="p-8">
-                                <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-6 flex items-center gap-2">
-                                    <Landmark size={14} className="text-[#1ABE9D]" /> Ödeme Araçları
-                                </h4>
-                                <div className="space-y-4">
-                                    {stats.tools.map(([tool, amount]: any) => (
-                                        <div key={tool} className="flex justify-between items-center">
-                                            <span className="text-xs font-bold text-gray-600">{tool}</span>
-                                            <span className="text-xs font-black text-gray-900">{amount.toLocaleString('tr-TR')} TRY</span>
-                                        </div>
-                                    ))}
-                                    {stats.tools.length === 0 && <p className="text-[10px] text-gray-300 italic">Veri bulunmuyor</p>}
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* Expense Details */}
-                    <div className="bg-white rounded-[2.5rem] shadow-sm border border-gray-100 overflow-hidden flex flex-col">
-                        <div className="bg-rose-500 px-8 py-5 flex items-center gap-3 text-white">
-                            <Minus size={20} className="stroke-[3]" />
-                            <h3 className="font-black text-lg">Gider - Detaylar</h3>
-                        </div>
-                        <div className="p-8 flex-1 flex flex-col items-center justify-center text-center opacity-40">
-                            <Receipt size={40} className="text-gray-300 mb-2" />
-                            <p className="text-[10px] font-black uppercase tracking-widest">Gider detayı bulunmuyor</p>
-                        </div>
+            {/* Transaction Monitoring */}
+            <motion.div 
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="bg-white rounded-[4rem] shadow-2xl shadow-indigo-100/50 border border-indigo-50 overflow-hidden"
+            >
+                <div className="px-12 py-8 border-b border-indigo-50 flex justify-between items-center bg-gray-50/30">
+                    <h3 className="font-black text-indigo-950 uppercase italic tracking-tighter flex items-center gap-3">
+                        <Activity size={20} className="text-indigo-600" /> İŞLEM LOGLARI
+                        <span className="ml-4 px-3 py-1 bg-indigo-100 text-indigo-600 rounded-full text-[10px] font-black uppercase not-italic">CANLI</span>
+                    </h3>
+                    <div className="flex gap-4">
+                        {stats.methods.map(([method, amount]: any) => (
+                             <div key={method} className="flex items-center gap-2 px-4 py-2 bg-white rounded-xl border border-indigo-50 shadow-sm">
+                                <span className="text-[10px] font-black text-indigo-400 capitalize">{method}</span>
+                                <span className="text-xs font-black text-indigo-950">₺{amount.toLocaleString('tr-TR')}</span>
+                             </div>
+                        ))}
                     </div>
                 </div>
 
-                {/* Transaction Table */}
-                <div className="bg-white rounded-[2.5rem] shadow-sm border border-gray-100 overflow-hidden">
-                    <div className="px-8 py-6 border-b border-gray-50 flex justify-between items-center bg-gray-50/30">
-                        <h3 className="font-black text-gray-800 uppercase tracking-tighter italic flex items-center gap-2">
-                            <Activity size={18} className="text-[#1ABE9D]" /> İşlem Geçmişi
-                        </h3>
-                        <button className="text-[10px] font-black text-blue-600 uppercase tracking-widest hover:underline flex items-center gap-1">
-                            <Download size={12} /> Excel Aktar
-                        </button>
-                    </div>
-                    <div className="overflow-x-auto">
-                        <table className="w-full text-left">
-                            <thead className="bg-gray-50/50 border-b border-gray-100">
-                                <tr className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">
-                                    <th className="px-8 py-5">Ödeme tarihi</th>
-                                    <th className="px-8 py-5">Danışan/Firma</th>
-                                    <th className="px-8 py-5">İşlem tipi</th>
-                                    <th className="px-8 py-5">Bilgi</th>
-                                    <th className="px-8 py-5">Referans kodu</th>
-                                    <th className="px-8 py-5">Ödeme Yöntemi</th>
-                                    <th className="px-8 py-5">Ödeme Aracı</th>
-                                    <th className="px-8 py-5">Not</th>
-                                    <th className="px-8 py-5">Tutar</th>
-                                    <th className="px-8 py-5 text-right">İşlemler</th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-gray-50">
-                                {transactions.map((t) => {
+                <div className="overflow-x-auto">
+                    <table className="w-full text-left">
+                        <thead>
+                            <tr className="bg-indigo-50/50">
+                                <th className="px-12 py-6 text-[10px] font-black text-indigo-400 uppercase tracking-widest">TARİH</th>
+                                <th className="px-12 py-6 text-[10px] font-black text-indigo-400 uppercase tracking-widest">DANIŞAN / DETAY</th>
+                                <th className="px-12 py-6 text-[10px] font-black text-indigo-400 uppercase tracking-widest">AKŞAM/TİP</th>
+                                <th className="px-12 py-6 text-[10px] font-black text-indigo-400 uppercase tracking-widest">REFERANS</th>
+                                <th className="px-12 py-6 text-[10px] font-black text-indigo-400 uppercase tracking-widest">YÖNTEM</th>
+                                <th className="px-12 py-6 text-[10px] font-black text-indigo-400 uppercase tracking-widest text-right">TUTAR</th>
+                                <th className="px-12 py-6"></th>
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-indigo-50">
+                            <AnimatePresence mode="popLayout">
+                                {transactions.map((t, idx) => {
                                     const tool = paymentDefinitions.find(pd => pd.id === t.toolId);
                                     return (
-                                        <tr key={t.id} className="hover:bg-gray-50/30 transition-colors group">
-                                            <td className="px-8 py-6 text-xs font-bold text-gray-600">{new Date(t.date).toLocaleDateString('tr-TR')}</td>
-                                            <td className="px-8 py-6 text-sm font-black text-gray-900">{t.party}</td>
-                                            <td className="px-8 py-6">
-                                                <span className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wider ${
+                                        <motion.tr 
+                                            key={t.id}
+                                            initial={{ opacity: 0, x: -10 }}
+                                            animate={{ opacity: 1, x: 0 }}
+                                            transition={{ delay: idx * 0.02 }}
+                                            className="hover:bg-indigo-50/30 transition-all group"
+                                        >
+                                            <td className="px-12 py-6">
+                                                <div className="flex flex-col">
+                                                    <span className="text-xs font-black text-indigo-950">{new Date(t.date).toLocaleDateString('tr-TR')}</span>
+                                                    <span className="text-[9px] font-bold text-indigo-300 uppercase">{new Date(t.date).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })}</span>
+                                                </div>
+                                            </td>
+                                            <td className="px-12 py-6">
+                                                <div className="flex items-center gap-4">
+                                                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-black text-xs shadow-sm ${t.type === 'Para girişi' ? 'bg-indigo-50 text-indigo-600' : 'bg-rose-50 text-rose-600'}`}>
+                                                        {t.party.charAt(0)}
+                                                    </div>
+                                                    <div>
+                                                        <p className="text-sm font-black text-indigo-950">{t.party}</p>
+                                                        <p className="text-[10px] font-bold text-indigo-300 uppercase tracking-tight line-clamp-1">{t.note || t.info}</p>
+                                                    </div>
+                                                </div>
+                                            </td>
+                                            <td className="px-12 py-6">
+                                                <div className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wider ${
                                                     t.type === 'Para girişi' ? 'bg-emerald-50 text-emerald-600' : 'bg-rose-50 text-rose-600'
                                                 }`}>
+                                                    {t.type === 'Para girişi' ? <ArrowUpRight size={12} /> : <ChevronRight size={12} className="rotate-90" />}
                                                     {t.type}
+                                                </div>
+                                            </td>
+                                            <td className="px-12 py-6">
+                                                <span className="text-[11px] font-black text-indigo-600/60 uppercase tracking-tighter">#{t.refCode}</span>
+                                            </td>
+                                            <td className="px-12 py-6">
+                                                <div className="flex flex-col">
+                                                    <span className="text-xs font-black text-indigo-950 capitalize">{t.method}</span>
+                                                    <span className="text-[9px] font-bold text-indigo-400 uppercase tracking-widest">{tool?.name || 'GENEL KASA'}</span>
+                                                </div>
+                                            </td>
+                                            <td className="px-12 py-6 text-right">
+                                                <span className={`text-lg font-black tracking-tighter ${t.type === 'Para girişi' ? 'text-indigo-950' : 'text-rose-600'}`}>
+                                                    {t.type === 'Para çıkışı' && '- '}₺{t.amount.toLocaleString('tr-TR')}
                                                 </span>
                                             </td>
-                                            <td className="px-8 py-6 text-xs text-gray-500 font-bold">{t.info}</td>
-                                            <td className="px-8 py-6 text-xs font-black text-indigo-600 uppercase tracking-tighter">{t.refCode}</td>
-                                            <td className="px-8 py-6 text-xs font-bold text-gray-700 capitalize">{t.method}</td>
-                                            <td className="px-8 py-6 text-[10px] font-black uppercase tracking-widest text-[#1ABE9D]">
-                                                {tool?.name || '---'}
-                                            </td>
-                                            <td className="px-8 py-6 text-[10px] text-gray-400 font-bold max-w-[150px] truncate">{t.note}</td>
-                                            <td className="px-8 py-6 text-sm font-black text-gray-900">{t.amount.toLocaleString('tr-TR')} TRY</td>
-                                            <td className="px-8 py-6 text-right">
-                                                <button className="p-2 bg-gray-50 text-gray-400 hover:text-gray-900 rounded-lg border border-gray-100 transition-all opacity-0 group-hover:opacity-100">
-                                                    <Edit3 size={14} />
+                                            <td className="px-12 py-6 text-right">
+                                                <button className="p-3 text-indigo-200 hover:text-indigo-600 hover:bg-white rounded-xl transition-all opacity-0 group-hover:opacity-100 shadow-sm border border-transparent hover:border-indigo-50">
+                                                    <Edit3 size={16} />
                                                 </button>
                                             </td>
-                                        </tr>
+                                        </motion.tr>
                                     );
                                 })}
-                            </tbody>
-                        </table>
-                        {transactions.length === 0 && (
-                            <div className="py-24 text-center grayscale opacity-30 flex flex-col items-center">
-                                <History size={64} className="mb-4 text-gray-300" />
-                                <p className="text-[10px] font-black uppercase tracking-[0.3em]">Seçili tarihlerde işlem bulunmuyor</p>
+                            </AnimatePresence>
+                        </tbody>
+                    </table>
+                    {transactions.length === 0 && (
+                        <div className="py-32 text-center flex flex-col items-center justify-center">
+                            <div className="w-24 h-24 bg-gray-50 rounded-[2.5rem] flex items-center justify-center text-gray-200 mb-6 shadow-inner">
+                                <Receipt size={48} />
                             </div>
-                        )}
-                    </div>
+                            <h3 className="text-2xl font-black text-indigo-950 uppercase italic tracking-tighter">İşlem Bulunmuyor</h3>
+                            <p className="text-[10px] font-black text-indigo-400 uppercase tracking-[0.3em] mt-3">Seçilen tarihler arasında kayıtlı finansal hareket yok.</p>
+                        </div>
+                    )}
                 </div>
-            </div>
+            </motion.div>
         </div>
     );
 }

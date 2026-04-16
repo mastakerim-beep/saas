@@ -6,7 +6,7 @@ import {
     MapPin, FileText, Share2, Settings as SettingsIcon,
     Plus, Search, Edit2, Trash2, Check, X,
     ChevronRight, Shield, Smartphone, Calendar,
-    ExternalLink, Info, AlertCircle, Save, Layers, Zap, Clock
+    ExternalLink, Info, AlertCircle, Save, Layers, Zap, Clock, Building2
 } from "lucide-react";
 import { useState, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -24,7 +24,8 @@ type SettingsTab =
     | 'consent_forms' 
     | 'referral_sources'
     | 'rooms'
-    | 'security';
+    | 'security'
+    | 'business';
 
 export default function SystemSettingsPage() {
     const { 
@@ -50,6 +51,7 @@ export default function SystemSettingsPage() {
             { id: 'catalog', label: 'Hizmet Kataloğu', icon: Zap },
         ]},
         { group: "SİSTEM", items: [
+            { id: 'business', label: 'İşletme Ayarları', icon: Building2 },
             { id: 'staff', label: 'Personeller', icon: Users },
             { id: 'rooms', label: 'Odalar / Kabinler', icon: Layers },
             { id: 'branches', label: 'Şubeler', icon: MapPin },
@@ -269,6 +271,9 @@ export default function SystemSettingsPage() {
                             )}
                             { activeTab === 'rooms' && (
                                 <RoomsSettingsView query={searchQuery} />
+                            )}
+                            { activeTab === 'business' && (
+                                <BusinessSettingsView />
                             )}
                             { activeTab === 'security' && (
                                 <SecuritySettingsView />
@@ -672,6 +677,108 @@ function SecuritySettingsView() {
                     <p className="text-xs font-bold text-amber-700 leading-relaxed">
                         PIN kodunu sadece şube müdürü ve yetkili personelle paylaşın. Bu kod, finansal verileri etkileyen "Hediye" süreçlerini doğrulamak için kullanılır.
                     </p>
+                </div>
+            </div>
+        </div>
+    );
+}
+
+function BusinessSettingsView() {
+    const { currentBusiness, updateBusiness } = useStore();
+    const [startHour, setStartHour] = useState(currentBusiness?.calendarStartHour || 8);
+    const [endHour, setEndHour] = useState(currentBusiness?.calendarEndHour || 22);
+    const [isSaving, setIsSaving] = useState(false);
+
+    const handleSave = async () => {
+        setIsSaving(true);
+        await updateBusiness({ 
+            calendarStartHour: Number(startHour), 
+            calendarEndHour: Number(endHour) 
+        });
+        setIsSaving(false);
+        alert("Çalışma saatleri başarıyla güncellendi.");
+    };
+
+    return (
+        <div className="max-w-4xl mx-auto py-10 space-y-12">
+            <div className="bg-white p-12 rounded-[4rem] shadow-sm border border-gray-100 relative overflow-hidden">
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-10">
+                    <div className="flex items-center gap-8">
+                        <div className="w-24 h-24 bg-indigo-50 text-indigo-600 rounded-[2.5rem] flex items-center justify-center shadow-inner group">
+                            <Clock size={48} className="group-hover:rotate-12 transition-transform" />
+                        </div>
+                        <div>
+                            <h3 className="text-3xl font-black text-gray-900 uppercase italic tracking-tighter mb-2">Çalışma Saatleri</h3>
+                            <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest leading-relaxed">
+                                Takvim görünümünün başlangıç ve bitiş saatlerini belirleyin.
+                            </p>
+                        </div>
+                    </div>
+                    
+                    <div className="flex gap-4 items-center bg-gray-50 p-4 rounded-[2.5rem] border border-gray-100">
+                        <div className="flex flex-col items-center">
+                            <label className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-2">BAŞLANGIÇ</label>
+                            <input 
+                                type="number" 
+                                min={0} 
+                                max={23} 
+                                value={startHour}
+                                onChange={(e) => setStartHour(Number(e.target.value))}
+                                className="w-16 h-16 bg-white border-none rounded-2xl text-center text-2xl font-black text-indigo-600 shadow-sm outline-none focus:ring-2 focus:ring-indigo-100 transition-all"
+                            />
+                        </div>
+                        <div className="w-4 h-0.5 bg-gray-200 mt-6" />
+                        <div className="flex flex-col items-center">
+                            <label className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-2">BİTİŞ</label>
+                            <input 
+                                type="number" 
+                                min={0} 
+                                max={23} 
+                                value={endHour}
+                                onChange={(e) => setEndHour(Number(e.target.value))}
+                                className="w-16 h-16 bg-white border-none rounded-2xl text-center text-2xl font-black text-rose-600 shadow-sm outline-none focus:ring-2 focus:ring-rose-100 transition-all"
+                            />
+                        </div>
+                    </div>
+                </div>
+
+                <div className="mt-12 pt-12 border-t border-gray-50 flex justify-end">
+                    <button 
+                        onClick={handleSave}
+                        disabled={isSaving}
+                        className="px-12 py-5 bg-black text-white rounded-[2rem] font-black text-xs uppercase tracking-widest hover:scale-[1.02] active:scale-95 transition-all shadow-2xl flex items-center gap-3 disabled:opacity-30"
+                    >
+                        {isSaving ? "Kaydediliyor..." : <><Save size={18} /> AYARLARI KAYDET</>}
+                    </button>
+                </div>
+
+                <div className="absolute -right-20 -bottom-20 w-64 h-64 bg-indigo-50 opacity-10 rounded-full" />
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                <div className="bg-amber-50 p-10 rounded-[3rem] border border-amber-100 flex gap-6">
+                    <div className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center text-amber-500 shadow-sm shrink-0">
+                        <Info size={24} />
+                    </div>
+                    <div>
+                        <h4 className="text-sm font-black text-amber-900 uppercase tracking-tight mb-2">NOT</h4>
+                        <p className="text-xs font-bold text-amber-700 leading-relaxed">
+                            Bu saatler sadece takvim ızgarasının görünümünü etkiler. Personel mesai saatleri ayrıca personel düzenleme ekranından ayarlanmalıdır.
+                        </p>
+                    </div>
+                </div>
+
+                <div className="bg-indigo-900 p-10 rounded-[3rem] text-white flex gap-6 relative overflow-hidden">
+                    <div className="w-12 h-12 bg-white/10 rounded-2xl flex items-center justify-center text-white shadow-xl shrink-0 backdrop-blur-md">
+                        <Building2 size={24} />
+                    </div>
+                    <div className="relative z-10">
+                        <h4 className="text-sm font-black uppercase tracking-tight mb-2">İŞLETME KİMLİĞİ</h4>
+                        <p className="text-xs font-bold opacity-60 leading-relaxed">
+                            Şu an {currentBusiness?.name} işletmesi için global ayarları düzenliyorsunuz.
+                        </p>
+                    </div>
+                    <Calendar className="absolute -right-4 -bottom-4 w-24 h-24 opacity-10 rotate-12" />
                 </div>
             </div>
         </div>
