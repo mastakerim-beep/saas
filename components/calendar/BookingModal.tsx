@@ -89,72 +89,74 @@ export default function BookingModal({ initialData, onClose, date, mode: initial
     };
 
     const handleSave = async () => {
+        if (isSaving) return;
         setIsSaving(true);
 
-        if (mode === 'appt') {
-            const finalBasket = basket.length > 0 ? basket : [{
-                service: currentService,
-                staffId: currentStaffId,
-                staffName: staffMembers.find(s => s.id === currentStaffId)?.name || '',
-                roomId: currentRoomId,
-                packageId: currentPackageId,
-                price: currentPackageId ? 0 : price,
-                duration: overrideDuration || services.find(s => s.name === currentService)?.duration || 60,
-                isPackageUsage: !!currentPackageId,
-                note: note,
-                regions: selectedRegions
-            }];
+        try {
+            if (mode === 'appt') {
+                const finalBasket = basket.length > 0 ? basket : [{
+                    service: currentService,
+                    staffId: currentStaffId,
+                    staffName: staffMembers.find(s => s.id === currentStaffId)?.name || '',
+                    roomId: currentRoomId,
+                    packageId: currentPackageId,
+                    price: currentPackageId ? 0 : price,
+                    duration: overrideDuration || services.find(s => s.name === currentService)?.duration || 60,
+                    isPackageUsage: !!currentPackageId,
+                    note: note,
+                    regions: selectedRegions
+                }];
 
-            let allSuccess = true;
-            for (const item of finalBasket) {
-                // 1. Add Appointment (Body Map and Referral handled inside Store for atomicity)
-                const success = await addAppointment({
+                let allSuccess = true;
+                for (const item of finalBasket) {
+                    const success = await addAppointment({
+                        businessId: currentBusiness?.id,
+                        customerId: selectedCustId,
+                        customerName: customer?.name || '',
+                        service: item.service,
+                        staffId: item.staffId,
+                        staffName: item.staffName,
+                        roomId: item.roomId,
+                        date,
+                        time: initialData.time,
+                        duration: item.duration,
+                        status: 'pending',
+                        price: item.price,
+                        depositPaid: 0,
+                        isOnline: false,
+                        packageId: item.packageId || undefined,
+                        isPackageUsage: item.isPackageUsage,
+                        note: item.note,
+                        communicationSource: referralSource,
+                        bodyMapData: item.regions
+                    });
+
+                    if (!success) {
+                        allSuccess = false;
+                        alert("Randevu kaydedilemedi! Lütfen bağlantıyı kontrol edin.");
+                        break;
+                    }
+                }
+                
+                if (allSuccess) {
+                    onClose();
+                }
+            } else {
+                await addBlock({
                     businessId: currentBusiness?.id,
-                    customerId: selectedCustId,
-                    customerName: customer?.name || '',
-                    service: item.service,
-                    staffId: item.staffId,
-                    staffName: item.staffName,
-                    roomId: item.roomId,
+                    staffId: currentStaffId,
                     date,
                     time: initialData.time,
-                    duration: item.duration,
-                    status: 'pending',
-                    price: item.price,
-                    depositPaid: 0,
-                    isOnline: false,
-                    packageId: item.packageId || undefined,
-                    isPackageUsage: item.isPackageUsage,
-                    note: item.note,
-                    communicationSource: referralSource,
-                    bodyMapData: item.regions
+                    duration: overrideDuration || 60,
+                    reason: blockReason
                 });
-
-                if (!success) {
-                    allSuccess = false;
-                    alert("Randevu kaydedilemedi! Lütfen veritabanı bağlantasını kontrol edin.");
-                    break;
-                }
-            }
-            if (allSuccess) {
-                setIsSaving(false);
                 onClose();
-            } else {
-                setIsSaving(false);
             }
-        } else {
-            if (isSaving) return;
-            setIsSaving(true);
-            await addBlock({
-                businessId: currentBusiness?.id,
-                staffId: currentStaffId,
-                date,
-                time: initialData.time,
-                duration: overrideDuration || 60,
-                reason: blockReason
-            });
+        } catch (error) {
+            console.error("Booking save error:", error);
+            alert("İşlem sırasında bir hata oluştu. Randevu kaydedilmiş olabilir, lütfen sayfayı yenileyip kontrol edin.");
+        } finally {
             setIsSaving(false);
-            onClose();
         }
     };
 
