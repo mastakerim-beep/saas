@@ -67,14 +67,15 @@ export default function CalendarItem({
         setDroppableRef(node);
     };
 
-    const style = transform ? {
-        transform: `translate3d(${transform.x}px, ${transform.y}px, 0)`,
-        zIndex: 100,
-    } : {
-        height: `${localDuration * PX_PER_MIN}px`,
-        zIndex: isResizing ? 50 : 10,
+    const currentHeight = `${localDuration * PX_PER_MIN}px`;
+
+    const style = {
+        transform: transform ? `translate3d(${transform.x}px, ${transform.y}px, 0)` : undefined,
+        height: currentHeight,
+        zIndex: isDragging ? 100 : (isResizing ? 50 : 10),
         position: 'relative' as const,
-        minHeight: '20px'
+        minHeight: '20px',
+        touchAction: 'none'
     };
 
     const handleResizeMouseDown = (e: React.MouseEvent) => {

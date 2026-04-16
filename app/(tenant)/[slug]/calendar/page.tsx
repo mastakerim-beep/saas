@@ -289,9 +289,10 @@ export default function CalendarPage() {
                                                         const [h, m] = item.time.split(':').map(Number);
                                                         const startMinutes = (h - settings.startHour) * 60 + m;
                                                         const top = (startMinutes / SLOT_MINUTES) * SLOT_HEIGHT;
+                                                        const height = (item.duration || 60) * (SLOT_HEIGHT / 15);
                                                         
                                                         return (
-                                                            <div key={item.id} className="absolute inset-x-0 pointer-events-auto" style={{ top }}>
+                                                            <div key={item.id} className="absolute inset-x-0 pointer-events-auto" style={{ top, height }}>
                                                                 <CalendarItem 
                                                                     item={item} 
                                                                     type={(item as Appointment).customerId ? 'appt' : 'block'}

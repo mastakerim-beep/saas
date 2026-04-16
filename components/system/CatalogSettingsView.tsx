@@ -93,34 +93,34 @@ export default function CatalogSettingsView({ query }: { query: string }) {
     return (
         <div className="space-y-12 animate-[fadeIn_0.5s_ease]">
             {/* Premium Header Display */}
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-8 mb-12">
-                <div className="flex items-center gap-6">
-                    <div className="w-20 h-20 rounded-[2.2rem] bg-indigo-600 flex items-center justify-center text-white shadow-2xl shadow-indigo-200 relative overflow-hidden group">
-                        <Layers size={36} className="relative z-10" />
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 mb-8">
+                <div className="flex items-center gap-4">
+                    <div className="w-16 h-16 rounded-[1.8rem] bg-indigo-600 flex items-center justify-center text-white shadow-xl shadow-indigo-200 relative overflow-hidden group">
+                        <Layers size={28} className="relative z-10" />
                         <div className="absolute inset-0 bg-gradient-to-br from-white/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
                     </div>
                     <div>
-                        <h1 className="text-4xl font-black text-gray-900 tracking-tighter uppercase italic leading-none mb-2">KATALOG YÖNETİMİ</h1>
-                        <p className="text-[10px] font-black text-indigo-400 uppercase tracking-[0.3em] flex items-center gap-2">
-                             <Sparkles className="w-3 h-3" /> ROYAL SPA PREMİUM ENVANTER SİSTEMİ
+                        <h1 className="text-3xl font-black text-gray-900 tracking-tighter uppercase italic leading-none mb-1">KATALOG YÖNETİMİ</h1>
+                        <p className="text-[9px] font-black text-indigo-400 uppercase tracking-[0.3em] flex items-center gap-2">
+                             <Sparkles className="w-2.5 h-2.5" /> ROYAL SPA PREMİUM ENVANTER
                         </p>
                     </div>
                 </div>
 
-                <div className="flex items-center gap-4">
+                <div className="flex items-center gap-3">
                     <div className="relative group">
-                        <Search className="absolute left-5 top-1/2 -translate-y-1/2 text-indigo-300 group-focus-within:text-indigo-600 transition-colors" size={18} />
+                        <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-indigo-300 group-focus-within:text-indigo-600 transition-colors" size={16} />
                         <input 
                             placeholder="Katalogda ara..."
                             defaultValue={query}
-                            className="pl-14 pr-8 py-5 bg-white border border-indigo-50 rounded-[2.5rem] text-sm font-bold w-72 focus:ring-8 focus:ring-indigo-500/5 focus:border-indigo-200 outline-none transition-all shadow-sm"
+                            className="pl-12 pr-6 py-4 bg-white border border-indigo-50 rounded-[2rem] text-sm font-bold w-64 focus:ring-4 focus:ring-indigo-500/5 focus:border-indigo-200 outline-none transition-all shadow-sm"
                         />
                     </div>
                     <button 
                         onClick={() => openPanel()}
-                        className="bg-indigo-600 text-white px-10 py-5 rounded-[2rem] font-black text-xs uppercase tracking-widest shadow-2xl shadow-indigo-200 flex items-center gap-2 hover:bg-indigo-700 active:scale-95 transition-all"
+                        className="bg-indigo-600 text-white px-8 py-4 rounded-[1.8rem] font-black text-[10px] uppercase tracking-widest shadow-xl shadow-indigo-200 flex items-center gap-2 hover:bg-indigo-700 active:scale-95 transition-all"
                     >
-                        <Plus size={18} /> YENİ EKLE
+                        <Plus size={16} /> YENİ EKLE
                     </button>
                 </div>
             </div>
@@ -185,38 +185,42 @@ export default function CatalogSettingsView({ query }: { query: string }) {
                             animate={{ x: 0 }}
                             exit={{ x: '100%' }}
                             transition={{ type: "spring", damping: 25, stiffness: 200 }}
-                            className="relative w-full max-w-xl bg-white h-full shadow-2xl flex flex-col pt-12"
+                            className="relative w-full max-w-xl bg-white h-full shadow-2xl flex flex-col pt-8"
                         >
-                            <div className="px-12 pb-12 border-b border-gray-50">
-                                <div className="flex items-center justify-between mb-10">
+                            {/* Panel Header */}
+                            <div className="px-10 pb-6 border-b border-gray-50 shrink-0">
+                                <div className="flex items-center justify-between mb-6">
                                     <div className="flex items-center gap-4">
-                                        <div className="p-4 bg-indigo-50 text-indigo-600 rounded-[1.5rem]">
-                                            <Plus size={24} />
+                                        <div className="p-3 bg-indigo-50 text-indigo-600 rounded-2xl">
+                                            <Plus size={20} />
                                         </div>
                                         <div>
-                                            <h3 className="text-2xl font-black text-gray-900 uppercase italic tracking-tighter">
+                                            <h3 className="text-xl font-black text-gray-900 uppercase italic tracking-tighter">
                                                 {editingItem ? 'ÖĞE DÜZENLE' : 'YENİ TANIMLAMA'}
                                             </h3>
-                                            <p className="text-[10px] font-black text-indigo-400 uppercase tracking-widest">
+                                            <p className="text-[9px] font-black text-indigo-400 uppercase tracking-widest">
                                                 {editingItem ? 'MEVCUT BİLGİLERİ GÜNCELLE' : 'KATALOGA YENİ ÖĞE EKLE'}
                                             </p>
                                         </div>
                                     </div>
-                                    <button onClick={() => setIsAdding(false)} className="p-4 bg-gray-50 rounded-2xl text-gray-400 hover:text-red-500 transition-colors">
-                                        <X size={24} />
+                                    <button onClick={() => setIsAdding(false)} className="p-3 bg-gray-50 rounded-xl text-gray-400 hover:text-red-500 transition-colors">
+                                        <X size={20} />
                                     </button>
                                 </div>
+                            </div>
 
-                                <div className="space-y-8">
+                            {/* Scrollable Content */}
+                            <div className="flex-1 overflow-y-auto px-10 py-8 no-scrollbar bg-slate-50/30">
+                                <div className="space-y-6">
                                     <InputField label="HİZMET / ÜRÜN ADI" value={form.name} onChange={(v: string) => setForm({...form, name: v})} placeholder="Bali Masajı, Aloe Vera Paketi vb." />
                                     
-                                    <div className="grid grid-cols-2 gap-6">
-                                        <div className="space-y-3">
-                                            <label className="text-[10px] font-black text-indigo-400 uppercase tracking-widest ml-1">KATEGORİ</label>
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div className="space-y-2">
+                                            <label className="text-[9px] font-black text-indigo-400 uppercase tracking-widest ml-1">KATEGORİ</label>
                                             <div className="relative">
                                                 {!showNewCatInput ? (
                                                     <select 
-                                                        className="w-full bg-indigo-50/50 border-2 border-transparent rounded-[1.5rem] px-6 py-5 font-bold text-gray-900 outline-none focus:border-indigo-100 transition-all appearance-none"
+                                                        className="w-full bg-white border border-gray-100 rounded-2xl px-5 py-4 font-bold text-gray-900 outline-none focus:border-indigo-200 transition-all appearance-none shadow-sm"
                                                         value={form.category}
                                                         onChange={e => {
                                                             if (e.target.value === 'ADD_NEW') setShowNewCatInput(true);
@@ -236,14 +240,14 @@ export default function CatalogSettingsView({ query }: { query: string }) {
                                                     <div className="flex gap-2">
                                                         <input 
                                                             autoFocus
-                                                            className="flex-1 bg-indigo-50/50 border-2 border-indigo-200 rounded-[1.5rem] px-6 py-5 font-bold text-gray-900 outline-none transition-all"
+                                                            className="flex-1 bg-white border-2 border-indigo-100 rounded-2xl px-5 py-4 font-bold text-gray-900 outline-none transition-all shadow-sm"
                                                             placeholder="Kategori Adı..."
                                                             value={newCategoryName}
                                                             onChange={e => setNewCategoryName(e.target.value)}
                                                         />
                                                         <button 
                                                             onClick={() => setShowNewCatInput(false)}
-                                                            className="px-6 bg-gray-100 rounded-[1.5rem] text-[10px] font-black"
+                                                            className="px-4 bg-gray-100 rounded-2xl text-[9px] font-black"
                                                         >
                                                             VAZGEÇ
                                                         </button>
@@ -259,25 +263,34 @@ export default function CatalogSettingsView({ query }: { query: string }) {
                                         />
                                     </div>
 
-                                    <div className="bg-indigo-600 rounded-[2.5rem] p-8 text-white shadow-xl shadow-indigo-100">
-                                        <label className="text-[10px] font-black opacity-60 uppercase tracking-widest ml-1 block mb-3">SATIŞ FİYATI (TRY)</label>
-                                        <input 
-                                            type="number"
-                                            value={form.price}
-                                            onChange={e => setForm({...form, price: Number(e.target.value)})}
-                                            className="bg-transparent border-none text-5xl font-black outline-none w-full tracking-tighter placeholder:text-white/20"
-                                            placeholder="0,00"
-                                        />
+                                    <div className="bg-gradient-to-br from-indigo-700 to-indigo-600 rounded-[2rem] p-6 text-white shadow-xl shadow-indigo-100">
+                                        <label className="text-[9px] font-black opacity-60 uppercase tracking-widest ml-1 block mb-2">SATIŞ FİYATI (TRY)</label>
+                                        <div className="flex items-baseline gap-2">
+                                            <span className="text-2xl font-black">₺</span>
+                                            <input 
+                                                type="number"
+                                                value={form.price}
+                                                onChange={e => setForm({...form, price: Number(e.target.value)})}
+                                                className="bg-transparent border-none text-4xl font-black outline-none w-full tracking-tighter placeholder:text-white/20"
+                                                placeholder="0,00"
+                                            />
+                                        </div>
+                                    </div>
+
+                                    {/* Future expansion area placeholder - Open to dev */}
+                                    <div className="p-4 border border-dashed border-indigo-100 rounded-2xl opacity-40">
+                                        <p className="text-[8px] font-black text-indigo-400 text-center uppercase tracking-widest">Yeni Özellikler Buraya Eklenebilir (KDV, Maliyet, vb.)</p>
                                     </div>
                                 </div>
                             </div>
                             
-                            <div className="mt-auto px-12 py-12 bg-gray-50/50 flex flex-col gap-4">
-                                <button onClick={handleSave} className="w-full py-6 bg-indigo-600 text-white rounded-[2rem] font-black text-xs uppercase tracking-[0.2em] shadow-2xl shadow-indigo-200 hover:bg-indigo-700 active:scale-[0.98] transition-all">
-                                    KATALOGA İŞLE ✓
+                            {/* Sticky Footer Area */}
+                            <div className="mt-auto px-10 py-8 bg-white border-t border-gray-50 flex flex-col gap-3 shrink-0">
+                                <button onClick={handleSave} className="w-full py-5 bg-indigo-600 text-white rounded-[1.5rem] font-black text-[11px] uppercase tracking-[0.2em] shadow-xl shadow-indigo-100 hover:bg-indigo-700 active:scale-[0.98] transition-all">
+                                    {editingItem ? 'DEĞİŞİKLİKLERİ KAYDET ✓' : 'KATALOGA EKLE ✓'}
                                 </button>
-                                <button onClick={() => setIsAdding(false)} className="w-full py-4 text-[11px] font-black text-gray-400 uppercase tracking-widest hover:text-gray-600 transition-colors">
-                                    VAZGEÇ VE KAPAT
+                                <button onClick={() => setIsAdding(false)} className="w-full py-3 text-[10px] font-black text-gray-400 uppercase tracking-widest hover:text-gray-600 transition-colors">
+                                    İPTAL ET
                                 </button>
                             </div>
                         </motion.div>
