@@ -26,6 +26,8 @@ import BookingModal from '@/components/calendar/BookingModal';
 
 // ---- CONFIG & UTILS ----
 const SLOT_MINUTES = 15;
+const SLOT_HEIGHT = 42; // En iyi görünüm ve daha az kaydırma için optimize edildi
+const PX_PER_MIN = SLOT_HEIGHT / 15;
 
 const formatDate = (date: Date) => {
     // Shifting to Istanbul time before ISO conversion
@@ -153,9 +155,10 @@ function CalendarItem({ item, type, onCheckout, onAction, onResizeStart, onResiz
         transform: `translate3d(${transform.x}px, ${transform.y}px, 0)`,
         zIndex: 100,
     } : {
-        gridRow: `span ${Math.ceil(localDuration / SLOT_MINUTES)}`,
+        height: `${localDuration * PX_PER_MIN}px`, // Pixel-perfect height based on duration
         zIndex: isResizing ? 50 : 10,
-        position: 'relative' as const
+        position: 'relative' as const,
+        minHeight: '20px'
     };
 
     const handleResizeMouseDown = (e: React.MouseEvent) => {
@@ -171,8 +174,9 @@ function CalendarItem({ item, type, onCheckout, onAction, onResizeStart, onResiz
 
         const onMouseMove = (moveEvent: MouseEvent) => {
             const deltaY = moveEvent.pageY - startY;
-            const deltaSlots = Math.round(deltaY / 48); // 48px per 15 min slot
-            const newDuration = Math.max(15, startDuration + (deltaSlots * 15));
+            // 5 dakikalık hassasiyetle (step = 5) yeniden boyutlandırma
+            const deltaMinutes = Math.round(deltaY / (SLOT_HEIGHT / 3)) * 5; 
+            const newDuration = Math.max(5, startDuration + deltaMinutes);
             setLocalDuration(newDuration);
             latestDuration = newDuration;
             onResizeUpdate?.(item.id, newDuration);
@@ -336,7 +340,7 @@ function TimeSlot({ staffId, roomId, time, isOff, onAdd, onSelectionStart, onSel
                 if (!isOff) onSelectionEnter(time);
             }}
             className={`
-                h-[48px] border-r border-gray-200/50 transition-all relative
+                h-[42px] border-r border-gray-200/50 transition-all relative
                 ${isHourStart ? 'border-t-[1.5px] border-t-gray-300' : 'border-t border-t-gray-200/60 border-dashed'}
                 ${isOff ? 'bg-secondary/30 cursor-not-allowed opacity-40' : (isOver ? 'bg-indigo-50/50 border-2 border-indigo-200 z-10 scale-[1.01]' : 'hover:bg-indigo-50/10 cursor-pointer')}
                 ${isSelected ? 'bg-indigo-600/20 ring-2 ring-indigo-500/50 z-20' : ''}
@@ -932,10 +936,10 @@ export default function CalendarPage() {
                                 const isHalf = m === '30';
                                 
                                 return (
-                                    <div key={slot} className={`h-[48px] flex flex-col items-center justify-center transition-colors ${isHour ? 'bg-gray-50/30' : ''}`}>
+                                    <div key={slot} className={`h-[42px] flex flex-col items-center justify-center transition-colors ${isHour ? 'bg-gray-50/30' : ''}`}>
                                         <span className={`
                                             transition-all duration-300 tabular-nums
-                                            ${isHour ? 'text-[13px] font-black text-gray-900 italic' : 'text-[10px] font-bold text-gray-300'}
+                                            ${isHour ? 'text-[12px] font-black text-gray-900 italic' : 'text-[9px] font-bold text-gray-300'}
                                             ${isHalf ? 'text-gray-400' : ''}
                                         `}>
                                             {slot}
@@ -949,7 +953,7 @@ export default function CalendarPage() {
                         </div>
 
                         {/* Grid */}
-                        <div className="flex-1 grid relative bg-[#FEF9E7]" style={{ gridTemplateColumns: `repeat(${columnsToDisplay.length || 1}, 1fr)`, gridTemplateRows: `repeat(${SLOTS.length}, 48px)` }}>
+                        <div className="flex-1 grid relative bg-[#FEF9E7]" style={{ gridTemplateColumns: `repeat(${columnsToDisplay.length || 1}, 1fr)`, gridTemplateRows: `repeat(${SLOTS.length}, 42px)` }}>
                             {columnsToDisplay.map((col, colIdx) => {
                                 const isOff = viewMode === 'staff' && (col as Staff).weeklyOffDay === dayOfWeek;
                                 return SLOTS.map((time, rowIdx) => (
@@ -1011,6 +1015,7 @@ export default function CalendarPage() {
                                                 gridRowEnd: `span ${maxSpan}`,
                                                 position: 'relative',
                                                 display: 'flex',
+                                                alignItems: 'flex-start', // Prevent cards from stretching to max group height
                                                 gap: '2px',
                                                 padding: '2px',
                                                 zIndex: resizingId && group.items.some((i: any) => i.id === resizingId) ? 100 : 10

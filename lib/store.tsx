@@ -582,7 +582,6 @@ const StoreContext = createContext<StoreState | null>(null);
             setAllNotifs(dataMap.notification_logs || []);
             setAllBlocks(dataMap.calendar_blocks || []);
             
-            // ... rest of the function or state updates
             // Branch setup: Prioritize saved branch, then user's staff branch, then first available
             if (dataMap.branches?.length > 0) {
                 const savedBranchId = localStorage.getItem('aura_last_branch');
@@ -597,6 +596,16 @@ const StoreContext = createContext<StoreState | null>(null);
                 }
                 
                 setCurrentBranchState(branchToUse);
+            }
+
+            // Business Settings Setup: Pull workspace/calendar settings from the target business
+            const targetBusiness = dataMap.businesses?.find((b: any) => b.id === targetId);
+            if (targetBusiness) {
+                setSettings(prev => ({
+                    ...prev,
+                    startHour: targetBusiness.calendarStartHour || 9,
+                    endHour: targetBusiness.calendarEndHour || 21
+                }));
             }
 
             setLastFetch(Date.now());
