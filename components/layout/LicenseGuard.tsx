@@ -41,8 +41,8 @@ export default function LicenseGuard({ children }: { children: React.ReactNode }
                     <p className="text-gray-500 text-sm font-bold leading-relaxed max-w-xs mx-auto">
                         <span className="text-primary font-black">{currentBusiness?.name}</span> işletmesinin
                         {isSuspended 
-                            ? ' Aura SaaS hesabı yönetim tarafından askıya alınmıştır. Detaylar için merkez ile iletişime geçin.' 
-                            : ' Aura SaaS lisansı sona ermiştir. Erişimi yenilemek için aboneliğinizi güncelleyin.'}
+                            ? ' Aura Spa ERP hesabı yönetim tarafından askıya alınmıştır. Detaylar için merkez ile iletişime geçin.' 
+                            : ' Aura Spa ERP lisansı sona ermiştir. Erişimi yenilemek için aboneliğinizi güncelleyin.'}
                     </p>
                 </div>
 
@@ -85,7 +85,7 @@ export default function LicenseGuard({ children }: { children: React.ReactNode }
                 </div>
 
                 <p className="text-[9px] text-gray-700 font-black uppercase tracking-widest">
-                    Aura SaaS Lisans Modülü • Altyapı Güvenliği Aktif
+                    Aura Spa ERP Lisans Modülü • Altyapı Güvenliği Aktif
                 </p>
             </motion.div>
         </div>

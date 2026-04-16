@@ -44,6 +44,8 @@ export default function SystemSettingsPage() {
     const [searchQuery, setSearchQuery] = useState("");
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
     const [editingItem, setEditingItem] = useState<any>(null);
+    const [showNewRoomCategory, setShowNewRoomCategory] = useState(false);
+    const [newRoomCategoryName, setNewRoomCategoryName] = useState("");
 
     // Sidebar Items
     const menuItems = [
@@ -89,12 +91,15 @@ export default function SystemSettingsPage() {
             if (editingItem) updateConsentFormTemplate(editingItem.id, data as any);
             else addConsentFormTemplate(data);
         } else if (activeTab === 'rooms') {
-            if (editingItem) updateRoom(editingItem.id, data as any);
-            else addRoom({ ...data, status: 'active' } as any);
+            const finalCategory = showNewRoomCategory ? newRoomCategoryName : (data.category as string);
+            if (editingItem) updateRoom(editingItem.id, { ...data, category: finalCategory } as any);
+            else addRoom({ ...data, category: finalCategory, status: 'active' } as any);
         }
 
         setIsEditModalOpen(false);
         setEditingItem(null);
+        setShowNewRoomCategory(false);
+        setNewRoomCategoryName("");
     };
 
     return (
@@ -308,7 +313,11 @@ export default function SystemSettingsPage() {
                                         </h3>
                                         <p className="text-sm text-gray-500 mt-1">Gerekli bilgileri aşağıya giriniz.</p>
                                     </div>
-                                    <button type="button" onClick={() => setIsEditModalOpen(false)} className="w-10 h-10 rounded-full hover:bg-white flex items-center justify-center text-gray-400 transition-colors shadow-sm">
+                                    <button type="button" onClick={() => {
+                                        setIsEditModalOpen(false);
+                                        setEditingItem(null);
+                                        setShowNewRoomCategory(false);
+                                    }} className="w-10 h-10 rounded-full hover:bg-white flex items-center justify-center text-gray-400 transition-colors shadow-sm">
                                         <X size={20} />
                                     </button>
                                 </div>
@@ -409,14 +418,40 @@ export default function SystemSettingsPage() {
                                             </div>
                                             <div>
                                                 <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Kategori</label>
-                                                <select name="category" defaultValue={editingItem?.category || 'Masaj'} className="w-full px-4 py-3 bg-gray-50 border-none rounded-2xl focus:ring-2 focus:ring-blue-100 outline-none transition-all appearance-none">
-                                                    <option>Masaj</option>
-                                                    <option>Cilt Bakımı</option>
-                                                    <option>VIP</option>
-                                                    <option>Hamam</option>
-                                                    <option>Mola</option>
-                                                    <option>Diğer</option>
-                                                </select>
+                                                {!showNewRoomCategory ? (
+                                                    <select 
+                                                        name="category" 
+                                                        defaultValue={editingItem?.category || 'Masaj'} 
+                                                        onChange={(e) => {
+                                                            if (e.target.value === 'ADD_NEW') setShowNewRoomCategory(true);
+                                                        }}
+                                                        className="w-full px-4 py-3 bg-gray-50 border-none rounded-2xl focus:ring-2 focus:ring-blue-100 outline-none transition-all appearance-none"
+                                                    >
+                                                        <option>Masaj</option>
+                                                        <option>Cilt Bakımı</option>
+                                                        <option>VIP</option>
+                                                        <option>Hamam</option>
+                                                        <option>Mola</option>
+                                                        <option value="ADD_NEW">+ Yeni Kategori Ekle</option>
+                                                    </select>
+                                                ) : (
+                                                    <div className="flex gap-2">
+                                                        <input 
+                                                            autoFocus
+                                                            className="flex-1 px-4 py-3 bg-gray-50 border-none rounded-2xl focus:ring-2 focus:ring-blue-100 outline-none transition-all"
+                                                            placeholder="Kategori Adı..."
+                                                            value={newRoomCategoryName}
+                                                            onChange={e => setNewRoomCategoryName(e.target.value)}
+                                                        />
+                                                        <button 
+                                                            type="button"
+                                                            onClick={() => setShowNewRoomCategory(false)}
+                                                            className="px-4 bg-gray-100 rounded-2xl text-[10px] font-black"
+                                                        >
+                                                            İPTAL
+                                                        </button>
+                                                    </div>
+                                                )}
                                             </div>
                                             <div>
                                                 <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Tema Rengi</label>
@@ -462,6 +497,7 @@ function StaffSettingsView({ staff, onUpdate, query }: { staff: Staff[], onUpdat
                         <th className="px-10 py-6 text-[10px] font-black text-gray-400 uppercase tracking-widest text-center">SİSTEM</th>
                         <th className="px-10 py-6 text-[10px] font-black text-gray-400 uppercase tracking-widest text-center">MOBİL</th>
                         <th className="px-10 py-6 text-[10px] font-black text-gray-400 uppercase tracking-widest text-center">TAKVİM</th>
+                        <th className="px-10 py-6 text-[10px] font-black text-gray-400 uppercase tracking-widest text-center whitespace-nowrap">İNDİRİM YETKİSİ (%)</th>
                         <th className="px-10 py-6 text-[10px] font-black text-gray-400 uppercase tracking-widest text-center whitespace-nowrap">İZİN GÜNÜ</th>
                         <th className="px-10 py-6 text-right"></th>
                     </tr>
@@ -491,6 +527,15 @@ function StaffSettingsView({ staff, onUpdate, query }: { staff: Staff[], onUpdat
                             </td>
                             <td className="px-10 py-6 text-center">
                                 <Toggle checked={s.isVisibleOnCalendar} onChange={(v) => toggle(s.id, 'isVisibleOnCalendar', v)} />
+                            </td>
+                            <td className="px-10 py-6 text-center">
+                                <input 
+                                    type="number" 
+                                    min={0} max={100}
+                                    value={s.maxDiscount ?? 0}
+                                    onChange={(e) => onUpdate(s.id, { maxDiscount: Number(e.target.value) })}
+                                    className="w-16 bg-gray-50 border border-gray-100 rounded-lg px-2 py-1.5 text-center text-[10px] font-black text-indigo-600 outline-none focus:border-indigo-500 transition-all"
+                                />
                             </td>
                             <td className="px-10 py-6 text-center">
                                 <select 

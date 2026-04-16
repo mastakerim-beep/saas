@@ -163,7 +163,7 @@ export default function Sidebar() {
                         {isHovered && <p className="px-4 text-[10px] font-black text-indigo-400 uppercase tracking-widest mb-4 opacity-50 overflow-hidden whitespace-nowrap">Ana Operasyon</p>}
                         <div className="space-y-1">
                             <SidebarItem isHovered={isHovered} pathname={pathname} href={getTenantLink('dashboard')} icon={LayoutDashboard} label="Genel Bakış" />
-                            {can('manage_appointments') && <SidebarItem isHovered={isHovered} pathname={pathname} href={getTenantLink('calendar')} icon={Calendar} label="Takvim" />}
+                            {can('move_appt') && <SidebarItem isHovered={isHovered} pathname={pathname} href={getTenantLink('calendar')} icon={Calendar} label="Takvim" />}
                             {can('manage_customers') && <SidebarItem isHovered={isHovered} pathname={pathname} href={getTenantLink('customers')} icon={Users} label="Müşteriler" />}
                             {can('manage_staff') && <SidebarItem isHovered={isHovered} pathname={pathname} href={getTenantLink('booking-settings')} icon={Globe} label="Randevu Portalı" colorClass="text-indigo-500" />}
                             {can('manage_staff') && <SidebarItem isHovered={isHovered} pathname={pathname} href={getTenantLink('staff')} icon={Briefcase} label="Ekip" />}
@@ -193,11 +193,11 @@ export default function Sidebar() {
                     <div>
                         {isHovered && <p className="px-4 text-[10px] font-black text-indigo-400 uppercase tracking-widest mb-4 opacity-50 overflow-hidden whitespace-nowrap">Finans</p>}
                         <div className="space-y-1">
-                            {can('view_executive_summary') && <SidebarItem isHovered={isHovered} pathname={pathname} href={getTenantLink('executive')} icon={Globe} label="Executive" badge="VIP" colorClass="text-primary" />}
-                            {can('view_executive_summary') && <SidebarItem isHovered={isHovered} pathname={pathname} href={getTenantLink('finances/cash')} icon={Wallet} label="Günün Kasası" colorClass="text-indigo-500" />}
-                            {can('view_executive_summary') && <SidebarItem isHovered={isHovered} pathname={pathname} href={getTenantLink('finances')} icon={TrendingUp} label="Ciro Analizi" colorClass="text-indigo-500" />}
-                            {can('view_executive_summary') && <SidebarItem isHovered={isHovered} pathname={pathname} href={getTenantLink('expenses')} icon={Receipt} label="Giderler" colorClass="text-indigo-500" />}
-                            {can('view_executive_summary') && <SidebarItem isHovered={isHovered} pathname={pathname} href={getTenantLink('balances')} icon={Wallet} label="Açık Hesap" colorClass="text-indigo-500" />}
+                            {can('view_cash') && <SidebarItem isHovered={isHovered} pathname={pathname} href={getTenantLink('executive')} icon={Globe} label="Executive" badge="VIP" colorClass="text-primary" />}
+                            {can('view_cash') && <SidebarItem isHovered={isHovered} pathname={pathname} href={getTenantLink('finances/cash')} icon={Wallet} label="Günün Kasası" colorClass="text-indigo-500" />}
+                            {can('view_historical_finance') && <SidebarItem isHovered={isHovered} pathname={pathname} href={getTenantLink('finances')} icon={TrendingUp} label="Ciro Analizi" colorClass="text-indigo-500" />}
+                            {can('manage_expenses') && <SidebarItem isHovered={isHovered} pathname={pathname} href={getTenantLink('expenses')} icon={Receipt} label="Giderler" colorClass="text-indigo-500" />}
+                            {can('view_historical_finance') && <SidebarItem isHovered={isHovered} pathname={pathname} href={getTenantLink('balances')} icon={Wallet} label="Açık Hesap" colorClass="text-indigo-500" />}
                         </div>
                     </div>
                 )}
@@ -207,10 +207,10 @@ export default function Sidebar() {
                     <div>
                         {isHovered && <p className="px-4 text-[10px] font-black text-indigo-400 uppercase tracking-widest mb-4 opacity-50 overflow-hidden whitespace-nowrap">Sistem & Paket</p>}
                         <div className="space-y-1">
-                            <SidebarItem isHovered={isHovered} pathname={pathname} href={getTenantLink('billing')} icon={CreditCard} label="Platform Üyelik" colorClass="text-emerald-500" />
-                            <SidebarItem isHovered={isHovered} pathname={pathname} href={getTenantLink('system')} icon={SettingsIcon} label="Sistem Tanımlamaları" colorClass="text-indigo-600" />
-                            <SidebarItem isHovered={isHovered} pathname={pathname} href={getTenantLink('logs')} icon={Terminal} label="Kernel Log" colorClass="text-gray-900" />
-                            <SidebarItem isHovered={isHovered} pathname={pathname} href={getTenantLink('users')} icon={UserCog} label="Kullanıcı Yetkileri" />
+                            {can('manage_business_settings') && <SidebarItem isHovered={isHovered} pathname={pathname} href={getTenantLink('billing')} icon={CreditCard} label="Platform Üyelik" colorClass="text-emerald-500" />}
+                            {can('manage_business_settings') && <SidebarItem isHovered={isHovered} pathname={pathname} href={getTenantLink('system')} icon={SettingsIcon} label="Sistem Tanımlamalar" colorClass="text-indigo-600" />}
+                            {can('view_audit_logs') && <SidebarItem isHovered={isHovered} pathname={pathname} href={getTenantLink('logs')} icon={Terminal} label="Kernel Log" colorClass="text-gray-900" />}
+                            {can('manage_users') && <SidebarItem isHovered={isHovered} pathname={pathname} href={getTenantLink('users')} icon={UserCog} label="Kullanıcı Yetkileri" />}
                         </div>
                     </div>
                 )}

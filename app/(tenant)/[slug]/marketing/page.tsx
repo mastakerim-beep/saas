@@ -17,13 +17,22 @@ export default function MarketingPage() {
     const { 
         aiInsights, customers, allNotifs, sendNotification,
         marketingRules, addMarketingRule, updateMarketingRule, deleteMarketingRule,
-        pricingRules, addPricingRule, deletePricingRule
+        pricingRules, addPricingRule, deletePricingRule,
+        services, inventory, rooms
     } = useStore();
     const [isSending, setIsSending] = useState(false);
     const [showRuleForm, setShowRuleForm] = useState(false);
     const [showPricingForm, setShowPricingForm] = useState(false);
-    const [newRule, setNewRule] = useState({ name: '', triggerType: 'low_package_balance', threshold: 3, messageTemplate: '' });
+    const [newRule, setNewRule] = useState({ name: '', triggerType: 'low_package_balance', threshold: 3, messageTemplate: '', targetCategory: '' });
     const [newPricingRule, setNewPricingRule] = useState({ name: '', modifierPercent: 20, isActive: true });
+    const [showNewCategory, setShowNewCategory] = useState(false);
+    const [newCategoryName, setNewCategoryName] = useState("");
+
+    const allCategories = Array.from(new Set([
+        ...services.map(s => s.category),
+        ...inventory.map(p => p.category),
+        ...rooms.map(r => r.category)
+    ].filter(Boolean)));
 
     const churnCount = customers.filter(c => c.isChurnRisk).length;
 
@@ -40,9 +49,12 @@ export default function MarketingPage() {
 
     const handleAddRule = async () => {
         if (!newRule.name || !newRule.messageTemplate) return;
-        await addMarketingRule(newRule as any);
+        const finalCategory = showNewCategory ? newCategoryName : newRule.targetCategory;
+        await addMarketingRule({ ...newRule, targetCategory: finalCategory } as any);
         setShowRuleForm(false);
-        setNewRule({ name: '', triggerType: 'low_package_balance', threshold: 3, messageTemplate: '' });
+        setNewRule({ name: '', triggerType: 'low_package_balance', threshold: 3, messageTemplate: '', targetCategory: '' });
+        setShowNewCategory(false);
+        setNewCategoryName("");
     };
 
     const handleAddPricing = async () => {
@@ -132,9 +144,48 @@ export default function MarketingPage() {
                                                 <option value="low_package_balance">Düşük Paket Bakiyesi</option>
                                                 <option value="birthday">Doğum Günü Kutlaması</option>
                                                 <option value="churn_risk">Müşteri Geri Kazanım</option>
+                                                <option value="category_purchase">Kategori Bazlı Satın Alım</option>
                                             </select>
                                         </div>
                                     </div>
+
+                                    {(newRule.triggerType === 'category_purchase' || newRule.triggerType === 'low_package_balance') && (
+                                        <div className="mb-8 space-y-2">
+                                            <label className="text-[10px] font-black uppercase text-gray-400 pl-1 italic">Hedef Kategori</label>
+                                            {!showNewCategory ? (
+                                                <select 
+                                                    value={newRule.targetCategory}
+                                                    onChange={e => {
+                                                        if (e.target.value === 'ADD_NEW') setShowNewCategory(true);
+                                                        else setNewRule({...newRule, targetCategory: e.target.value});
+                                                    }}
+                                                    className="w-full bg-gray-50 border-none rounded-2xl p-5 text-sm font-black italic outline-none appearance-none cursor-pointer"
+                                                >
+                                                    <option value="">Tüm Kategoriler</option>
+                                                    {allCategories.map(cat => (
+                                                        <option key={cat} value={cat}>{cat}</option>
+                                                    ))}
+                                                    <option value="ADD_NEW" className="text-indigo-600 font-black">+ Yeni Kategori Ekle</option>
+                                                </select>
+                                            ) : (
+                                                <div className="flex gap-2">
+                                                    <input 
+                                                        autoFocus
+                                                        className="flex-1 bg-gray-50 border-none rounded-2xl p-5 text-sm font-black italic outline-none focus:ring-4 focus:ring-indigo-100 transition-all"
+                                                        placeholder="Kategori Adı..."
+                                                        value={newCategoryName}
+                                                        onChange={e => setNewCategoryName(e.target.value)}
+                                                    />
+                                                    <button 
+                                                        onClick={() => setShowNewCategory(false)}
+                                                        className="px-6 bg-gray-100 rounded-2xl text-[10px] font-black"
+                                                    >
+                                                        VAZGEÇ
+                                                    </button>
+                                                </div>
+                                            )}
+                                        </div>
+                                    )}
                                     <div className="space-y-2 mb-8">
                                         <label className="text-[10px] font-black uppercase text-gray-400 pl-1 italic">Mesaj Taslağı</label>
                                         <textarea 

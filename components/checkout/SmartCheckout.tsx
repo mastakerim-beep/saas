@@ -35,16 +35,20 @@ export default function SmartCheckout({ appointment, onClose }: SmartCheckoutPro
     });
 
     // New phase 2 features
-    const [discountMode, setDiscountMode] = useState<'none'|'fixed'|'percentage'>('none');
+    const [discountMode, setDiscountMode] = useState<'none'|'fixed'|'percentage'>('percentage');
     const [discountValue, setDiscountValue] = useState<number>(0);
     const [tip, setTip] = useState<number>(0);
+    const { currentStaff } = useStore();
+    const staffMaxDiscount = currentStaff?.maxDiscount || 0;
     const [pointsUsed, setPointsUsed] = useState<number>(0);
     const [isSuccess, setIsSuccess] = useState(false);
 
     // Gift (İkram) System State
     const [isPinModalOpen, setIsPinModalOpen] = useState(false);
     const [pin, setPin] = useState("");
+    const [authReason, setAuthReason] = useState<'gift' | 'excessive-discount' | null>(null);
     const [giftTarget, setGiftTarget] = useState<{type: 'service' | 'product', id?: string} | null>(null);
+    const [isAuthorized, setIsAuthorized] = useState(false);
     const [giftedItems, setGiftedItems] = useState<Set<string>>(new Set()); 
     
     // New Smart Features
@@ -101,24 +105,35 @@ export default function SmartCheckout({ appointment, onClose }: SmartCheckoutPro
             return;
         }
         setGiftTarget({ type, id });
+        setAuthReason('gift');
         setIsPinModalOpen(true);
     };
+
+    // Calculate effective percentage for security
+    const effectiveDiscountPercent = subTotal > 0 ? (discountAmount / subTotal) * 100 : 0;
+    const needsAuthForDiscount = effectiveDiscountPercent > staffMaxDiscount && !isAuthorized;
+
 
     const confirmPin = () => {
         const correctPin = currentBusiness?.managerPin || "0000"; 
         if (pin === correctPin) {
-            if (giftTarget?.type === 'service') {
-                setIsServiceGift(true);
-            } else if (giftTarget?.id) {
-                const newGifted = new Set(giftedItems);
-                newGifted.add(giftTarget.id);
-                setGiftedItems(newGifted);
+            if (authReason === 'gift') {
+                if (giftTarget?.type === 'service') {
+                    setIsServiceGift(true);
+                } else if (giftTarget?.id) {
+                    const newGifted = new Set(giftedItems);
+                    newGifted.add(giftTarget.id);
+                    setGiftedItems(newGifted);
+                }
+            } else if (authReason === 'excessive-discount') {
+                setIsAuthorized(true);
             }
             setIsPinModalOpen(false);
             setPin("");
             setGiftTarget(null);
+            setAuthReason(null);
         } else {
-            alert("Hatalı PIN! Yönetici onayı gereklidir.");
+            alert("Hatalı PIN! İşletme sahibi onayı gereklidir.");
         }
     };
 
@@ -435,33 +450,53 @@ export default function SmartCheckout({ appointment, onClose }: SmartCheckoutPro
                                 </div>
                             </div>
 
-                            <div className="bg-white p-8 rounded-[3rem] border border-gray-100 shadow-sm relative overflow-hidden group">
-                                <div className="absolute top-0 right-0 w-32 h-32 bg-purple-50 rounded-full -translate-y-1/2 translate-x-1/2 group-hover:scale-110 transition-transform" />
+                            <div className={`p-8 rounded-[3rem] border transition-all relative overflow-hidden group ${needsAuthForDiscount ? 'bg-amber-50 border-amber-200' : 'bg-white border-gray-100 shadow-sm'}`}>
+                                <div className={`absolute top-0 right-0 w-32 h-32 rounded-full -translate-y-1/2 translate-x-1/2 group-hover:scale-110 transition-transform ${needsAuthForDiscount ? 'bg-amber-100/50' : 'bg-purple-50'}`} />
                                 <div className="relative">
-                                    <p className="text-[10px] font-black text-purple-600 uppercase tracking-widest mb-4 flex items-center gap-2">
-                                        <Percent className="w-3.5 h-3.5" /> İndirim Uygula
-                                    </p>
+                                    <div className="flex justify-between items-start mb-4">
+                                        <p className={`text-[10px] font-black uppercase tracking-widest flex items-center gap-2 ${needsAuthForDiscount ? 'text-amber-600' : 'text-purple-600'}`}>
+                                            <Percent className="w-3.5 h-3.5" /> İndirim Uygula
+                                        </p>
+                                        <p className="text-[10px] font-black text-gray-400">Limit: %{staffMaxDiscount}</p>
+                                    </div>
                                     <div className="flex gap-2 mb-4">
-                                        {(['none', 'fixed', 'percentage'] as const).map(m => (
+                                        {(['fixed', 'percentage'] as const).map(m => (
                                             <button 
                                                 key={m} 
                                                 onClick={() => setDiscountMode(m)}
-                                                className={`flex-1 py-2 rounded-xl text-[9px] font-black uppercase transition-all ${discountMode === m ? 'bg-purple-600 text-white shadow-lg' : 'bg-gray-50 text-gray-400 border border-gray-100 hover:bg-white'}`}
+                                                className={`flex-1 py-3 rounded-xl text-[9px] font-black uppercase transition-all ${discountMode === m ? (needsAuthForDiscount ? 'bg-amber-600 text-white shadow-lg' : 'bg-purple-600 text-white shadow-lg') : 'bg-gray-50 text-gray-400 border border-gray-100 hover:bg-white'}`}
                                             >
-                                                {m === 'none' ? 'Yok' : m === 'fixed' ? 'Sabit' : '%'}
+                                                {m === 'fixed' ? 'Tutar (TL)' : 'Oran (%)'}
                                             </button>
                                         ))}
                                     </div>
-                                    {discountMode !== 'none' && (
-                                        <div className="relative">
-                                            <input 
-                                                type="number"
-                                                value={discountValue || ''}
-                                                onChange={e => setDiscountValue(Number(e.target.value))}
-                                                placeholder={discountMode === 'fixed' ? '₺0' : '%0'}
-                                                className="w-full bg-gray-50 border-2 border-transparent focus:border-purple-600 rounded-2xl px-5 py-3 text-sm font-black text-purple-600 outline-none transition-all placeholder:text-gray-300"
-                                            />
-                                        </div>
+                                    <div className="relative">
+                                        <input 
+                                            type="number"
+                                            value={discountValue || ''}
+                                            onChange={e => {
+                                                setDiscountValue(Number(e.target.value));
+                                                setIsAuthorized(false); // Reset on change
+                                            }}
+                                            placeholder={discountMode === 'fixed' ? '₺ Tutar Girin' : '% Oran Girin'}
+                                            className={`w-full bg-gray-50 border-2 rounded-2xl px-6 py-4 text-sm font-black outline-none transition-all placeholder:text-gray-300 ${needsAuthForDiscount ? 'border-amber-400 text-amber-600 focus:bg-white' : 'border-transparent focus:border-purple-600 text-purple-600'}`}
+                                        />
+                                        {discountMode === 'fixed' && discountValue > 0 && (
+                                            <p className="absolute right-4 top-1/2 -translate-y-1/2 text-[10px] font-black text-gray-400 italic">
+                                                ~ %{effectiveDiscountPercent.toFixed(1)}
+                                            </p>
+                                        )}
+                                    </div>
+                                    {needsAuthForDiscount && (
+                                        <button 
+                                            onClick={() => {
+                                                setAuthReason('excessive-discount');
+                                                setIsPinModalOpen(true);
+                                            }}
+                                            className="w-full mt-4 py-3 bg-amber-600 text-white rounded-2xl font-black text-[9px] uppercase tracking-widest shadow-xl shadow-amber-100 animate-pulse"
+                                        >
+                                            Yönetici PIN Onayı Gerekli
+                                        </button>
                                     )}
                                 </div>
                             </div>
@@ -617,10 +652,18 @@ export default function SmartCheckout({ appointment, onClose }: SmartCheckoutPro
 
                         <div className="mt-10">
                             <button 
-                                onClick={handleProcess}
-                                className="w-full py-8 rounded-[2.5rem] bg-indigo-600 text-white font-black text-sm shadow-2xl hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-4 uppercase tracking-[0.2em] shadow-indigo-200"
+                                onClick={() => {
+                                    if (needsAuthForDiscount) {
+                                        setAuthReason('excessive-discount');
+                                        setIsPinModalOpen(true);
+                                    } else {
+                                        handleProcess();
+                                    }
+                                }}
+                                className={`w-full py-8 rounded-[2.5rem] font-black text-sm shadow-2xl hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-4 uppercase tracking-[0.2em] ${needsAuthForDiscount ? 'bg-amber-600 text-white shadow-amber-200 animate-pulse' : 'bg-indigo-600 text-white shadow-indigo-200'}`}
                             >
-                                <CheckCircle2 size={24} /> TAHSİLATI TAMAMLA
+                                {needsAuthForDiscount ? <Sparkles size={24} /> : <CheckCircle2 size={24} />}
+                                {needsAuthForDiscount ? 'Yönetici Onayı Bekleniyor' : 'TAHSİLATI TAMAMLA'}
                             </button>
                         </div>
                     </div>

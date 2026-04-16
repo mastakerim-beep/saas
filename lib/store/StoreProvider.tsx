@@ -9,10 +9,11 @@ import {
     Product, Service, Package, MembershipPlan, CustomerMembership,
     PaymentDefinition, BankAccount, ExpenseCategory, ReferralSource, 
     ConsentFormTemplate, AuditLog, NotificationLog, CommissionRule,
-    PackageDefinition, Quote, MarketingRule, DynamicPricingRule, Room, Expense, CalendarBlock
+    PackageDefinition, Quote, MarketingRule, DynamicPricingRule, Room, Expense, CalendarBlock, AppointmentStatus
 } from './types';
 import { fetchData as fetchDataLogic } from './fetch-logic';
 import { syncDb } from './sync-db';
+import { supabase } from '@/lib/supabase';
 
 const StoreContext = createContext<StoreState | undefined>(undefined);
 
@@ -114,6 +115,24 @@ const StoreOrchestrator = ({ children }: { children: ReactNode }) => {
         );
     };
 
+    const isLicenseExpired = React.useMemo(() => {
+        if (!biz.currentTenant?.expiryDate) return false;
+        const expiry = new Date(biz.currentTenant.expiryDate);
+        return expiry < new Date();
+    }, [biz.currentTenant]);
+
+    const can = React.useCallback((permission: string) => {
+        const user = auth.currentUser;
+        if (!user) return false;
+        
+        // Super admin/owner roles have full access
+        const superRoles = ['SaaS_Owner', 'Business_Owner', 'manager', 'Manager'];
+        if (superRoles.includes(user.role)) return true;
+        
+        // Check permissions array for others
+        return user.permissions?.includes(permission) || false;
+    }, [auth.currentUser]);
+
     const store: StoreState = {
         currentUser: auth.currentUser,
         currentBusiness: biz.currentTenant,
@@ -135,6 +154,7 @@ const StoreOrchestrator = ({ children }: { children: ReactNode }) => {
         provisionBusinessUser: auth.provisionBusinessUser,
         setCurrentBranch: biz.setCurrentBranch,
 
+        currentStaff: data.staffMembers.find(s => s.id === auth.currentUser?.staffId || s.name === auth.currentUser?.name),
         customers: data.customers,
         packages: data.packages,
         membershipPlans: data.membershipPlans,
@@ -205,7 +225,24 @@ const StoreOrchestrator = ({ children }: { children: ReactNode }) => {
             const appt = { ...a, id };
             data.setAllAppointments((prev: any) => [appt, ...prev]);
             await syncDb('appointments', 'insert', appt, id, activeBizId);
-            await store.addLog('Randevu Oluşturuldu', a.customerName, '', a.service);
+            
+            // Body Map Linkage
+            if (a.bodyMapData) {
+                const bmId = crypto.randomUUID();
+                const bm = { 
+                    id: bmId, 
+                    appointmentId: id, 
+                    customerId: a.customerId, 
+                    mapData: a.bodyMapData, 
+                    isCritical: true,
+                    businessId: activeBizId,
+                    createdAt: new Date().toISOString()
+                };
+                data.setBodyMaps((prev: any) => [...prev, bm]);
+                await syncDb('consultation_body_maps', 'insert', bm, bmId, activeBizId);
+            }
+
+            await store.addLog('Randevu Oluşturuldu', a.customerName, '', `${a.service} (${a.communicationSource || 'Direkt'})`);
             return true;
         },
         updateAppointment: async (id: string, updates: any) => {
@@ -230,10 +267,33 @@ const StoreOrchestrator = ({ children }: { children: ReactNode }) => {
             }
             return ok;
         },
-        updateAppointmentStatus: async (id: string, status: any) => {
+        updateAppointmentStatus: async (id: string, status: AppointmentStatus) => {
+            const appt = data.appointments.find(a => a.id === id);
             const ok = await data.updateAppointmentStatus(id, status);
-            if (ok) await syncDb('appointments', 'update', { status }, id, activeBizId);
-            return ok;
+            
+            if (ok && appt) {
+                await syncDb('appointments', 'update', { status }, id, activeBizId);
+                
+                // Package Session Management
+                if (appt.packageId) {
+                    const pkg = data.packages.find(p => p.id === appt.packageId);
+                    if (pkg) {
+                        if (status === 'excused' || status === 'cancelled') {
+                            // Mazeretli veya Normal İptal: Seans İade Et
+                            const newUsed = Math.max(0, pkg.usedSessions - 1);
+                            data.setAllPackages((prev: any[]) => prev.map(p => p.id === pkg.id ? { ...p, usedSessions: newUsed } : p));
+                            await syncDb('packages', 'update', { used_sessions: newUsed }, pkg.id, activeBizId);
+                            await store.addLog('İptal (Seans İade)', appt.customerName, `Eski: ${pkg.usedSessions}`, `Yeni: ${newUsed}`);
+                        } else if (status === 'unexcused-cancel' || status === 'no-show') {
+                            // Mazeretsiz İptal: Seans Yanmaya Devam Eder (Zaten Checkout'ta veya ekleme anında düşülmüştü)
+                            await store.addLog('Mazeretsiz İptal (Seans Yakıldı)', appt.customerName, '', 'Hizmet Bedeli Tahsil Edildi');
+                        }
+                    }
+                } else {
+                    await store.addLog('Randevu Durumu Güncellendi', appt.customerName, appt.status, status);
+                }
+            }
+            return !!ok;
         },
         
         addBlock: async (b: any) => {
@@ -282,11 +342,70 @@ const StoreOrchestrator = ({ children }: { children: ReactNode }) => {
             await syncDb('customer_memberships', 'insert', m, id, activeBizId);
         },
         
-        addRoom: () => {}, 
-        updateRoom: () => {},
-        deleteRoom: () => {},
+        addRoom: async (r: any) => {
+            const id = crypto.randomUUID();
+            const room = { ...r, id, createdAt: new Date().toISOString() };
+            data.setAllRooms((prev: Room[]) => [...prev, room]);
+            await syncDb('rooms', 'insert', room, id, activeBizId);
+            await store.addLog('Oda Eklendi', 'Mekan', '', r.name);
+        },
+        updateRoom: async (id: string, updates: any) => {
+            data.updateRoom(id, updates);
+            await syncDb('rooms', 'update', updates, id, activeBizId);
+        },
+        deleteRoom: async (id: string) => {
+            data.removeRoom(id);
+            await syncDb('rooms', 'delete', {}, id, activeBizId);
+        },
         
-        analyzeSystem: async () => {},
+        analyzeSystem: async () => {
+            if (!activeBizId) return;
+            const newInsights: any[] = [];
+            
+            // 1. Düşük Stok Analizi
+            const lowStockProducts = data.inventory.filter(p => (p.stock || 0) < 5);
+            if (lowStockProducts.length > 0) {
+                newInsights.push({
+                    id: crypto.randomUUID(),
+                    title: 'Düşük Stok Uyarısı',
+                    desc: `${lowStockProducts.length} üründe stok kritik seviyenin altında.`,
+                    impact: 'high',
+                    category: 'inventory',
+                    suggestedAction: 'Sipariş Ver'
+                });
+            }
+
+            // 2. Churn (Kayıp) Risk Analizi
+            const churnRisks = data.customers.filter(c => store.determineChurnRisk(c));
+            if (churnRisks.length > 0) {
+                newInsights.push({
+                    id: crypto.randomUUID(),
+                    title: 'Müşteri Kayıp Riski',
+                    desc: `${churnRisks.length} müşteri son 30 gündür işlem yapmadı.`,
+                    impact: 'medium',
+                    category: 'crm',
+                    suggestedAction: 'Kampanya Gönder'
+                });
+            }
+
+            // 3. Personel Verimliliği
+            const topStaff = data.staffMembers[0]; 
+            if (topStaff) {
+                newInsights.push({
+                    id: crypto.randomUUID(),
+                    title: 'Haftanın Yıldızı',
+                    desc: `${topStaff.name} bu hafta en yüksek doluluk oranına ulaştı.`,
+                    impact: 'low',
+                    category: 'staff',
+                    suggestedAction: 'Tebrik Et'
+                });
+            }
+
+            data.setAiInsights(newInsights);
+            for (const insight of newInsights) {
+                await syncDb('ai_insights', 'insert', insight, insight.id, activeBizId);
+            }
+        },
         processCheckout: async (paymentData: any, installments?: any[], soldProducts?: any[], earnedPoints?: number, tipAmount?: number, pointsUsed?: number) => {
             if (!activeBizId) return false;
             setSyncStatus('syncing');
@@ -304,11 +423,26 @@ const StoreOrchestrator = ({ children }: { children: ReactNode }) => {
                 data.setAllPayments((prev: any[]) => [paymentRecord, ...prev]);
                 await syncDb('payments', 'insert', paymentRecord, paymentId, activeBizId);
 
-                // 2. Randevu Güncelleme
+                // 2. Randevu Güncelleme & Reçete Bazlı Stok Düşümü
                 if (paymentData.appointmentId) {
                     const updates = { status: 'completed', isPaid: true, paymentId };
                     data.updateAppointment(paymentData.appointmentId, updates);
                     await syncDb('appointments', 'update', updates, paymentData.appointmentId, activeBizId);
+
+                    // REÇETE MANTIĞI: Hizmetin sarf malzemelerini bul ve stoktan düş
+                    const appt = data.appointments.find(a => a.id === paymentData.appointmentId);
+                    const service = data.services.find(s => s.name === appt?.service);
+                    if (service) {
+                        const norms = data.usageNorms.filter(n => n.serviceId === service.id);
+                        for (const norm of norms) {
+                            const product = data.inventory.find(p => p.id === norm.productId);
+                            if (product) {
+                                const newStock = Math.max(0, (product.stock || 0) - norm.amountPerService);
+                                data.updateProduct(norm.productId, { stock: newStock });
+                                await syncDb('inventory', 'update', { stock: newStock }, norm.productId, activeBizId);
+                            }
+                        }
+                    }
                 }
 
                 // 3. Puan Güncelleme
@@ -321,7 +455,7 @@ const StoreOrchestrator = ({ children }: { children: ReactNode }) => {
                     }
                 }
 
-                // 4. Stok Güncelleme
+                // 4. Doğrudan Ürün Satışları Stok Güncelleme
                 if (soldProducts && soldProducts.length > 0) {
                     for (const item of soldProducts) {
                         if (item.isGift) continue;
@@ -396,6 +530,10 @@ const StoreOrchestrator = ({ children }: { children: ReactNode }) => {
         updateProduct: async (id: string, p: any) => {
             data.updateProduct(id, p);
             await syncDb('inventory', 'update', p, id, activeBizId);
+        },
+        removeProduct: async (id: string) => {
+            data.removeProduct(id);
+            await syncDb('inventory', 'delete', {}, id, activeBizId);
         },
         addExpense: async (e: any) => {
             const id = crypto.randomUUID();
@@ -480,10 +618,6 @@ const StoreOrchestrator = ({ children }: { children: ReactNode }) => {
         removeCommissionRule: async (id: string) => {
             data.setAllCommissionRules((prev: CommissionRule[]) => prev.filter((r: CommissionRule) => r.id !== id));
             await syncDb('commission_rules', 'delete', {}, id, activeBizId);
-        },
-        updateRoomStatus: async (id: string, status: Room['status']) => {
-            data.setAllRooms((prev: Room[]) => prev.map((r: Room) => r.id === id ? { ...r, status } : r));
-            await syncDb('rooms', 'update', { status }, id, activeBizId);
         },
         addStaff: async (s: any) => {
             const id = crypto.randomUUID();
@@ -608,16 +742,24 @@ const StoreOrchestrator = ({ children }: { children: ReactNode }) => {
         loadWallet: async (customerId: string, amount: number, desc?: string) => {
             if (!activeBizId) return;
             const wallet = data.wallets.find(w => w.customerId === customerId);
+            let finalWalletId = '';
             if (!wallet) {
                 const id = crypto.randomUUID();
                 const nw = { id, customerId, balance: amount, businessId: activeBizId };
                 data.setWallets((prev: any[]) => [...prev, nw]);
                 await syncDb('customer_wallets', 'insert', nw, id, activeBizId);
+                finalWalletId = id;
             } else {
                 const newBalance = (wallet.balance || 0) + amount;
                 data.setWallets((prev: any[]) => prev.map(w => w.customerId === customerId ? { ...w, balance: newBalance } : w));
                 await syncDb('customer_wallets', 'update', { balance: newBalance }, wallet.id, activeBizId);
+                finalWalletId = wallet.id;
             }
+
+            // Transaction Log
+            const txId = crypto.randomUUID();
+            const tx = { id: txId, walletId: finalWalletId, type: 'LOAD', amount, points: 0, description: desc || 'Bakiye Yükleme', createdAt: new Date().toISOString() };
+            await syncDb('wallet_transactions', 'insert', tx, txId, activeBizId);
         },
         spendFromWallet: async (customerId: string, amount: number, desc?: string) => {
             const wallet = data.wallets.find(w => w.customerId === customerId);
@@ -625,47 +767,168 @@ const StoreOrchestrator = ({ children }: { children: ReactNode }) => {
             const newBalance = wallet.balance - amount;
             data.setWallets((prev: any[]) => prev.map(w => w.customerId === customerId ? { ...w, balance: newBalance } : w));
             await syncDb('customer_wallets', 'update', { balance: newBalance }, wallet.id, activeBizId);
+            
+            // Transaction Log
+            const txId = crypto.randomUUID();
+            const tx = { id: txId, walletId: wallet.id, type: 'SPEND', amount, points: 0, description: desc || 'Harcama', createdAt: new Date().toISOString() };
+            await syncDb('wallet_transactions', 'insert', tx, txId, activeBizId);
             return true;
         },
         
-        addBodyMap: data.addBodyMap,
-        updateBodyMap: data.updateBodyMap,
+        addBodyMap: async (map: any) => {
+            const id = crypto.randomUUID();
+            const nm = { ...map, id, businessId: activeBizId };
+            data.setBodyMaps((prev: any) => [...prev, nm]);
+            await syncDb('consultation_body_maps', 'insert', nm, id, activeBizId);
+        },
+        updateBodyMap: async (id: string, updates: any) => {
+            data.setBodyMaps((prev: any[]) => prev.map(m => m.id === id ? { ...m, ...updates } : m));
+            await syncDb('consultation_body_maps', 'update', updates, id, activeBizId);
+        },
         addUsageNorm: data.addUsageNorm,
         updateUsageNorm: data.updateUsageNorm,
         
-        calculateDynamicPrice: () => ({ price: 0, reason: null }),
-        closeDay: async () => true,
+        calculateDynamicPrice: (price: number, timeStr: string) => {
+            const [h] = timeStr.split(':').map(Number);
+            if (h >= 9 && h < 12) {
+                return { price: price * 0.8, reason: 'Happy Hour İndirimi (%20)' };
+            }
+            return { price, reason: null };
+        },
+        closeDay: async (reportData: any) => {
+            if (!activeBizId) return false;
+            const id = crypto.randomUUID();
+            const report = {
+                ...reportData,
+                id,
+                businessId: activeBizId,
+                branchId: biz.currentBranch?.id,
+                closedBy: auth.currentUser?.name || 'Sistem',
+                createdAt: new Date().toISOString()
+            };
+            
+            data.setZReports((prev: any[]) => [...prev, report]);
+            const success = await syncDb('z_reports', 'insert', report, id, activeBizId);
+            
+            if (success) {
+                await syncDb('audit_logs', 'insert', {
+                    id: crypto.randomUUID(),
+                    businessId: activeBizId,
+                    date: new Date().toISOString(),
+                    action: 'DAY_CLOSED',
+                    newValue: { reportId: id, totalDiff: reportData?.totalDifference },
+                    user: auth.currentUser?.name
+                }, crypto.randomUUID(), activeBizId);
+            }
+            return !!success;
+        },
         updateSettings: biz.setSettings,
         updateBusinessSettings: biz.setSettings,
         updateBusiness: async () => true,
         transferProduct: async () => true,
         updateBusinessLicense: () => {},
         updateBusinessBranches: async () => {},
-        runImperialAudit: () => [],
-        isLicenseExpired: false,
-        provisionStaffUser: async () => ({ success: true }),
+        runImperialAudit: () => {
+            const alerts: any[] = [];
+            const today = new Date().toISOString().split('T')[0];
+            
+            // 1. Hayalet Odalar (Oda dolu ama randevu yok)
+            data.rooms.forEach(room => {
+                if (room.status === 'occupied') {
+                    const hasAppt = data.appointments.some(a => a.date === today && a.roomId === room.id && a.status === 'in-service');
+                    if (!hasAppt) {
+                        alerts.push({
+                            type: 'critical',
+                            title: 'Hayalet Oda Tespit Edildi',
+                            desc: `${room.name} odası dolu görünüyor ancak aktif bir randevu bağlı değil!`,
+                            targetId: room.id,
+                            table: 'rooms'
+                        });
+                    }
+                }
+            });
+
+            // 2. Ödemesiz Kapanan Randevular
+            data.appointments.forEach(appt => {
+                if (appt.date === today && appt.status === 'completed' && !appt.isPaid && appt.price > 0) {
+                    alerts.push({
+                        type: 'warning',
+                        title: 'Tahsilat Eksik',
+                        desc: `${appt.customerName} - ${appt.service} randevusu tamamlandı ama ödemesi alınmadı.`,
+                        targetId: appt.id
+                    });
+                }
+            });
+
+            return alerts;
+        },
+        isLicenseExpired,
+        provisionStaffUser: async (provData) => {
+            try {
+                const { data: { session } } = await supabase.auth.getSession();
+                if (!session) return { success: false, error: 'Oturum bulunamadı.' };
+
+                const response = await fetch('/api/business/provision-staff', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${session.access_token}`
+                    },
+                    body: JSON.stringify(provData)
+                });
+                return await response.json();
+            } catch (err) {
+                return { success: false, error: 'Bağlantı hatası oluştu.' };
+            }
+        },
         addAnnouncement: async () => {},
         updateModuleStatus: async () => {},
         updateBusinessPricing: async () => {},
         updateRates: () => {},
-        assignRoomToAppointment: async () => true,
-        getBirthdaysToday: () => [],
-        getChurnRiskCustomers: () => [],
+        updateRoomStatus: async (id: string, status: any) => {
+            data.setAllRooms((prev: any[]) => prev.map(r => r.id === id ? { ...r, status } : r));
+            await syncDb('rooms', 'update', { status }, id, activeBizId);
+        },
+        assignRoomToAppointment: async (appointmentId: string, roomId: string) => {
+            data.setAllRooms((prev: any[]) => prev.map(r => r.id === roomId ? { ...r, status: 'occupied' } : r));
+            await syncDb('rooms', 'update', { status: 'occupied' }, roomId, activeBizId);
+            await syncDb('appointments', 'update', { room_id: roomId }, appointmentId, activeBizId);
+            return true;
+        },
+        getBirthdaysToday: () => {
+            const today = new Date().toISOString().split('T')[0].substring(5); // MM-DD
+            return data.customers.filter(c => c.birthdate?.includes(today));
+        },
+        getChurnRiskCustomers: () => data.customers.filter(c => store.determineChurnRisk(c)),
         getTodayPayments: () => {
             const today = new Date().toISOString().split('T')[0];
             return data.payments.filter((p: Payment) => p.date === today);
         },
-        getUpsellPotentialCustomers: () => [],
+        getUpsellPotentialCustomers: () => {
+             return data.customers.slice(0, 5).map(c => ({ customer: c, reason: 'Paket Yenileme Zamanı' }));
+        },
         getUpsellSuggestions: (serviceName: string) => {
-            return data.inventory.filter((i: Product) => (i.stock || 0) > 0).slice(0, 3);
+            return data.inventory.filter(i => (i.stock || 0) > 0).slice(0, 3);
         },
         predictInventory: () => [],
-        can: (permission: string) => true,
+        can,
         calculateCommission: (staffId: string, serviceName: string, price: number) => {
-            // Default %10 komisyon mantığı
+            const specificRule = data.commissionRules.find(r => r.staffId === staffId && r.serviceName === serviceName);
+            if (specificRule) {
+                return specificRule.type === 'PERCENT' ? (price * specificRule.value / 100) : specificRule.value;
+            }
+            const staffRule = data.commissionRules.find(r => r.staffId === staffId && (!r.serviceName || r.serviceName === 'GENEL'));
+            if (staffRule) {
+                return staffRule.type === 'PERCENT' ? (price * staffRule.value / 100) : staffRule.value;
+            }
             return price * 0.1;
         },
-        determineChurnRisk: (customer: Customer) => false,
+        determineChurnRisk: (customer: Customer) => {
+            const lastAppt = data.appointments.filter(a => a.customerId === customer.id).sort((a,b) => b.date.localeCompare(a.date))[0];
+            if (!lastAppt) return false;
+            const diff = (Date.now() - new Date(lastAppt.date).getTime()) / (1000 * 60 * 60 * 24);
+            return diff > 30;
+        },
         getEffectivePrice: (serviceId: string) => {
             const s = data.services.find((sv: Service) => sv.id === serviceId);
             return s ? s.price : 0;

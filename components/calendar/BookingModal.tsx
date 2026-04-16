@@ -42,6 +42,7 @@ export default function BookingModal({ initialData, onClose, date, mode: initial
     const [blockReason, setBlockReason] = useState('Toplantı');
     const [note, setNote] = useState('');
     const [overrideDuration, setOverrideDuration] = useState<number | null>(initialData.duration || null);
+    const [referralSource, setReferralSource] = useState('Direkt');
 
     const toggleRegion = (id: string) => {
         setSelectedRegions(prev => prev.includes(id) ? prev.filter(r => r !== id) : [...prev, id]);
@@ -106,7 +107,7 @@ export default function BookingModal({ initialData, onClose, date, mode: initial
 
             let allSuccess = true;
             for (const item of finalBasket) {
-                // 1. Add Appointment
+                // 1. Add Appointment (Body Map and Referral handled inside Store for atomicity)
                 const success = await addAppointment({
                     businessId: currentBusiness?.id,
                     customerId: selectedCustId,
@@ -124,24 +125,15 @@ export default function BookingModal({ initialData, onClose, date, mode: initial
                     isOnline: false,
                     packageId: item.packageId || undefined,
                     isPackageUsage: item.isPackageUsage,
-                    note: item.note
+                    note: item.note,
+                    communicationSource: referralSource,
+                    bodyMapData: item.regions
                 });
 
                 if (!success) {
                     allSuccess = false;
-                    alert("Randevu kaydedilemedi! Lütfen veritabanı bağlantısını ve ODA altyapısını kontrol edin (Konsol/F12 detayları gösterir).");
+                    alert("Randevu kaydedilemedi! Lütfen veritabanı bağlantasını kontrol edin.");
                     break;
-                }
-
-                // 2. Save Body Map if any regions selected
-                if (success && item.regions.length > 0) {
-                  addBodyMap({
-                    customerId: selectedCustId,
-                    appointmentId: '', 
-                    mapData: { regions: item.regions, notes: item.note },
-                    isCritical: true,
-                    createdAt: new Date().toISOString()
-                  });
                 }
             }
             if (allSuccess) {
@@ -287,6 +279,15 @@ export default function BookingModal({ initialData, onClose, date, mode: initial
                                                             {staffMembers.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
                                                         </select>
                                                         <ChevronDown className="w-4 h-4 absolute right-6 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+                                                    </div>
+                                                </div>
+                                                <div className="space-y-2">
+                                                    <label className="text-[9px] font-black text-indigo-400 uppercase tracking-widest ml-1 italic">Müşteri Tavsiye Kaynağı</label>
+                                                    <div className="relative group">
+                                                        <select value={referralSource} onChange={e => setReferralSource(e.target.value)} className="w-full bg-indigo-50/50 border border-indigo-100 rounded-2xl px-6 py-5 text-sm font-black text-indigo-900 outline-none focus:border-primary transition-all appearance-none shadow-sm group-hover:shadow-md italic">
+                                                            {['Direkt', 'Instagram', 'Google', 'Tavsiye', 'TikTok', 'WhatsApp', 'Dışarıdan Geçerken'].map(s => <option key={s} value={s}>{s}</option>)}
+                                                        </select>
+                                                        <Sparkles className="w-4 h-4 absolute right-6 top-1/2 -translate-y-1/2 text-indigo-300 pointer-events-none" />
                                                     </div>
                                                 </div>
                                             </div>

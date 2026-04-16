@@ -249,14 +249,14 @@ function StaffProfilePanel({ staff, onClose, onEdit }: { staff: any, onClose: ()
 
 // ─── STAFF EDIT MODAL ─────────────────────────────────────────────────────────
 function StaffEditModal({ staff, onClose }: { staff?: Staff, onClose: () => void }) {
-    const { addStaff, updateStaff, updateStaffPermissions, allUsers, branches, can } = useStore();
+    const { addStaff, updateStaff, updateStaffPermissions, allUsers, branches, can, provisionStaffUser } = useStore();
     const [formData, setFormData] = useState<Partial<Staff>>(staff || {
         name: '', role: 'Uzman', status: 'active',
         weeklyOffDay: 1, staffType: 'Terapist',
         isVisibleOnCalendar: true, sortOrder: 0
     });
 
-    const linkedUser = useStore().allUsers.find(u => u.staffId === staff?.id || (u.name === staff?.name && !u.staffId));
+    const linkedUser = allUsers.find(u => u.staffId === staff?.id || (u.name === staff?.name && !u.staffId));
     
     // Varsayılan yetkiler (Yeni kullanıcılar için Resepsiyonist baz alınır)
     const RECEPTIONIST_PERMS = ['view_cash', 'move_appt', 'manage_customers'];
@@ -451,7 +451,7 @@ function StaffEditModal({ staff, onClose }: { staff?: Staff, onClose: () => void
                                             const password = (document.getElementById('provision_password') as HTMLInputElement).value;
                                             if (!email || !password) return alert('Lütfen email ve şifre girin.');
                                             
-                                            const res = await useStore().provisionStaffUser({
+                                            const res = await provisionStaffUser({
                                                 email, password, name: formData.name!, staffId: staff!.id, permissions: perms
                                             });
                                             if (res.error) alert(res.error);

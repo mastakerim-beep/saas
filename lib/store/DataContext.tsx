@@ -87,6 +87,7 @@ export interface DataContextType {
     assignMembership: (cid: string, pid: string) => void;
     addProduct: (p: any) => void;
     updateProduct: (id: string, p: Partial<Product>) => void;
+    removeProduct: (id: string) => void;
     addExpense: (e: any) => void;
     addService: (s: any) => void;
     updateService: (id: string, s: Partial<Service>) => void;
@@ -103,6 +104,9 @@ export interface DataContextType {
     updateUsageNorm: (id: string, updates: Partial<InventoryUsageNorm>) => Promise<void>;
     addCustomerMedia: (m: Omit<CustomerMedia, 'id' | 'businessId'>) => void;
     deleteCustomerMedia: (id: string) => void;
+    updateRoom: (id: string, updates: Partial<Room>) => void;
+    removeRoom: (id: string) => void;
+    addRoom: (r: any) => void;
 }
 
 const DataContext = createContext<DataContextType | null>(null);
@@ -215,6 +219,10 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
         setAllInventory(prev => prev.map(item => item.id === id ? { ...item, ...p } : item));
     };
 
+    const removeProduct = (id: string) => {
+        setAllInventory(prev => prev.filter(p => p.id !== id));
+    };
+
     const addExpense = (e: any) => {
         const newExpense = { ...e, id: crypto.randomUUID(), createdAt: new Date().toISOString() };
         setAllExpenses(prev => [...prev, newExpense]);
@@ -289,6 +297,19 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
         setAllCustomerMedia(prev => prev.filter(m => m.id !== id));
     };
 
+    const updateRoom = (id: string, updates: Partial<Room>) => {
+        setAllRooms(prev => prev.map(r => r.id === id ? { ...r, ...updates } : r));
+    };
+
+    const removeRoom = (id: string) => {
+        setAllRooms(prev => prev.filter(r => r.id !== id));
+    };
+
+    const addRoom = (r: any) => {
+        const newRoom = { ...r, id: crypto.randomUUID(), createdAt: new Date().toISOString() };
+        setAllRooms(prev => [...prev, newRoom]);
+    };
+
     const value: DataContextType = {
         appointments, blocks, customers, debts, inventory, rooms, services, packages,
         membershipPlans, customerMemberships, staffMembers, allLogs, allNotifs, aiInsights, expenses,
@@ -303,10 +324,10 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
         setAllPayments, addCustomerMedia, deleteCustomerMedia,
         addCustomer, updateCustomer, deleteCustomer, addAppointment, updateAppointment, deleteAppointment,
         moveAppointment, updateAppointmentStatus, addBlock, updateBlock, removeBlock, addPackage,
-        addMembershipPlan, assignMembership, addProduct, updateProduct, addExpense, addService,
+        addMembershipPlan, assignMembership, addProduct, updateProduct, removeProduct, addExpense, addService,
         updateService, removeService, addPackageDefinition, updatePackageDefinition,
         removePackageDefinition, addQuote, updateQuote, deleteQuote, addBodyMap, updateBodyMap,
-        addUsageNorm, updateUsageNorm
+        addUsageNorm, updateUsageNorm, updateRoom, removeRoom, addRoom
     };
 
     return <DataContext.Provider value={value}>{children}</DataContext.Provider>;

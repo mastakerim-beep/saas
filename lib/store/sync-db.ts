@@ -57,9 +57,10 @@ export const syncDb = async (
         });
 
         onStatusUpdate('synced');
+        return true;
     } catch (error: any) {
         console.error(`Sync error after retries [${table} ${op}]:`, error);
         onStatusUpdate('error');
-        throw error;
+        return false;
     }
 };

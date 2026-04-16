@@ -457,21 +457,39 @@ export default function CalendarPage() {
                                             </div>
                                         </button>
 
-                                        <button 
-                                            onClick={async () => {
-                                                await updateAppointmentStatus(actionMenuAppt.id, 'no-show');
-                                                setActionMenuAppt(null);
-                                            }}
-                                            className="w-full flex items-center gap-4 p-4 bg-amber-50 hover:bg-amber-100 rounded-2xl transition-all group"
-                                        >
-                                            <div className="w-10 h-10 rounded-xl bg-white flex items-center justify-center shadow-sm group-hover:scale-110 transition-transform">
-                                                <XCircle className="text-amber-600" size={20} />
-                                            </div>
-                                            <div className="text-left">
-                                                <p className="font-bold text-amber-900 text-sm">Gelmedi (No-Show)</p>
-                                                <p className="text-[10px] text-amber-400 font-medium">Müşteri randevuya gelmedi</p>
-                                            </div>
-                                        </button>
+                                        <div className="grid grid-cols-2 gap-3">
+                                            <button 
+                                                onClick={async () => {
+                                                    await updateAppointmentStatus(actionMenuAppt.id, 'unexcused-cancel');
+                                                    setActionMenuAppt(null);
+                                                }}
+                                                className="flex flex-col items-center gap-2 p-4 bg-orange-50 hover:bg-orange-100 rounded-2xl transition-all group border border-orange-100/50 shadow-sm"
+                                            >
+                                                <div className="w-10 h-10 rounded-xl bg-white flex items-center justify-center shadow-sm group-hover:scale-110 transition-transform">
+                                                    <XCircle className="text-orange-600" size={20} />
+                                                </div>
+                                                <div className="text-center">
+                                                    <p className="font-bold text-orange-900 text-[11px] leading-tight mb-0.5">Mazeretsiz İptal</p>
+                                                    <p className="text-[8px] text-orange-400 font-black uppercase tracking-tighter">Seans Yakılır</p>
+                                                </div>
+                                            </button>
+
+                                            <button 
+                                                onClick={async () => {
+                                                    await updateAppointmentStatus(actionMenuAppt.id, 'excused');
+                                                    setActionMenuAppt(null);
+                                                }}
+                                                className="flex flex-col items-center gap-2 p-4 bg-blue-50 hover:bg-blue-100 rounded-2xl transition-all group border border-blue-100/50 shadow-sm"
+                                            >
+                                                <div className="w-10 h-10 rounded-xl bg-white flex items-center justify-center shadow-sm group-hover:scale-110 transition-transform">
+                                                    <RefreshCcw className="text-blue-600" size={20} />
+                                                </div>
+                                                <div className="text-center">
+                                                    <p className="font-bold text-blue-900 text-[11px] leading-tight mb-0.5">Mazeretli İptal</p>
+                                                    <p className="text-[8px] text-blue-400 font-black uppercase tracking-tighter">Seans İade</p>
+                                                </div>
+                                            </button>
+                                        </div>
 
                                         <button 
                                             onClick={() => {

@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * Aura SaaS - Store Master
+ * Aura Spa ERP - Store Master
  * Bu dosya yeni modüler mimariyi dışarıya açan ana giriş noktasıdır.
  */
 

@@ -5,7 +5,7 @@ import { useStore, Service, PackageDefinition } from '@/lib/store';
 import { 
     Plus, Clock, Package as PackageIcon, ShoppingBag, 
     Trash2, Edit3, Search, Zap, Activity, Layers, Filter, ChevronRight,
-    Sparkles, Star
+    Sparkles, Star, X
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -15,12 +15,15 @@ export default function CatalogSettingsView({ query }: { query: string }) {
     const { 
         services, addService, updateService, removeService,
         packageDefinitions, addPackageDefinition, updatePackageDefinition, removePackageDefinition,
-        inventory, can 
+        inventory, addProduct, updateProduct, removeProduct, can 
     } = useStore();
 
     const [activeTab, setActiveTab] = useState<TabType>('hizmetler');
     const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+    const [editingItem, setEditingItem] = useState<any>(null);
     const [isAdding, setIsAdding] = useState(false);
+    const [newCategoryName, setNewCategoryName] = useState('');
+    const [showNewCatInput, setShowNewCatInput] = useState(false);
     
     // price management permissions
     const canManagePrices = can('manage_prices') || true;
@@ -38,17 +41,53 @@ export default function CatalogSettingsView({ query }: { query: string }) {
 
     const [form, setForm] = useState<any>({ name: '', duration: 60, price: 0, category: 'Masaj Terapileri', totalSessions: 1 });
 
-    const handleSave = () => {
-        if (!form.name || form.price <= 0) return;
+    const openPanel = (item: any = null) => {
+        if (item) {
+            setForm({
+                name: item.name,
+                duration: item.duration || 60,
+                price: item.price || 0,
+                category: activeTab === 'paketler' ? (item.groupName || 'Genel') : (item.category || 'Genel'),
+                totalSessions: item.totalSessions || 1
+            });
+            setEditingItem(item);
+        } else {
+            setForm({ name: '', duration: 60, price: 0, category: 'Masaj Terapileri', totalSessions: 1 });
+            setEditingItem(null);
+        }
+        setIsAdding(true);
+    };
+
+    const handleSave = async () => {
+        if (!form.name || form.price < 0) return;
+        
+        const finalCategory = showNewCatInput ? newCategoryName : form.category;
         
         if (activeTab === 'hizmetler') {
-            addService({ name: form.name, duration: form.duration || 60, price: form.price, category: form.category || 'Genel' });
+            const data = { name: form.name, duration: Number(form.duration), price: Number(form.price), category: finalCategory || 'Genel' };
+            if (editingItem) await updateService(editingItem.id, data);
+            else await addService(data);
         } else if (activeTab === 'paketler') {
-            addPackageDefinition({ name: form.name, groupName: form.category || 'Genel', totalSessions: form.totalSessions || 10, price: form.price, details: '' });
+            const data = { name: form.name, groupName: finalCategory || 'Genel', totalSessions: Number(form.totalSessions), price: Number(form.price), details: '' };
+            if (editingItem) await updatePackageDefinition(editingItem.id, data);
+            else await addPackageDefinition(data);
+        } else if (activeTab === 'urunler') {
+            const data = { name: form.name, category: finalCategory || 'Genel', price: Number(form.price), stock: Number(form.totalSessions) };
+            if (editingItem) await updateProduct(editingItem.id, data);
+            else await addProduct(data);
         }
         
-        setForm({ name: '', duration: 60, price: 0, category: 'Masaj Terapileri', totalSessions: 1 });
         setIsAdding(false);
+        setEditingItem(null);
+        setShowNewCatInput(false);
+        setNewCategoryName('');
+    };
+
+    const handleDelete = async (item: any) => {
+        if (!window.confirm(`${item.name} silinecek. Emin misiniz?`)) return;
+        if (activeTab === 'hizmetler') removeService(item.id);
+        else if (activeTab === 'paketler') removePackageDefinition(item.id);
+        else if (activeTab === 'urunler') removeProduct(item.id);
     };
 
     return (
@@ -78,7 +117,7 @@ export default function CatalogSettingsView({ query }: { query: string }) {
                         />
                     </div>
                     <button 
-                        onClick={() => setIsAdding(true)}
+                        onClick={() => openPanel()}
                         className="bg-indigo-600 text-white px-10 py-5 rounded-[2rem] font-black text-xs uppercase tracking-widest shadow-2xl shadow-indigo-200 flex items-center gap-2 hover:bg-indigo-700 active:scale-95 transition-all"
                     >
                         <Plus size={18} /> YENİ EKLE
@@ -155,12 +194,16 @@ export default function CatalogSettingsView({ query }: { query: string }) {
                                             <Plus size={24} />
                                         </div>
                                         <div>
-                                            <h3 className="text-2xl font-black text-gray-900 uppercase italic tracking-tighter">YENİ TANIMLAMA</h3>
-                                            <p className="text-[10px] font-black text-indigo-400 uppercase tracking-widest">KATALOGA YENİ ÖĞE EKLE</p>
+                                            <h3 className="text-2xl font-black text-gray-900 uppercase italic tracking-tighter">
+                                                {editingItem ? 'ÖĞE DÜZENLE' : 'YENİ TANIMLAMA'}
+                                            </h3>
+                                            <p className="text-[10px] font-black text-indigo-400 uppercase tracking-widest">
+                                                {editingItem ? 'MEVCUT BİLGİLERİ GÜNCELLE' : 'KATALOGA YENİ ÖĞE EKLE'}
+                                            </p>
                                         </div>
                                     </div>
                                     <button onClick={() => setIsAdding(false)} className="p-4 bg-gray-50 rounded-2xl text-gray-400 hover:text-red-500 transition-colors">
-                                        <Trash2 size={24} />
+                                        <X size={24} />
                                     </button>
                                 </div>
 
@@ -170,22 +213,46 @@ export default function CatalogSettingsView({ query }: { query: string }) {
                                     <div className="grid grid-cols-2 gap-6">
                                         <div className="space-y-3">
                                             <label className="text-[10px] font-black text-indigo-400 uppercase tracking-widest ml-1">KATEGORİ</label>
-                                            <select 
-                                                className="w-full bg-indigo-50/50 border-2 border-transparent rounded-[1.5rem] px-6 py-5 font-bold text-gray-900 outline-none focus:border-indigo-100 transition-all appearance-none"
-                                                value={form.category}
-                                                onChange={e => setForm({...form, category: e.target.value})}
-                                            >
-                                                <option value="Masaj Terapileri">Masaj Terapileri</option>
-                                                <option value="Cilt Bakımı">Cilt Bakımı</option>
-                                                <option value="Hamam">Hamam Rituals</option>
-                                                <option value="El & Ayak">El & Ayak</option>
-                                                {currentGroups.filter(g => !['Masaj Terapileri', 'Cilt Bakımı', 'Hamam', 'El & Ayak'].includes(g)).map(g => (
-                                                    <option key={g} value={g}>{g}</option>
-                                                ))}
-                                            </select>
+                                            <div className="relative">
+                                                {!showNewCatInput ? (
+                                                    <select 
+                                                        className="w-full bg-indigo-50/50 border-2 border-transparent rounded-[1.5rem] px-6 py-5 font-bold text-gray-900 outline-none focus:border-indigo-100 transition-all appearance-none"
+                                                        value={form.category}
+                                                        onChange={e => {
+                                                            if (e.target.value === 'ADD_NEW') setShowNewCatInput(true);
+                                                            else setForm({...form, category: e.target.value});
+                                                        }}
+                                                    >
+                                                        <option value="Masaj Terapileri">Masaj Terapileri</option>
+                                                        <option value="Cilt Bakımı">Cilt Bakımı</option>
+                                                        <option value="Hamam">Hamam Rituals</option>
+                                                        <option value="El & Ayak">El & Ayak</option>
+                                                        {currentGroups.filter(g => !['Masaj Terapileri', 'Cilt Bakımı', 'Hamam', 'El & Ayak'].includes(g)).map(g => (
+                                                            <option key={g} value={g}>{g}</option>
+                                                        ))}
+                                                        <option value="ADD_NEW" className="text-indigo-600 font-black">+ YENİ KATEGORİ EKLE</option>
+                                                    </select>
+                                                ) : (
+                                                    <div className="flex gap-2">
+                                                        <input 
+                                                            autoFocus
+                                                            className="flex-1 bg-indigo-50/50 border-2 border-indigo-200 rounded-[1.5rem] px-6 py-5 font-bold text-gray-900 outline-none transition-all"
+                                                            placeholder="Kategori Adı..."
+                                                            value={newCategoryName}
+                                                            onChange={e => setNewCategoryName(e.target.value)}
+                                                        />
+                                                        <button 
+                                                            onClick={() => setShowNewCatInput(false)}
+                                                            className="px-6 bg-gray-100 rounded-[1.5rem] text-[10px] font-black"
+                                                        >
+                                                            VAZGEÇ
+                                                        </button>
+                                                    </div>
+                                                )}
+                                            </div>
                                         </div>
                                         <InputField 
-                                            label={activeTab === 'hizmetler' ? "SÜRE (DAKİKA)" : "TOPLAM SEANS"} 
+                                            label={activeTab === 'hizmetler' ? "SÜRE (DAKİKA)" : activeTab === 'paketler' ? "TOPLAM SEANS" : "MEVCUT STOK"} 
                                             value={activeTab === 'hizmetler' ? form.duration : form.totalSessions} 
                                             onChange={(v: string) => setForm({...form, [activeTab === 'hizmetler' ? 'duration' : 'totalSessions']: Number(v)})} 
                                             type="number"
@@ -247,7 +314,8 @@ export default function CatalogSettingsView({ query }: { query: string }) {
                                         key={item.id} 
                                         item={item} 
                                         activeTab={activeTab} 
-                                        onDelete={() => activeTab === 'hizmetler' ? removeService(item.id) : removePackageDefinition(item.id)}
+                                        onEdit={() => openPanel(item)}
+                                        onDelete={() => handleDelete(item)}
                                     />
                                 ))}
                             </div>
@@ -274,7 +342,7 @@ function InputField({ label, value, onChange, placeholder = "", type = "text" }:
     );
 }
 
-function PremiumCard({ item, activeTab, onDelete }: any) {
+function PremiumCard({ item, activeTab, onEdit, onDelete }: any) {
     return (
         <div className="bg-white rounded-[3.5rem] p-10 shadow-sm border border-gray-100 transition-all duration-500 hover:shadow-2xl hover:-translate-y-3 group overflow-hidden relative">
             <div className="flex justify-between items-start mb-8">
@@ -282,7 +350,7 @@ function PremiumCard({ item, activeTab, onDelete }: any) {
                     {activeTab === 'hizmetler' ? <Clock size={28} /> : activeTab === 'paketler' ? <PackageIcon size={28} /> : <ShoppingBag size={28} />}
                 </div>
                 <div className="flex gap-4 opacity-0 group-hover:opacity-100 transition-all translate-y-2 group-hover:translate-y-0">
-                    <button className="w-10 h-10 bg-gray-50 flex items-center justify-center rounded-xl text-gray-400 hover:bg-black hover:text-white transition-all"><Edit3 size={18} /></button>
+                    <button onClick={onEdit} className="w-10 h-10 bg-gray-50 flex items-center justify-center rounded-xl text-gray-400 hover:bg-black hover:text-white transition-all"><Edit3 size={18} /></button>
                     <button onClick={onDelete} className="w-10 h-10 bg-gray-50 flex items-center justify-center rounded-xl text-gray-400 hover:bg-red-500 hover:text-white transition-all"><Trash2 size={18} /></button>
                 </div>
             </div>

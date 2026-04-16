@@ -31,6 +31,7 @@ export interface Staff extends DB.Staff {
     offDay: number;
     isVisibleOnCalendar: boolean;
     sortOrder: number;
+    maxDiscount: number; // Yüzde olarak (0-100)
 }
 export type PaymentDefinition = DB.PaymentDefinition;
 export type BankAccount = DB.BankAccount;
@@ -57,7 +58,7 @@ export type WalletTransaction = DB.WalletTransaction;
 export type ConsultationBodyMap = DB.ConsultationBodyMap;
 export type InventoryUsageNorm = DB.InventoryUsageNorm;
 
-export type AppointmentStatus = 'pending' | 'completed' | 'no-show' | 'cancelled' | 'excused' | 'arrived';
+export type AppointmentStatus = 'pending' | 'completed' | 'no-show' | 'cancelled' | 'excused' | 'arrived' | 'unexcused-cancel';
 
 export interface PaymentMethod {
     id: string;
@@ -87,6 +88,7 @@ export interface StoreState {
     currentUser: AppUser | null;
     currentBusiness: Business | null;
     currentBranch: Branch | null;
+    currentStaff: Staff | undefined;
     isOnline: boolean;
     syncStatus: 'idle' | 'syncing' | 'error';
     
@@ -194,6 +196,7 @@ export interface StoreState {
     deleteQuote: (id: string) => void;
 
     updateProduct: (id: string, p: Partial<Product>) => void;
+    removeProduct: (id: string) => void;
     
     deleteCustomer: (id: string) => Promise<boolean>;
     updateBusinessLicense: (id: string, max: number) => void;
