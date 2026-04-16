@@ -102,7 +102,7 @@ export default function ExecutiveDashboard() {
             .slice(0, 5);
     }, [payments]);
 
-    const COLORS = ['#1ABE9D', '#F43F5E', '#F59E0B', '#6366F1', '#8B5CF6'];
+    const COLORS = ['#4F46E5', '#7C3AED', '#9333EA', '#6366F1', '#4338CA'];
 
     if (!can('view_executive_summary')) {
         return <AccessDenied />;
@@ -116,21 +116,21 @@ export default function ExecutiveDashboard() {
                 <KPICard 
                     title="Potansiyel Danışan" 
                     value={stats.potentialCustomers} 
-                    color="bg-orange-500" 
+                    color="bg-indigo-950" 
                     icon={<Users size={24} />} 
                     footer="DANIŞAN LİSTESİ"
                 />
                 <KPICard 
                     title="Günün Randevuları" 
                     value={stats.todayAppts} 
-                    color="bg-[#1ABE9D]" 
+                    color="bg-indigo-600" 
                     icon={<Calendar size={24} />} 
                     footer="TAKIVIME GİT"
                 />
                 <KPICard 
                     title="Günün Kasa Toplamı" 
                     value={`${stats.todayCash.toLocaleString()} TRY`} 
-                    color="bg-sky-500" 
+                    color="bg-purple-600" 
                     icon={<Wallet size={24} />} 
                     footer="KASAYA GÖZ AT"
                 />
@@ -146,11 +146,11 @@ export default function ExecutiveDashboard() {
             {/* Middle Section: Notifications & Announcements & Rates */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 {/* Notifications */}
-                <SectionCard title="Sistem Hareketleri" icon={<Bell size={18} />} color="text-teal-600">
+                <SectionCard title="Sistem Hareketleri" icon={<Bell size={18} />} color="text-indigo-600">
                     <div className="space-y-4 max-h-[160px] overflow-y-auto pr-2 custom-scrollbar">
                         {allLogs.length > 0 ? allLogs.slice(0, 5).map((log, i) => (
                             <div key={i} className="flex gap-4 items-start group">
-                                <div className="p-2.5 bg-gray-50 text-gray-400 group-hover:text-teal-600 group-hover:bg-teal-50 rounded-xl transition-all">
+                                <div className="p-2.5 bg-indigo-50/50 text-indigo-400 group-hover:text-indigo-600 group-hover:bg-indigo-100/50 rounded-xl transition-all">
                                     <Activity size={16} />
                                 </div>
                                 <div className="flex-1 border-b border-gray-50 pb-3">
@@ -165,7 +165,7 @@ export default function ExecutiveDashboard() {
                 </SectionCard>
 
                 {/* Announcements */}
-                <SectionCard title="Duyurular" icon={<Megaphone size={18} />} color="text-teal-600" action={<button className="text-[10px] font-black text-gray-300 hover:text-black">Tümü</button>}>
+                <SectionCard title="Duyurular" icon={<Megaphone size={18} />} color="text-indigo-600" action={<button className="text-[10px] font-black text-gray-300 hover:text-indigo-600 transition-colors">Tümü</button>}>
                     <div className="h-40 flex flex-col items-center justify-center text-center opacity-20 grayscale">
                         <Megaphone size={48} className="text-gray-300 mb-4" />
                         <p className="text-[10px] font-black uppercase tracking-widest">Henüz Duyuru Yok</p>
@@ -173,7 +173,7 @@ export default function ExecutiveDashboard() {
                 </SectionCard>
 
                 {/* Exchange Rates */}
-                <SectionCard title="Döviz Kurları" icon={<DollarSign size={18} />} color="text-teal-600">
+                <SectionCard title="Döviz Kurları" icon={<DollarSign size={18} />} color="text-indigo-600">
                     <table className="w-full text-left">
                         <thead>
                             <tr className="text-[10px] font-black text-gray-400 uppercase tracking-widest border-b border-gray-100">
@@ -207,8 +207,8 @@ export default function ExecutiveDashboard() {
                         <AreaChart data={lineData}>
                             <defs>
                                 <linearGradient id="colorSatis" x1="0" y1="0" x2="0" y2="1">
-                                    <stop offset="5%" stopColor="#1ABE9D" stopOpacity={0.1}/>
-                                    <stop offset="95%" stopColor="#1ABE9D" stopOpacity={0}/>
+                                    <stop offset="5%" stopColor="#4F46E5" stopOpacity={0.1}/>
+                                    <stop offset="95%" stopColor="#4F46E5" stopOpacity={0}/>
                                 </linearGradient>
                             </defs>
                             <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
@@ -224,7 +224,7 @@ export default function ExecutiveDashboard() {
                             <div className="w-2 h-2 rounded-full bg-blue-500" /> Tahmini Satış
                         </div>
                         <div className="flex items-center gap-2 text-[10px] font-black text-gray-400">
-                            <div className="w-2 h-2 rounded-full bg-[#1ABE9D]" /> Gerçekleşen Tahsilat
+                            <div className="w-2 h-2 rounded-full bg-indigo-500" /> Gerçekleşen Tahsilat
                         </div>
                     </div>
                 </ChartCard>
@@ -254,7 +254,7 @@ export default function ExecutiveDashboard() {
                                 <XAxis type="number" hide />
                                 <YAxis dataKey="name" type="category" width={100} fontSize={8} axisLine={false} tickLine={false} />
                                 <Tooltip cursor={{ fill: '#F8F9FB' }} />
-                                <Bar dataKey="val" fill="#1ABE9D" radius={[0, 4, 4, 0]} barSize={20} />
+                                <Bar dataKey="val" fill="#6366F1" radius={[0, 4, 4, 0]} barSize={20} />
                             </BarChart>
                         </ResponsiveContainer>
                     ) : (
@@ -272,7 +272,7 @@ export default function ExecutiveDashboard() {
                             <PolarGrid stroke="#f0f0f0" />
                             <PolarAngleAxis dataKey="subject" fontSize={8} />
                             <PolarRadiusAxis angle={30} domain={[0, 'auto']} hide />
-                            <Radar name="Kullanım" dataKey="A" stroke="#1ABE9D" fill="#1ABE9D" fillOpacity={0.3} />
+                            <Radar name="Kullanım" dataKey="A" stroke="#4F46E5" fill="#4F46E5" fillOpacity={0.3} />
                         </RadarChart>
                     </ResponsiveContainer>
                 </ChartCard>

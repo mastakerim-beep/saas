@@ -3,7 +3,7 @@
 import React, { useState, useMemo } from 'react';
 import { 
     X, Search, Plus, Sparkles, ChevronRight, 
-    ShieldCheck, Loader2, Banknote, ChevronDown, Package 
+    ShieldCheck, Loader2, Banknote, ChevronDown, Package, Clock
 } from 'lucide-react';
 import { useStore, Customer } from '@/lib/store';
 import BodyMap from '../crm/BodyMap';
@@ -265,7 +265,10 @@ export default function BookingModal({ initialData, onClose, date }: BookingModa
                                                         <select value={currentService} onChange={e => {
                                                             const s = services.find(svc => svc.name === e.target.value);
                                                             setCurrentService(e.target.value);
-                                                            if(s) setPrice(s.price);
+                                                            if(s) {
+                                                                setPrice(s.price);
+                                                                setOverrideDuration(s.duration);
+                                                            }
                                                         }} className="w-full bg-white border border-gray-100 rounded-2xl px-6 py-5 text-sm font-black text-gray-900 outline-none focus:border-primary transition-all appearance-none shadow-sm group-hover:shadow-md">
                                                             {services.map(s => <option key={s.id} value={s.name}>{s.name} (₺{s.price})</option>)}
                                                         </select>
@@ -299,6 +302,31 @@ export default function BookingModal({ initialData, onClose, date }: BookingModa
                                                             {room.name}
                                                         </button>
                                                     ))}
+                                                </div>
+                                            </div>
+
+                                            <div className="flex items-center gap-4 bg-white p-6 rounded-[2rem] border border-indigo-100 shadow-sm">
+                                                <div className="flex-1">
+                                                    <p className="text-[9px] font-black text-indigo-400 uppercase tracking-widest mb-1.5 opacity-60">Tanımlı Süre</p>
+                                                    <div className="flex items-center gap-2">
+                                                        <Clock className="w-4 h-4 text-indigo-600 animate-pulse" />
+                                                        <span className="text-sm font-black text-gray-900 uppercase tracking-tight italic">{overrideDuration || services.find(s => s.name === currentService)?.duration || 0} Dakika</span>
+                                                    </div>
+                                                </div>
+                                                <div className="w-px h-10 bg-indigo-50" />
+                                                <div className="flex-1 pl-4">
+                                                    <p className="text-[9px] font-black text-indigo-400 uppercase tracking-widest mb-1.5 opacity-60">Yaklaşık Bitiş</p>
+                                                    <p className="text-sm font-black text-primary uppercase tracking-tight italic">
+                                                        {(() => {
+                                                            const start = initialData.time;
+                                                            const dur = overrideDuration || services.find(s => s.name === currentService)?.duration || 0;
+                                                            const [h, m] = start.split(':').map(Number);
+                                                            const endTotal = h * 60 + m + dur;
+                                                            const endH = endTotal >= 1440 ? Math.floor((endTotal % 1440) / 60) : Math.floor(endTotal / 60);
+                                                            const endM = endTotal % 60;
+                                                            return `${endH.toString().padStart(2, '0')}:${endM.toString().padStart(2, '0')}`;
+                                                        })()}
+                                                    </p>
                                                 </div>
                                             </div>
 

@@ -500,6 +500,30 @@ function ServiceDropModal({ customer, staffId, roomId, time, date, onClose }: { 
                                 {selectedRegions.length > 0 ? `${selectedRegions.length} Bölge Seçildi` : 'Vücut Notu Ekle (Opsiyonel)'}
                             </span>
                         </button>
+                        <div className="flex items-center gap-4 bg-indigo-50/50 p-6 rounded-[2rem] border border-indigo-100/50 shadow-inner">
+                            <div className="flex-1">
+                                <p className="text-[9px] font-black text-indigo-400 uppercase tracking-widest mb-1.5 opacity-60">Tanımlı Süre</p>
+                                <div className="flex items-center gap-2">
+                                    <Clock className="w-4 h-4 text-indigo-600 animate-pulse" />
+                                    <span className="text-sm font-black text-gray-900 uppercase tracking-tight italic">{services.find(s => s.name === selectedService)?.duration || 0} Dakika</span>
+                                </div>
+                            </div>
+                            <div className="w-px h-10 bg-indigo-100" />
+                            <div className="flex-1 pl-4">
+                                <p className="text-[9px] font-black text-indigo-400 uppercase tracking-widest mb-1.5 opacity-60">Yaklaşık Bitiş</p>
+                                <p className="text-sm font-black text-primary uppercase tracking-tight italic">
+                                    {(() => {
+                                        const dur = services.find(s => s.name === selectedService)?.duration || 0;
+                                        const [h, m] = time.split(':').map(Number);
+                                        const endTotal = h * 60 + m + dur;
+                                        const endH = endTotal >= 1440 ? Math.floor((endTotal % 1440) / 60) : Math.floor(endTotal / 60);
+                                        const endM = endTotal % 60;
+                                        return `${endH.toString().padStart(2, '0')}:${endM.toString().padStart(2, '0')}`;
+                                    })()}
+                                </p>
+                            </div>
+                        </div>
+
                         <textarea 
                             value={note}
                             onChange={e => setNote(e.target.value)}
@@ -588,9 +612,18 @@ function CustomerPanel({ isOpen, onClose }: { isOpen: boolean, onClose: () => vo
                              <Target className="w-3 h-3" /> Akıllı Arama Aktif
                         </p>
                     </div>
-                    <button onClick={onClose} className="p-3 bg-white hover:bg-gray-50 rounded-2xl transition-all shadow-sm border border-gray-100 group">
-                        <X className="w-5 h-5 text-gray-400 group-hover:text-red-500" />
-                    </button>
+                    <div className="flex gap-2">
+                        <button 
+                            onClick={() => setIsAdding(!isAdding)} 
+                            className={`p-3 rounded-2xl transition-all shadow-sm border ${isAdding ? 'bg-indigo-600 border-indigo-600 text-white' : 'bg-white border-gray-100 text-indigo-600 hover:bg-indigo-50'}`}
+                            title="Hızlı Yeni Kayıt"
+                        >
+                            <Plus className={`w-5 h-5 transition-transform ${isAdding ? 'rotate-45' : ''}`} />
+                        </button>
+                        <button onClick={onClose} className="p-3 bg-white hover:bg-gray-50 rounded-2xl transition-all shadow-sm border border-gray-100 group">
+                            <X className="w-5 h-5 text-gray-400 group-hover:text-red-500" />
+                        </button>
+                    </div>
                 </div>
 
                 <div className="relative group">
@@ -611,17 +644,53 @@ function CustomerPanel({ isOpen, onClose }: { isOpen: boolean, onClose: () => vo
 
             {/* Results */}
             <div className="flex-1 overflow-y-auto no-scrollbar p-6 space-y-3">
-                {isAdding ? (
-                    <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} className="bg-indigo-50 border border-indigo-100 p-6 rounded-[2rem] space-y-4 shadow-sm">
-                        <p className="text-[10px] font-black text-indigo-600 uppercase tracking-widest text-center">HIZLI YENİ KAYIT</p>
-                        <input value={newName} onChange={e => setNewName(e.target.value)} placeholder="Müşteri Ad Soyad" className="w-full bg-white border border-gray-200 rounded-xl px-4 py-3 text-gray-900 text-xs font-bold outline-none focus:border-indigo-500/50" />
-                        <input value={newPhone} onChange={e => setNewPhone(e.target.value)} placeholder="Telefon" className="w-full bg-white border border-gray-200 rounded-xl px-4 py-3 text-gray-900 text-xs font-bold outline-none focus:border-indigo-500/50" />
-                        <div className="flex gap-2">
-                            <button onClick={() => setIsAdding(false)} className="flex-1 py-3 text-[10px] font-black text-gray-400 uppercase hover:text-gray-600 transition-colors">Vazgeç</button>
-                            <button onClick={handleQuickAdd} className="flex-2 py-3 bg-indigo-600 text-white rounded-xl font-black text-[10px] uppercase shadow-lg shadow-indigo-500/20">Kaydet</button>
-                        </div>
-                    </motion.div>
-                ) : search.length > 0 ? (
+                <AnimatePresence>
+                    {isAdding && (
+                        <motion.div 
+                            initial={{ opacity: 0, y: -20 }} 
+                            animate={{ opacity: 1, y: 0 }} 
+                            exit={{ opacity: 0, y: -20 }}
+                            className="bg-gradient-to-br from-indigo-600 to-purple-700 p-8 rounded-[2.5rem] space-y-5 shadow-xl shadow-indigo-100 mb-6 relative overflow-hidden"
+                        >
+                            <div className="relative z-10">
+                                <p className="text-[10px] font-black text-white/60 uppercase tracking-[0.2em] mb-4 text-center">YENİ MÜŞTERİ KAYDI</p>
+                                <div className="space-y-3">
+                                    <input 
+                                        value={newName} 
+                                        onChange={e => setNewName(e.target.value)} 
+                                        placeholder="Ad Soyad" 
+                                        className="w-full bg-white/10 border border-white/20 rounded-2xl px-5 py-4 text-white text-sm font-bold outline-none focus:bg-white/20 placeholder:text-white/40 transition-all" 
+                                    />
+                                    <input 
+                                        value={newPhone} 
+                                        onChange={e => setNewPhone(e.target.value)} 
+                                        placeholder="Telefon Numarası" 
+                                        className="w-full bg-white/10 border border-white/20 rounded-2xl px-5 py-4 text-white text-sm font-bold outline-none focus:bg-white/20 placeholder:text-white/40 transition-all" 
+                                    />
+                                </div>
+                                <div className="flex gap-3 mt-6">
+                                    <button 
+                                        onClick={() => setIsAdding(false)} 
+                                        className="flex-1 py-4 text-[11px] font-black text-white/70 uppercase hover:text-white transition-colors"
+                                    >
+                                        Vazgeç
+                                    </button>
+                                    <button 
+                                        onClick={handleQuickAdd} 
+                                        className="flex-2 py-4 bg-white text-indigo-600 rounded-2xl font-black text-[11px] uppercase shadow-lg active:scale-95 transition-all"
+                                    >
+                                        Hızlı Kaydet
+                                    </button>
+                                </div>
+                            </div>
+                            {/* Decorative elements */}
+                            <div className="absolute -right-4 -bottom-4 w-24 h-24 bg-white/10 rounded-full blur-2xl" />
+                            <div className="absolute -left-4 -top-4 w-24 h-24 bg-indigo-400/20 rounded-full blur-2xl" />
+                        </motion.div>
+                    )}
+                </AnimatePresence>
+
+                {search.length > 0 ? (
                     filtered.length > 0 ? (
                         filtered.map(customer => (
                             <DraggableCustomerCard key={customer.id} customer={customer} />
@@ -633,7 +702,9 @@ function CustomerPanel({ isOpen, onClose }: { isOpen: boolean, onClose: () => vo
                             </div>
                             <div>
                                 <p className="text-gray-900 font-bold text-sm tracking-tight text-center">Bu müşteri henüz kayıtlı değil.</p>
-                                <button onClick={() => setIsAdding(true)} className="mt-4 text-[10px] font-black text-indigo-600 uppercase hover:underline">Hemen Kaydet +</button>
+                                <button onClick={() => setIsAdding(true)} className="mt-4 text-[10px] font-black text-indigo-600 uppercase hover:underline flex items-center gap-2 mx-auto">
+                                    <Plus className="w-3 h-3" /> Hemen Kaydet
+                                </button>
                             </div>
                         </div>
                     )
@@ -874,7 +945,7 @@ export default function CalendarPage() {
     const activeCustomer = activeDragData?.type === 'customer' ? activeDragData.customer : null;
 
     return (
-        <div className={`p-8 h-[calc(100vh-72px)] flex flex-col overflow-hidden bg-white animate-[fadeIn_0.5s_ease] transition-all duration-300 ${isPanelOpen ? 'pr-[352px]' : 'pr-8'}`}>
+        <div className={`p-2 h-[calc(100vh-72px)] flex flex-col overflow-hidden bg-[#fafafa] animate-[fadeIn_0.5s_ease] transition-all duration-300 ${isPanelOpen ? 'pr-[352px]' : 'pr-2'}`}>
             {/* Unified Command Bar */}
             <div className="grid grid-cols-3 items-center mb-8 flex-none px-4 text-gray-900 border-b border-gray-100 pb-6">
                 {/* Left: Dropdown */}
@@ -932,7 +1003,7 @@ export default function CalendarPage() {
             </div>
 
             <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
-                <div className="flex-1 bg-white border border-gray-100 rounded-[3.5rem] shadow-2xl flex flex-col overflow-hidden relative">
+                <div className="flex-1 bg-white border border-gray-100 rounded-3xl shadow-xl flex flex-col overflow-hidden relative">
                     {/* Header Columns */}
                     <div className="flex border-b border-gray-100 bg-gray-50/50 flex-none ml-[100px] sticky top-0 z-30 shadow-sm backdrop-blur-md">
                         {columnsToDisplay.map(col => (

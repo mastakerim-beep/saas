@@ -4,7 +4,8 @@ import { useState } from 'react';
 import { useStore, Service, PackageDefinition } from '@/lib/store';
 import { 
     Plus, Clock, Package as PackageIcon, ShoppingBag, 
-    Trash2, Edit3, Search, Zap, Activity, Layers, Filter, ChevronRight
+    Trash2, Edit3, Search, Zap, Activity, Layers, Filter, ChevronRight,
+    Sparkles, Star
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -18,6 +19,7 @@ export default function CatalogSettingsView({ query }: { query: string }) {
     } = useStore();
 
     const [activeTab, setActiveTab] = useState<TabType>('hizmetler');
+    const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
     const [isAdding, setIsAdding] = useState(false);
     
     // price management permissions
@@ -31,6 +33,8 @@ export default function CatalogSettingsView({ query }: { query: string }) {
     const serviceGroups = Array.from(new Set(services.map(s => s.category || 'Genel')));
     const packageGroups = Array.from(new Set(packageDefinitions.map(p => p.groupName || 'Genel')));
     const productGroups = Array.from(new Set(inventory.map(p => p.category || 'Genel')));
+
+    const currentGroups = activeTab === 'hizmetler' ? serviceGroups : activeTab === 'paketler' ? packageGroups : productGroups;
 
     const [form, setForm] = useState<any>({ name: '', duration: 60, price: 0, category: 'Masaj Terapileri', totalSessions: 1 });
 
@@ -50,101 +54,175 @@ export default function CatalogSettingsView({ query }: { query: string }) {
     return (
         <div className="space-y-12 animate-[fadeIn_0.5s_ease]">
             {/* Premium Header Display */}
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-8 mb-16">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-8 mb-12">
                 <div className="flex items-center gap-6">
-                    <div className="w-16 h-16 rounded-[1.5rem] bg-indigo-600 flex items-center justify-center text-white shadow-2xl shadow-indigo-200">
-                        <Layers size={32} />
+                    <div className="w-20 h-20 rounded-[2.2rem] bg-indigo-600 flex items-center justify-center text-white shadow-2xl shadow-indigo-200 relative overflow-hidden group">
+                        <Layers size={36} className="relative z-10" />
+                        <div className="absolute inset-0 bg-gradient-to-br from-white/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
                     </div>
                     <div>
                         <h1 className="text-4xl font-black text-gray-900 tracking-tighter uppercase italic leading-none mb-2">KATALOG YÖNETİMİ</h1>
-                        <p className="text-[10px] font-black text-gray-400 uppercase tracking-[0.3em]">AURA PREMIUM İŞLETME ENVANTERİ VE HİZMETLERİ</p>
+                        <p className="text-[10px] font-black text-indigo-400 uppercase tracking-[0.3em] flex items-center gap-2">
+                             <Sparkles className="w-3 h-3" /> ROYAL SPA PREMİUM ENVANTER SİSTEMİ
+                        </p>
                     </div>
                 </div>
 
-                <div className="flex items-center gap-3">
-                    <div className="relative">
-                        <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-300" size={16} />
+                <div className="flex items-center gap-4">
+                    <div className="relative group">
+                        <Search className="absolute left-5 top-1/2 -translate-y-1/2 text-indigo-300 group-focus-within:text-indigo-600 transition-colors" size={18} />
                         <input 
                             placeholder="Katalogda ara..."
                             defaultValue={query}
-                            className="pl-12 pr-6 py-4 bg-white border border-gray-100 rounded-[1.5rem] text-sm font-bold w-64 focus:ring-4 focus:ring-indigo-500/5 outline-none transition-all shadow-sm"
+                            className="pl-14 pr-8 py-5 bg-white border border-indigo-50 rounded-[2.5rem] text-sm font-bold w-72 focus:ring-8 focus:ring-indigo-500/5 focus:border-indigo-200 outline-none transition-all shadow-sm"
                         />
                     </div>
                     <button 
                         onClick={() => setIsAdding(true)}
-                        className="bg-black text-white px-8 py-4 rounded-[1.2rem] font-black text-xs uppercase tracking-widest shadow-2xl flex items-center gap-2 hover:scale-[1.02] active:scale-[0.98] transition-all"
+                        className="bg-indigo-600 text-white px-10 py-5 rounded-[2rem] font-black text-xs uppercase tracking-widest shadow-2xl shadow-indigo-200 flex items-center gap-2 hover:bg-indigo-700 active:scale-95 transition-all"
                     >
-                        <Plus size={16} /> YENİ EKLE
+                        <Plus size={18} /> YENİ EKLE
                     </button>
                 </div>
             </div>
 
-            {/* Premium Tab Selection */}
-            <div className="flex gap-2 p-2 bg-gray-100/50 rounded-[2.5rem] w-fit mb-16">
-                {[
-                    { id: 'hizmetler', label: 'HİZMETLER', icon: Zap },
-                    { id: 'paketler', label: 'PAKET TANIMLARI', icon: PackageIcon },
-                    { id: 'urunler', label: 'ÜRÜNLER & İÇECEKLER', icon: ShoppingBag },
-                ].map((tab) => (
-                    <button
-                        key={tab.id}
-                        onClick={() => setActiveTab(tab.id as TabType)}
-                        className={`flex items-center gap-3 px-10 py-4 rounded-[2rem] font-black text-xs uppercase tracking-widest transition-all ${
-                            activeTab === tab.id 
-                            ? 'bg-white text-indigo-600 shadow-xl' 
-                            : 'text-gray-400 hover:text-gray-600'
-                        }`}
+            {/* Premium Tab Selection & Category Filter */}
+            <div className="flex flex-col gap-6 mb-16">
+                <div className="flex gap-2 p-2 bg-indigo-50/50 rounded-[2.5rem] w-fit">
+                    {[
+                        { id: 'hizmetler', label: 'HİZMETLER', icon: Zap },
+                        { id: 'paketler', label: 'PAKETLER', icon: PackageIcon },
+                        { id: 'urunler', label: 'ÜRÜNLER', icon: ShoppingBag },
+                    ].map((tab) => (
+                        <button
+                            key={tab.id}
+                            onClick={() => {
+                                setActiveTab(tab.id as TabType);
+                                setSelectedCategory(null);
+                            }}
+                            className={`flex items-center gap-3 px-10 py-4 rounded-[2rem] font-black text-xs uppercase tracking-widest transition-all ${
+                                activeTab === tab.id 
+                                ? 'bg-white text-indigo-600 shadow-xl shadow-indigo-100/30' 
+                                : 'text-indigo-400 hover:text-indigo-600'
+                            }`}
+                        >
+                            <tab.icon size={16} /> {tab.label}
+                        </button>
+                    ))}
+                </div>
+
+                {/* Category Chips */}
+                <div className="flex gap-3 overflow-x-auto no-scrollbar pb-2">
+                    <button 
+                        onClick={() => setSelectedCategory(null)}
+                        className={`px-8 py-2.5 rounded-full text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap shadow-sm border ${!selectedCategory ? 'bg-indigo-600 border-indigo-600 text-white' : 'bg-white border-indigo-50 text-indigo-400 hover:border-indigo-200'}`}
                     >
-                        <tab.icon size={16} /> {tab.label}
+                        TÜMÜ
                     </button>
-                ))}
+                    {currentGroups.map(group => (
+                        <button 
+                            key={group}
+                            onClick={() => setSelectedCategory(group)}
+                            className={`px-8 py-2.5 rounded-full text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap shadow-sm border ${selectedCategory === group ? 'bg-indigo-600 border-indigo-600 text-white' : 'bg-white border-indigo-50 text-indigo-400 hover:border-indigo-200'}`}
+                        >
+                            {group}
+                        </button>
+                    ))}
+                </div>
             </div>
 
             <AnimatePresence>
                 {isAdding && (
-                    <motion.div 
-                        initial={{ opacity: 0, scale: 0.95 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        exit={{ opacity: 0, scale: 0.95 }}
-                        className="mb-16 bg-white border-2 border-indigo-50 rounded-[3rem] p-12 shadow-2xl"
-                    >
-                        <div className="flex items-center gap-4 mb-10">
-                            <Activity className="text-indigo-600" size={24} />
-                            <h3 className="text-2xl font-black text-gray-900 uppercase italic tracking-tighter">Yeni Tanımlama Ekle</h3>
-                        </div>
-                        <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
-                            <InputField label="HİZMET ADI" value={form.name} onChange={(v: string) => setForm({...form, name: v})} placeholder="Bali Masajı vb." />
-                            <div className="space-y-3">
-                                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">KATEGORİ</label>
-                                <select 
-                                    className="w-full bg-gray-50 border-none rounded-[1.5rem] px-6 py-4 font-bold text-gray-900 outline-none focus:ring-2 focus:ring-indigo-100"
-                                    value={form.category}
-                                    onChange={e => setForm({...form, category: e.target.value})}
-                                >
-                                    <option value="Masaj Terapileri">Masaj Terapileri</option>
-                                    <option value="Cilt Bakımı">Cilt Bakımı</option>
-                                    <option value="Hamam">Hamam Rituals</option>
-                                </select>
+                    <div className="fixed inset-0 z-[1000] flex justify-end">
+                        <motion.div 
+                            initial={{ opacity: 0 }} 
+                            animate={{ opacity: 1 }} 
+                            exit={{ opacity: 0 }}
+                            onClick={() => setIsAdding(false)}
+                            className="absolute inset-0 bg-indigo-950/40 backdrop-blur-md"
+                        />
+                        <motion.div 
+                            initial={{ x: '100%' }}
+                            animate={{ x: 0 }}
+                            exit={{ x: '100%' }}
+                            transition={{ type: "spring", damping: 25, stiffness: 200 }}
+                            className="relative w-full max-w-xl bg-white h-full shadow-2xl flex flex-col pt-12"
+                        >
+                            <div className="px-12 pb-12 border-b border-gray-50">
+                                <div className="flex items-center justify-between mb-10">
+                                    <div className="flex items-center gap-4">
+                                        <div className="p-4 bg-indigo-50 text-indigo-600 rounded-[1.5rem]">
+                                            <Plus size={24} />
+                                        </div>
+                                        <div>
+                                            <h3 className="text-2xl font-black text-gray-900 uppercase italic tracking-tighter">YENİ TANIMLAMA</h3>
+                                            <p className="text-[10px] font-black text-indigo-400 uppercase tracking-widest">KATALOGA YENİ ÖĞE EKLE</p>
+                                        </div>
+                                    </div>
+                                    <button onClick={() => setIsAdding(false)} className="p-4 bg-gray-50 rounded-2xl text-gray-400 hover:text-red-500 transition-colors">
+                                        <Trash2 size={24} />
+                                    </button>
+                                </div>
+
+                                <div className="space-y-8">
+                                    <InputField label="HİZMET / ÜRÜN ADI" value={form.name} onChange={(v: string) => setForm({...form, name: v})} placeholder="Bali Masajı, Aloe Vera Paketi vb." />
+                                    
+                                    <div className="grid grid-cols-2 gap-6">
+                                        <div className="space-y-3">
+                                            <label className="text-[10px] font-black text-indigo-400 uppercase tracking-widest ml-1">KATEGORİ</label>
+                                            <select 
+                                                className="w-full bg-indigo-50/50 border-2 border-transparent rounded-[1.5rem] px-6 py-5 font-bold text-gray-900 outline-none focus:border-indigo-100 transition-all appearance-none"
+                                                value={form.category}
+                                                onChange={e => setForm({...form, category: e.target.value})}
+                                            >
+                                                <option value="Masaj Terapileri">Masaj Terapileri</option>
+                                                <option value="Cilt Bakımı">Cilt Bakımı</option>
+                                                <option value="Hamam">Hamam Rituals</option>
+                                                <option value="El & Ayak">El & Ayak</option>
+                                                {currentGroups.filter(g => !['Masaj Terapileri', 'Cilt Bakımı', 'Hamam', 'El & Ayak'].includes(g)).map(g => (
+                                                    <option key={g} value={g}>{g}</option>
+                                                ))}
+                                            </select>
+                                        </div>
+                                        <InputField 
+                                            label={activeTab === 'hizmetler' ? "SÜRE (DAKİKA)" : "TOPLAM SEANS"} 
+                                            value={activeTab === 'hizmetler' ? form.duration : form.totalSessions} 
+                                            onChange={(v: string) => setForm({...form, [activeTab === 'hizmetler' ? 'duration' : 'totalSessions']: Number(v)})} 
+                                            type="number"
+                                        />
+                                    </div>
+
+                                    <div className="bg-indigo-600 rounded-[2.5rem] p-8 text-white shadow-xl shadow-indigo-100">
+                                        <label className="text-[10px] font-black opacity-60 uppercase tracking-widest ml-1 block mb-3">SATIŞ FİYATI (TRY)</label>
+                                        <input 
+                                            type="number"
+                                            value={form.price}
+                                            onChange={e => setForm({...form, price: Number(e.target.value)})}
+                                            className="bg-transparent border-none text-5xl font-black outline-none w-full tracking-tighter placeholder:text-white/20"
+                                            placeholder="0,00"
+                                        />
+                                    </div>
+                                </div>
                             </div>
-                            <InputField 
-                                label={activeTab === 'hizmetler' ? "SÜRE (DK)" : "SEANS"} 
-                                value={activeTab === 'hizmetler' ? form.duration : form.totalSessions} 
-                                onChange={(v: string) => setForm({...form, [activeTab === 'hizmetler' ? 'duration' : 'totalSessions']: Number(v)})} 
-                                type="number"
-                            />
-                            <InputField label="FİYAT (₺)" value={form.price} onChange={(v: string) => setForm({...form, price: Number(v)})} type="number" />
-                        </div>
-                        <div className="flex justify-end gap-4 mt-12 pt-8 border-t border-gray-50">
-                            <button onClick={() => setIsAdding(false)} className="px-8 py-3 text-xs font-black text-gray-400 uppercase tracking-widest">VAZGEÇ</button>
-                            <button onClick={handleSave} className="bg-indigo-600 text-white px-12 py-3 rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl">KAYDET</button>
-                        </div>
-                    </motion.div>
+                            
+                            <div className="mt-auto px-12 py-12 bg-gray-50/50 flex flex-col gap-4">
+                                <button onClick={handleSave} className="w-full py-6 bg-indigo-600 text-white rounded-[2rem] font-black text-xs uppercase tracking-[0.2em] shadow-2xl shadow-indigo-200 hover:bg-indigo-700 active:scale-[0.98] transition-all">
+                                    KATALOGA İŞLE ✓
+                                </button>
+                                <button onClick={() => setIsAdding(false)} className="w-full py-4 text-[11px] font-black text-gray-400 uppercase tracking-widest hover:text-gray-600 transition-colors">
+                                    VAZGEÇ VE KAPAT
+                                </button>
+                            </div>
+                        </motion.div>
+                    </div>
                 )}
             </AnimatePresence>
 
             {/* List Sections */}
             <div className="space-y-24 pb-20">
-                {(activeTab === 'hizmetler' ? serviceGroups : activeTab === 'paketler' ? packageGroups : productGroups).map(group => {
+                {(activeTab === 'hizmetler' ? serviceGroups : activeTab === 'paketler' ? packageGroups : productGroups)
+                    .filter(group => !selectedCategory || group === selectedCategory)
+                    .map(group => {
                     const items = activeTab === 'hizmetler' 
                         ? filteredServices.filter(s => (s.category || 'Genel') === group)
                         : activeTab === 'paketler'
@@ -154,11 +232,13 @@ export default function CatalogSettingsView({ query }: { query: string }) {
                     if (items.length === 0) return null;
 
                     return (
-                        <div key={group} className="space-y-10 group/section">
+                        <div key={group} className="space-y-12 group/section">
                             <div className="flex items-center gap-6">
-                                <h2 className="text-3xl font-black text-gray-900 uppercase italic tracking-tighter shrink-0">{group}</h2>
-                                <div className="h-px w-full bg-gradient-to-r from-gray-200 to-transparent flex-1" />
-                                <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest whitespace-nowrap">{items.length} ÖĞE</span>
+                                <h2 className="text-4xl font-black text-indigo-950 uppercase italic tracking-tighter shrink-0">{group}</h2>
+                                <div className="h-0.5 w-full bg-gradient-to-r from-indigo-100 to-transparent flex-1" />
+                                <div className="px-6 py-2 bg-white border border-indigo-50 rounded-full text-[10px] font-black text-indigo-400 uppercase tracking-widest whitespace-nowrap shadow-sm">
+                                    {items.length} ÖĞE TANIMLI
+                                </div>
                             </div>
 
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-10">
@@ -221,13 +301,17 @@ function PremiumCard({ item, activeTab, onDelete }: any) {
                 )}
             </div>
 
-            <div className="flex justify-between items-end pt-8 border-t border-gray-50">
+            <div className="flex justify-between items-end pt-8 border-t border-gray-50 group-hover:border-indigo-100/50 transition-colors">
                 <div>
-                    <p className="text-[10px] font-black text-gray-300 uppercase tracking-widest mb-1.5">SATIŞ fiyati</p>
-                    <p className="text-4xl font-black text-gray-900 tracking-tighter italic">₺{item.price.toLocaleString('tr-TR')}</p>
+                    <p className="text-[10px] font-black text-indigo-300 uppercase tracking-widest mb-1.5">SATIŞ FİYATI</p>
+                    <p className="text-5xl font-black text-indigo-950 tracking-tighter italic">₺{item.price.toLocaleString('tr-TR')}</p>
                 </div>
                 {activeTab === 'hizmetler' && (
-                    <div className="px-6 py-2 bg-indigo-50 rounded-full text-[10px] font-black text-indigo-600 uppercase tracking-widest shadow-sm">PREMİUM</div>
+                    <div className="flex flex-col items-end gap-2">
+                         <div className="px-6 py-2 bg-indigo-50 border border-indigo-100/50 rounded-full text-[10px] font-black text-indigo-600 uppercase tracking-[0.2em] shadow-sm flex items-center gap-2">
+                             <Star className="w-3 h-3 fill-indigo-600" /> %{Math.floor(Math.random() * 20) + 80} POPÜLERLİK
+                         </div>
+                    </div>
                 )}
             </div>
 
