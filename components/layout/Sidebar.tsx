@@ -81,7 +81,10 @@ SidebarItem.displayName = 'SidebarItem';
 
 export default function Sidebar() {
     const pathname = usePathname();
-    const { can, currentUser, currentBusiness, tenantModules, allBusinesses, logout } = useStore();
+    const { 
+        can, currentUser, currentBusiness, tenantModules, 
+        allBusinesses, logout, isImpersonating, setImpersonatedBusinessId 
+    } = useStore();
     const [isHovered, setIsHovered] = useState(false);
     const [isMounted, setIsMounted] = useState(false);
 
@@ -138,7 +141,7 @@ export default function Sidebar() {
             style={{ transform: 'translateZ(0)' }}
         >
             {/* Header / Brand */}
-            <div className="p-6 h-[100px] flex items-center">
+            <div className="p-6 h-[100px] flex items-center justify-between">
                 <div className="flex items-center gap-4 min-w-[40px]">
                     <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-black shadow-xl shadow-indigo-200 shrink-0">
                         <Sparkles className="w-6 h-6 fill-white" />
@@ -154,6 +157,20 @@ export default function Sidebar() {
                         </motion.div>
                     )}
                 </div>
+
+                {/* SUPERADMIN RESET BUTTON */}
+                {currentUser?.role === 'SaaS_Owner' && isImpersonating && isHovered && (
+                    <motion.button
+                        initial={{ opacity: 0, scale: 0.8 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        onClick={() => setImpersonatedBusinessId(null)}
+                        className="p-3 bg-rose-500 text-white rounded-xl shadow-lg shadow-rose-200 hover:bg-rose-600 transition-all flex items-center gap-2"
+                        title="İşletme Taklidini Durdur"
+                    >
+                        <ShieldCheck size={16} />
+                        <span className="text-[9px] font-black uppercase whitespace-nowrap">Admin'e Dön</span>
+                    </motion.button>
+                )}
             </div>
 
             <div className="flex-1 px-3 mt-4 overflow-y-auto w-full no-scrollbar space-y-8 pb-12">

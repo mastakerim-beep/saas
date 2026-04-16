@@ -64,7 +64,13 @@ export default function CatalogSettingsView({ query }: { query: string }) {
         const finalCategory = showNewCatInput ? newCategoryName : form.category;
         
         if (activeTab === 'hizmetler') {
-            const data = { name: form.name, duration: Number(form.duration), price: Number(form.price), category: finalCategory || 'Genel' };
+            const data = { 
+                name: form.name, 
+                duration: Number(form.duration), 
+                price: Number(form.price), 
+                category: finalCategory || 'Genel',
+                consumables: form.consumables || [] // Reçete verisi eklendi
+            };
             if (editingItem) await updateService(editingItem.id, data);
             else await addService(data);
         } else if (activeTab === 'paketler') {
@@ -178,18 +184,18 @@ export default function CatalogSettingsView({ query }: { query: string }) {
                             animate={{ opacity: 1 }} 
                             exit={{ opacity: 0 }}
                             onClick={() => setIsAdding(false)}
-                            className="absolute inset-0 bg-indigo-950/40 backdrop-blur-md"
+                            className="absolute inset-0 bg-indigo-950/60 backdrop-blur-md"
                         />
                         <motion.div 
                             initial={{ x: '100%' }}
                             animate={{ x: 0 }}
                             exit={{ x: '100%' }}
-                            transition={{ type: "spring", damping: 25, stiffness: 200 }}
-                            className="relative w-full max-w-xl bg-white h-full shadow-2xl flex flex-col pt-8"
+                            transition={{ type: "spring", damping: 30, stiffness: 200 }}
+                            className="relative w-full max-w-xl bg-white h-screen shadow-2xl flex flex-col border-l border-indigo-100"
                         >
                             {/* Panel Header */}
-                            <div className="px-10 pb-6 border-b border-gray-50 shrink-0">
-                                <div className="flex items-center justify-between mb-6">
+                            <div className="px-10 py-8 border-b border-gray-50 bg-white shrink-0">
+                                <div className="flex items-center justify-between mb-2">
                                     <div className="flex items-center gap-4">
                                         <div className="p-3 bg-indigo-50 text-indigo-600 rounded-2xl">
                                             <Plus size={20} />
@@ -208,10 +214,10 @@ export default function CatalogSettingsView({ query }: { query: string }) {
                                     </button>
                                 </div>
                             </div>
-
+ 
                             {/* Scrollable Content */}
-                            <div className="flex-1 overflow-y-auto px-10 py-8 no-scrollbar bg-slate-50/30">
-                                <div className="space-y-6">
+                            <div className="flex-1 overflow-y-auto px-10 py-8 no-scrollbar bg-slate-50/20">
+                                <div className="space-y-8">
                                     <InputField label="HİZMET / ÜRÜN ADI" value={form.name} onChange={(v: string) => setForm({...form, name: v})} placeholder="Bali Masajı, Aloe Vera Paketi vb." />
                                     
                                     <div className="grid grid-cols-2 gap-4">
@@ -220,7 +226,7 @@ export default function CatalogSettingsView({ query }: { query: string }) {
                                             <div className="relative">
                                                 {!showNewCatInput ? (
                                                     <select 
-                                                        className="w-full bg-white border border-gray-100 rounded-2xl px-5 py-4 font-bold text-gray-900 outline-none focus:border-indigo-200 transition-all appearance-none shadow-sm"
+                                                        className="w-full bg-white border border-indigo-50 rounded-2xl px-5 py-4 font-bold text-gray-900 outline-none focus:border-indigo-200 transition-all appearance-none shadow-sm"
                                                         value={form.category}
                                                         onChange={e => {
                                                             if (e.target.value === 'ADD_NEW') setShowNewCatInput(true);
@@ -231,10 +237,11 @@ export default function CatalogSettingsView({ query }: { query: string }) {
                                                         <option value="Cilt Bakımı">Cilt Bakımı</option>
                                                         <option value="Hamam">Hamam Rituals</option>
                                                         <option value="El & Ayak">El & Ayak</option>
-                                                        {currentGroups.filter(g => !['Masaj Terapileri', 'Cilt Bakımı', 'Hamam', 'El & Ayak'].includes(g)).map(g => (
+                                                        {currentGroups.filter(g => !['Masaj Terapileri', 'Cilt Bakımı', 'Hamam', 'El & Ayak', 'Genel'].includes(g)).map(g => (
                                                             <option key={g} value={g}>{g}</option>
                                                         ))}
-                                                        <option value="ADD_NEW" className="text-indigo-600 font-black">+ YENİ KATEGORİ EKLE</option>
+                                                        <option value="Genel">Genel</option>
+                                                        <option value="ADD_NEW" className="text-indigo-600 font-extrabold">+ YENİ KATEGORİ EKLE</option>
                                                     </select>
                                                 ) : (
                                                     <div className="flex gap-2">
@@ -247,9 +254,9 @@ export default function CatalogSettingsView({ query }: { query: string }) {
                                                         />
                                                         <button 
                                                             onClick={() => setShowNewCatInput(false)}
-                                                            className="px-4 bg-gray-100 rounded-2xl text-[9px] font-black"
+                                                            className="px-4 bg-gray-100 rounded-2xl text-[9px] font-black text-gray-400"
                                                         >
-                                                            VAZGEÇ
+                                                            X
                                                         </button>
                                                     </div>
                                                 )}
@@ -262,35 +269,102 @@ export default function CatalogSettingsView({ query }: { query: string }) {
                                             type="number"
                                         />
                                     </div>
-
-                                    <div className="bg-gradient-to-br from-indigo-700 to-indigo-600 rounded-[2rem] p-6 text-white shadow-xl shadow-indigo-100">
-                                        <label className="text-[9px] font-black opacity-60 uppercase tracking-widest ml-1 block mb-2">SATIŞ FİYATI (TRY)</label>
-                                        <div className="flex items-baseline gap-2">
-                                            <span className="text-2xl font-black">₺</span>
-                                            <input 
-                                                type="number"
-                                                value={form.price}
-                                                onChange={e => setForm({...form, price: Number(e.target.value)})}
-                                                className="bg-transparent border-none text-4xl font-black outline-none w-full tracking-tighter placeholder:text-white/20"
-                                                placeholder="0,00"
-                                            />
+ 
+                                    <div className="bg-gradient-to-br from-indigo-700 to-indigo-600 rounded-[2.5rem] p-8 text-white shadow-2xl shadow-indigo-200 relative overflow-hidden">
+                                        <div className="relative z-10">
+                                            <label className="text-[10px] font-black opacity-60 uppercase tracking-widest ml-1 block mb-2">SATIŞ FİYATI (TRY)</label>
+                                            <div className="flex items-baseline gap-2">
+                                                <span className="text-3xl font-black">₺</span>
+                                                <input 
+                                                    type="number"
+                                                    value={form.price}
+                                                    onChange={e => setForm({...form, price: Number(e.target.value)})}
+                                                    className="bg-transparent border-none text-5xl font-black outline-none w-full tracking-tighter placeholder:text-white/20"
+                                                    placeholder="0,00"
+                                                />
+                                            </div>
                                         </div>
+                                        <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 blur-[40px] rounded-full -translate-y-1/2 translate-x-1/2" />
                                     </div>
+ 
+                                    {/* Reçete Eşleştirme (Multiple Products) */}
+                                    <div className="p-8 border-2 border-indigo-100 rounded-[2.5rem] bg-indigo-50/10 space-y-6">
+                                        <div className="flex items-center justify-between">
+                                            <div className="flex items-center gap-3">
+                                                <div className="w-8 h-8 bg-indigo-600 rounded-lg flex items-center justify-center text-white">
+                                                    <PackageIcon size={16} />
+                                                </div>
+                                                <span className="text-[10px] font-black text-indigo-900 uppercase tracking-widest">Sarf Malzemesi / Reçete</span>
+                                            </div>
+                                            <button 
+                                                onClick={() => {
+                                                    const recipes = form.consumables || [];
+                                                    setForm({...form, consumables: [...recipes, { productId: '', quantity: 1 }]});
+                                                }}
+                                                className="px-4 py-2 bg-indigo-600 text-white rounded-xl text-[9px] font-black uppercase tracking-widest hover:scale-105 transition-all"
+                                            >
+                                                + ÜRÜN EKLE
+                                            </button>
+                                        </div>
 
-                                    {/* Future expansion area placeholder - Open to dev */}
-                                    <div className="p-4 border border-dashed border-indigo-100 rounded-2xl opacity-40">
-                                        <p className="text-[8px] font-black text-indigo-400 text-center uppercase tracking-widest">Yeni Özellikler Buraya Eklenebilir (KDV, Maliyet, vb.)</p>
+                                        <div className="space-y-3">
+                                            {(form.consumables || []).map((recipe: any, idx: number) => (
+                                                <div key={idx} className="flex gap-2 items-center bg-white p-3 rounded-2xl border border-indigo-100 shadow-sm">
+                                                    <select 
+                                                        className="flex-1 bg-transparent border-none text-[10px] font-black text-gray-900 outline-none"
+                                                        value={recipe.productId}
+                                                        onChange={e => {
+                                                            const newRecipes = [...(form.consumables || [])];
+                                                            newRecipes[idx].productId = e.target.value;
+                                                            setForm({...form, consumables: newRecipes});
+                                                        }}
+                                                    >
+                                                        <option value="">Ürün Seçin...</option>
+                                                        {inventory.map(p => (
+                                                            <option key={p.id} value={p.id}>{p.name} (Stok: {p.stock})</option>
+                                                        ))}
+                                                    </select>
+                                                    <input 
+                                                        type="number"
+                                                        placeholder="Adet"
+                                                        className="w-16 bg-indigo-50 border-none rounded-xl px-2 py-1 text-[10px] font-black text-center outline-none"
+                                                        value={recipe.quantity}
+                                                        onChange={e => {
+                                                            const newRecipes = [...(form.consumables || [])];
+                                                            newRecipes[idx].quantity = Number(e.target.value);
+                                                            setForm({...form, consumables: newRecipes});
+                                                        }}
+                                                    />
+                                                    <button 
+                                                        onClick={() => {
+                                                            const newRecipes = (form.consumables || []).filter((_: any, i: number) => i !== idx);
+                                                            setForm({...form, consumables: newRecipes});
+                                                        }}
+                                                        className="p-2 text-gray-300 hover:text-red-500 transition-colors"
+                                                    >
+                                                        <Trash2 size={16} />
+                                                    </button>
+                                                </div>
+                                            ))}
+                                            {(form.consumables || []).length === 0 && (
+                                                <p className="text-[9px] font-bold text-indigo-400 text-center py-4 italic">Henüz bu hizmete sarf malzemesi atanmadı.</p>
+                                            )}
+                                        </div>
                                     </div>
                                 </div>
                             </div>
                             
-                            {/* Sticky Footer Area */}
-                            <div className="mt-auto px-10 py-8 bg-white border-t border-gray-50 flex flex-col gap-3 shrink-0">
-                                <button onClick={handleSave} className="w-full py-5 bg-indigo-600 text-white rounded-[1.5rem] font-black text-[11px] uppercase tracking-[0.2em] shadow-xl shadow-indigo-100 hover:bg-indigo-700 active:scale-[0.98] transition-all">
+                            {/* Sticky Footer Area - Always Visible */}
+                            <div className="mt-auto px-10 py-8 bg-white border-t border-gray-100 flex flex-col gap-3 shrink-0 shadow-[0_-10px_40px_-15px_rgba(0,0,0,0.05)]">
+                                <button 
+                                    onClick={handleSave} 
+                                    disabled={!form.name || (activeTab === 'hizmetler' && form.price <= 0)}
+                                    className="w-full py-6 bg-indigo-600 text-white rounded-[1.8rem] font-black text-[11px] uppercase tracking-[0.2em] shadow-xl shadow-indigo-200 hover:bg-indigo-700 active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed group flex items-center justify-center gap-3"
+                                >
                                     {editingItem ? 'DEĞİŞİKLİKLERİ KAYDET ✓' : 'KATALOGA EKLE ✓'}
                                 </button>
-                                <button onClick={() => setIsAdding(false)} className="w-full py-3 text-[10px] font-black text-gray-400 uppercase tracking-widest hover:text-gray-600 transition-colors">
-                                    İPTAL ET
+                                <button onClick={() => setIsAdding(false)} className="w-full py-3 text-[10px] font-black text-gray-400 uppercase tracking-widest hover:text-gray-900 transition-colors">
+                                    Vazgeç ve Kapat
                                 </button>
                             </div>
                         </motion.div>
