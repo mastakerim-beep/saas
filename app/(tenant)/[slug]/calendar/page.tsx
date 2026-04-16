@@ -119,6 +119,7 @@ function CalendarItem({ item, type, onCheckout, onAction, onResizeStart, onResiz
 
     const [localDuration, setLocalDuration] = useState(item.duration);
     const [isResizing, setIsResizing] = useState(false);
+    const [isRecentlyResized, setIsRecentlyResized] = useState(false); // Bug fix: click lockout
 
     useEffect(() => {
         if (!isResizing) {
@@ -184,6 +185,9 @@ function CalendarItem({ item, type, onCheckout, onAction, onResizeStart, onResiz
 
         const onMouseUp = async () => {
             setIsResizing(false);
+            setIsRecentlyResized(true); // Lock clicks temporarily
+            setTimeout(() => setIsRecentlyResized(false), 300);
+            
             onResizeEnd?.(); 
             window.removeEventListener('mousemove', onMouseMove);
             window.removeEventListener('mouseup', onMouseUp);
@@ -213,28 +217,34 @@ function CalendarItem({ item, type, onCheckout, onAction, onResizeStart, onResiz
 
     const getAppledTheme = (s: AppointmentStatus) => {
         switch(s) {
-            case 'completed': return { bg: 'bg-emerald-50', text: 'text-emerald-700', ring: 'ring-1 ring-emerald-200', icon: <ShieldCheck className="w-3.5 h-3.5 text-emerald-500" /> };
-            case 'arrived': return { bg: 'bg-indigo-50', text: 'text-indigo-700', ring: 'ring-1 ring-indigo-200', icon: <Activity className="w-3.5 h-3.5 text-indigo-500" /> };
-            case 'no-show': return { bg: 'bg-red-50', text: 'text-red-700', ring: 'ring-1 ring-red-200', icon: <Ban className="w-3.5 h-3.5 text-red-500" /> };
-            default: return { bg: 'bg-white', text: 'text-gray-900', ring: 'ring-1 ring-gray-100 shadow-sm', icon: null };
+            case 'completed': return { bg: 'bg-white', text: 'text-emerald-700', ring: 'ring-1 ring-emerald-100 shadow-sm', indicator: 'bg-emerald-500', icon: <ShieldCheck className="w-3.5 h-3.5 text-emerald-500" /> };
+            case 'arrived': return { bg: 'bg-white', text: 'text-indigo-700', ring: 'ring-1 ring-indigo-100 shadow-sm', indicator: 'bg-indigo-500', icon: <Activity className="w-3.5 h-3.5 text-indigo-500" /> };
+            case 'no-show': return { bg: 'bg-white', text: 'text-red-700', ring: 'ring-1 ring-red-100 shadow-sm', indicator: 'bg-red-500', icon: <Ban className="w-3.5 h-3.5 text-red-500" /> };
+            default: return { bg: 'bg-white', text: 'text-gray-900', ring: 'ring-1 ring-gray-200/50 shadow-sm', indicator: 'bg-gray-300', icon: null };
         }
     };
 
-    const info = isAppt ? getAppledTheme(appt.status as AppointmentStatus) : { bg: 'bg-gray-50', text: 'text-gray-500', ring: 'ring-1 ring-gray-100 border-dashed', icon: <Coffee className="w-3.5 h-3.5 opacity-40" /> };
+    const info = isAppt ? getAppledTheme(appt.status as AppointmentStatus) : { bg: 'bg-white', text: 'text-gray-500', ring: 'ring-1 ring-gray-200 border-dashed', indicator: 'bg-gray-200', icon: <Coffee className="w-3.5 h-3.5 opacity-40" /> };
 
     return (
         <>
         <div 
             ref={setNodeRefs} 
             style={style} 
-            onClick={(e) => { e.stopPropagation(); if (isAppt) onAction?.(appt); }}
+            onClick={(e) => { 
+                e.stopPropagation(); 
+                if (isRecentlyResized) return; // Prevent panel opening right after resize
+                if (isAppt) onAction?.(appt); 
+            }}
             className={`
-                relative mx-1 rounded-[1rem] p-2.5 shadow-sm transition-all select-none group/item
-                ${isDragging ? 'opacity-30 scale-95 shadow-xl ring-2 ring-indigo-500/50' : 'opacity-100 hover:scale-[1.01] hover:shadow-2xl hover:shadow-indigo-100'} 
+                relative mx-1 rounded-xl transition-all select-none group/item overflow-hidden
+                ${isDragging ? 'opacity-30 scale-95 shadow-xl ring-2 ring-indigo-500/50' : 'opacity-100 hover:scale-[1.01] hover:shadow-xl hover:shadow-indigo-100/40'} 
                 ${isOver ? 'ring-2 ring-indigo-400 bg-indigo-50/50 scale-[1.02]' : ''}
                 ${info.bg} ${info.ring} ${info.text} flex flex-col justify-between
             `}
         >
+            {/* Status Indicator Line */}
+            <div className={`absolute left-0 top-0 bottom-0 w-1 ${info.indicator}`} />
             {/* Drag Handle & Quick Actions */}
             {!isLocked && (
                 <div 
@@ -281,17 +291,23 @@ function CalendarItem({ item, type, onCheckout, onAction, onResizeStart, onResiz
                 </div>
             )}
 
-            <div className="flex flex-col gap-0.5 text-center h-full justify-center">
-                <p className="text-[10px] font-bold opacity-60 uppercase">{item.time} - {new Date(new Date(`2000-01-01T${item.time}`).getTime() + item.duration * 60000).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })}</p>
-                <p className="font-black text-[11px] leading-tight uppercase">{isAppt ? appt.customerName : 'Meşgul'}</p>
-                <p className="text-[9px] font-bold opacity-80">({isAppt ? appt.service : block.reason})</p>
-                {isAppt && <p className="text-[9px] font-bold opacity-80">{appt.staffName || '---'}</p>}
-                {room && <p className="text-[9px] font-bold opacity-80">{room.name}</p>}
-                <p className="text-[9px] font-bold opacity-80">{isAppt ? (appt.status === 'pending' ? 'Beklemede' : appt.status) : ''}</p>
+            <div className="flex flex-col gap-0.5 text-center h-full justify-center px-2 py-2">
+                <span className="text-[9px] font-black opacity-40 uppercase tracking-tighter tabular-nums">{item.time}</span>
+                <p className="font-extrabold text-[11px] leading-tight uppercase tracking-tight text-gray-900 drop-shadow-sm">{isAppt ? appt.customerName : 'MEŞGUL'}</p>
+                <p className="text-[9px] font-bold text-indigo-600/70 border-b border-indigo-100/50 inline-block mx-auto pb-0.5 leading-none">
+                    {isAppt ? appt.service : block.reason}
+                </p>
+                <div className="flex flex-col mt-1">
+                    {isAppt && <p className="text-[8px] font-black opacity-40">{appt.staffName || '---'}</p>}
+                    {room && <p className="text-[8px] font-bold opacity-30 italic">{room.name}</p>}
+                </div>
                 {isAppt && (
-                    <p className="text-[9px] font-black opacity-60 mt-1">
-                        ({customers.find(c => c.id === appt.customerId)?.referenceCode || (branchPrefix + '-' + appt.id.slice(-4).toUpperCase())})
-                    </p>
+                    <div className="mt-auto pt-1 flex items-center justify-center gap-1">
+                        <span className="px-1.5 py-0.5 bg-gray-100 rounded-md text-[7px] font-black text-gray-400">
+                             {customers.find(c => c.id === appt.customerId)?.referenceCode || (branchPrefix + '-' + appt.id.slice(-4).toUpperCase())}
+                        </span>
+                        {info.icon}
+                    </div>
                 )}
             </div>
 
@@ -953,7 +969,7 @@ export default function CalendarPage() {
                         </div>
 
                         {/* Grid */}
-                        <div className="flex-1 grid relative bg-[#FEF9E7]" style={{ gridTemplateColumns: `repeat(${columnsToDisplay.length || 1}, 1fr)`, gridTemplateRows: `repeat(${SLOTS.length}, 42px)` }}>
+                        <div className="flex-1 grid relative bg-slate-50/40 backdrop-blur-sm" style={{ gridTemplateColumns: `repeat(${columnsToDisplay.length || 1}, 1fr)`, gridTemplateRows: `repeat(${SLOTS.length}, 42px)` }}>
                             {columnsToDisplay.map((col, colIdx) => {
                                 const isOff = viewMode === 'staff' && (col as Staff).weeklyOffDay === dayOfWeek;
                                 return SLOTS.map((time, rowIdx) => (
