@@ -9,18 +9,21 @@ import { useStore, Customer } from '@/lib/store';
 import BodyMap from '../crm/BodyMap';
 
 interface BookingModalProps {
-    initialData: { staffId: string, roomId?: string, time: string, customerId?: string, duration?: number };
+    initialData: any;
     date: string;
     onClose: () => void;
+    mode?: 'add' | 'edit';
+    isOpen?: boolean;
 }
 
-export default function BookingModal({ initialData, onClose, date }: BookingModalProps) {
+export default function BookingModal({ initialData, onClose, date, mode: initialMode = 'add' }: BookingModalProps) {
     const { 
         customers, staffMembers, services, rooms, 
-        addAppointment, addBlock, packages, addBodyMap 
+        addAppointment, addBlock, packages, addBodyMap,
+        currentBusiness
     } = useStore();
     
-    const [mode, setMode] = useState<'appt' | 'block'>('appt');
+    const [mode, setMode] = useState<'appt' | 'block'>(initialData?.reason ? 'block' : 'appt');
     const [search, setSearch] = useState('');
     const [selectedCustId, setSelectedCustId] = useState(initialData.customerId || '');
     const [selectedStep, setSelectedStep] = useState<'customer' | 'details'>(initialData.customerId ? 'details' : 'customer');
@@ -105,6 +108,7 @@ export default function BookingModal({ initialData, onClose, date }: BookingModa
             for (const item of finalBasket) {
                 // 1. Add Appointment
                 const success = await addAppointment({
+                    businessId: currentBusiness?.id,
                     customerId: selectedCustId,
                     customerName: customer?.name || '',
                     service: item.service,
@@ -150,6 +154,7 @@ export default function BookingModal({ initialData, onClose, date }: BookingModa
             if (isSaving) return;
             setIsSaving(true);
             await addBlock({
+                businessId: currentBusiness?.id,
                 staffId: currentStaffId,
                 date,
                 time: initialData.time,

@@ -59,6 +59,7 @@ export default function ClientWrapper({ children }: { children: React.ReactNode 
         allBusinesses, 
         allNotifs,
         currentBusiness,
+        isInitialized,
         setImpersonatedBusinessId 
     } = useStore();
     
@@ -85,11 +86,13 @@ export default function ClientWrapper({ children }: { children: React.ReactNode 
         if (!isMounted) return;
 
         const timer = setTimeout(() => {
+            if (!isInitialized) return;
+
             if (!currentUser) {
-                setIsChecking(false);
                 if (!isLoginPath) {
                     router.push("/login");
                 }
+                setIsChecking(false);
                 return;
             }
 
@@ -100,35 +103,39 @@ export default function ClientWrapper({ children }: { children: React.ReactNode 
                     } else if (pathname === "/dashboard" || pathname === "/settings" || (isSuperAdminPath && pathname !== "/admin")) {
                         router.push("/admin");
                     }
+                    setIsChecking(false);
                 } else if (userBiz) {
                     const tenantPath = `/${userBiz.slug}`;
                     if (isRootPath || isLoginPath) {
                         router.push(`${tenantPath}/dashboard`);
                     } else if (isSuperAdminPath || (!pathname.startsWith(tenantPath) && !pathname.includes("/api/"))) {
-                        router.push(`${tenantPath}/dashboard`);
+                        // Intelligent subpath redirect (e.g. /calendar -> /slug/calendar)
+                        const subPath = pathname.replace(/^\//, '');
+                        const targetPath = subPath ? `${tenantPath}/${subPath}` : `${tenantPath}/dashboard`;
+                        router.push(targetPath);
                     }
+                    setIsChecking(false);
                 } else {
                     // Veri henüz yüklenmemişse veya businesses listesinde eşleşme bulunamadıysa (Loop Rescue)
                     console.log("Business data pending or mismatch, waiting...");
                 }
-                setIsChecking(false);
             }
         }, 100);
 
-        // EXTRA PROTECT: 3 Saniyelik 'Loop Rescue' Zamanlayıcısı
-        const rescueTimer = setTimeout(() => {
-            if (currentUser && !userBiz && !isSaaSOwner && !isChecking) {
-                console.warn("RESCUE: Data fetch taking too long, forcing internal initialization check.");
-                // Burada kullanıcıya bir 'Tekrar Dene' butonu da gösterebiliriz veya 
-                // işletme slug'ı biliniyorsa doğrudan oraya itebiliriz.
+        // EXTRA PROTECT: 5 Saniyelik 'Safety Timeout'
+        // Veriler veya doğrulamalar ne kadar gecikirse geciksin, 5 saniye sonra ekranı açar.
+        const safetyTimer = setTimeout(() => {
+            if (isChecking) {
+                console.warn("SAFETY TIMEOUT: Forced UI unlock after 5 seconds.");
+                setIsChecking(false);
             }
-        }, 3000);
+        }, 5000);
 
         return () => {
             clearTimeout(timer);
-            clearTimeout(rescueTimer);
+            clearTimeout(safetyTimer);
         };
-    }, [isMounted, currentUser, isLoginPath, isRootPath, isSuperAdminPath, isSaaSOwner, router, userBiz, pathname]);
+    }, [isMounted, currentUser, isLoginPath, isRootPath, isSuperAdminPath, isSaaSOwner, router, userBiz, pathname, isInitialized, isChecking]);
 
     // ---- RENDER BODY ----
     
@@ -167,7 +174,7 @@ export default function ClientWrapper({ children }: { children: React.ReactNode 
     // Default: Regular business user panel OR Impersonation View OR Super Admin View
     return (
         <LicenseGuard>
-            <div className={`${inter.className} bg-[#F5F5F7] text-gray-900 flex flex-col h-screen overflow-hidden`}>
+            <div className={`${inter.className} bg-[#F8F9FC] text-gray-900 flex flex-col h-screen overflow-hidden selection:bg-indigo-100 selection:text-indigo-900`}>
                 {isImpersonating && (
                     <ImpersonationBanner 
                         bizName={impersonatedBiz?.name} 
@@ -179,12 +186,15 @@ export default function ClientWrapper({ children }: { children: React.ReactNode 
                 {allNotifs?.filter((n: any) => n.isActive && (!n.businessId || n.businessId === currentBusiness?.id)).map((n: any, i: number) => (
                     <AnnouncementBanner key={i} announcement={n} />
                 ))}
-                <div className="flex flex-1 h-screen overflow-hidden">
+                
+                <div className="flex flex-1 overflow-hidden relative">
                     <Sidebar />
-                    <div className="flex-1 flex flex-col h-screen overflow-hidden min-w-0">
+                    <div className="flex-1 flex flex-col min-w-0 bg-white/50 backdrop-blur-sm relative">
                         <Header />
-                        <main className="flex-1 overflow-y-auto w-full relative">
-                            {children}
+                        <main className="flex-1 overflow-y-auto w-full relative custom-scrollbar">
+                            <div className="h-full w-full">
+                                {children}
+                            </div>
                         </main>
                     </div>
                 </div>

@@ -7,10 +7,10 @@ import {
     LayoutDashboard, Calendar, Users, Briefcase, 
     Receipt, Wallet, Package, Bot, UserCog, LucideIcon,
     Crown, Zap, Sparkles, TrendingUp, ShieldCheck, LayoutGrid,
-    Globe, Compass, CreditCard, FileText, ChevronRight, Info, Terminal, Settings as SettingsIcon
+    Globe, Compass, CreditCard, FileText, ChevronRight, Info, Terminal, Settings as SettingsIcon, LogOut
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useState, useEffect, memo } from 'react';
+import { useState, useEffect, memo, useMemo } from 'react';
 
 interface SidebarItemProps {
     href: string;
@@ -81,7 +81,7 @@ SidebarItem.displayName = 'SidebarItem';
 
 export default function Sidebar() {
     const pathname = usePathname();
-    const { can, currentUser, currentBusiness, tenantModules } = useStore();
+    const { can, currentUser, currentBusiness, tenantModules, allBusinesses, logout } = useStore();
     const [isHovered, setIsHovered] = useState(false);
     const [isMounted, setIsMounted] = useState(false);
 
@@ -90,8 +90,32 @@ export default function Sidebar() {
         setIsMounted(true);
     }, []);
 
-    // Current view mode based on path
     const isAdminView = pathname.startsWith('/admin');
+
+    // URL'den slug ayıklama (fallback için)
+    const urlSlug = pathname.split('/')[1];
+
+    // Daha güvenilir slug bulma (currentBusiness veya allBusinesses üzerinden)
+    const resolvedSlug = useMemo(() => {
+        if (currentBusiness?.slug) return currentBusiness.slug;
+        if (currentUser?.businessId) {
+            const biz = allBusinesses.find(b => b.id === currentUser.businessId);
+            if (biz?.slug) return biz.slug;
+        }
+        
+        // Root path list to exclude from being treated as slugs
+        const rootPaths = ['login', 'admin', 'dashboard', 'calendar', 'customers', 'staff', 'billing', 'system', 'inventory', 'memberships', 'marketing', 'quotes', 'finances', 'expenses', 'balances', 'executive', 'logs', 'users', 'booking-settings'];
+        
+        // Fallback to URL if we are in a tenant path
+        if (urlSlug && !rootPaths.includes(urlSlug)) return urlSlug;
+        return null;
+    }, [currentBusiness, currentUser, allBusinesses, urlSlug]);
+    
+    // Doğru rotayı hesapla
+    const getTenantLink = (target: string) => {
+        if (isAdminView || !resolvedSlug) return `/${target}`;
+        return `/${resolvedSlug}/${target}`;
+    };
 
     const isModuleEnabled = (name: string) => {
         // SaaS_Owner sees everything
@@ -138,11 +162,11 @@ export default function Sidebar() {
                     <div>
                         {isHovered && <p className="px-4 text-[10px] font-black text-indigo-400 uppercase tracking-widest mb-4 opacity-50 overflow-hidden whitespace-nowrap">Ana Operasyon</p>}
                         <div className="space-y-1">
-                            <SidebarItem isHovered={isHovered} pathname={pathname} href={currentBusiness?.slug ? `/${currentBusiness.slug}/dashboard` : '/dashboard'} icon={LayoutDashboard} label="Genel Bakış" />
-                            {can('manage_appointments') && <SidebarItem isHovered={isHovered} pathname={pathname} href={currentBusiness?.slug ? `/${currentBusiness.slug}/calendar` : '/calendar'} icon={Calendar} label="Takvim" />}
-                            {can('manage_customers') && <SidebarItem isHovered={isHovered} pathname={pathname} href={currentBusiness?.slug ? `/${currentBusiness.slug}/customers` : '/customers'} icon={Users} label="Müşteriler" />}
-                            {can('manage_staff') && <SidebarItem isHovered={isHovered} pathname={pathname} href={currentBusiness?.slug ? `/${currentBusiness.slug}/booking-settings` : '/booking-settings'} icon={Globe} label="Randevu Portalı" colorClass="text-indigo-500" />}
-                            {can('manage_staff') && <SidebarItem isHovered={isHovered} pathname={pathname} href={currentBusiness?.slug ? `/${currentBusiness.slug}/staff` : '/staff'} icon={Briefcase} label="Ekip" />}
+                            <SidebarItem isHovered={isHovered} pathname={pathname} href={getTenantLink('dashboard')} icon={LayoutDashboard} label="Genel Bakış" />
+                            {can('manage_appointments') && <SidebarItem isHovered={isHovered} pathname={pathname} href={getTenantLink('calendar')} icon={Calendar} label="Takvim" />}
+                            {can('manage_customers') && <SidebarItem isHovered={isHovered} pathname={pathname} href={getTenantLink('customers')} icon={Users} label="Müşteriler" />}
+                            {can('manage_staff') && <SidebarItem isHovered={isHovered} pathname={pathname} href={getTenantLink('booking-settings')} icon={Globe} label="Randevu Portalı" colorClass="text-indigo-500" />}
+                            {can('manage_staff') && <SidebarItem isHovered={isHovered} pathname={pathname} href={getTenantLink('staff')} icon={Briefcase} label="Ekip" />}
                         </div>
                     </div>
                 )}
@@ -156,10 +180,10 @@ export default function Sidebar() {
                             </p>
                         )}
                         <div className="space-y-1">
-                            <SidebarItem isHovered={isHovered} pathname={pathname} href={currentBusiness?.slug ? `/${currentBusiness.slug}/memberships` : '/memberships'} icon={Crown} label="Abonelikler" badge="V2" colorClass="text-indigo-400" />
-                            {isModuleEnabled('quotes') && <SidebarItem isHovered={isHovered} pathname={pathname} href={currentBusiness?.slug ? `/${currentBusiness.slug}/quotes` : '/quotes'} icon={FileText} label="Teklifler" colorClass="text-indigo-400" />}
-                            {isModuleEnabled('marketing') && <SidebarItem isHovered={isHovered} pathname={pathname} href={currentBusiness?.slug ? `/${currentBusiness.slug}/marketing` : '/marketing'} icon={Compass} label="AI Pazarlama" badge="AI" colorClass="text-indigo-400" />}
-                            {isModuleEnabled('inventory') && <SidebarItem isHovered={isHovered} pathname={pathname} href={currentBusiness?.slug ? `/${currentBusiness.slug}/inventory` : '/inventory'} icon={Package} label="Envanter" />}
+                            <SidebarItem isHovered={isHovered} pathname={pathname} href={getTenantLink('memberships')} icon={Crown} label="Abonelikler" badge="V2" colorClass="text-indigo-400" />
+                            {isModuleEnabled('quotes') && <SidebarItem isHovered={isHovered} pathname={pathname} href={getTenantLink('quotes')} icon={FileText} label="Teklifler" colorClass="text-indigo-400" />}
+                            {isModuleEnabled('marketing') && <SidebarItem isHovered={isHovered} pathname={pathname} href={getTenantLink('marketing')} icon={Compass} label="AI Pazarlama" badge="AI" colorClass="text-indigo-400" />}
+                            {isModuleEnabled('inventory') && <SidebarItem isHovered={isHovered} pathname={pathname} href={getTenantLink('inventory')} icon={Package} label="Envanter" />}
                         </div>
                     </div>
                 )}
@@ -169,11 +193,11 @@ export default function Sidebar() {
                     <div>
                         {isHovered && <p className="px-4 text-[10px] font-black text-indigo-400 uppercase tracking-widest mb-4 opacity-50 overflow-hidden whitespace-nowrap">Finans</p>}
                         <div className="space-y-1">
-                            {can('view_executive_summary') && <SidebarItem isHovered={isHovered} pathname={pathname} href={currentBusiness?.slug ? `/${currentBusiness.slug}/executive` : '/executive'} icon={Globe} label="Executive" badge="VIP" colorClass="text-primary" />}
-                            {can('view_executive_summary') && <SidebarItem isHovered={isHovered} pathname={pathname} href={currentBusiness?.slug ? `/${currentBusiness.slug}/finances/cash` : '/finances/cash'} icon={Wallet} label="Günün Kasası" colorClass="text-indigo-500" />}
-                            {can('view_executive_summary') && <SidebarItem isHovered={isHovered} pathname={pathname} href={currentBusiness?.slug ? `/${currentBusiness.slug}/finances` : '/finances'} icon={TrendingUp} label="Ciro Analizi" colorClass="text-indigo-500" />}
-                            {can('view_executive_summary') && <SidebarItem isHovered={isHovered} pathname={pathname} href={currentBusiness?.slug ? `/${currentBusiness.slug}/expenses` : '/expenses'} icon={Receipt} label="Giderler" colorClass="text-indigo-500" />}
-                            {can('view_executive_summary') && <SidebarItem isHovered={isHovered} pathname={pathname} href={currentBusiness?.slug ? `/${currentBusiness.slug}/balances` : '/balances'} icon={Wallet} label="Açık Hesap" colorClass="text-indigo-500" />}
+                            {can('view_executive_summary') && <SidebarItem isHovered={isHovered} pathname={pathname} href={getTenantLink('executive')} icon={Globe} label="Executive" badge="VIP" colorClass="text-primary" />}
+                            {can('view_executive_summary') && <SidebarItem isHovered={isHovered} pathname={pathname} href={getTenantLink('finances/cash')} icon={Wallet} label="Günün Kasası" colorClass="text-indigo-500" />}
+                            {can('view_executive_summary') && <SidebarItem isHovered={isHovered} pathname={pathname} href={getTenantLink('finances')} icon={TrendingUp} label="Ciro Analizi" colorClass="text-indigo-500" />}
+                            {can('view_executive_summary') && <SidebarItem isHovered={isHovered} pathname={pathname} href={getTenantLink('expenses')} icon={Receipt} label="Giderler" colorClass="text-indigo-500" />}
+                            {can('view_executive_summary') && <SidebarItem isHovered={isHovered} pathname={pathname} href={getTenantLink('balances')} icon={Wallet} label="Açık Hesap" colorClass="text-indigo-500" />}
                         </div>
                     </div>
                 )}
@@ -183,10 +207,10 @@ export default function Sidebar() {
                     <div>
                         {isHovered && <p className="px-4 text-[10px] font-black text-indigo-400 uppercase tracking-widest mb-4 opacity-50 overflow-hidden whitespace-nowrap">Sistem & Paket</p>}
                         <div className="space-y-1">
-                            <SidebarItem isHovered={isHovered} pathname={pathname} href={currentBusiness?.slug ? `/${currentBusiness.slug}/billing` : '/billing'} icon={CreditCard} label="Platform Üyelik" colorClass="text-emerald-500" />
-                            <SidebarItem isHovered={isHovered} pathname={pathname} href={currentBusiness?.slug ? `/${currentBusiness.slug}/system` : '/system'} icon={SettingsIcon} label="Sistem Tanımlamaları" colorClass="text-indigo-600" />
-                            <SidebarItem isHovered={isHovered} pathname={pathname} href={currentBusiness?.slug ? `/${currentBusiness.slug}/logs` : '/logs'} icon={Terminal} label="Kernel Log" colorClass="text-gray-900" />
-                            <SidebarItem isHovered={isHovered} pathname={pathname} href={currentBusiness?.slug ? `/${currentBusiness.slug}/users` : '/users'} icon={UserCog} label="Kullanıcı Yetkileri" />
+                            <SidebarItem isHovered={isHovered} pathname={pathname} href={getTenantLink('billing')} icon={CreditCard} label="Platform Üyelik" colorClass="text-emerald-500" />
+                            <SidebarItem isHovered={isHovered} pathname={pathname} href={getTenantLink('system')} icon={SettingsIcon} label="Sistem Tanımlamaları" colorClass="text-indigo-600" />
+                            <SidebarItem isHovered={isHovered} pathname={pathname} href={getTenantLink('logs')} icon={Terminal} label="Kernel Log" colorClass="text-gray-900" />
+                            <SidebarItem isHovered={isHovered} pathname={pathname} href={getTenantLink('users')} icon={UserCog} label="Kullanıcı Yetkileri" />
                         </div>
                     </div>
                 )}
@@ -215,14 +239,39 @@ export default function Sidebar() {
                         {currentUser?.name.charAt(0)}
                     </div>
                     {isHovered && (
-                        <motion.div 
-                            initial={{ opacity: 0 }}
-                            animate={{ opacity: 1 }}
-                            className="min-w-0 flex-1 overflow-hidden"
-                        >
-                            <p className="text-[11px] font-black text-gray-900 truncate tracking-tight mb-0.5">{currentUser?.name}</p>
-                            <p className="text-[9px] text-indigo-400/80 font-black uppercase tracking-widest">{currentUser?.role.replace('_', ' ')}</p>
-                        </motion.div>
+                        <div className="flex items-center gap-2">
+                            <motion.div 
+                                initial={{ opacity: 0 }}
+                                animate={{ opacity: 1 }}
+                                className="min-w-0 flex-1 overflow-hidden"
+                            >
+                                <p className="text-[11px] font-black text-gray-900 truncate tracking-tight mb-0.5">{currentUser?.name}</p>
+                                <p className="text-[9px] text-indigo-400/80 font-black uppercase tracking-widest">{currentUser?.role.replace('_', ' ')}</p>
+                            </motion.div>
+                            <button 
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    if(confirm('Oturumu kapatmak istediğinize emin misiniz?')) logout();
+                                }}
+                                className="p-2 hover:bg-red-50 text-gray-400 hover:text-red-500 rounded-xl transition-all"
+                                title="Çıkış Yap"
+                            >
+                                <LogOut size={16} />
+                            </button>
+                        </div>
+                    )}
+                    {!isHovered && (
+                        <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center bg-white/90 rounded-2xl z-20">
+                             <button 
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    if(confirm('Oturumu kapatmak istediğinize emin misiniz?')) logout();
+                                }}
+                                className="p-2 text-red-500 rounded-xl transition-all"
+                            >
+                                <LogOut size={18} />
+                            </button>
+                        </div>
                     )}
                 </div>
             </div>

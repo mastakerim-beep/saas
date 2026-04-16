@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useStore } from '@/lib/store';
+import { supabase } from '@/lib/supabase';
 import { useRouter } from 'next/navigation';
 import { 
     ShieldCheck, Lock, Mail, 
@@ -23,11 +24,37 @@ export default function LoginPage() {
         setIsLoading(true);
         setError(null);
 
-        const success = await login(email, password);
-        if (success) {
-            router.push('/');
-        } else {
-            setError('Geçersiz e-posta veya şifre. Lütfen tekrar deneyin.');
+        try {
+            const user = await login(email, password);
+            if (user) {
+                if (user.role === 'SaaS_Owner') {
+                    router.push('/admin');
+                    return;
+                }
+
+                if (user.businessId) {
+                    // Fetch slug directly for immediate redirect
+                    const { data: business } = await supabase
+                        .from('businesses')
+                        .select('slug')
+                        .eq('id', user.businessId)
+                        .single();
+
+                    if (business?.slug) {
+                        router.push(`/${business.slug}/dashboard`);
+                        return;
+                    }
+                }
+                
+                // Fallback
+                router.push('/');
+            } else {
+                setError('Geçersiz e-posta veya şifre. Lütfen tekrar deneyin.');
+                setIsLoading(false);
+            }
+        } catch (err) {
+            console.error('Login error:', err);
+            setError('Bir hata oluştu. Lütfen tekrar deneyin.');
             setIsLoading(false);
         }
     };

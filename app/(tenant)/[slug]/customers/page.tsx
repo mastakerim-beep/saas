@@ -127,7 +127,10 @@ function AddCustomerModal({ onClose, onSave }: { onClose: () => void; onSave: (c
                     <button onClick={onClose} className="flex-1 py-4 bg-gray-50 text-gray-500 font-black uppercase tracking-widest rounded-2xl hover:bg-gray-100 transition-all">İptal</button>
                     <button
                         disabled={!form.name || !form.phone}
-                        onClick={() => { const c = addCustomer(form); onSave(c); }}
+                        onClick={async () => { 
+                            const c = await addCustomer(form); 
+                            onSave(c); 
+                        }}
                         className="flex-[2] py-4 bg-indigo-600 text-white font-black uppercase tracking-widest rounded-2xl hover:bg-indigo-700 shadow-xl shadow-indigo-600/20 transition-all disabled:opacity-40">
                         Kaydı Tamamla ✓
                     </button>
