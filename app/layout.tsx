@@ -4,8 +4,8 @@ import { StoreProvider } from "@/lib/store";
 import ClientWrapper from "./ClientWrapper";
 
 export const metadata: Metadata = {
-  title: "Aura SaaS - Klinik ERP",
-  description: "Gelişmiş Spa ve Klinik Yönetim Sistemi",
+  title: "Aura Spa ERP - Premium Klinik Yönetimi",
+  description: "Gelişmiş Spa, Klinik ve Salon Yönetim Sistemi",
 };
 
 export default function RootLayout({

@@ -149,7 +149,7 @@ export default function Sidebar() {
                             animate={{ opacity: 1 }}
                             className="overflow-hidden whitespace-nowrap"
                         >
-                            <h1 className="font-black text-xl leading-none text-gray-900 dark:text-white tracking-tighter antialiased">Aura Pro</h1>
+                            <h1 className="font-black text-xl leading-none text-gray-900 dark:text-white tracking-tighter antialiased">Aura Spa</h1>
                             <p className="text-[10px] text-primary font-black tracking-[0.2em] uppercase mt-1.5 opacity-80">Enterprise</p>
                         </motion.div>
                     )}
