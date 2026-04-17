@@ -43,11 +43,11 @@ const StoreOrchestrator = ({ children }: { children: ReactNode }) => {
         else if (slug) {
             const bizFromSlug = biz.allBusinesses.find(b => b.slug === slug);
             if (bizFromSlug) id = bizFromSlug.id;
+            else id = auth.currentUser?.businessId || undefined;
         } else {
             id = auth.currentUser?.businessId || undefined;
         }
         activeBizIdRef.current = id;
-        console.log("💎 activeBizId Resolved:", { id, fromSlug: !!(slug && biz.allBusinesses.find(b => b.slug === slug)), currentUserBizId: auth.currentUser?.businessId });
         return id;
     }, [auth.impersonatedBusinessId, auth.currentUser?.businessId, slug, biz.allBusinesses]);
 
@@ -61,11 +61,9 @@ const StoreOrchestrator = ({ children }: { children: ReactNode }) => {
         const targetBizId = bizId || activeBizIdRef.current;
         const targetUser = user || userRef.current;
         
-        // Eğer İşletme ID'si değişmişse throttle'ı baypas et (Sayfa yenileme/Initialization için kritik)
         const isIdChanged = targetBizId !== lastBizIdRef.current;
 
         if (!force && !isIdChanged && now - lastFetchTimeRef.current < 2000) {
-            console.log("🚫 Fetch throttled (Same ID):", { targetBizId, elapsed: now - lastFetchTimeRef.current });
             return;
         }
 
@@ -161,7 +159,8 @@ const StoreOrchestrator = ({ children }: { children: ReactNode }) => {
         window.addEventListener('offline', handleOffline);
 
         // Otomatik veri çekme başlatıcı
-        if (auth.currentUser || slug) {
+        // Sadece auth süreci tamamlandığında ve ortam (slug/kullanıcı) hazır olduğunda çek
+        if (auth.isInitialized && (auth.currentUser || slug)) {
             fetchData();
         }
 
@@ -189,7 +188,7 @@ const StoreOrchestrator = ({ children }: { children: ReactNode }) => {
             if (channel) supabase.removeChannel(channel);
             if (realtimeTimeoutRef.current) clearTimeout(realtimeTimeoutRef.current);
         };
-    }, [activeBizId, slug]); // fetchData bağımlılığı kaldırıldı, sadece ID/slug değişiminde tetiklenir.
+    }, [auth.isInitialized, activeBizId, slug]); // Sadece ID/slug değişiminde veya auth yüklendiğinde tetiklenir.
 
 
     const runSync = async (table: string, action: 'insert' | 'update' | 'delete', payload: any, id?: string) => {
