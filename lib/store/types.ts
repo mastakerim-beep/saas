@@ -104,7 +104,7 @@ export interface StoreState {
     
     updateBusinessStatus: (id: string, status: Business['status']) => void;
     deleteBusiness: (id: string) => void;
-    addBusiness: (b: Omit<Business, 'id' | 'status' | 'maxBranches'>) => Promise<Business | null>;
+    addBusiness: (b: Partial<Business> & { name: string; slug: string }) => Promise<Business | null>;
     provisionBusinessUser: (data: { email: string; password: string; name: string; businessId: string }) => Promise<{ success: boolean; error?: string }>;
     setCurrentBranch: (branch: Branch | null) => void;
     
