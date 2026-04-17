@@ -10,8 +10,12 @@ export const syncDb = async (
     setSyncStatus?: (status: 'idle' | 'syncing' | 'error') => void,
     updateLocalStatus?: (table: string, id: string, status: 'syncing' | 'synced' | 'error') => void
 ) => {
-    if (!activeId && table !== 'businesses' && table !== 'app_users' && table !== 'branches') {
-        console.error(`❌ CRITICAL: Attempted to sync table [${table}] without activeId (business_id). This operation will fail or orphan data.`);
+    // 1. IDENTITY LOCK: Check if we have a business context
+    const isSpecialTable = table === 'businesses' || table === 'app_users' || table === 'branches';
+    const effectiveBizId = activeId || data?.businessId || data?.business_id;
+
+    if (!effectiveBizId && !isSpecialTable) {
+        console.error(`🛡️ [Aura Sync] Identity Block aborted sync for [${table}]. Missing business_id.`);
         return false;
     }
     
@@ -31,7 +35,7 @@ export const syncDb = async (
             return acc;
         }, {});
 
-        // Auto-inject business_id if missing
+        // 2. ENFORCE REFERENCE: Ensure tenant tables always have business_id
         const tenantTables = [
             'branches', 'appointments', 'customers', 'membership_plans', 'customer_memberships', 
             'payments', 'debts', 'staff', 'inventory', 'rooms', 'expenses', 'services', 
@@ -41,23 +45,28 @@ export const syncDb = async (
             'consultation_body_maps', 'inventory_usage_norms', 'quotes', 'expense_categories', 
             'referral_sources', 'consent_form_templates', 'tenant_modules'
         ];
-        if (op === 'insert' && tenantTables.includes(table) && !finalizedPayload.business_id) {
-            finalizedPayload.business_id = activeId;
+
+        if (op === 'insert' && tenantTables.includes(table)) {
+            finalizedPayload.business_id = finalizedPayload.business_id || effectiveBizId;
         }
 
         const result = await retryRequest(async () => {
             let res;
             if (op === 'insert') res = await supabase.from(table).insert([finalizedPayload]);
-            if (op === 'update') res = await supabase.from(table).update(finalizedPayload).eq('id', id);
-            if (op === 'delete') res = await supabase.from(table).delete().eq('id', id);
+            if (op === 'update') {
+                let q = supabase.from(table).update(finalizedPayload).eq('id', id);
+                if (effectiveBizId && !isSpecialTable) q = q.eq('business_id', effectiveBizId);
+                res = await q;
+            }
+            if (op === 'delete') {
+                // For safety, force the business_id check on delete if available
+                let q = supabase.from(table).delete().eq('id', id);
+                if (effectiveBizId && !isSpecialTable) q = q.eq('business_id', effectiveBizId);
+                res = await q;
+            }
             
             if (res?.error) {
-                console.error(`🔴 DB Sync Error [Table: ${table}, Op: ${op}]:`, {
-                    message: res.error.message,
-                    details: res.error.details,
-                    hint: res.error.hint,
-                    payload: finalizedPayload
-                });
+                console.error(`🔴 DB Sync Error [Table: ${table}, Op: ${op}]:`, res.error);
                 throw res.error;
             }
             return res;
@@ -66,7 +75,7 @@ export const syncDb = async (
         onStatusUpdate('synced');
         return true;
     } catch (error: any) {
-        console.error(`❌ Sync failed after retries [${table} ${op}]:`, error.message || error);
+        console.error(`❌ Sync failed [${table} ${op}]:`, error.message || error);
         onStatusUpdate('error');
         return false;
     }

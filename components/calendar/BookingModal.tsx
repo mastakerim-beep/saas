@@ -33,11 +33,11 @@ export default function BookingModal({ initialData, onClose, date, mode: initial
     const [basket, setBasket] = useState<any[]>([]);
     
     // Current entry state
-    const [currentService, setCurrentService] = useState(services[0]?.name || '');
+    const [currentService, setCurrentService] = useState(services.length > 0 ? (initialData.service || services[0]?.name) : '');
     const [currentStaffId, setCurrentStaffId] = useState(initialData.staffId || staffMembers[0]?.id || '');
-    const [currentRoomId, setCurrentRoomId] = useState<string | null>(initialData.roomId || rooms[0]?.id || null);
+    const [currentRoomId, setCurrentRoomId] = useState<string | null>(initialData.roomId || (rooms.length > 0 ? rooms[0]?.id : null));
     const [currentPackageId, setCurrentPackageId] = useState<string | null>(null);
-    const [price, setPrice] = useState(services[0]?.price || 0);
+    const [price, setPrice] = useState(services.find(s => s.name === (initialData.service || services[0]?.name))?.price || 0);
     const [isSaving, setIsSaving] = useState(false);
     const [blockReason, setBlockReason] = useState('Toplantı');
     const [note, setNote] = useState('');
@@ -73,6 +73,7 @@ export default function BookingModal({ initialData, onClose, date, mode: initial
             service: currentService,
             staffId: currentStaffId,
             staffName: staff.name,
+            payments: [],
             roomId: currentRoomId,
             packageId: currentPackageId,
             price: currentPackageId ? 0 : price,
@@ -211,8 +212,8 @@ export default function BookingModal({ initialData, onClose, date, mode: initial
                                                     {c.name.charAt(0)}
                                                 </div>
                                                 <div className="flex-1">
-                                                    <p className="font-black text-base text-gray-900 leading-none mb-1.5">{c.name}</p>
-                                                    <p className="text-[10px] text-gray-400 font-black uppercase tracking-widest">{c.phone}</p>
+                                                    <p className="font-black text-base text-gray-900 leading-none mb-1.5">{c.name?.toUpperCase() || 'İSİMSİZ MÜŞTERİ'}</p>
+                                                    <p className="text-[10px] text-gray-400 font-black uppercase tracking-widest">{c.phone || 'Telefon Yok'}</p>
                                                 </div>
                                                 <ChevronRight className="w-5 h-5 text-gray-300 group-hover:text-primary group-hover:translate-x-1 transition-all" />
                                             </div>

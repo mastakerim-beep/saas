@@ -308,14 +308,14 @@ const StoreOrchestrator = ({ children }: { children: ReactNode }) => {
         provisionBusinessUser: auth.provisionBusinessUser,
         setCurrentBranch: biz.setCurrentBranch,
 
-        currentStaff: data.staffMembers.find(s => s.id === auth.currentUser?.staffId || s.name === auth.currentUser?.name),
+        currentStaff: auth.currentUser ? data.staffMembers.find(s => s.id === auth.currentUser?.staffId || s.name === auth.currentUser?.name) : undefined,
         customers: data.customers,
         packages: data.packages,
         membershipPlans: data.membershipPlans,
         customerMemberships: data.customerMemberships,
         appointments: data.appointments,
         blocks: data.blocks,
-        payments: [], 
+        payments: data.payments || [], 
         staffMembers: data.staffMembers,
         debts: data.debts,
         branches: biz.branches,
@@ -376,10 +376,12 @@ const StoreOrchestrator = ({ children }: { children: ReactNode }) => {
         },
         addAppointment: async (a: any) => {
             const id = crypto.randomUUID();
-            const appt = { ...a, id };
+            const targetBizId = activeBizId || a.businessId || auth.currentUser?.businessId;
+            const appt = { ...a, id, businessId: targetBizId };
+            
             data.setAllAppointments((prev: any) => [appt, ...prev]);
 
-            const ok = await syncDb('appointments', 'insert', appt, id, activeBizId);
+            const ok = await syncDb('appointments', 'insert', appt, id, targetBizId);
             
             if (!ok) {
                 console.warn("Failed to sync appointment, rolling back local state.");
@@ -782,13 +784,19 @@ const StoreOrchestrator = ({ children }: { children: ReactNode }) => {
         removeService: async (id: string) => {
             const service = data.services.find(s => s.id === id);
             if (!service) return;
-            data.removeService(id);
-            const ok = await syncDb('services', 'delete', {}, id, activeBizId);
-            if (!ok) {
-                data.setAllServices((prev: any) => [service, ...prev]);
-                return;
+            
+            try {
+                data.removeService(id);
+                const ok = await syncDb('services', 'delete', {}, id, activeBizId || service.businessId);
+                if (!ok) {
+                    data.setAllServices((prev: any) => [...prev, service]);
+                    return;
+                }
+                await store.addLog('Hizmet Silindi', service.name, 'Yönetici Onaylı');
+            } catch (err) {
+                console.error("Failed to remove service:", err);
+                data.setAllServices((prev: any) => [...prev, service]);
             }
-            await store.addLog('Hizmet Silindi', service.name, 'Yönetici Onaylı');
         },
         addPackageDefinition: async (p: any) => {
             const id = crypto.randomUUID();
