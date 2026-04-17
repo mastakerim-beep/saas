@@ -62,11 +62,20 @@ export const fetchData = async (
                     return data;
                 });
                 dataMap[table] = toCamel(result || []);
-            } catch (e) {
+            } catch (e: any) {
+                if (e.name === 'AbortError' || e.message === 'Aborted') {
+                    // Do not log or clear data if aborted
+                    return;
+                }
                 console.error(`❌ Table Fetch Error: ${table}`, e);
                 dataMap[table] = []; 
             }
         }));
+        
+        if (signal?.aborted) {
+            console.log("🛑 Global Fetch Aborted - Shielding State (Preventing UI flicker)");
+            return;
+        }
 
         // Batch updates with reference stability checks
         const businesses = dataMap.businesses || [];
