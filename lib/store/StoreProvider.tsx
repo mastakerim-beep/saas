@@ -1255,7 +1255,8 @@ const StoreOrchestrator = ({ children }: { children: ReactNode }) => {
         },
         addBranch: async () => {},
         updateBranch: () => {},
-        deleteBranch: () => {}
+        deleteBranch: () => {},
+        clearCatalog: biz.clearCatalog
     };
 
     return (

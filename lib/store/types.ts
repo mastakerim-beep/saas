@@ -286,4 +286,5 @@ export interface StoreState {
     downloadZReportPDF: (report: any) => void;
     broadcastAnnouncement: (title: string, content: string, type: 'info' | 'warning' | 'success' | 'danger') => Promise<void>;
     runImperialAudit: () => { type: 'critical' | 'warning' | 'info'; title: string; desc: string; targetId?: string; table?: string }[];
+    clearCatalog: () => void;
 }

@@ -29,6 +29,7 @@ interface BusinessContextType {
     setExpenseCategories: React.Dispatch<React.SetStateAction<ExpenseCategory[]>>;
     setReferralSources: React.Dispatch<React.SetStateAction<ReferralSource[]>>;
     setConsentFormTemplates: React.Dispatch<React.SetStateAction<ConsentFormTemplate[]>>;
+    clearCatalog: () => void;
 }
 
 const BusinessContext = createContext<BusinessContextType | undefined>(undefined);
@@ -86,16 +87,23 @@ export const BusinessProvider = ({ children }: { children: ReactNode }) => {
         } else {
             setSettingsState(prev => ({ ...prev, ...s }));
         }
+    }, [setSettingsState]);
+
+    const clearCatalog = React.useCallback(() => {
+        localStorage.removeItem('aura_business_catalog');
+        setAllBusinesses([]);
     }, []);
 
     const contextValue = useMemo(() => ({
         allBusinesses, currentTenant, currentBranch, branches, settings, bookingSettings, allRates,
         paymentDefinitions, bankAccounts, expenseCategories, referralSources, consentFormTemplates,
         setAllBusinesses, setCurrentTenant, setCurrentBranch, setBranches, setSettings, setBookingSettings,
-        setAllRates, setPaymentDefinitions, setBankAccounts, setExpenseCategories, setReferralSources, setConsentFormTemplates
+        setAllRates, setPaymentDefinitions, setBankAccounts, setExpenseCategories, setReferralSources, setConsentFormTemplates,
+        clearCatalog
     }), [
         allBusinesses, currentTenant, currentBranch, branches, settings, bookingSettings, allRates,
-        paymentDefinitions, bankAccounts, expenseCategories, referralSources, consentFormTemplates
+        paymentDefinitions, bankAccounts, expenseCategories, referralSources, consentFormTemplates,
+        setSettings, clearCatalog
     ]);
 
     return (
