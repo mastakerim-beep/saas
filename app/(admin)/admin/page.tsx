@@ -56,7 +56,9 @@ export default function SuperAdminPage() {
             // types.ts: addBusiness: (b: Omit<Business, 'id' | 'status' | 'maxBranches'>)
             const biz = await addBusiness({
                 name: newBiz.name,
-                slug: newBiz.slug.toLowerCase()
+                slug: newBiz.slug.toLowerCase(),
+                maxUsers: newBiz.seatCount,
+                ownerName: "Betül" // Örnek olarak bırakıldı veya formdan alınabilir
             });
 
             if (biz) {

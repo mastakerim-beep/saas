@@ -118,15 +118,38 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         if (error) console.error('Error deleting business:', error);
     };
 
-    const addBusiness = async (b: any) => {
-        const { data, error } = await supabase.from('businesses').insert(b).select().single();
-        if (error) return null;
-        return data as Business;
+    const addBusiness = async (b: Partial<Business> & { name: string; slug: string }) => {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) return null;
+
+        const response = await fetch('/api/admin/create-business', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${session.access_token}`
+            },
+            body: JSON.stringify(b)
+        });
+
+        const result = await response.json();
+        if (result.error) throw new Error(result.error);
+        return result.business as Business;
     };
 
     const provisionBusinessUser = async (data: { email: string; password: string; name: string; businessId: string }) => {
-        // This is complex - usually a server action/edge function
-        return { success: true };
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) return { success: false, error: 'Oturum bulunamadı.' };
+
+        const response = await fetch('/api/admin/provision-user', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${session.access_token}`
+            },
+            body: JSON.stringify(data)
+        });
+
+        return await response.json();
     };
 
     const contextValue = useMemo(() => ({ 
