@@ -58,8 +58,8 @@ const StoreOrchestrator = ({ children }: { children: ReactNode }) => {
                     return undefined; 
                 }
                 
-                if (isSaaS && biz.allBusinesses.length === 0) {
-                    return undefined; // Wait for businesses to load
+                if (isSaaS) {
+                    return undefined; // Wait for the specific business to be resolved from slug
                 }
 
                 id = auth.currentUser?.businessId || undefined;
@@ -161,7 +161,8 @@ const StoreOrchestrator = ({ children }: { children: ReactNode }) => {
                 force,
                 startDate,
                 endDate,
-                controller.signal
+                controller.signal,
+                slug // Targeted resolution
             );
         } catch (err: any) {
             if (err.name === 'AbortError' || err.message === 'Aborted') {
@@ -190,29 +191,35 @@ const StoreOrchestrator = ({ children }: { children: ReactNode }) => {
             const isSaaS = auth.currentUser?.role === 'SaaS_Owner';
             
             // SLUG STABILIZATION: In tenant layout, wait for params to hydrate.
-            // We check for slug directly. If we are on a route where slug IS expected but missing,
-            // we hold off.
             if (!slug && isSaaS && typeof window !== 'undefined' && window.location.pathname.split('/').length >= 3) {
-                 // Path follows /[slug]/[anything] pattern but slug is missing from params
                  console.log("⏳ [Aura Trace] Holding fetch: Slug expected but not yet hydrated.");
                  return;
             }
 
-            const isNeedBusinesses = isSaaS && slug && biz.allBusinesses.length === 0;
+            // HYPER-SCALE OPTIMIZATION: If we already have businesses (from persistence or previous fetch),
+            // and we have successfully resolved the activeBizId, we can skip the specialized business fetch.
+            const hasBusinesses = biz.allBusinesses.length > 0;
+            const isNeedBusinesses = isSaaS && slug && !hasBusinesses;
 
             if (isNeedBusinesses) {
-                console.log("🚧 [Aura Trace] Waiting for businesses list to resolve slug safely...");
-                fetchData(); // This will trigger the SaaS barrier in fetch-logic
+                console.log("🚧 [Aura Trace] Businesses missing. Loading catalog first...");
+                fetchData(); 
                 return;
             }
 
             if (hasTarget) {
+                // If we are SaaS and on a slug, ensure we don't fire UNTIL we have an ID or we are sure it's invalid
+                if (isSaaS && slug && !activeBizId && hasBusinesses) {
+                    console.log("⏳ [Aura Trace] Resolved ID is still pending despite having businesses...");
+                    return;
+                }
+
                 console.log("🔍 [Aura Trace] Triggering fetch:", { 
                     initialized: auth.isInitialized, 
                     user: auth.currentUser?.email, 
                     activeBizId, 
                     slug,
-                    hasBusinesses: biz.allBusinesses.length > 0
+                    cacheHit: hasBusinesses
                 });
                 fetchData();
             } else {

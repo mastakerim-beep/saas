@@ -9,7 +9,8 @@ export const fetchData = async (
     force = false,
     startDate?: string,
     endDate?: string,
-    signal?: AbortSignal
+    signal?: AbortSignal,
+    slug?: string // New parameter for targeted resolution
 ) => {
     const tables = [
         'businesses', 'branches', 'appointments', 'customers', 
@@ -27,16 +28,18 @@ export const fetchData = async (
     // CRITICAL: If I am a SaaS owner on a slug, but bizId is undefined, 
     // it means it's still being resolved from the business list.
     // I must NOT use currentUser?.businessId as targetId because that would fetch SaaS Org data.
+    // HYPER-SCALE OPTIMIZATION: 
+    // If we have a bizId (cached) or we are non-SaaS, we don't need the specialized 'businesses' fetch phase.
     const isBusinessesEmpty = !setters.allBusinesses?.length;
     const isSlugPending = isSaaS && !bizId && isBusinessesEmpty;
-    
     const targetId = isSlugPending ? undefined : (bizId || currentUser?.businessId);
     
-    // If we have a bizId (passed from store) or we're not SaaS, use normal tables.
+    // If we are a SaaS owner but businesses are ALREADY LOADED (via persistence),
+    // we should NOT do a Phase 1 fetch. We skip directly to Phase 2.
     const tablesToFetch = isSlugPending ? ['businesses'] : tables;
     
     if (isSlugPending) {
-        console.log("🚧 [Aura Sync] Identity Lock: Fetching ONLY businesses to resolve slug...");
+        console.log("🚧 [Aura Sync] Identity Lock: Fetching ONLY specialized business list...");
     }
 
     if (!targetId && !isSaaS) {
@@ -60,9 +63,14 @@ export const fetchData = async (
                     if (signal) q = q.abortSignal(signal);
                     
                     const idToUse = bizId || targetId;
-                    const skipFilter = isSaaS && !bizId && table === 'businesses';
-
-                    if (idToUse && !skipFilter) {
+                    
+                    // TARGETED SCALE FETCH: 
+                    // If we are SaaS and don't have a bizId yet, but have a slug, fetch ONLY that business.
+                    // This prevents pulling 10,000 businesses on every refresh.
+                    if (table === 'businesses' && isSaaS && !bizId && slug) {
+                        q = q.eq('slug', slug);
+                    } else if (idToUse) {
+                        // Standard tenant filtering
                         if (table === 'businesses') q = q.eq('id', idToUse);
                         else q = q.eq('business_id', idToUse);
                     }
@@ -90,10 +98,20 @@ export const fetchData = async (
             }
         }));
         
-        // CRITICAL: Businesses must be set BEFORE the abort check to ensure ID resolution
+        // HYPER-SCALE MERGE: Instead of replacing the full business list with one item,
+        // we merge the fetched data into the existing catalog (SWR style).
         const businesses = dataMap.businesses || [];
         if (businesses.length > 0) {
-            setters.setAllBusinesses((prev: any[]) => JSON.stringify(prev) === JSON.stringify(businesses) ? prev : businesses);
+            setters.setAllBusinesses((prev: any[]) => {
+                const merged = [...prev];
+                businesses.forEach((newBiz: any) => {
+                    const idx = merged.findIndex(v => v.id === newBiz.id);
+                    if (idx > -1) merged[idx] = newBiz;
+                    else merged.push(newBiz);
+                });
+                // Sort by name for consistency
+                return merged.sort((a,b) => (a.name || '').localeCompare(b.name || ''));
+            });
         }
 
         if (signal?.aborted) {

@@ -35,6 +35,30 @@ const BusinessContext = createContext<BusinessContextType | undefined>(undefined
 
 export const BusinessProvider = ({ children }: { children: ReactNode }) => {
     const [allBusinesses, setAllBusinesses] = useState<Business[]>([]);
+
+    // 1. Persistence Layer: Load businesses from localStorage on mount
+    useEffect(() => {
+        const saved = localStorage.getItem('aura_business_catalog');
+        if (saved) {
+            try {
+                const parsed = JSON.parse(saved);
+                if (Array.isArray(parsed) && parsed.length > 0) {
+                    console.log("📦 [Aura Persistence] Hydrated business catalog from storage");
+                    setAllBusinesses(parsed);
+                }
+            } catch (e) {
+                console.error("Failed to parse business catalog", e);
+            }
+        }
+    }, []);
+
+    // 2. Persistence Layer: Save businesses to localStorage when updated
+    useEffect(() => {
+        if (allBusinesses.length > 0) {
+            localStorage.setItem('aura_business_catalog', JSON.stringify(allBusinesses));
+        }
+    }, [allBusinesses]);
+
     const [currentTenant, setCurrentTenant] = useState<Business | null>(null);
     const [currentBranch, setCurrentBranch] = useState<Branch | null>(null);
     const [branches, setBranches] = useState<Branch[]>([]);
