@@ -34,6 +34,7 @@ const StoreOrchestrator = ({ children }: { children: ReactNode }) => {
     const activeBizIdRef = React.useRef<string | undefined>(undefined);
     const userRef = React.useRef<AppUser | null>(null);
     const lastFetchTimeRef = React.useRef<number>(0);
+    const lastBizIdRef = React.useRef<string | undefined>(undefined);
     const realtimeTimeoutRef = React.useRef<NodeJS.Timeout | null>(null);
 
     const activeBizId = useMemo(() => {
@@ -46,6 +47,7 @@ const StoreOrchestrator = ({ children }: { children: ReactNode }) => {
             id = auth.currentUser?.businessId || undefined;
         }
         activeBizIdRef.current = id;
+        console.log("💎 activeBizId Resolved:", { id, fromSlug: !!(slug && biz.allBusinesses.find(b => b.slug === slug)), currentUserBizId: auth.currentUser?.businessId });
         return id;
     }, [auth.impersonatedBusinessId, auth.currentUser?.businessId, slug, biz.allBusinesses]);
 
@@ -54,12 +56,19 @@ const StoreOrchestrator = ({ children }: { children: ReactNode }) => {
     }, [auth.currentUser]);
 
     const fetchData = React.useCallback(async (bizId?: string, user?: AppUser, force?: boolean, startDate?: string, endDate?: string) => {
-        // Throttling: 2 saniye içinde mükerrer istekleri engelle (force değilse)
+        // Throttling Logic
         const now = Date.now();
-        if (!force && now - lastFetchTimeRef.current < 2000) {
-            console.log("Fetch throttled to prevent loop.");
+        const targetBizId = bizId || activeBizIdRef.current;
+        const targetUser = user || userRef.current;
+        
+        // Eğer İşletme ID'si değişmişse throttle'ı baypas et (Sayfa yenileme/Initialization için kritik)
+        const isIdChanged = targetBizId !== lastBizIdRef.current;
+
+        if (!force && !isIdChanged && now - lastFetchTimeRef.current < 2000) {
+            console.log("🚫 Fetch throttled (Same ID):", { targetBizId, elapsed: now - lastFetchTimeRef.current });
             return;
         }
+
         // İptal mekanizması: Önceki istek varsa durdur
         if (fetchControllerRef.current) {
             fetchControllerRef.current.abort();
@@ -67,15 +76,13 @@ const StoreOrchestrator = ({ children }: { children: ReactNode }) => {
         const controller = new AbortController();
         fetchControllerRef.current = controller;
 
-        const targetBizId = bizId || activeBizIdRef.current;
-        const targetUser = user || userRef.current;
-        
         if (!targetUser) return;
         const isSaaS = targetUser.role === 'SaaS_Owner';
         if (!targetBizId && !isSaaS) return;
 
-        // Validation passed, now we can set the throttle timestamp
+        // Validation passed, now we can set the throttle timestamp and last ID
         lastFetchTimeRef.current = now;
+        lastBizIdRef.current = targetBizId;
 
         // Note: data ve biz objelerinden gelen setter fonksiyonları React tarafından stable tutulur, 
         // ancak objenin kendisi her re-render'da değişebileceği için fetchData'yı bozmamak adına 

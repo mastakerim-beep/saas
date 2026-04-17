@@ -14,7 +14,12 @@ export const fetchData = async (
     const isSaaS = currentUser?.role === 'SaaS_Owner';
     const targetId = bizId || currentUser?.businessId;
     
-    if (!targetId && !isSaaS) return;
+    // console.log("🔍 Aura Fetch Started:", { bizId, targetId, isSaaS });
+
+    if (!targetId && !isSaaS) {
+        console.warn("⚠️ Fetch aborted: No targetId and not SaaS");
+        return;
+    }
 
     if (signal?.aborted) return;
 
@@ -58,7 +63,7 @@ export const fetchData = async (
                 });
                 dataMap[table] = toCamel(result || []);
             } catch (e) {
-                console.warn(`Tablo atlanıyor: ${table}`, e);
+                console.error(`❌ Table Fetch Error: ${table}`, e);
                 dataMap[table] = []; 
             }
         }));
@@ -97,6 +102,7 @@ export const fetchData = async (
         setters.setAllServices(dataMap.services || []);
         setters.setAllPackageDefinitions(dataMap.package_definitions || []);
         setters.setAllUsers?.(dataMap.app_users || []);
+        console.log(`✅ Fetch Success - Staff: ${dataMap.staff?.length || 0}, Appts: ${dataMap.appointments?.length || 0}, Biz: ${dataMap.businesses?.length || 0}`);
         setters.setAllLogs?.(dataMap.audit_logs || []);
         setters.setAllCustomerMedia(dataMap.customer_media || []);
         setters.setZReports(dataMap.z_reports || []);
