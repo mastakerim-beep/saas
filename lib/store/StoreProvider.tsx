@@ -180,6 +180,15 @@ const StoreOrchestrator = ({ children }: { children: ReactNode }) => {
         if (auth.isInitialized) {
             const hasTarget = auth.currentUser || slug;
             const isSaaS = auth.currentUser?.role === 'SaaS_Owner';
+            
+            // SLUG STABILIZATION: In tenant layout, wait for params to hydrate
+            // If we have a URL that should have a slug but 'slug' is still null, wait.
+            const isOnTenantRoute = typeof window !== 'undefined' && window.location.pathname.includes('/[slug]') || (slug !== undefined);
+            if (!slug && isOnTenantRoute && isSaaS) {
+                console.log("⏳ [Aura Trace] Waiting for URL slug to hydrate...");
+                return;
+            }
+
             const isNeedBusinesses = isSaaS && slug && biz.allBusinesses.length === 0;
 
             if (isNeedBusinesses) {
@@ -200,8 +209,6 @@ const StoreOrchestrator = ({ children }: { children: ReactNode }) => {
             } else {
                 console.log("⏳ [Aura Trace] Waiting for user/slug context...");
             }
-        } else {
-            console.log("⏳ [Aura Trace] Waiting for auth initialization...");
         }
 
         // Debounced Realtime Trigger

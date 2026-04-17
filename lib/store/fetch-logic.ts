@@ -88,14 +88,16 @@ export const fetchData = async (
             }
         }));
         
-        if (signal?.aborted) {
-            console.log("🛑 Global Fetch Aborted - Shielding State (Preventing UI flicker)");
-            return;
+        // CRITICAL: Businesses must be set BEFORE the abort check to ensure ID resolution
+        const businesses = dataMap.businesses || [];
+        if (businesses.length > 0) {
+            setters.setAllBusinesses((prev: any[]) => JSON.stringify(prev) === JSON.stringify(businesses) ? prev : businesses);
         }
 
-        // Batch updates with reference stability checks
-        const businesses = dataMap.businesses || [];
-        setters.setAllBusinesses((prev: any[]) => JSON.stringify(prev) === JSON.stringify(businesses) ? prev : businesses);
+        if (signal?.aborted) {
+            console.log("🛑 Global Fetch Aborted - Shielding Volatile State");
+            return;
+        }
         
         const branches = dataMap.branches || [];
         setters.setBranches((prev: any[]) => JSON.stringify(prev) === JSON.stringify(branches) ? prev : branches);
