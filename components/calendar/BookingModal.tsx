@@ -133,7 +133,7 @@ export default function BookingModal({ initialData, onClose, date, mode: initial
 
                     if (!success) {
                         allSuccess = false;
-                        alert("Randevu kaydedilemedi! Lütfen bağlantıyı kontrol edin.");
+                        alert("🔴 KRİTİK HATA: Veritabanı senkronizasyonu başarısız oldu. Lütfen internet bağlantınızı ve yetkilerinizi kontrol edip tekrar deneyin. Veri kaybı yaşanmaması için sayfa yenilenmedi.");
                         break;
                     }
                 }
@@ -142,7 +142,7 @@ export default function BookingModal({ initialData, onClose, date, mode: initial
                     onClose();
                 }
             } else {
-                await addBlock({
+                const res = await addBlock({
                     businessId: currentBusiness?.id,
                     staffId: currentStaffId,
                     date,
@@ -150,11 +150,12 @@ export default function BookingModal({ initialData, onClose, date, mode: initial
                     duration: overrideDuration || 60,
                     reason: blockReason
                 });
-                onClose();
+                if (res !== false) onClose();
+                else alert("🚫 Bloke işlemi kaydedilemedi. Personel meşgul veya bağlantı hatası olabilir.");
             }
-        } catch (error) {
+        } catch (error: any) {
             console.error("Booking save error:", error);
-            alert("İşlem sırasında bir hata oluştu. Randevu kaydedilmiş olabilir, lütfen sayfayı yenileyip kontrol edin.");
+            alert(`⚠️ SİSTEM HATASI: ${error.message || 'Bilinmeyen bir hata oluştu'}. Randevu kaydedilmiş olabilir, lütfen Takvimi yenileyip kontrol edin. Dublike kayıt yapmamak için dikkatli olun.`);
         } finally {
             setIsSaving(false);
         }

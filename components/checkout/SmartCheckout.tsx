@@ -41,6 +41,7 @@ export default function SmartCheckout({ appointment, onClose }: SmartCheckoutPro
     const { currentStaff } = useStore();
     const staffMaxDiscount = currentStaff?.maxDiscount || 0;
     const [pointsUsed, setPointsUsed] = useState<number>(0);
+    const [isSaving, setIsSaving] = useState(false);
     const [isSuccess, setIsSuccess] = useState(false);
 
     // Gift (İkram) System State
@@ -178,14 +179,16 @@ export default function SmartCheckout({ appointment, onClose }: SmartCheckoutPro
         setSoldProducts(soldProducts.filter(x => x.productId !== id));
     };
 
-    const handleProcess = () => {
-        setIsSuccess(true);
+    const handleProcess = async () => {
+        if (isSaving) return;
+        setIsSaving(true);
+
         const installmentList = remaining > 0 ? installmentDates.map((date, idx) => ({
             amount: Math.floor(remaining / installments) + (idx === 0 ? remaining % installments : 0),
             dueDate: date
         })) : undefined;
 
-        processCheckout(
+        const ok = await processCheckout(
             {
                 appointmentId: appointment.id,
                 branchId: appointment.branchId,
@@ -198,7 +201,11 @@ export default function SmartCheckout({ appointment, onClose }: SmartCheckoutPro
                 date: getTodayDate(),
                 isGift: isServiceGift || giftedItems.size > 0,
                 originalPrice: totalOriginalPrice,
-                note: note + (isServiceGift ? ' [HİZMET HEDİYE]' : '') + (giftedItems.size > 0 ? ' [ÜRÜN HEDİYE]' : '')
+                finalPrice: subTotal - discountAmount,
+                discountAmount: discountAmount,
+                discountNote: discountMode !== 'none' ? `${discountMode === 'percentage' ? '%' : '₺'}${discountValue} indirim` : '',
+                note: note,
+                status: remaining <= 0 ? 'paid' : 'partial'
             },
             installmentList,
             soldProducts.map(p => ({ 

@@ -58,6 +58,9 @@ const StoreOrchestrator = ({ children }: { children: ReactNode }) => {
         const isSaaS = targetUser.role === 'SaaS_Owner';
         if (!targetBizId && !isSaaS) return;
 
+        // Note: data ve biz objelerinden gelen setter fonksiyonları React tarafından stable tutulur, 
+        // ancak objenin kendisi her re-render'da değişebileceği için fetchData'yı bozmamak adına 
+        // doğrudan bağımlılık yerine fonksiyon içinde kullanıyoruz.
         const setters = {
             setAllCustomers: data.setAllCustomers,
             setAllAppointments: data.setAllAppointments,
@@ -87,6 +90,8 @@ const StoreOrchestrator = ({ children }: { children: ReactNode }) => {
             setCustomerMemberships: data.setCustomerMemberships,
             setAllBusinesses: biz.setAllBusinesses,
             setBranches: biz.setBranches,
+            setCurrentBranch: biz.setCurrentBranch,
+            setCurrentTenant: biz.setCurrentTenant,
             setSettings: biz.setSettings,
             setBookingSettings: biz.setBookingSettings,
             setPaymentDefinitions: biz.setPaymentDefinitions,
@@ -95,12 +100,11 @@ const StoreOrchestrator = ({ children }: { children: ReactNode }) => {
             setReferralSources: biz.setReferralSources,
             setConsentFormTemplates: biz.setConsentFormTemplates,
             setSyncStatus: setSyncStatus,
-            setCurrentBranch: biz.setCurrentBranch,
-            setCurrentTenant: biz.setCurrentTenant,
             setAllPayments: data.setAllPayments
         };
 
         try {
+            setSyncStatus('syncing');
             await fetchDataLogic(
                 targetBizId,
                 targetUser,
@@ -113,9 +117,6 @@ const StoreOrchestrator = ({ children }: { children: ReactNode }) => {
         } catch (err: any) {
             if (err.name === 'AbortError' || err.message === 'Aborted') {
                 console.log("Fetch aborted for new request. Status check...");
-                // Note: Yeni istek status'ü zaten 'syncing' yapmıştır, 
-                // bu yüzden burada idle yapmıyoruz ki yeni istek devam etsin.
-                // Sadece en sonuncu istek bittiğinde idle olacak.
             } else {
                 console.error("Fetch Error:", err);
                 setSyncStatus('error');
@@ -125,7 +126,7 @@ const StoreOrchestrator = ({ children }: { children: ReactNode }) => {
                 setSyncStatus(prev => prev === 'syncing' ? 'idle' : prev);
             }
         }
-    }, [activeBizId, auth.currentUser, biz, data]);
+    }, [activeBizId, auth.currentUser?.id]);
 
     useEffect(() => {
         const handleOnline = () => setIsOnline(true);
@@ -384,8 +385,9 @@ const StoreOrchestrator = ({ children }: { children: ReactNode }) => {
             const id = crypto.randomUUID();
             const block = { ...b, id };
             data.setAllBlocks((prev: CalendarBlock[]) => [block, ...prev]);
-            await syncDb('calendar_blocks', 'insert', block, id, activeBizId);
-            await store.addLog('Takvim Engeli Eklendi', 'Mekan', '', b.reason || 'Blok');
+            const ok = await syncDb('calendar_blocks', 'insert', block, id, activeBizId);
+            if (ok) await store.addLog('Takvim Engeli Eklendi', 'Mekan', '', b.reason || 'Blok');
+            return ok;
         },
         updateBlock: async (id: string, updates: any) => {
             data.updateBlock(id, updates);
@@ -394,7 +396,8 @@ const StoreOrchestrator = ({ children }: { children: ReactNode }) => {
         },
         removeBlock: async (id: string) => {
             data.removeBlock(id);
-            await syncDb('calendar_blocks', 'delete', {}, id, activeBizId);
+            const ok = await syncDb('calendar_blocks', 'delete', {}, id, activeBizId);
+            return ok;
         },
         
         addPackage: async (p: any) => {

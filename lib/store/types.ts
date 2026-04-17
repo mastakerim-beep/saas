@@ -164,9 +164,9 @@ export interface StoreState {
     deleteAppointment: (id: string) => Promise<boolean>;
     updateAppointmentStatus: (id: string, status: AppointmentStatus) => Promise<boolean>;
     calculateDynamicPrice: (servicePrice: number, timeStr: string) => { price: number, reason: string | null };
-    addBlock: (b: any) => Promise<void>;
+    addBlock: (b: any) => Promise<boolean>;
     updateBlock: (id: string, updates: any) => Promise<boolean>;
-    removeBlock: (id: string) => Promise<void>;
+    removeBlock: (id: string) => Promise<boolean>;
     updateAppointment: (id: string, updates: any) => Promise<boolean>;
     addCustomerMedia: (m: Omit<CustomerMedia, 'id' | 'businessId'>) => void;
     deleteCustomerMedia: (id: string) => void;

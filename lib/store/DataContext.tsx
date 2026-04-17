@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useState, ReactNode, useMemo } from 'react';
+import React, { createContext, useContext, useState, ReactNode, useMemo, useCallback } from 'react';
 import { 
     Appointment, CalendarBlock, Customer, Debt, Expense, 
     Product, Room, Service, Package, MembershipPlan, 
@@ -79,9 +79,9 @@ export interface DataContextType {
     deleteAppointment: (id: string) => Promise<boolean>;
     moveAppointment: (id: string, newTime: string, newStaffId?: string, newRoomId?: string) => Promise<boolean>;
     updateAppointmentStatus: (id: string, status: AppointmentStatus) => Promise<boolean>;
-    addBlock: (b: any) => void;
+    addBlock: (b: any) => Promise<boolean>;
     updateBlock: (id: string, updates: any) => Promise<boolean>;
-    removeBlock: (id: string) => void;
+    removeBlock: (id: string) => Promise<boolean>;
     addPackage: (p: any) => void;
     addMembershipPlan: (p: any) => void;
     assignMembership: (cid: string, pid: string) => void;
@@ -141,174 +141,176 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
     const [commissionRules, setAllCommissionRules] = useState<CommissionRule[]>([]);
     const [allPayments, setAllPayments] = useState<any[]>([]);
 
-    const addCustomer = (c: any) => {
+    const addCustomer = useCallback((c: any) => {
         const newCustomer = { ...c, id: crypto.randomUUID(), createdAt: new Date().toISOString() };
         setAllCustomers(prev => [...prev, newCustomer]);
         return newCustomer;
-    };
+    }, []);
 
-    const updateCustomer = (id: string, updates: Partial<Customer>) => {
+    const updateCustomer = useCallback((id: string, updates: Partial<Customer>) => {
         setAllCustomers(prev => prev.map(c => c.id === id ? { ...c, ...updates } : c));
-    };
+    }, []);
 
-    const deleteCustomer = async (id: string) => {
+    const deleteCustomer = useCallback(async (id: string) => {
         setAllCustomers(prev => prev.filter(c => c.id !== id));
         return true;
-    };
+    }, []);
 
-    const addAppointment = async (a: any) => {
+    const addAppointment = useCallback(async (a: any) => {
         const newAppt = { ...a, id: crypto.randomUUID(), createdAt: new Date().toISOString() };
         setAllAppointments(prev => [...prev, newAppt]);
         return true;
-    };
+    }, []);
 
-    const updateAppointment = async (id: string, updates: any) => {
+    const updateAppointment = useCallback(async (id: string, updates: any) => {
         setAllAppointments(prev => prev.map(a => a.id === id ? { ...a, ...updates } : a));
         return true;
-    };
+    }, []);
 
-    const deleteAppointment = async (id: string) => {
+    const deleteAppointment = useCallback(async (id: string) => {
         setAllAppointments(prev => prev.filter(a => a.id !== id));
         return true;
-    };
+    }, []);
 
-    const moveAppointment = async (id: string, newTime: string, newStaffId?: string, newRoomId?: string) => {
+    const moveAppointment = useCallback(async (id: string, newTime: string, newStaffId?: string, newRoomId?: string) => {
         setAllAppointments(prev => prev.map(a => a.id === id ? { ...a, time: newTime, staffId: newStaffId || a.staffId, roomId: newRoomId || a.roomId } : a));
         return true;
-    };
+    }, []);
 
-    const updateAppointmentStatus = async (id: string, status: AppointmentStatus) => {
+    const updateAppointmentStatus = useCallback(async (id: string, status: AppointmentStatus) => {
         setAllAppointments(prev => prev.map(a => a.id === id ? { ...a, status } : a));
         return true;
-    };
+    }, []);
 
-    const addBlock = (b: any) => {
+    const addBlock = useCallback(async (b: any) => {
         const newBlock = { ...b, id: crypto.randomUUID(), createdAt: new Date().toISOString() };
         setAllBlocks(prev => [...prev, newBlock]);
-    };
+        return true;
+    }, []);
 
-    const updateBlock = async (id: string, updates: any) => {
+    const updateBlock = useCallback(async (id: string, updates: any) => {
         setAllBlocks(prev => prev.map(b => b.id === id ? { ...b, ...updates } : b));
         return true;
-    };
+    }, []);
 
-    const removeBlock = (id: string) => {
+    const removeBlock = useCallback(async (id: string) => {
         setAllBlocks(prev => prev.filter(b => b.id !== id));
-    };
+        return true;
+    }, []);
 
-    const addPackage = (p: any) => {
+    const addPackage = useCallback((p: any) => {
         const newPackage = { ...p, id: crypto.randomUUID(), createdAt: new Date().toISOString() };
         setAllPackages(prev => [...prev, newPackage]);
-    };
+    }, []);
 
-    const addMembershipPlan = (p: any) => {
+    const addMembershipPlan = useCallback((p: any) => {
         const newPlan = { ...p, id: crypto.randomUUID(), createdAt: new Date().toISOString() };
         setMembershipPlans(prev => [...prev, newPlan]);
-    };
+    }, []);
 
-    const assignMembership = (cid: string, pid: string) => {
+    const assignMembership = useCallback((cid: string, pid: string) => {
         // Logic
-    };
+    }, []);
 
-    const addProduct = (p: any) => {
+    const addProduct = useCallback((p: any) => {
         const newProduct = { ...p, id: crypto.randomUUID(), createdAt: new Date().toISOString() };
         setAllInventory(prev => [...prev, newProduct]);
-    };
+    }, []);
 
-    const updateProduct = (id: string, p: Partial<Product>) => {
+    const updateProduct = useCallback((id: string, p: Partial<Product>) => {
         setAllInventory(prev => prev.map(item => item.id === id ? { ...item, ...p } : item));
-    };
+    }, []);
 
-    const removeProduct = (id: string) => {
+    const removeProduct = useCallback((id: string) => {
         setAllInventory(prev => prev.filter(p => p.id !== id));
-    };
+    }, []);
 
-    const addExpense = (e: any) => {
+    const addExpense = useCallback((e: any) => {
         const newExpense = { ...e, id: crypto.randomUUID(), createdAt: new Date().toISOString() };
         setAllExpenses(prev => [...prev, newExpense]);
-    };
+    }, []);
 
-    const addService = (s: any) => {
+    const addService = useCallback((s: any) => {
         const newService = { ...s, id: crypto.randomUUID(), createdAt: new Date().toISOString() };
         setAllServices(prev => [...prev, newService]);
-    };
+    }, []);
 
-    const updateService = (id: string, s: Partial<Service>) => {
+    const updateService = useCallback((id: string, s: Partial<Service>) => {
         setAllServices(prev => prev.map(item => item.id === id ? { ...item, ...s } : item));
-    };
+    }, []);
 
-    const removeService = (id: string) => {
+    const removeService = useCallback((id: string) => {
         setAllServices(prev => prev.filter(s => s.id !== id));
-    };
+    }, []);
 
-    const addPackageDefinition = (p: any) => {
+    const addPackageDefinition = useCallback((p: any) => {
         const newDef = { ...p, id: crypto.randomUUID(), createdAt: new Date().toISOString() };
         setAllPackageDefinitions(prev => [...prev, newDef]);
-    };
+    }, []);
 
-    const updatePackageDefinition = (id: string, p: Partial<PackageDefinition>) => {
+    const updatePackageDefinition = useCallback((id: string, p: Partial<PackageDefinition>) => {
         setAllPackageDefinitions(prev => prev.map(item => item.id === id ? { ...item, ...p } : item));
-    };
+    }, []);
 
-    const removePackageDefinition = (id: string) => {
+    const removePackageDefinition = useCallback((id: string) => {
         setAllPackageDefinitions(prev => prev.filter(p => p.id !== id));
-    };
+    }, []);
 
-    const addQuote = (q: Omit<Quote, 'id' | 'businessId'>) => {
+    const addQuote = useCallback((q: Omit<Quote, 'id' | 'businessId'>) => {
         // @ts-ignore
         const newQuote = { ...q, id: crypto.randomUUID(), createdAt: new Date().toISOString() };
         setAllQuotes(prev => [...prev, newQuote as Quote]);
-    };
+    }, []);
 
-    const updateQuote = (id: string, updates: Partial<Quote>) => {
+    const updateQuote = useCallback((id: string, updates: Partial<Quote>) => {
         setAllQuotes(prev => prev.map(q => q.id === id ? { ...q, ...updates } : q));
-    };
+    }, []);
 
-    const deleteQuote = (id: string) => {
+    const deleteQuote = useCallback((id: string) => {
         setAllQuotes(prev => prev.filter(q => q.id !== id));
-    };
+    }, []);
 
-    const addBodyMap = async (map: Omit<ConsultationBodyMap, 'id' | 'businessId'>) => {
+    const addBodyMap = useCallback(async (map: Omit<ConsultationBodyMap, 'id' | 'businessId'>) => {
         // @ts-ignore
         const newMap = { ...map, id: crypto.randomUUID() };
         setBodyMaps(prev => [...prev, newMap as ConsultationBodyMap]);
-    };
+    }, []);
 
-    const updateBodyMap = async (id: string, mapData: any) => {
+    const updateBodyMap = useCallback(async (id: string, mapData: any) => {
         setBodyMaps(prev => prev.map(m => m.id === id ? { ...m, mapData } : m));
-    };
+    }, []);
 
-    const addUsageNorm = async (norm: Omit<InventoryUsageNorm, 'id' | 'businessId'>) => {
+    const addUsageNorm = useCallback(async (norm: Omit<InventoryUsageNorm, 'id' | 'businessId'>) => {
         // @ts-ignore
         const newNorm = { ...norm, id: crypto.randomUUID() };
         setUsageNorms(prev => [...prev, newNorm as InventoryUsageNorm]);
-    };
+    }, []);
 
-    const updateUsageNorm = async (id: string, updates: Partial<InventoryUsageNorm>) => {
+    const updateUsageNorm = useCallback(async (id: string, updates: Partial<InventoryUsageNorm>) => {
         setUsageNorms(prev => prev.map(n => n.id === id ? { ...n, ...updates } : n));
-    };
+    }, []);
 
-    const addCustomerMedia = (m: any) => {
+    const addCustomerMedia = useCallback((m: any) => {
         const newMedia = { ...m, id: crypto.randomUUID(), createdAt: new Date().toISOString() };
         setAllCustomerMedia(prev => [...prev, newMedia]);
-    };
+    }, []);
 
-    const deleteCustomerMedia = (id: string) => {
+    const deleteCustomerMedia = useCallback((id: string) => {
         setAllCustomerMedia(prev => prev.filter(m => m.id !== id));
-    };
+    }, []);
 
-    const updateRoom = (id: string, updates: Partial<Room>) => {
+    const updateRoom = useCallback((id: string, updates: Partial<Room>) => {
         setAllRooms(prev => prev.map(r => r.id === id ? { ...r, ...updates } : r));
-    };
+    }, []);
 
-    const removeRoom = (id: string) => {
+    const removeRoom = useCallback((id: string) => {
         setAllRooms(prev => prev.filter(r => r.id !== id));
-    };
+    }, []);
 
-    const addRoom = (r: any) => {
+    const addRoom = useCallback((r: any) => {
         const newRoom = { ...r, id: crypto.randomUUID(), createdAt: new Date().toISOString() };
         setAllRooms(prev => [...prev, newRoom]);
-    };
+    }, []);
 
     const contextValue: DataContextType = useMemo(() => ({
         appointments, blocks, customers, debts, inventory, rooms, services, packages,

@@ -56,13 +56,13 @@ export const BusinessProvider = ({ children }: { children: ReactNode }) => {
         aiApprovalMode: 'manual'
     });
 
-    const setSettings = (s: Partial<BusinessSettings> | ((prev: BusinessSettings) => BusinessSettings)) => {
+    const setSettings = React.useCallback((s: Partial<BusinessSettings> | ((prev: BusinessSettings) => BusinessSettings)) => {
         if (typeof s === 'function') {
             setSettingsState(s);
         } else {
             setSettingsState(prev => ({ ...prev, ...s }));
         }
-    };
+    }, []);
 
     const contextValue = useMemo(() => ({
         allBusinesses, currentTenant, currentBranch, branches, settings, bookingSettings, allRates,

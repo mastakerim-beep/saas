@@ -45,14 +45,19 @@ export const syncDb = async (
             finalizedPayload.business_id = activeId;
         }
 
-        await retryRequest(async () => {
+        const result = await retryRequest(async () => {
             let res;
             if (op === 'insert') res = await supabase.from(table).insert([finalizedPayload]);
             if (op === 'update') res = await supabase.from(table).update(finalizedPayload).eq('id', id);
             if (op === 'delete') res = await supabase.from(table).delete().eq('id', id);
             
             if (res?.error) {
-                console.error(`🔴 DB Error [${table} ${op}]:`, res.error.message);
+                console.error(`🔴 DB Sync Error [Table: ${table}, Op: ${op}]:`, {
+                    message: res.error.message,
+                    details: res.error.details,
+                    hint: res.error.hint,
+                    payload: finalizedPayload
+                });
                 throw res.error;
             }
             return res;
@@ -61,7 +66,7 @@ export const syncDb = async (
         onStatusUpdate('synced');
         return true;
     } catch (error: any) {
-        console.error(`Sync error after retries [${table} ${op}]:`, error);
+        console.error(`❌ Sync failed after retries [${table} ${op}]:`, error.message || error);
         onStatusUpdate('error');
         return false;
     }
