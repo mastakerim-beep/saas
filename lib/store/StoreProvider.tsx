@@ -60,8 +60,6 @@ const StoreOrchestrator = ({ children }: { children: ReactNode }) => {
             console.log("Fetch throttled to prevent loop.");
             return;
         }
-        lastFetchTimeRef.current = now;
-
         // İptal mekanizması: Önceki istek varsa durdur
         if (fetchControllerRef.current) {
             fetchControllerRef.current.abort();
@@ -75,6 +73,9 @@ const StoreOrchestrator = ({ children }: { children: ReactNode }) => {
         if (!targetUser) return;
         const isSaaS = targetUser.role === 'SaaS_Owner';
         if (!targetBizId && !isSaaS) return;
+
+        // Validation passed, now we can set the throttle timestamp
+        lastFetchTimeRef.current = now;
 
         // Note: data ve biz objelerinden gelen setter fonksiyonları React tarafından stable tutulur, 
         // ancak objenin kendisi her re-render'da değişebileceği için fetchData'yı bozmamak adına 
