@@ -118,6 +118,13 @@ export const fetchData = async (
             console.log("🛑 Global Fetch Aborted - Shielding Volatile State");
             return;
         }
+
+        // IDENTITY LOCK: Düşük olasılıklı olsa da, fetch tamamlandığında hâlâ bir targetId yoksa 
+        // ve SaaS sahibi değilsek, state'i yanlış verilerle (boşluklarla) kirletme.
+        if (!targetId && !isSaaS) {
+            console.warn("🛡️ [Aura Sync] Shielded State: Fetch finished but targetId lost. Aborting write.");
+            return;
+        }
         
         const branches = dataMap.branches || [];
         setters.setBranches((prev: any[]) => JSON.stringify(prev) === JSON.stringify(branches) ? prev : branches);

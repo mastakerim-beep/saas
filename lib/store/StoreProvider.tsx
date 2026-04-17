@@ -191,7 +191,8 @@ const StoreOrchestrator = ({ children }: { children: ReactNode }) => {
             const isSaaS = auth.currentUser?.role === 'SaaS_Owner';
             
             // SLUG STABILIZATION: In tenant layout, wait for params to hydrate.
-            if (!slug && isSaaS && typeof window !== 'undefined' && window.location.pathname.split('/').length >= 3) {
+            // Bu kontrol sadece SaaS sahipleri için değil, slug tabanlı erişen herkes için çalışmalı.
+            if (!slug && typeof window !== 'undefined' && window.location.pathname.split('/').length >= 3) {
                  console.log("⏳ [Aura Trace] Holding fetch: Slug expected but not yet hydrated.");
                  return;
             }
@@ -221,7 +222,7 @@ const StoreOrchestrator = ({ children }: { children: ReactNode }) => {
                     slug,
                     cacheHit: hasBusinesses
                 });
-                fetchData();
+                fetchData(activeBizId);
             } else {
                 console.log("⏳ [Aura Trace] Waiting for user/slug context...");
             }

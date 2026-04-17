@@ -76,13 +76,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
                     setCurrentUser(appUser);
                 } catch (err) {
                     console.error('Profile fetch error:', err);
+                } finally {
+                    setIsInitialized(true);
                 }
             } else {
                 setCurrentUser(null);
+                setIsInitialized(true);
             }
-            
-            // Her durumda sistemin başlatıldığını işaretle (Deadlock Prevention)
-            setIsInitialized(true);
         });
 
         return () => subscription.unsubscribe();
