@@ -8,6 +8,7 @@ import {
     Sparkles, Star, X
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import PinGate from '@/components/security/PinGate';
 
 type TabType = 'hizmetler' | 'paketler' | 'urunler';
 
@@ -48,7 +49,8 @@ export default function CatalogSettingsView({ query }: { query: string }) {
                 duration: item.duration || 60,
                 price: item.price || 0,
                 category: activeTab === 'paketler' ? (item.groupName || 'Genel') : (item.category || 'Genel'),
-                totalSessions: item.totalSessions || 1
+                totalSessions: item.totalSessions || 1,
+                consumables: item.consumables || []
             });
             setEditingItem(item);
         } else {
@@ -90,7 +92,6 @@ export default function CatalogSettingsView({ query }: { query: string }) {
     };
 
     const handleDelete = async (item: any) => {
-        if (!window.confirm(`${item.name} silinecek. Emin misiniz?`)) return;
         if (activeTab === 'hizmetler') removeService(item.id);
         else if (activeTab === 'paketler') removePackageDefinition(item.id);
         else if (activeTab === 'urunler') removeProduct(item.id);
@@ -438,7 +439,11 @@ function PremiumCard({ item, activeTab, onEdit, onDelete }: any) {
                 </div>
                 <div className="flex gap-4 opacity-0 group-hover:opacity-100 transition-all translate-y-2 group-hover:translate-y-0">
                     <button onClick={onEdit} className="w-10 h-10 bg-gray-50 flex items-center justify-center rounded-xl text-gray-400 hover:bg-black hover:text-white transition-all"><Edit3 size={18} /></button>
-                    <button onClick={onDelete} className="w-10 h-10 bg-gray-50 flex items-center justify-center rounded-xl text-gray-400 hover:bg-red-500 hover:text-white transition-all"><Trash2 size={18} /></button>
+                    <PinGate onSuccess={onDelete} title="KATALOG ÖĞESİ SİLİNECEK">
+                        <button className="w-10 h-10 bg-gray-50 flex items-center justify-center rounded-xl text-gray-400 hover:bg-red-500 hover:text-white transition-all">
+                            <Trash2 size={18} />
+                        </button>
+                    </PinGate>
                 </div>
             </div>
 

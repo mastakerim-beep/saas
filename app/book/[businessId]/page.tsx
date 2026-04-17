@@ -29,7 +29,7 @@ export default async function BookingPage({ params }: { params: { businessId: st
     .eq('status', 'active');
 
   // Fetch existing appointments to block slots (for today and next 7 days in a real app, but let's fetch all future for MVP)
-  const today = new Date(new Date().getTime() + (3 * 3600000)).toISOString().split('T')[0];
+  const today = new Date().toLocaleDateString('sv-SE');
   const { data: apptData } = await supabase
     .from('appointments')
     .select('date, time, duration, staff_id')

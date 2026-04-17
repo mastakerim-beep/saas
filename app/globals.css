@@ -1,3 +1,4 @@
+/* @tailwind directives - IDE warnings can be safely ignored as they are handled by PostCSS */
 @tailwind base;
 @tailwind components;
 @tailwind utilities;

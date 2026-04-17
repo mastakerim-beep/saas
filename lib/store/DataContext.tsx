@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useState, ReactNode } from 'react';
+import { createContext, useContext, useState, ReactNode, useMemo } from 'react';
 import { 
     Appointment, CalendarBlock, Customer, Debt, Expense, 
     Product, Room, Service, Package, MembershipPlan, 
@@ -310,7 +310,7 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
         setAllRooms(prev => [...prev, newRoom]);
     };
 
-    const value: DataContextType = {
+    const contextValue: DataContextType = useMemo(() => ({
         appointments, blocks, customers, debts, inventory, rooms, services, packages,
         membershipPlans, customerMemberships, staffMembers, allLogs, allNotifs, aiInsights, expenses,
         zReports, quotes, tenantModules, marketingRules, pricingRules, wallets,
@@ -328,9 +328,15 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
         updateService, removeService, addPackageDefinition, updatePackageDefinition,
         removePackageDefinition, addQuote, updateQuote, deleteQuote, addBodyMap, updateBodyMap,
         addUsageNorm, updateUsageNorm, updateRoom, removeRoom, addRoom
-    };
+    }), [
+        appointments, blocks, customers, debts, inventory, rooms, services, packages,
+        membershipPlans, customerMemberships, staffMembers, allLogs, allNotifs, aiInsights, expenses,
+        zReports, quotes, tenantModules, marketingRules, pricingRules, wallets,
+        allPayments, walletTransactions, bodyMaps, usageNorms, customerMedia,
+        packageDefinitions, commissionRules
+    ]);
 
-    return <DataContext.Provider value={value}>{children}</DataContext.Provider>;
+    return <DataContext.Provider value={contextValue}>{children}</DataContext.Provider>;
 };
 
 export const useData = () => {

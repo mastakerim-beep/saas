@@ -1,6 +1,6 @@
 "use client";
 
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, ReactNode, useMemo } from 'react';
 import { supabase } from '@/lib/supabase';
 import { AppUser, Business } from './types';
 
@@ -129,12 +129,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         return { success: true };
     };
 
+    const contextValue = useMemo(() => ({ 
+        currentUser, isInitialized, allUsers, impersonatedBusinessId, isImpersonating,
+        login, logout, setCurrentUser, setAllUsers, setImpersonatedBusinessId,
+        updateBusinessStatus, deleteBusiness, addBusiness, provisionBusinessUser
+    }), [currentUser, isInitialized, allUsers, impersonatedBusinessId, isImpersonating]);
+
     return (
-        <AuthContext.Provider value={{ 
-            currentUser, isInitialized, allUsers, impersonatedBusinessId, isImpersonating,
-            login, logout, setCurrentUser, setAllUsers, setImpersonatedBusinessId,
-            updateBusinessStatus, deleteBusiness, addBusiness, provisionBusinessUser
-        }}>
+        <AuthContext.Provider value={contextValue}>
             {children}
         </AuthContext.Provider>
     );

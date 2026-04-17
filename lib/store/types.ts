@@ -91,6 +91,8 @@ export interface StoreState {
     currentStaff: Staff | undefined;
     isOnline: boolean;
     syncStatus: 'idle' | 'syncing' | 'error';
+    isManagerAuthorized: boolean;
+    setManagerAuthorized: (val: boolean) => void;
     
     allBusinesses: Business[];
     allUsers: AppUser[];

@@ -8,12 +8,15 @@ export const fetchData = async (
     setters: any,
     force = false,
     startDate?: string,
-    endDate?: string
+    endDate?: string,
+    signal?: AbortSignal
 ) => {
     const isSaaS = currentUser?.role === 'SaaS_Owner';
     const targetId = bizId || currentUser?.businessId;
     
     if (!targetId && !isSaaS) return;
+
+    if (signal?.aborted) return;
 
     console.time("Aura Fetch Speed");
     setters.setSyncStatus('syncing');
@@ -35,7 +38,10 @@ export const fetchData = async (
         await Promise.allSettled(tables.map(async (table) => {
             try {
                 const result = await retryRequest(async () => {
+                    if (signal?.aborted) throw new Error('Aborted');
                     let q = supabase.from(table).select('*');
+                    if (signal) q = q.abortSignal(signal);
+                    
                     if (!isSaaS || bizId) {
                         const idToUse = bizId || targetId;
                         if (idToUse) {
@@ -105,7 +111,7 @@ export const fetchData = async (
         setters.setAllNotifs(dataMap.notification_logs || []);
         setters.setAllBlocks(dataMap.calendar_blocks || []);
         
-        if (dataMap.branches?.length > 0) {
+        if (dataMap.businesses?.length > 0) {
             const savedBranchId = localStorage.getItem('aura_last_branch');
             const userBranchId = currentUser?.branchId;
             let branchToUse = dataMap.branches[0];
@@ -127,9 +133,14 @@ export const fetchData = async (
         }
 
         setters.setSyncStatus('idle');
-    } catch (error) {
+    } catch (error: any) {
+        if (error.name === 'AbortError' || error.message === 'Aborted') {
+            // Abort sessizce geçilir, ancak üst katmana hata fırlatılır
+            throw error;
+        }
         console.error("Fetch Error:", error);
         setters.setSyncStatus('error');
+        throw error; // Üst katmanın hatadan haberi olması için tekrar fırlatıyoruz
     } finally {
         console.timeEnd("Aura Fetch Speed");
     }

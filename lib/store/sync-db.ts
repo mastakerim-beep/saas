@@ -11,7 +11,8 @@ export const syncDb = async (
     updateLocalStatus?: (table: string, id: string, status: 'syncing' | 'synced' | 'error') => void
 ) => {
     if (!activeId && table !== 'businesses' && table !== 'app_users' && table !== 'branches') {
-        return Promise.resolve();
+        console.error(`❌ CRITICAL: Attempted to sync table [${table}] without activeId (business_id). This operation will fail or orphan data.`);
+        return false;
     }
     
     const { syncStatus, ...cleanData } = data;
@@ -37,7 +38,8 @@ export const syncDb = async (
             'audit_logs', 'customer_media', 'packages', 'package_definitions', 'commission_rules', 
             'calendar_blocks', 'notification_logs', 'z_reports', 'payment_definitions', 'bank_accounts',
             'marketing_rules', 'dynamic_pricing_rules', 'customer_wallets', 'wallet_transactions',
-            'consultation_body_maps', 'inventory_usage_norms'
+            'consultation_body_maps', 'inventory_usage_norms', 'quotes', 'expense_categories', 
+            'referral_sources', 'consent_form_templates', 'tenant_modules'
         ];
         if (op === 'insert' && tenantTables.includes(table) && !finalizedPayload.business_id) {
             finalizedPayload.business_id = activeId;

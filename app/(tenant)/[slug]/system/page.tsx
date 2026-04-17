@@ -6,11 +6,12 @@ import {
     MapPin, FileText, Share2, Settings as SettingsIcon,
     Plus, Search, Edit2, Trash2, Check, X,
     ChevronRight, Shield, Smartphone, Calendar,
-    ExternalLink, Info, AlertCircle, Save, Layers, Zap, Clock, Building2
+    ExternalLink, Info, AlertCircle, Save, Layers, Zap, Clock, Building2, Megaphone
 } from "lucide-react";
 import { useState, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import CatalogSettingsView from "@/components/system/CatalogSettingsView";
+import PinGate from "@/components/security/PinGate";
 
 const DAYS = ['Pazar', 'Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma', 'Cumartesi'];
 
@@ -25,6 +26,7 @@ type SettingsTab =
     | 'referral_sources'
     | 'rooms'
     | 'security'
+    | 'announcements'
     | 'business';
 
 export default function SystemSettingsPage() {
@@ -65,6 +67,7 @@ export default function SystemSettingsPage() {
             { id: 'expense_categories', label: 'Gider Kategorileri', icon: ListTree },
         ]},
         { group: "DİĞER", items: [
+            { id: 'announcements', label: 'Duyurular', icon: Megaphone },
             { id: 'consent_forms', label: 'Onam Formları', icon: FileText },
             { id: 'referral_sources', label: 'Referans Kaynakları', icon: Share2 },
         ]}
@@ -192,6 +195,9 @@ export default function SystemSettingsPage() {
                         >
                             {activeTab === 'catalog' && (
                                 <CatalogSettingsView query={searchQuery} />
+                            )}
+                            {activeTab === 'announcements' && (
+                                <AnnouncementsSettingsView />
                             )}
                             {activeTab === 'staff' && (
                                 <StaffSettingsView staff={staffMembers} onUpdate={updateStaff} query={searchQuery} />
@@ -577,9 +583,11 @@ function RoomsSettingsView({ query }: { query: string }) {
                             <Layers size={28} />
                         </div>
                         <div className="flex gap-2">
-                             <button onClick={() => deleteRoom(room.id)} className="w-10 h-10 rounded-xl bg-gray-50 flex items-center justify-center text-gray-400 hover:bg-red-500 hover:text-white transition-all">
-                                <Trash2 size={18} />
-                            </button>
+                             <PinGate onSuccess={() => deleteRoom(room.id)} title="ODA SİLİNECEK">
+                                <button className="w-10 h-10 rounded-xl bg-gray-50 flex items-center justify-center text-gray-400 hover:bg-red-500 hover:text-white transition-all">
+                                    <Trash2 size={18} />
+                                </button>
+                             </PinGate>
                         </div>
                     </div>
                     <div className="space-y-6">
@@ -632,9 +640,11 @@ function GenericListView({ items, columns, onEdit, onDelete, query }: { items: a
                             <button onClick={() => onEdit(item)} className="w-10 h-10 rounded-xl bg-gray-50 flex items-center justify-center text-gray-400 hover:bg-black hover:text-white transition-all">
                                 <Edit2 size={16} />
                             </button>
-                            <button onClick={() => onDelete(item.id)} className="w-10 h-10 rounded-xl bg-gray-50 flex items-center justify-center text-gray-400 hover:bg-red-500 hover:text-white transition-all">
-                                <Trash2 size={16} />
-                            </button>
+                            <PinGate onSuccess={() => onDelete(item.id)} title="KAYIT SİLİNECEK">
+                                <button className="w-10 h-10 rounded-xl bg-gray-50 flex items-center justify-center text-gray-400 hover:bg-red-500 hover:text-white transition-all">
+                                    <Trash2 size={16} />
+                                </button>
+                            </PinGate>
                         </div>
                     </div>
 

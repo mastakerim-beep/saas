@@ -146,9 +146,14 @@ export default function BalancesPage() {
         const customerPayments = payments.filter(p => p.customerId === customer.id);
         const customerDebts = debts.filter(d => d.customerId === customer.id && d.status === 'açık');
 
-        const totalDebt = customerAppts.reduce((s, a) => s + a.price, 0) + 
-                          customerPkgs.reduce((s, p) => s + p.price, 0);
+        const totalDebtFromAppts = customerAppts.reduce((s, a) => s + a.price, 0);
+        const totalDebtFromPkgs = customerPkgs.reduce((s, p) => s + p.price, 0);
         
+        // Manuel borçları (bir randevuya bağlı olmayanları) bul
+        const manualDebts = customerDebts.filter(d => !d.appointmentId);
+        const totalManualDebt = manualDebts.reduce((s, d) => s + (d.amount || 0), 0);
+
+        const totalDebt = totalDebtFromAppts + totalDebtFromPkgs + totalManualDebt;
         const totalPaid = customerPayments.reduce((s, p) => s + (p.totalAmount || 0), 0);
         const balance = totalDebt - totalPaid;
 

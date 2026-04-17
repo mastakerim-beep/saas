@@ -33,19 +33,23 @@ const ImpersonationBanner = ({
 );
 
 const AnnouncementBanner = ({ announcement }: { announcement: any }) => {
-    const bgColor = 
+    const isGlobal = announcement.isGlobal;
+    const bgColor = isGlobal ? 'bg-indigo-800' :
         announcement.type === 'warning' ? 'bg-amber-500' : 
         announcement.type === 'danger' ? 'bg-rose-600' : 
         announcement.type === 'success' ? 'bg-emerald-600' : 'bg-indigo-600';
     
     return (
-        <div className={`${bgColor} text-white px-8 py-3 flex items-center justify-between sticky top-0 z-[9998] shadow-lg`}>
+        <div className={`${bgColor} text-white px-8 py-3 flex items-center justify-between sticky top-0 z-[9998] shadow-lg border-b border-white/10`}>
             <div className="flex items-center gap-4 text-[10px] font-black uppercase tracking-widest">
                 <div className="bg-white/20 p-1.5 rounded-lg"><Megaphone size={14} /></div>
-                <span>{announcement.title}: <span className="opacity-80 ml-2">{announcement.content}</span></span>
+                <div className="flex flex-col">
+                    <span className="opacity-60 text-[8px] tracking-[0.2em]">{isGlobal ? 'SİSTEM GENELİ' : 'İŞLETME DUYURUSU'}</span>
+                    <span>{announcement.title}: <span className="opacity-80 ml-2">{announcement.content}</span></span>
+                </div>
             </div>
             <div className="flex items-center gap-4">
-                <span className="text-[8px] opacity-60 font-black">SİSTEM DUYURUSU</span>
+                <span className="text-[8px] opacity-40 font-black tracking-widest uppercase">AURA OS</span>
             </div>
         </div>
     );
@@ -58,8 +62,9 @@ export default function ClientWrapper({ children }: { children: React.ReactNode 
         impersonatedBusinessId, 
         allBusinesses, 
         allNotifs,
-        currentBusiness,
         isInitialized,
+        currentBusiness,
+        syncStatus,
         setImpersonatedBusinessId 
     } = useStore();
     
@@ -103,7 +108,9 @@ export default function ClientWrapper({ children }: { children: React.ReactNode 
                     } else if (pathname === "/dashboard" || pathname === "/settings" || (isSuperAdminPath && pathname !== "/admin")) {
                         router.push("/admin");
                     }
-                    setIsChecking(false);
+                    if (syncStatus === 'idle' || syncStatus === 'error') {
+                        setIsChecking(false);
+                    }
                 } else if (userBiz) {
                     const tenantPath = `/${userBiz.slug}`;
                     if (isRootPath || isLoginPath) {
@@ -114,28 +121,31 @@ export default function ClientWrapper({ children }: { children: React.ReactNode 
                         const targetPath = subPath ? `${tenantPath}/${subPath}` : `${tenantPath}/dashboard`;
                         router.push(targetPath);
                     }
+                    if (syncStatus === 'idle' || syncStatus === 'error') {
+                        setIsChecking(false);
+                    }
+                } else if (allBusinesses.length > 0) {
+                    // Veri yüklendi ama hala eşleşme yoksa (yeni üyelik veya veri hatası)
+                    // Kullanıcıyı içeri sok ama dashboard'a zorlama, isChecking'i kapat
                     setIsChecking(false);
-                } else {
-                    // Veri henüz yüklenmemişse veya businesses listesinde eşleşme bulunamadıysa (Loop Rescue)
-                    console.log("Business data pending or mismatch, waiting...");
                 }
             }
         }, 100);
 
-        // EXTRA PROTECT: 5 Saniyelik 'Safety Timeout'
-        // Veriler veya doğrulamalar ne kadar gecikirse geciksin, 5 saniye sonra ekranı açar.
+        // EXTRA PROTECT: 3 Saniyelik 'Safety Timeout'
+        // Veriler veya doğrulamalar ne kadar gecikirse geciksin, 3 saniye sonra ekranı açar.
         const safetyTimer = setTimeout(() => {
             if (isChecking) {
-                console.warn("SAFETY TIMEOUT: Forced UI unlock after 5 seconds.");
+                console.warn("SAFETY TIMEOUT: Forced UI unlock after 3 seconds.");
                 setIsChecking(false);
             }
-        }, 5000);
+        }, 3000);
 
         return () => {
             clearTimeout(timer);
             clearTimeout(safetyTimer);
         };
-    }, [isMounted, currentUser, isLoginPath, isRootPath, isSuperAdminPath, isSaaSOwner, router, userBiz, pathname, isInitialized, isChecking]);
+    }, [isMounted, currentUser, isLoginPath, isRootPath, isSuperAdminPath, isSaaSOwner, router, userBiz, pathname, isInitialized, isChecking, syncStatus]);
 
     // ---- RENDER BODY ----
     
@@ -182,10 +192,18 @@ export default function ClientWrapper({ children }: { children: React.ReactNode 
                     />
                 )}
                 
-                {/* Global Announcements */}
-                {allNotifs?.filter((n: any) => n.isActive && (!n.businessId || n.businessId === currentBusiness?.id)).map((n: any, i: number) => (
-                    <AnnouncementBanner key={i} announcement={n} />
-                ))}
+                {/* Duyuru Hiyerarşisi */}
+                <div className="flex flex-col">
+                    {/* 1. Global (SuperAdmin) Duyuruları */}
+                    {allNotifs?.filter((n: any) => n.isActive && !n.businessId).map((n: any, i: number) => (
+                        <AnnouncementBanner key={`global-${i}`} announcement={{ ...n, isGlobal: true }} />
+                    ))}
+                    
+                    {/* 2. Yerel (İşletme/Şube) Duyuruları */}
+                    {allNotifs?.filter((n: any) => n.isActive && n.businessId === currentBusiness?.id).map((n: any, i: number) => (
+                        <AnnouncementBanner key={`local-${i}`} announcement={n} />
+                    ))}
+                </div>
                 
                 <div className="flex flex-1 overflow-hidden relative">
                     <Sidebar />

@@ -1,6 +1,7 @@
 "use client";
 
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, ReactNode, useMemo } from 'react';
+import { useParams, usePathname } from 'next/navigation';
 import { AuthProvider, useAuth } from './AuthContext';
 import { BusinessProvider, useBusiness } from './BusinessContext';
 import { DataProvider, useData } from './DataContext';
@@ -26,6 +27,105 @@ const StoreOrchestrator = ({ children }: { children: ReactNode }) => {
 
     const [isOnline, setIsOnline] = useState(true);
     const [syncStatus, setSyncStatus] = useState<'idle' | 'syncing' | 'error'>('idle');
+    const [isManagerAuthorized, setManagerAuthorized] = useState(false);
+    const fetchControllerRef = React.useRef<AbortController | null>(null);
+    const realtimeTimeoutRef = React.useRef<NodeJS.Timeout | null>(null);
+
+    const params = useParams();
+    const slug = params?.slug as string;
+
+    const activeBizId = useMemo(() => {
+        if (auth.impersonatedBusinessId) return auth.impersonatedBusinessId;
+        if (slug) {
+            const bizFromSlug = biz.allBusinesses.find(b => b.slug === slug);
+            if (bizFromSlug) return bizFromSlug.id;
+        }
+        return auth.currentUser?.businessId;
+    }, [auth.impersonatedBusinessId, auth.currentUser?.businessId, slug, biz.allBusinesses]);
+
+    const fetchData = React.useCallback(async (bizId?: string, user?: AppUser, force?: boolean, startDate?: string, endDate?: string) => {
+        // İptal mekanizması: Önceki istek varsa durdur
+        if (fetchControllerRef.current) {
+            fetchControllerRef.current.abort();
+        }
+        const controller = new AbortController();
+        fetchControllerRef.current = controller;
+
+        const targetBizId = bizId || activeBizId;
+        const targetUser = user || auth.currentUser;
+        
+        if (!targetUser) return;
+        const isSaaS = targetUser.role === 'SaaS_Owner';
+        if (!targetBizId && !isSaaS) return;
+
+        const setters = {
+            setAllCustomers: data.setAllCustomers,
+            setAllAppointments: data.setAllAppointments,
+            setAllBlocks: data.setAllBlocks,
+            setAllNotifs: data.setAllNotifs,
+            setAllLogs: data.setAllLogs,
+            setAllStaff: data.setAllStaff,
+            setAllInventory: data.setAllInventory,
+            setAllRooms: data.setAllRooms,
+            setAllServices: data.setAllServices,
+            setAllPackageDefinitions: data.setAllPackageDefinitions,
+            setAllExpenses: data.setAllExpenses,
+            setZReports: data.setZReports,
+            setAllPackages: data.setAllPackages,
+            setAllQuotes: data.setAllQuotes,
+            setTenantModules: data.setTenantModules,
+            setMarketingRules: data.setMarketingRules,
+            setPricingRules: data.setPricingRules,
+            setWallets: data.setWallets,
+            setWalletTransactions: data.setWalletTransactions,
+            setBodyMaps: data.setBodyMaps,
+            setUsageNorms: data.setUsageNorms,
+            setAllCustomerMedia: data.setAllCustomerMedia,
+            setAllDebts: data.setAllDebts,
+            setAiInsights: data.setAiInsights,
+            setMembershipPlans: data.setMembershipPlans,
+            setCustomerMemberships: data.setCustomerMemberships,
+            setAllBusinesses: biz.setAllBusinesses,
+            setBranches: biz.setBranches,
+            setSettings: biz.setSettings,
+            setBookingSettings: biz.setBookingSettings,
+            setPaymentDefinitions: biz.setPaymentDefinitions,
+            setBankAccounts: biz.setBankAccounts,
+            setExpenseCategories: biz.setExpenseCategories,
+            setReferralSources: biz.setReferralSources,
+            setConsentFormTemplates: biz.setConsentFormTemplates,
+            setSyncStatus: setSyncStatus,
+            setCurrentBranch: biz.setCurrentBranch,
+            setCurrentTenant: biz.setCurrentTenant,
+            setAllPayments: data.setAllPayments
+        };
+
+        try {
+            await fetchDataLogic(
+                targetBizId,
+                targetUser,
+                setters,
+                force,
+                startDate,
+                endDate,
+                controller.signal
+            );
+        } catch (err: any) {
+            if (err.name === 'AbortError' || err.message === 'Aborted') {
+                console.log("Fetch aborted for new request. Status check...");
+                // Note: Yeni istek status'ü zaten 'syncing' yapmıştır, 
+                // bu yüzden burada idle yapmıyoruz ki yeni istek devam etsin.
+                // Sadece en sonuncu istek bittiğinde idle olacak.
+            } else {
+                console.error("Fetch Error:", err);
+                setSyncStatus('error');
+            }
+        } finally {
+            if (fetchControllerRef.current === controller) {
+                setSyncStatus(prev => prev === 'syncing' ? 'idle' : prev);
+            }
+        }
+    }, [activeBizId, auth.currentUser, biz, data]);
 
     useEffect(() => {
         const handleOnline = () => setIsOnline(true);
@@ -34,17 +134,36 @@ const StoreOrchestrator = ({ children }: { children: ReactNode }) => {
         window.addEventListener('offline', handleOffline);
 
         // Otomatik veri çekme başlatıcı
-        if (auth.currentUser) {
+        if (auth.currentUser || slug) {
             fetchData();
         }
 
+        // Debounced Realtime Trigger
+        const triggerFetch = () => {
+            if (realtimeTimeoutRef.current) clearTimeout(realtimeTimeoutRef.current);
+            realtimeTimeoutRef.current = setTimeout(() => {
+                fetchData();
+            }, 500); // 500ms Stability Delay
+        };
+
+        // Realtime Subscriptions
+        let channel: any;
+        if (activeBizId) {
+            channel = supabase.channel(`realtime-biz-${activeBizId}`)
+                .on('postgres_changes', { event: '*', schema: 'public', table: 'appointments', filter: `business_id=eq.${activeBizId}` }, triggerFetch)
+                .on('postgres_changes', { event: '*', schema: 'public', table: 'staff', filter: `business_id=eq.${activeBizId}` }, triggerFetch)
+                .on('postgres_changes', { event: '*', schema: 'public', table: 'payments', filter: `business_id=eq.${activeBizId}` }, triggerFetch)
+                .subscribe();
+        }
+        
         return () => {
             window.removeEventListener('online', handleOnline);
             window.removeEventListener('offline', handleOffline);
+            if (channel) supabase.removeChannel(channel);
+            if (realtimeTimeoutRef.current) clearTimeout(realtimeTimeoutRef.current);
         };
-    }, [auth.currentUser]);
+    }, [auth.currentUser?.id, activeBizId, slug, fetchData]);
 
-    const activeBizId = auth.impersonatedBusinessId || auth.currentUser?.businessId;
 
     const runSync = async (table: string, action: 'insert' | 'update' | 'delete', payload: any, id?: string) => {
         if (!isOnline) return;
@@ -57,63 +176,6 @@ const StoreOrchestrator = ({ children }: { children: ReactNode }) => {
         }
     };
 
-    const fetchData = async (bizId?: string, user?: AppUser, force?: boolean, startDate?: string, endDate?: string) => {
-        const targetBizId = bizId || activeBizId;
-        const targetUser = user || auth.currentUser;
-        
-        if (!targetUser) return;
-        const isSaaS = targetUser.role === 'SaaS_Owner';
-        if (!targetBizId && !isSaaS) return;
-
-        await fetchDataLogic(
-            targetBizId,
-            targetUser,
-            {
-                setAllCustomers: data.setAllCustomers,
-                setAllAppointments: data.setAllAppointments,
-                setAllBlocks: data.setAllBlocks,
-                setAllNotifs: data.setAllNotifs,
-                setAllLogs: data.setAllLogs,
-                setAllStaff: data.setAllStaff,
-                setAllInventory: data.setAllInventory,
-                setAllRooms: data.setAllRooms,
-                setAllServices: data.setAllServices,
-                setAllPackageDefinitions: data.setAllPackageDefinitions,
-                setAllExpenses: data.setAllExpenses,
-                setZReports: data.setZReports,
-                setAllPackages: data.setAllPackages,
-                setAllQuotes: data.setAllQuotes,
-                setTenantModules: data.setTenantModules,
-                setMarketingRules: data.setMarketingRules,
-                setPricingRules: data.setPricingRules,
-                setWallets: data.setWallets,
-                setWalletTransactions: data.setWalletTransactions,
-                setBodyMaps: data.setBodyMaps,
-                setUsageNorms: data.setUsageNorms,
-                setAllCustomerMedia: data.setAllCustomerMedia,
-                setAllDebts: data.setAllDebts,
-                setAiInsights: data.setAiInsights,
-                setMembershipPlans: data.setMembershipPlans,
-                setCustomerMemberships: data.setCustomerMemberships,
-                setAllBusinesses: biz.setAllBusinesses,
-                setBranches: biz.setBranches,
-                setSettings: biz.setSettings,
-                setBookingSettings: biz.setBookingSettings,
-                setPaymentDefinitions: biz.setPaymentDefinitions,
-                setBankAccounts: biz.setBankAccounts,
-                setExpenseCategories: biz.setExpenseCategories,
-                setReferralSources: biz.setReferralSources,
-                setConsentFormTemplates: biz.setConsentFormTemplates,
-                setSyncStatus: setSyncStatus,
-                setCurrentBranch: biz.setCurrentBranch,
-                setCurrentTenant: biz.setCurrentTenant,
-                setAllPayments: data.setAllPayments
-            },
-            force,
-            startDate,
-            endDate
-        );
-    };
 
     const isLicenseExpired = React.useMemo(() => {
         if (!biz.currentTenant?.expiryDate) return false;
@@ -139,6 +201,8 @@ const StoreOrchestrator = ({ children }: { children: ReactNode }) => {
         currentBranch: biz.currentBranch,
         isOnline: isOnline,
         syncStatus: syncStatus,
+        isManagerAuthorized: isManagerAuthorized,
+        setManagerAuthorized: setManagerAuthorized,
         
         allBusinesses: biz.allBusinesses,
         allUsers: auth.allUsers,
@@ -224,8 +288,15 @@ const StoreOrchestrator = ({ children }: { children: ReactNode }) => {
             const id = crypto.randomUUID();
             const appt = { ...a, id };
             data.setAllAppointments((prev: any) => [appt, ...prev]);
-            await syncDb('appointments', 'insert', appt, id, activeBizId);
+
+            const ok = await syncDb('appointments', 'insert', appt, id, activeBizId);
             
+            if (!ok) {
+                console.warn("Failed to sync appointment, rolling back local state.");
+                data.setAllAppointments((prev: any) => prev.filter((ap: any) => ap.id !== id));
+                return false;
+            }
+
             // Body Map Linkage
             if (a.bodyMapData) {
                 const bmId = crypto.randomUUID();
@@ -246,18 +317,31 @@ const StoreOrchestrator = ({ children }: { children: ReactNode }) => {
             return true;
         },
         updateAppointment: async (id: string, updates: any) => {
+            const prevState = data.appointments.find(a => a.id === id);
             data.updateAppointment(id, updates);
-            await syncDb('appointments', 'update', updates, id, activeBizId);
+            const ok = await syncDb('appointments', 'update', updates, id, activeBizId);
+            if (!ok && prevState) {
+                data.updateAppointment(id, prevState);
+                return false;
+            }
             return true;
         },
         deleteAppointment: async (id: string) => {
             const apt = data.appointments.find(a => a.id === id);
-            const ok = await data.deleteAppointment(id);
-            if (ok) {
-                await syncDb('appointments', 'delete', {}, id, activeBizId);
-                if (apt) await store.addLog('Randevu Silindi', apt.customerName);
+            if (!apt) return false;
+            
+            const okLocal = await data.deleteAppointment(id);
+            if (okLocal) {
+                const okRemote = await syncDb('appointments', 'delete', {}, id, activeBizId);
+                if (!okRemote) {
+                    // Rollback local delete
+                    data.setAllAppointments((prev: any) => [...prev, apt]);
+                    return false;
+                }
+                await store.addLog('Randevu Silindi', apt.customerName);
+                return true;
             }
-            return ok;
+            return false;
         },
         moveAppointment: async (id: string, newTime: string, newStaffId?: string, newRoomId?: string) => {
             const ok = await data.moveAppointment(id, newTime, newStaffId, newRoomId);
@@ -354,55 +438,90 @@ const StoreOrchestrator = ({ children }: { children: ReactNode }) => {
             await syncDb('rooms', 'update', updates, id, activeBizId);
         },
         deleteRoom: async (id: string) => {
+            const room = data.rooms.find(r => r.id === id);
+            if (!room) return;
             data.removeRoom(id);
-            await syncDb('rooms', 'delete', {}, id, activeBizId);
+            const ok = await syncDb('rooms', 'delete', {}, id, activeBizId);
+            if (!ok) {
+                // Rollback
+                data.setAllRooms((prev: any) => [...prev, room]);
+                return;
+            }
+            await store.addLog('Kabin Silindi', room.name, 'Yönetici Onaylı');
         },
         
         analyzeSystem: async () => {
             if (!activeBizId) return;
             const newInsights: any[] = [];
             
-            // 1. Düşük Stok Analizi
-            const lowStockProducts = data.inventory.filter(p => (p.stock || 0) < 5);
+            // 1. Düşük Stok Analizi (Modernized)
+            const lowStockProducts = data.inventory.filter(p => (p.stock || 0) < 10);
             if (lowStockProducts.length > 0) {
                 newInsights.push({
                     id: crypto.randomUUID(),
-                    title: 'Düşük Stok Uyarısı',
-                    desc: `${lowStockProducts.length} üründe stok kritik seviyenin altında.`,
+                    title: 'Stok Yönetim Uyarısı',
+                    desc: `${lowStockProducts.length} üründe stok azalıyor. Operasyonel aksama riskine karşı kontrol edin.`,
                     impact: 'high',
                     category: 'inventory',
-                    suggestedAction: 'Sipariş Ver'
+                    suggestedAction: 'Envanteri İncele'
                 });
             }
 
-            // 2. Churn (Kayıp) Risk Analizi
+            // 2. Personel Verimliliği (Gerçek Veri)
+            const sevenDaysAgo = new Date();
+            sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+            const sevenDaysAgoStr = sevenDaysAgo.toISOString().split('T')[0];
+
+            const recentPayments = data.payments.filter(p => p.date >= sevenDaysAgoStr);
+            const staffRevenue: Record<string, number> = {};
+            
+            recentPayments.forEach(p => {
+                // Payment içinde staffId olmadığı için randevu üzerinden buluyoruz
+                const linkedAppt = data.appointments.find(a => a.id === p.appointmentId);
+                const sId = linkedAppt?.staffId;
+                if (sId) {
+                    staffRevenue[sId] = (staffRevenue[sId] || 0) + (p.totalAmount || 0);
+                }
+            });
+
+            let topStaffId = '';
+            let maxRev = 0;
+            Object.entries(staffRevenue).forEach(([id, rev]) => {
+                if (rev > maxRev) {
+                    maxRev = rev;
+                    topStaffId = id;
+                }
+            });
+
+            const topStaff = data.staffMembers.find(s => s.id === topStaffId);
+            if (topStaff) {
+                newInsights.push({
+                    id: crypto.randomUUID(),
+                    title: 'Haftanın Performans Yıldızı',
+                    desc: `${topStaff.name} son 7 günde ₺${maxRev.toLocaleString('tr-TR')} ciro ile zirvede.`,
+                    impact: 'low',
+                    category: 'staff',
+                    suggestedAction: 'Performans Primi Tanımla'
+                });
+            }
+
+            // 3. Churn (Kayıp) Risk Analizi
             const churnRisks = data.customers.filter(c => store.determineChurnRisk(c));
             if (churnRisks.length > 0) {
                 newInsights.push({
                     id: crypto.randomUUID(),
-                    title: 'Müşteri Kayıp Riski',
-                    desc: `${churnRisks.length} müşteri son 30 gündür işlem yapmadı.`,
+                    title: 'Müşteri Kayıp Riski (Churn)',
+                    desc: `${churnRisks.length} sadık müşteri son 30 gündür işlem yapmadı.`,
                     impact: 'medium',
                     category: 'crm',
-                    suggestedAction: 'Kampanya Gönder'
-                });
-            }
-
-            // 3. Personel Verimliliği
-            const topStaff = data.staffMembers[0]; 
-            if (topStaff) {
-                newInsights.push({
-                    id: crypto.randomUUID(),
-                    title: 'Haftanın Yıldızı',
-                    desc: `${topStaff.name} bu hafta en yüksek doluluk oranına ulaştı.`,
-                    impact: 'low',
-                    category: 'staff',
-                    suggestedAction: 'Tebrik Et'
+                    suggestedAction: 'Geri Kazanım Kampanyası'
                 });
             }
 
             data.setAiInsights(newInsights);
-            for (const insight of newInsights) {
+            // Not: syncDb ile kalıcı hale getirmeyi tercih edebiliriz ama genellikle transient analizlerdir
+            // Sadece kritik olanları kaydediyoruz
+            for (const insight of newInsights.filter(i => i.impact === 'high')) {
                 await syncDb('ai_insights', 'insert', insight, insight.id, activeBizId);
             }
         },
@@ -433,13 +552,21 @@ const StoreOrchestrator = ({ children }: { children: ReactNode }) => {
                     const appt = data.appointments.find(a => a.id === paymentData.appointmentId);
                     const service = data.services.find(s => s.name === appt?.service);
                     if (service) {
-                        const norms = data.usageNorms.filter(n => n.serviceId === service.id);
-                        for (const norm of norms) {
-                            const product = data.inventory.find(p => p.id === norm.productId);
+                        // consumables JSONB (CatalogSettings) veya usageNorms (Legacy)
+                        const recipes = (service.consumables && service.consumables.length > 0) 
+                            ? service.consumables 
+                            : data.usageNorms.filter(n => n.serviceId === service.id).map(n => ({ productId: n.productId, quantity: n.amountPerService }));
+                        
+                        for (const r of recipes) {
+                            const pId = r.productId;
+                            const qty = r.quantity || r.amountPerService;
+                            if (!pId || !qty) continue;
+
+                            const product = data.inventory.find(p => p.id === pId);
                             if (product) {
-                                const newStock = Math.max(0, (product.stock || 0) - norm.amountPerService);
-                                data.updateProduct(norm.productId, { stock: newStock });
-                                await syncDb('inventory', 'update', { stock: newStock }, norm.productId, activeBizId);
+                                const newStock = Math.max(0, (product.stock || 0) - qty);
+                                data.updateProduct(pId, { stock: newStock });
+                                await syncDb('inventory', 'update', { stock: newStock }, pId, activeBizId);
                             }
                         }
                     }
@@ -489,21 +616,22 @@ const StoreOrchestrator = ({ children }: { children: ReactNode }) => {
                 }
 
                 // 6. Log
-                const logId = crypto.randomUUID();
                 const log = {
-                    id: logId,
+                    id: crypto.randomUUID(),
                     customerName: paymentData.customerName,
                     action: 'Tahsilat Tamamlandı',
                     newValue: `Tutar: ${paymentData.totalAmount} TL`,
-                    user: auth.currentUser?.name || 'Sistem'
+                    user: auth.currentUser?.name || 'Sistem',
+                    date: new Date().toISOString()
                 };
                 data.setAllLogs((prev: any[]) => [log, ...prev]);
-                await syncDb('audit_logs', 'insert', log, logId, activeBizId);
+                await syncDb('audit_logs', 'insert', log, log.id, activeBizId);
 
                 setSyncStatus('idle');
                 return true;
             } catch (err) {
-                console.error("Checkout Error:", err);
+                console.error("CRITICAL CHECKOUT ERROR:", err);
+                // Kullanıcıya hata bildirimi yapılması için durumu işaretle
                 setSyncStatus('error');
                 return false;
             }
@@ -532,8 +660,15 @@ const StoreOrchestrator = ({ children }: { children: ReactNode }) => {
             await syncDb('inventory', 'update', p, id, activeBizId);
         },
         removeProduct: async (id: string) => {
+            const item = data.inventory.find(p => p.id === id);
+            if (!item) return;
             data.removeProduct(id);
-            await syncDb('inventory', 'delete', {}, id, activeBizId);
+            const ok = await syncDb('inventory', 'delete', {}, id, activeBizId);
+            if (!ok) {
+                data.setAllInventory((prev: any) => [item, ...prev]);
+                return;
+            }
+            await store.addLog('Envanterden Silindi', item.name, 'Yönetici Onaylı');
         },
         addExpense: async (e: any) => {
             const id = crypto.randomUUID();
@@ -553,8 +688,15 @@ const StoreOrchestrator = ({ children }: { children: ReactNode }) => {
             await syncDb('services', 'update', s, id, activeBizId);
         },
         removeService: async (id: string) => {
+            const service = data.services.find(s => s.id === id);
+            if (!service) return;
             data.removeService(id);
-            await syncDb('services', 'delete', {}, id, activeBizId);
+            const ok = await syncDb('services', 'delete', {}, id, activeBizId);
+            if (!ok) {
+                data.setAllServices((prev: any) => [service, ...prev]);
+                return;
+            }
+            await store.addLog('Hizmet Silindi', service.name, 'Yönetici Onaylı');
         },
         addPackageDefinition: async (p: any) => {
             const id = crypto.randomUUID();
@@ -567,8 +709,15 @@ const StoreOrchestrator = ({ children }: { children: ReactNode }) => {
             await syncDb('package_definitions', 'update', p, id, activeBizId);
         },
         removePackageDefinition: async (id: string) => {
+            const pkg = data.packageDefinitions.find(p => p.id === id);
+            if (!pkg) return;
             data.removePackageDefinition(id);
-            await syncDb('package_definitions', 'delete', {}, id, activeBizId);
+            const ok = await syncDb('package_definitions', 'delete', {}, id, activeBizId);
+            if (!ok) {
+                data.setAllPackageDefinitions((prev: any) => [pkg, ...prev]);
+                return;
+            }
+            await store.addLog('Paket Tanımı Silindi', pkg.name, 'Yönetici Onaylı');
         },
         addQuote: async (q: any) => {
             const id = crypto.randomUUID();
@@ -626,8 +775,15 @@ const StoreOrchestrator = ({ children }: { children: ReactNode }) => {
             await syncDb('staff', 'insert', ns, id, activeBizId);
         },
         deleteStaff: async (id: string) => {
+            const staff = data.staffMembers.find(s => s.id === id);
+            if (!staff) return;
             data.setAllStaff((prev: Staff[]) => prev.filter((s: Staff) => s.id !== id));
-            await syncDb('staff', 'delete', {}, id, activeBizId);
+            const ok = await syncDb('staff', 'delete', {}, id, activeBizId);
+            if (!ok) {
+                data.setAllStaff((prev: Staff[]) => [...prev, staff]);
+                return;
+            }
+            await store.addLog('Personel Silindi', staff.name, 'Yönetici Onaylı');
         },
         updateStaff: async (id: string, s: any) => {
             data.setAllStaff((prev: Staff[]) => prev.map((st: Staff) => st.id === id ? { ...st, ...s } : st));
@@ -942,16 +1098,37 @@ const StoreOrchestrator = ({ children }: { children: ReactNode }) => {
         getUpsellSuggestions: (serviceName: string) => {
             return data.inventory.filter(i => (i.stock || 0) > 0).slice(0, 3);
         },
-        predictInventory: () => [],
+        predictInventory: () => {
+            const predictions: any[] = [];
+            data.inventory.forEach(product => {
+                // Her ürün için bir tüketim hızı belirleyelim (Örn: servislere bağlı kullanım)
+                // Bu basit versiyonda, ürünün son 30 gündeki kullanımına bakabiliriz veya varsayılan bir hız (0.5 birim/gün) atayabiliriz.
+                const fallbackConsumption = 0.5;
+                const daysLeft = Math.floor((product.stock || 0) / fallbackConsumption);
+                const runoutDate = new Date();
+                runoutDate.setDate(runoutDate.getDate() + daysLeft);
+
+                predictions.push({
+                    productId: product.id,
+                    productName: product.name,
+                    currentStock: product.stock || 0,
+                    daysLeft: daysLeft,
+                    runoutDate: runoutDate.toISOString()
+                });
+            });
+            return predictions;
+        },
         can,
         calculateCommission: (staffId: string, serviceName: string, price: number) => {
             const specificRule = data.commissionRules.find(r => r.staffId === staffId && r.serviceName === serviceName);
             if (specificRule) {
-                return specificRule.type === 'PERCENT' ? (price * specificRule.value / 100) : specificRule.value;
+                const isPercent = specificRule.type.toUpperCase() === 'PERCENT' || specificRule.type.toLowerCase() === 'percentage';
+                return isPercent ? (price * specificRule.value / 100) : specificRule.value;
             }
             const staffRule = data.commissionRules.find(r => r.staffId === staffId && (!r.serviceName || r.serviceName === 'GENEL'));
             if (staffRule) {
-                return staffRule.type === 'PERCENT' ? (price * staffRule.value / 100) : staffRule.value;
+                const isPercent = staffRule.type.toUpperCase() === 'PERCENT' || staffRule.type.toLowerCase() === 'percentage';
+                return isPercent ? (price * staffRule.value / 100) : staffRule.value;
             }
             return price * 0.1;
         },
@@ -980,9 +1157,9 @@ const StoreOrchestrator = ({ children }: { children: ReactNode }) => {
         },
         broadcastAnnouncement: async (title: string, content: string, type: any) => {
             const id = crypto.randomUUID();
-            const announcement = { id, title, content, type, businessId: null, isActive: true, createdAt: new Date().toISOString() };
-            data.setAllNotifs((prev: any[]) => [{ id, type: 'SYSTEM', content: title, sentAt: new Date().toISOString() }, ...prev]);
-            await syncDb('system_announcements', 'insert', announcement, id, undefined);
+            const announcement = { id, title, content, type, businessId: activeBizId || null, isActive: true, createdAt: new Date().toISOString() };
+            data.setAllNotifs((prev: any[]) => [{ id, type: 'SYSTEM', content: title, sentAt: new Date().toISOString(), title, businessId: activeBizId || null, isActive: true }, ...prev]);
+            await syncDb('system_announcements', 'insert', announcement, id, activeBizId);
         },
         addBranch: async () => {},
         updateBranch: () => {},

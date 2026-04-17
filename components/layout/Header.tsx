@@ -167,6 +167,7 @@ export default function Header() {
                                             key={br.id}
                                             onClick={() => {
                                                 setCurrentBranch(br);
+                                                localStorage.setItem('aura_last_branch', br.id);
                                                 setShowBranchMenu(false);
                                             }}
                                             className={`w-full flex items-center justify-between p-4 rounded-3xl transition-all duration-300 ${

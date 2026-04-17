@@ -64,13 +64,18 @@ export const BusinessProvider = ({ children }: { children: ReactNode }) => {
         }
     };
 
+    const contextValue = useMemo(() => ({
+        allBusinesses, currentTenant, currentBranch, branches, settings, bookingSettings, allRates,
+        paymentDefinitions, bankAccounts, expenseCategories, referralSources, consentFormTemplates,
+        setAllBusinesses, setCurrentTenant, setCurrentBranch, setBranches, setSettings, setBookingSettings,
+        setAllRates, setPaymentDefinitions, setBankAccounts, setExpenseCategories, setReferralSources, setConsentFormTemplates
+    }), [
+        allBusinesses, currentTenant, currentBranch, branches, settings, bookingSettings, allRates,
+        paymentDefinitions, bankAccounts, expenseCategories, referralSources, consentFormTemplates
+    ]);
+
     return (
-        <BusinessContext.Provider value={{
-            allBusinesses, currentTenant, currentBranch, branches, settings, bookingSettings, allRates,
-            paymentDefinitions, bankAccounts, expenseCategories, referralSources, consentFormTemplates,
-            setAllBusinesses, setCurrentTenant, setCurrentBranch, setBranches, setSettings, setBookingSettings,
-            setAllRates, setPaymentDefinitions, setBankAccounts, setExpenseCategories, setReferralSources, setConsentFormTemplates
-        }}>
+        <BusinessContext.Provider value={contextValue}>
             {children}
         </BusinessContext.Provider>
     );

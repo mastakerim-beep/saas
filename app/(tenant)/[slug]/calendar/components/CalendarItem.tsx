@@ -10,7 +10,7 @@ const SLOT_HEIGHT = 42;
 const PX_PER_MIN = SLOT_HEIGHT / 15;
 
 const formatDate = (date: Date) => {
-    return new Date(date.getTime() + (3 * 3600000)).toISOString().split('T')[0];
+    return date.toLocaleDateString('sv-SE');
 };
 
 interface CalendarItemProps {
