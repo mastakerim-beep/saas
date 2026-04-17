@@ -206,15 +206,26 @@ export default function ClientWrapper({ children }: { children: React.ReactNode 
                 </div>
                 
                 <div className="flex flex-1 overflow-hidden relative">
-                    <Sidebar />
-                    <div className="flex-1 flex flex-col min-w-0 bg-white/50 backdrop-blur-sm relative">
-                        <Header />
-                        <main className="flex-1 overflow-y-auto w-full relative custom-scrollbar">
-                            <div className="h-full w-full">
+                    {/* SOVEREIGN MODE: Under Command Center view, we bypass global sidebar and header */}
+                    {isSuperAdminPath && !isImpersonating ? (
+                        <div className="flex-1 flex flex-col min-w-0 relative h-full">
+                            <main className="flex-1 overflow-y-auto w-full relative">
                                 {children}
+                            </main>
+                        </div>
+                    ) : (
+                        <>
+                            <Sidebar />
+                            <div className="flex-1 flex flex-col min-w-0 bg-white/50 backdrop-blur-sm relative">
+                                <Header />
+                                <main className="flex-1 overflow-y-auto w-full relative custom-scrollbar">
+                                    <div className="h-full w-full">
+                                        {children}
+                                    </div>
+                                </main>
                             </div>
-                        </main>
-                    </div>
+                        </>
+                    )}
                 </div>
             </div>
         </LicenseGuard>

@@ -125,36 +125,53 @@ export default function SuperAdminPage() {
                 <div className="absolute bottom-[-10%] left-[-10%] w-[50%] h-[50%] bg-purple-500/5 blur-[120px] rounded-full" />
             </div>
 
-            {/* Top Navigation Bar */}
-            <div className="relative z-50 h-[80px] px-8 flex items-center justify-between border-b border-indigo-100 bg-white/70 backdrop-blur-xl">
+            {/* Top Navigation Bar: Clean & Sovereign */}
+            <div className="relative z-50 h-[84px] px-10 flex items-center justify-between border-b border-indigo-100/50 bg-white/80 backdrop-blur-2xl">
                 <div className="flex items-center gap-6">
-                    <div className="w-10 h-10 bg-indigo-600 rounded-xl flex items-center justify-center text-white shadow-xl shadow-indigo-600/20 group cursor-pointer hover:scale-110 transition-all">
-                        <Zap size={20} className="fill-white" />
+                    <div className="w-12 h-12 bg-indigo-600 rounded-[1.25rem] flex items-center justify-center text-white shadow-2xl shadow-indigo-600/20 group hover:rotate-12 transition-all duration-500">
+                        <Zap size={24} className="fill-white" />
                     </div>
                     <div className="flex flex-col">
-                        <h1 className="text-slate-900 font-black text-lg tracking-tighter uppercase italic leading-none">Aura Komuta Merkezi</h1>
-                        <p className="text-[9px] font-black text-indigo-500 uppercase tracking-[0.3em] mt-1 flex items-center gap-2">
-                            <Server size={10} /> SİSTEM VERSİYON 4.0.2 - SOVEREIGN
-                        </p>
+                        <h1 className="text-slate-900 font-black text-xl italic tracking-tighter uppercase leading-none">Aura Komuta Merkezi</h1>
+                        <div className="flex items-center gap-3 mt-1.5">
+                            <span className="text-[9px] font-black text-indigo-500 uppercase tracking-[0.2em] flex items-center gap-1.5 bg-indigo-50 px-2 py-0.5 rounded-md">
+                                <Server size={10} /> V 4.0.2
+                            </span>
+                            <span className="w-1 h-1 bg-slate-200 rounded-full" />
+                            <span className="text-[9px] font-black text-emerald-600 uppercase tracking-[0.2em] flex items-center gap-1.5">
+                                <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" /> SİSTEM OPTİMAL
+                            </span>
+                        </div>
                     </div>
                 </div>
 
-                <div className="flex items-center gap-6">
-                    <div className="hidden md:flex items-center gap-8 text-[10px] font-black uppercase tracking-widest mr-8">
-                        <div className="flex items-center gap-2 text-emerald-600">
-                            <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" /> DURUM: OPTİMAL
+                <div className="flex items-center gap-8">
+                    <div className="hidden lg:flex items-center gap-8 text-[10px] font-black uppercase tracking-widest text-slate-400">
+                        <div className="flex flex-col items-end">
+                            <span className="text-slate-900 leading-none mb-1">₺{stats.mrr.toLocaleString()}</span>
+                            <span className="text-[8px] opacity-60">GÜNCEL MRR</span>
                         </div>
-                        <div className="flex items-center gap-2 text-indigo-600">
-                            MRR: ₺{stats.mrr.toLocaleString()}
+                        <div className="w-px h-8 bg-slate-100" />
+                        <div className="flex flex-col items-end">
+                            <span className="text-slate-900 leading-none mb-1">{allBusinesses.length}</span>
+                            <span className="text-[8px] opacity-60">TOPLAM NODE</span>
                         </div>
                     </div>
-                    <div className="p-1 px-4 bg-slate-50 rounded-full border border-indigo-100 flex items-center gap-4">
+
+                    <div className="flex items-center gap-3 pl-8 border-l border-slate-100">
                          <div className="text-right">
-                             <p className="text-[10px] font-black text-slate-900">{currentUser.name}</p>
+                             <p className="text-[11px] font-black text-slate-900 leading-none mb-1">{currentUser.name}</p>
                              <p className="text-[8px] font-bold text-indigo-500 uppercase tracking-widest">Sovereign Admin</p>
                          </div>
-                         <button onClick={logout} className="p-2 text-slate-400 hover:text-rose-500 transition-colors">
-                             <Power size={18} />
+                         <button 
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                if(confirm('Oturumu kapatmak istediğinize emin misiniz?')) logout();
+                            }}
+                            className="w-10 h-10 flex items-center justify-center text-slate-400 hover:text-rose-500 hover:bg-rose-50 rounded-xl transition-all"
+                            title="Güvenli Çıkış"
+                         >
+                             <LogOut size={20} />
                          </button>
                     </div>
                 </div>
