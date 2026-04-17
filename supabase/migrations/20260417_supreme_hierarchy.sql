@@ -39,17 +39,18 @@ CREATE INDEX IF NOT EXISTS idx_quotes_biz_id ON quotes(business_id);
 CREATE INDEX IF NOT EXISTS idx_customer_wallets_biz_id ON customer_wallets(business_id);
 CREATE INDEX IF NOT EXISTS idx_wallet_tx_biz_id ON wallet_transactions(business_id);
 
--- 3. RLS (ROW LEVEL SECURITY) BİRLİKTE ÇALIŞMA MANTIĞI
--- Businesses RLS: Hem SaaS sahipleri hem de İşletme Patronları erişebilir.
+-- 3. RLS (ROW LEVEL SECURITY) - JWT & METADATA TABANLI ERİŞİM (v1.3)
+-- Businesses RLS: Kullanıcılar kendi işletmelerini görebilmeli.
 DROP POLICY IF EXISTS "SaaS Owners manage all businesses" ON businesses;
 CREATE POLICY "SaaS Owners manage all businesses" 
 ON businesses FOR ALL 
 USING (
-  auth.uid() IN (SELECT id FROM app_users WHERE role = 'SaaS_Owner') OR
-  auth.uid() = owner_id
+  (auth.jwt() -> 'user_metadata' ->> 'role') = 'SaaS_Owner' OR
+  auth.uid() = owner_id OR
+  id = (auth.jwt() -> 'user_metadata' ->> 'business_id')::UUID
 );
 
--- Genel Tablo Erişimi: Personel/Patron/SaaS hiyerarşisini tüm tablolara uygula.
+-- Genel Tablo Erişimi: JWT tabanlı hızlı ve döngüsüz yetkilendirme.
 DO $$ 
 DECLARE
     tbl text;
@@ -59,9 +60,8 @@ BEGIN
     LOOP
         EXECUTE format('DROP POLICY IF EXISTS "access_policy_%s" ON %I', tbl, tbl);
         EXECUTE format('CREATE POLICY "access_policy_%s" ON %I FOR ALL USING (
-            business_id IN (
-                SELECT id FROM businesses WHERE owner_id = auth.uid() OR id = (SELECT business_id FROM app_users WHERE id = auth.uid()) OR (SELECT role FROM app_users WHERE id = auth.uid()) = ''SaaS_Owner''
-            )
+            business_id = (auth.jwt() -> ''user_metadata'' ->> ''business_id'')::UUID OR
+            (auth.jwt() -> ''user_metadata'' ->> ''role'') = ''SaaS_Owner''
         )', tbl, tbl);
     END LOOP;
 END $$;
