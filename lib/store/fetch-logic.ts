@@ -11,21 +11,6 @@ export const fetchData = async (
     endDate?: string,
     signal?: AbortSignal
 ) => {
-    const isSaaS = currentUser?.role === 'SaaS_Owner';
-    const targetId = bizId || currentUser?.businessId;
-    
-    // console.log("🔍 Aura Fetch Started:", { bizId, targetId, isSaaS });
-
-    if (!targetId && !isSaaS) {
-        console.warn("⚠️ Fetch aborted: No targetId and not SaaS");
-        return;
-    }
-
-    if (signal?.aborted) return;
-
-    console.time("Aura Fetch Speed");
-    setters.setSyncStatus('syncing');
-
     const tables = [
         'businesses', 'branches', 'appointments', 'customers', 
         'membership_plans', 'customer_memberships', 'payments', 
@@ -37,10 +22,35 @@ export const fetchData = async (
         'consultation_body_maps', 'inventory_usage_norms'
     ];
 
+    const isSaaS = currentUser?.role === 'SaaS_Owner';
+    const targetId = bizId || currentUser?.businessId;
+    
+    // SAAS BARRIER: If we're a SaaS owner on a slug, but don't know the businesses yet,
+    // only fetch businesses first to resolve the correctly ID.
+    const isBusinessesEmpty = !setters.allBusinesses?.length;
+    const isSlugPending = isSaaS && !bizId && isBusinessesEmpty;
+    
+    // If we're on a slug page, we strictly NEED the business list to resolve it.
+    const tablesToFetch = isSlugPending ? ['businesses'] : tables;
+    
+    if (isSlugPending) {
+        console.log("🚧 [Aura Sync] SaaS Barrier Active: Fetching only businesses to resolve slug...");
+    }
+
+    if (!targetId && !isSaaS) {
+        console.warn("⚠️ Fetch aborted: No targetId and not SaaS");
+        return;
+    }
+
+    if (signal?.aborted) return;
+
+    console.time("Aura Fetch Speed");
+    setters.setSyncStatus('syncing');
+
     const dataMap: any = {};
 
     try {
-        await Promise.allSettled(tables.map(async (table) => {
+        await Promise.allSettled(tablesToFetch.map(async (table) => {
             try {
                 const result = await retryRequest(async () => {
                     if (signal?.aborted) throw new Error('Aborted');
@@ -65,7 +75,12 @@ export const fetchData = async (
                 dataMap[table] = toCamel(result || []);
             } catch (e: any) {
                 if (e.name === 'AbortError' || e.message === 'Aborted') {
-                    // Do not log or clear data if aborted
+                    // SPECIAL CASE: Even if aborted, if we have business data, we want it!
+                    // This prevents the 'no businesses' loop on slow loads.
+                    if (table === 'businesses' && dataMap.businesses) {
+                        console.log("💎 [Aura Sync] Applying businesses data despite abortion.");
+                        setters.setAllBusinesses(toCamel(dataMap.businesses));
+                    }
                     return;
                 }
                 console.error(`❌ Table Fetch Error: ${table}`, e);

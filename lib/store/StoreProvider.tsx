@@ -48,7 +48,12 @@ const StoreOrchestrator = ({ children }: { children: ReactNode }) => {
             if (bizFromSlug) {
                 id = bizFromSlug.id;
             } else {
-                // FALLBACK: Until allBusinesses is loaded, rely on currentUser if possible
+                // IMPORTANT: If we are a SaaS owner and businesses are not loaded yet,
+                // do NOT fall back to currentUser.businessId immediately if it would lead to wrong data.
+                const isSaaS = auth.currentUser?.role === 'SaaS_Owner';
+                if (isSaaS && biz.allBusinesses.length === 0) {
+                    return undefined; // Wait for businesses to load
+                }
                 id = auth.currentUser?.businessId || undefined;
             }
         } else {
@@ -174,12 +179,22 @@ const StoreOrchestrator = ({ children }: { children: ReactNode }) => {
         // Sadece auth süreci tamamlandığında ve ortam (slug/kullanıcı) hazır olduğunda çek
         if (auth.isInitialized) {
             const hasTarget = auth.currentUser || slug;
+            const isSaaS = auth.currentUser?.role === 'SaaS_Owner';
+            const isNeedBusinesses = isSaaS && slug && biz.allBusinesses.length === 0;
+
+            if (isNeedBusinesses) {
+                console.log("🚧 [Aura Trace] Waiting for businesses list to resolve slug safely...");
+                fetchData(); // This will trigger the SaaS barrier in fetch-logic
+                return;
+            }
+
             if (hasTarget) {
                 console.log("🔍 [Aura Trace] Triggering fetch:", { 
                     initialized: auth.isInitialized, 
                     user: auth.currentUser?.email, 
                     activeBizId, 
-                    slug 
+                    slug,
+                    hasBusinesses: biz.allBusinesses.length > 0
                 });
                 fetchData();
             } else {
