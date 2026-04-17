@@ -47,13 +47,14 @@ export const fetchData = async (
                     let q = supabase.from(table).select('*');
                     if (signal) q = q.abortSignal(signal);
                     
-                    if (!isSaaS || bizId) {
-                        const idToUse = bizId || targetId;
-                        if (idToUse) {
-                            if (table === 'businesses') q = q.eq('id', idToUse);
-                            else q = q.eq('business_id', idToUse);
-                        }
+                    const idToUse = bizId || targetId;
+                    const skipFilter = isSaaS && !bizId && table === 'businesses';
+
+                    if (idToUse && !skipFilter) {
+                        if (table === 'businesses') q = q.eq('id', idToUse);
+                        else q = q.eq('business_id', idToUse);
                     }
+
                     if (startDate && (table === 'payments' || table === 'expenses')) q = q.gte('date', startDate);
                     if (endDate && (table === 'payments' || table === 'expenses')) q = q.lte('date', endDate);
                     

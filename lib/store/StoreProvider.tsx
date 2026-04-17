@@ -39,17 +39,29 @@ const StoreOrchestrator = ({ children }: { children: ReactNode }) => {
 
     const activeBizId = useMemo(() => {
         let id: string | undefined = undefined;
-        if (auth.impersonatedBusinessId) id = auth.impersonatedBusinessId;
-        else if (slug) {
+
+        if (auth.impersonatedBusinessId) {
+            id = auth.impersonatedBusinessId;
+        } else if (slug) {
+            // Slug based resolution
             const bizFromSlug = biz.allBusinesses.find(b => b.slug === slug);
-            if (bizFromSlug) id = bizFromSlug.id;
-            else id = auth.currentUser?.businessId || undefined;
+            if (bizFromSlug) {
+                id = bizFromSlug.id;
+            } else {
+                // FALLBACK: Until allBusinesses is loaded, rely on currentUser if possible
+                id = auth.currentUser?.businessId || undefined;
+            }
         } else {
             id = auth.currentUser?.businessId || undefined;
         }
-        activeBizIdRef.current = id;
+
         return id;
     }, [auth.impersonatedBusinessId, auth.currentUser?.businessId, slug, biz.allBusinesses]);
+
+    // Update ref in effect for consistency
+    useEffect(() => {
+        activeBizIdRef.current = activeBizId;
+    }, [activeBizId]);
 
     useEffect(() => {
         userRef.current = auth.currentUser;
@@ -160,8 +172,21 @@ const StoreOrchestrator = ({ children }: { children: ReactNode }) => {
 
         // Otomatik veri çekme başlatıcı
         // Sadece auth süreci tamamlandığında ve ortam (slug/kullanıcı) hazır olduğunda çek
-        if (auth.isInitialized && (auth.currentUser || slug)) {
-            fetchData();
+        if (auth.isInitialized) {
+            const hasTarget = auth.currentUser || slug;
+            if (hasTarget) {
+                console.log("🔍 [Aura Trace] Triggering fetch:", { 
+                    initialized: auth.isInitialized, 
+                    user: auth.currentUser?.email, 
+                    activeBizId, 
+                    slug 
+                });
+                fetchData();
+            } else {
+                console.log("⏳ [Aura Trace] Waiting for user/slug context...");
+            }
+        } else {
+            console.log("⏳ [Aura Trace] Waiting for auth initialization...");
         }
 
         // Debounced Realtime Trigger
