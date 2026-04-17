@@ -101,7 +101,14 @@ export const fetchData = async (
         // HYPER-SCALE MERGE: Instead of replacing the full business list with one item,
         // we merge the fetched data into the existing catalog (SWR style).
         const businesses = dataMap.businesses || [];
-        if (businesses.length > 0) {
+        const isGlobalFetch = isSaaS && !bizId && !slug;
+
+        // AUTHENTIC SYNC: If we are fetching the whole catalog (global), the result is the absolute truth.
+        // If it's empty, the local state MUST be cleared.
+        if (isGlobalFetch) {
+            setters.setAllBusinesses(businesses.sort((a: any, b: any) => (a.name || '').localeCompare(b.name || '')));
+        } else if (businesses.length > 0) {
+            // MERGE SYNC (Incremental): Only merge if we have results.
             setters.setAllBusinesses((prev: any[]) => {
                 const merged = [...prev];
                 businesses.forEach((newBiz: any) => {
@@ -109,8 +116,7 @@ export const fetchData = async (
                     if (idx > -1) merged[idx] = newBiz;
                     else merged.push(newBiz);
                 });
-                // Sort by name for consistency
-                return merged.sort((a,b) => (a.name || '').localeCompare(b.name || ''));
+                return merged.sort((a: any, b: any) => (a.name || '').localeCompare(b.name || ''));
             });
         }
 

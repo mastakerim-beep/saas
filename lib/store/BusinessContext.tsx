@@ -55,9 +55,7 @@ export const BusinessProvider = ({ children }: { children: ReactNode }) => {
 
     // 2. Persistence Layer: Save businesses to localStorage when updated
     useEffect(() => {
-        if (allBusinesses.length > 0) {
-            localStorage.setItem('aura_business_catalog', JSON.stringify(allBusinesses));
-        }
+        localStorage.setItem('aura_business_catalog', JSON.stringify(allBusinesses));
     }, [allBusinesses]);
 
     const [currentTenant, setCurrentTenant] = useState<Business | null>(null);
