@@ -23,13 +23,16 @@ export default function SuperAdminPage() {
     const { 
         currentUser, allBusinesses, allPayments, allLogs, 
         allNotifs, tenantModules, setImpersonatedBusinessId,
-        isImpersonating, logout, addBusiness, provisionBusinessUser, clearCatalog, fetchData 
+        isImpersonating, logout, addBusiness, provisionBusinessUser, 
+        deleteBusiness, updateBusinessStatus, clearCatalog, fetchData 
     } = useStore();
 
     const [activeTab, setActiveTab] = useState<AdminTab>('monitor');
     const [searchQuery, setSearchQuery] = useState('');
     const [showCreateModal, setShowCreateModal] = useState(false);
     const [isRefreshing, setIsRefreshing] = useState(false);
+    const [isCreating, setIsCreating] = useState(false);
+    const [isActionLoading, setIsActionLoading] = useState<string | null>(null);
     
     // Form State for new business
     const [newBiz, setNewBiz] = useState({
@@ -52,13 +55,15 @@ export default function SuperAdminPage() {
             return alert("Lütfen tüm alanları doldurun.");
         }
 
+        if (isCreating) return;
+        setIsCreating(true);
+
         try {
-            // types.ts: addBusiness: (b: Omit<Business, 'id' | 'status' | 'maxBranches'>)
             const biz = await addBusiness({
                 name: newBiz.name,
                 slug: newBiz.slug.toLowerCase(),
                 maxUsers: newBiz.seatCount,
-                ownerName: "Betül" // Örnek olarak bırakıldı veya formdan alınabilir
+                ownerName: "İşletme Sahibi"
             });
 
             if (biz) {
@@ -71,10 +76,41 @@ export default function SuperAdminPage() {
                 alert("İşletme ve yönetici hesabı başarıyla oluşturuldu!");
                 setShowCreateModal(false);
                 setNewBiz({ name: '', slug: '', email: '', password: '', seatCount: 5 });
-                fetchData(undefined, undefined, true);
+                await fetchData(undefined, undefined, true);
             }
         } catch (err: any) {
             alert("Hata oluştu: " + err.message);
+        } finally {
+            setIsCreating(false);
+        }
+    };
+
+    const handleDeleteBusiness = async (id: string, name: string) => {
+        if (!window.confirm(`${name} işletmesini kalıcı olarak silmek istediğinize emin misiniz? Bu işlem geri alınamaz.`)) {
+            return;
+        }
+
+        setIsActionLoading(id);
+        try {
+            await deleteBusiness(id);
+            await fetchData(undefined, undefined, true);
+        } catch (err: any) {
+            alert("Silme hatası: " + err.message);
+        } finally {
+            setIsActionLoading(null);
+        }
+    };
+
+    const handleToggleStatus = async (id: string, currentStatus: string) => {
+        const newStatus = currentStatus === 'active' ? 'inactive' : 'active';
+        setIsActionLoading(id);
+        try {
+            await updateBusinessStatus(id, newStatus);
+            await fetchData(undefined, undefined, true);
+        } catch (err: any) {
+            alert("Güncelleme hatası: " + err.message);
+        } finally {
+            setIsActionLoading(null);
         }
     };
 
@@ -322,7 +358,10 @@ export default function SuperAdminPage() {
                                         <TenantCard 
                                             key={biz.id} 
                                             biz={biz} 
+                                            isLoading={isActionLoading === biz.id}
                                             onImpersonate={() => setImpersonatedBusinessId(biz.id)} 
+                                            onDelete={() => handleDeleteBusiness(biz.id, biz.name)}
+                                            onToggleStatus={() => handleToggleStatus(biz.id, biz.status)}
                                         />
                                     ))}
                                 </div>
@@ -483,9 +522,10 @@ export default function SuperAdminPage() {
 
                                 <button 
                                     onClick={handleCreateBusiness}
-                                    className="w-full mt-10 py-5 bg-indigo-600 text-white rounded-[1.8rem] font-black text-[11px] uppercase tracking-[0.2em] shadow-xl shadow-indigo-600/40 hover:bg-indigo-700 active:scale-[0.98] transition-all"
+                                    disabled={isCreating}
+                                    className="w-full mt-10 py-5 bg-indigo-600 text-white rounded-[1.8rem] font-black text-[11px] uppercase tracking-[0.2em] shadow-xl shadow-indigo-600/40 hover:bg-indigo-700 active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                                 >
-                                    İŞLETMEYİ OLUŞTUR ✓
+                                    {isCreating ? 'İŞLENİYOR...' : 'İŞLETMEYİ OLUŞTUR ✓'}
                                 </button>
                             </div>
                         </motion.div>
@@ -635,16 +675,34 @@ function MetricBox({ label, value, trend }: any) {
     );
 }
 
-function TenantCard({ biz, onImpersonate }: any) {
+function TenantCard({ biz, onImpersonate, onDelete, onToggleStatus, isLoading }: any) {
+    const isActive = biz.status === 'active';
     return (
-        <div className="bg-white border border-indigo-100 rounded-[2.5rem] p-8 group hover:border-indigo-500/50 transition-all flex flex-col justify-between h-[300px] shadow-sm hover:shadow-xl">
+        <div className="bg-white border border-indigo-100 rounded-[2.5rem] p-8 group hover:border-indigo-500/50 transition-all flex flex-col justify-between h-[360px] shadow-sm hover:shadow-xl relative overflow-hidden">
+            {isLoading && (
+                <div className="absolute inset-0 bg-white/60 backdrop-blur-[2px] z-20 flex items-center justify-center">
+                    <RefreshCw className="animate-spin text-indigo-600" size={24} />
+                </div>
+            )}
             <div>
                 <div className="flex justify-between items-start mb-6">
                     <div className="w-12 h-12 bg-indigo-50 rounded-2xl flex items-center justify-center text-indigo-600 text-xl font-black italic">
                         {biz.name.charAt(0)}
                     </div>
-                    <div className={`px-4 py-1.5 rounded-full text-[8px] font-black uppercase tracking-widest ${biz.status === 'active' ? 'bg-emerald-100 text-emerald-600' : 'bg-rose-100 text-rose-600'}`}>
-                        {biz.status === 'active' ? 'AKTİF' : 'PASİF'}
+                    <div className="flex gap-2">
+                        <button 
+                            onClick={onToggleStatus}
+                            className={`px-4 py-1.5 rounded-full text-[8px] font-black uppercase tracking-widest transition-all ${isActive ? 'bg-emerald-100 text-emerald-600 hover:bg-amber-100 hover:text-amber-600' : 'bg-amber-100 text-amber-600 hover:bg-emerald-100 hover:text-emerald-600'}`}
+                        >
+                            {isActive ? 'AKTİF' : 'PASİF'}
+                        </button>
+                        <button 
+                            onClick={onDelete}
+                            className="p-1.5 bg-rose-50 text-rose-500 rounded-lg hover:bg-rose-500 hover:text-white transition-all shadow-sm"
+                            title="İşletmeyi Sil"
+                        >
+                            <X size={14} />
+                        </button>
                     </div>
                 </div>
                 <h4 className="text-slate-900 text-xl font-black italic tracking-tighter line-clamp-1">{biz.name}</h4>
@@ -652,21 +710,23 @@ function TenantCard({ biz, onImpersonate }: any) {
                 <div className="flex gap-4">
                      <div className="flex flex-col">
                          <span className="text-[8px] font-black text-slate-300 uppercase">PLAN</span>
-                         <span className="text-[10px] font-black text-indigo-600 uppercase">Enterprise</span>
+                         <span className="text-[10px] font-black text-indigo-600 uppercase">{biz.plan || 'Enterprise'}</span>
                      </div>
                      <div className="flex flex-col">
                          <span className="text-[8px] font-black text-slate-300 uppercase">ÜYELER</span>
-                         <span className="text-[10px] font-black text-slate-900 uppercase">12 Koltuk</span>
+                         <span className="text-[10px] font-black text-slate-900 uppercase">{biz.maxUsers || 5} Koltuk</span>
                      </div>
                 </div>
             </div>
             
-            <button 
-                onClick={onImpersonate}
-                className="w-full mt-6 py-4 bg-slate-900 text-white rounded-2xl font-black text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-indigo-600 transition-all shadow-xl shadow-slate-900/20"
-            >
-                <Zap size={14} className="fill-current" /> YÖNETİCİ OLARAK GİR
-            </button>
+            <div className="space-y-2 mt-6">
+                <button 
+                    onClick={onImpersonate}
+                    className="w-full py-4 bg-slate-900 text-white rounded-2xl font-black text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-indigo-600 transition-all shadow-xl shadow-slate-900/20"
+                >
+                    <Zap size={14} className="fill-current" /> YÖNETİCİ OLARAK GİR
+                </button>
+            </div>
         </div>
     );
 }
