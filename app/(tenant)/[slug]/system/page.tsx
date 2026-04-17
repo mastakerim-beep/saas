@@ -11,6 +11,7 @@ import {
 import { useState, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import CatalogSettingsView from "@/components/system/CatalogSettingsView";
+import AnnouncementsSettingsView from "@/components/system/AnnouncementsSettingsView";
 import PinGate from "@/components/security/PinGate";
 
 const DAYS = ['Pazar', 'Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma', 'Cumartesi'];
