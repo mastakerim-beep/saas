@@ -29,21 +29,39 @@ const StoreOrchestrator = ({ children }: { children: ReactNode }) => {
     const [syncStatus, setSyncStatus] = useState<'idle' | 'syncing' | 'error'>('idle');
     const [isManagerAuthorized, setManagerAuthorized] = useState(false);
     const fetchControllerRef = React.useRef<AbortController | null>(null);
-    const realtimeTimeoutRef = React.useRef<NodeJS.Timeout | null>(null);
-
     const params = useParams();
     const slug = params?.slug as string;
+    const activeBizIdRef = React.useRef<string | undefined>(undefined);
+    const userRef = React.useRef<AppUser | null>(null);
+    const lastFetchTimeRef = React.useRef<number>(0);
+    const realtimeTimeoutRef = React.useRef<NodeJS.Timeout | null>(null);
 
     const activeBizId = useMemo(() => {
-        if (auth.impersonatedBusinessId) return auth.impersonatedBusinessId;
-        if (slug) {
+        let id: string | undefined = undefined;
+        if (auth.impersonatedBusinessId) id = auth.impersonatedBusinessId;
+        else if (slug) {
             const bizFromSlug = biz.allBusinesses.find(b => b.slug === slug);
-            if (bizFromSlug) return bizFromSlug.id;
+            if (bizFromSlug) id = bizFromSlug.id;
+        } else {
+            id = auth.currentUser?.businessId || undefined;
         }
-        return auth.currentUser?.businessId;
+        activeBizIdRef.current = id;
+        return id;
     }, [auth.impersonatedBusinessId, auth.currentUser?.businessId, slug, biz.allBusinesses]);
 
+    useEffect(() => {
+        userRef.current = auth.currentUser;
+    }, [auth.currentUser]);
+
     const fetchData = React.useCallback(async (bizId?: string, user?: AppUser, force?: boolean, startDate?: string, endDate?: string) => {
+        // Throttling: 2 saniye içinde mükerrer istekleri engelle (force değilse)
+        const now = Date.now();
+        if (!force && now - lastFetchTimeRef.current < 2000) {
+            console.log("Fetch throttled to prevent loop.");
+            return;
+        }
+        lastFetchTimeRef.current = now;
+
         // İptal mekanizması: Önceki istek varsa durdur
         if (fetchControllerRef.current) {
             fetchControllerRef.current.abort();
@@ -51,8 +69,8 @@ const StoreOrchestrator = ({ children }: { children: ReactNode }) => {
         const controller = new AbortController();
         fetchControllerRef.current = controller;
 
-        const targetBizId = bizId || activeBizId;
-        const targetUser = user || auth.currentUser;
+        const targetBizId = bizId || activeBizIdRef.current;
+        const targetUser = user || userRef.current;
         
         if (!targetUser) return;
         const isSaaS = targetUser.role === 'SaaS_Owner';
@@ -126,7 +144,7 @@ const StoreOrchestrator = ({ children }: { children: ReactNode }) => {
                 setSyncStatus(prev => prev === 'syncing' ? 'idle' : prev);
             }
         }
-    }, [activeBizId, auth.currentUser?.id]);
+    }, []); // Bağımlılık dizisi boşaltıldı: Ref'ler kullanılıyor.
 
     useEffect(() => {
         const handleOnline = () => setIsOnline(true);
@@ -143,8 +161,8 @@ const StoreOrchestrator = ({ children }: { children: ReactNode }) => {
         const triggerFetch = () => {
             if (realtimeTimeoutRef.current) clearTimeout(realtimeTimeoutRef.current);
             realtimeTimeoutRef.current = setTimeout(() => {
-                fetchData();
-            }, 500); // 500ms Stability Delay
+                fetchData(undefined, undefined, true); // Force fetch on realtime
+            }, 1000); // 1s Stability Delay
         };
 
         // Realtime Subscriptions
@@ -163,7 +181,7 @@ const StoreOrchestrator = ({ children }: { children: ReactNode }) => {
             if (channel) supabase.removeChannel(channel);
             if (realtimeTimeoutRef.current) clearTimeout(realtimeTimeoutRef.current);
         };
-    }, [auth.currentUser?.id, activeBizId, slug, fetchData]);
+    }, [activeBizId, slug]); // fetchData bağımlılığı kaldırıldı, sadece ID/slug değişiminde tetiklenir.
 
 
     const runSync = async (table: string, action: 'insert' | 'update' | 'delete', payload: any, id?: string) => {

@@ -63,23 +63,29 @@ export const fetchData = async (
             }
         }));
 
-        // Batch updates
-        setters.setAllBusinesses(dataMap.businesses || []);
-        setters.setBranches(dataMap.branches || []);
-        setters.setAllAppointments(dataMap.appointments || []);
+        // Batch updates with reference stability checks
+        const businesses = dataMap.businesses || [];
+        setters.setAllBusinesses((prev: any[]) => JSON.stringify(prev) === JSON.stringify(businesses) ? prev : businesses);
+        
+        const branches = dataMap.branches || [];
+        setters.setBranches((prev: any[]) => JSON.stringify(prev) === JSON.stringify(branches) ? prev : branches);
+        
+        const appointments = dataMap.appointments || [];
+        setters.setAllAppointments((prev: any[]) => JSON.stringify(prev) === JSON.stringify(appointments) ? prev : appointments);
         
         const rawCustomers = dataMap.customers || [];
         const updatedCustomers = rawCustomers.map((c: any) => {
             if (!c.referenceCode) {
-                const branch = dataMap.branches?.find((b: any) => b.id === c.branchId) || dataMap.branches?.[0];
+                const branch = branches.find((b: any) => b.id === c.branchId) || branches[0];
                 return { ...c, referenceCode: generateReferenceCode(branch?.name || 'AURA', rawCustomers) };
             }
             return c;
         });
-        setters.setAllCustomers(updatedCustomers);
+        setters.setAllCustomers((prev: any[]) => JSON.stringify(prev) === JSON.stringify(updatedCustomers) ? prev : updatedCustomers);
         
         const rawPayments = dataMap.payments || [];
-        setters.setAllPayments(rawPayments.map((p: any) => ({ ...p, referenceCode: p.referenceCode || generatePaymentRef() })));
+        const paymentsWithRefs = rawPayments.map((p: any) => ({ ...p, referenceCode: p.referenceCode || generatePaymentRef() }));
+        setters.setAllPayments((prev: any[]) => JSON.stringify(prev) === JSON.stringify(paymentsWithRefs) ? prev : paymentsWithRefs);
 
         setters.setMembershipPlans(dataMap.membership_plans || []);
         setters.setCustomerMemberships(dataMap.customer_memberships || []);
@@ -111,36 +117,37 @@ export const fetchData = async (
         setters.setAllNotifs(dataMap.notification_logs || []);
         setters.setAllBlocks(dataMap.calendar_blocks || []);
         
-        if (dataMap.businesses?.length > 0) {
+        if (branches.length > 0) {
             const savedBranchId = localStorage.getItem('aura_last_branch');
             const userBranchId = currentUser?.branchId;
-            let branchToUse = dataMap.branches[0];
-            if (savedBranchId && dataMap.branches.some((b: any) => b.id === savedBranchId)) {
-                branchToUse = dataMap.branches.find((b: any) => b.id === savedBranchId);
-            } else if (userBranchId && dataMap.branches.some((b: any) => b.id === userBranchId)) {
-                branchToUse = dataMap.branches.find((b: any) => b.id === userBranchId);
+            let branchToUse = branches[0];
+            if (savedBranchId && branches.some((b: any) => b.id === savedBranchId)) {
+                branchToUse = branches.find((b: any) => b.id === savedBranchId);
+            } else if (userBranchId && branches.some((b: any) => b.id === userBranchId)) {
+                branchToUse = branches.find((b: any) => b.id === userBranchId);
             }
-            setters.setCurrentBranch(branchToUse);
+            setters.setCurrentBranch((prev: any) => (prev?.id === branchToUse?.id) ? prev : branchToUse);
         }
 
-        const targetBusiness = dataMap.businesses?.find((b: any) => b.id === targetId);
+        const targetBusiness = businesses.find((b: any) => b.id === targetId);
         if (targetBusiness) {
-            setters.setSettings((prev: any) => ({
+            const newStart = targetBusiness.calendarStartHour || 9;
+            const newEnd = targetBusiness.calendarEndHour || 21;
+            setters.setSettings((prev: any) => (prev.startHour === newStart && prev.endHour === newEnd) ? prev : ({
                 ...prev,
-                startHour: targetBusiness.calendarStartHour || 9,
-                endHour: targetBusiness.calendarEndHour || 21
+                startHour: newStart,
+                endHour: newEnd
             }));
         }
 
         setters.setSyncStatus('idle');
     } catch (error: any) {
         if (error.name === 'AbortError' || error.message === 'Aborted') {
-            // Abort sessizce geçilir, ancak üst katmana hata fırlatılır
             throw error;
         }
         console.error("Fetch Error:", error);
         setters.setSyncStatus('error');
-        throw error; // Üst katmanın hatadan haberi olması için tekrar fırlatıyoruz
+        throw error;
     } finally {
         console.timeEnd("Aura Fetch Speed");
     }
