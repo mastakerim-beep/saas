@@ -23,18 +23,20 @@ export const fetchData = async (
     ];
 
     const isSaaS = currentUser?.role === 'SaaS_Owner';
-    const targetId = bizId || currentUser?.businessId;
     
-    // SAAS BARRIER: If we're a SaaS owner on a slug, but don't know the businesses yet,
-    // only fetch businesses first to resolve the correctly ID.
+    // CRITICAL: If I am a SaaS owner on a slug, but bizId is undefined, 
+    // it means it's still being resolved from the business list.
+    // I must NOT use currentUser?.businessId as targetId because that would fetch SaaS Org data.
     const isBusinessesEmpty = !setters.allBusinesses?.length;
     const isSlugPending = isSaaS && !bizId && isBusinessesEmpty;
     
-    // If we're on a slug page, we strictly NEED the business list to resolve it.
+    const targetId = isSlugPending ? undefined : (bizId || currentUser?.businessId);
+    
+    // If we have a bizId (passed from store) or we're not SaaS, use normal tables.
     const tablesToFetch = isSlugPending ? ['businesses'] : tables;
     
     if (isSlugPending) {
-        console.log("🚧 [Aura Sync] SaaS Barrier Active: Fetching only businesses to resolve slug...");
+        console.log("🚧 [Aura Sync] Identity Lock: Fetching ONLY businesses to resolve slug...");
     }
 
     if (!targetId && !isSaaS) {

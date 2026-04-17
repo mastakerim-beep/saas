@@ -39,6 +39,7 @@ const StoreOrchestrator = ({ children }: { children: ReactNode }) => {
 
     const activeBizId = useMemo(() => {
         let id: string | undefined = undefined;
+        const isSaaS = auth.currentUser?.role === 'SaaS_Owner';
 
         if (auth.impersonatedBusinessId) {
             id = auth.impersonatedBusinessId;
@@ -48,12 +49,19 @@ const StoreOrchestrator = ({ children }: { children: ReactNode }) => {
             if (bizFromSlug) {
                 id = bizFromSlug.id;
             } else {
-                // IMPORTANT: If we are a SaaS owner and businesses are not loaded yet,
-                // do NOT fall back to currentUser.businessId immediately if it would lead to wrong data.
-                const isSaaS = auth.currentUser?.role === 'SaaS_Owner';
+                // IMPORTANT: If we are a SaaS owner and we are on a slug, 
+                // we SHOULD NOT fall back to currentUser.businessId (the SaaS Org).
+                // We must return undefined to signal that we are still 'resolving' the identity.
+                if (isSaaS && biz.allBusinesses.length > 0) {
+                    // We have businesses but no slug match? 
+                    // This could be a race where the slug is not yet in the list or is invalid.
+                    return undefined; 
+                }
+                
                 if (isSaaS && biz.allBusinesses.length === 0) {
                     return undefined; // Wait for businesses to load
                 }
+
                 id = auth.currentUser?.businessId || undefined;
             }
         } else {
@@ -181,12 +189,13 @@ const StoreOrchestrator = ({ children }: { children: ReactNode }) => {
             const hasTarget = auth.currentUser || slug;
             const isSaaS = auth.currentUser?.role === 'SaaS_Owner';
             
-            // SLUG STABILIZATION: In tenant layout, wait for params to hydrate
-            // If we have a URL that should have a slug but 'slug' is still null, wait.
-            const isOnTenantRoute = typeof window !== 'undefined' && window.location.pathname.includes('/[slug]') || (slug !== undefined);
-            if (!slug && isOnTenantRoute && isSaaS) {
-                console.log("⏳ [Aura Trace] Waiting for URL slug to hydrate...");
-                return;
+            // SLUG STABILIZATION: In tenant layout, wait for params to hydrate.
+            // We check for slug directly. If we are on a route where slug IS expected but missing,
+            // we hold off.
+            if (!slug && isSaaS && typeof window !== 'undefined' && window.location.pathname.split('/').length >= 3) {
+                 // Path follows /[slug]/[anything] pattern but slug is missing from params
+                 console.log("⏳ [Aura Trace] Holding fetch: Slug expected but not yet hydrated.");
+                 return;
             }
 
             const isNeedBusinesses = isSaaS && slug && biz.allBusinesses.length === 0;
