@@ -210,12 +210,17 @@ export default function BookingModal({ initialData, onClose, date, mode: initial
                                     </div>
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                                         {filtered.slice(0, 6).map(c => (
-                                            <div key={c.id} onClick={() => { setSelectedCustId(c.id); setSelectedStep('details'); }} className="p-5 bg-white rounded-[1.75rem] cursor-pointer hover:bg-primary/5 transition-all border border-gray-100/50 hover:border-primary/20 flex items-center gap-5 group shadow-sm hover:shadow-lg hover:shadow-primary/5">
+                                            <div key={c.id} onClick={() => { setSelectedCustId(c.id); setSelectedStep('details'); }} className="p-5 bg-white rounded-[1.75rem] cursor-pointer hover:bg-primary/5 transition-all border border-gray-100/50 hover:border-primary/20 flex items-center gap-5 group shadow-sm hover:shadow-lg hover:shadow-primary/5 relative overflow-hidden">
                                                 <div className="w-14 h-14 rounded-2xl bg-gray-50 text-gray-400 font-black text-lg flex items-center justify-center group-hover:bg-primary group-hover:text-white group-hover:scale-105 transition-all duration-300 border border-gray-100 group-hover:border-transparent">
                                                     {c.name.charAt(0)}
                                                 </div>
                                                 <div className="flex-1">
-                                                    <p className="font-black text-base text-gray-900 leading-none mb-1.5">{c.name?.toUpperCase() || 'İSİMSİZ MÜŞTERİ'}</p>
+                                                    <div className="flex items-center gap-2">
+                                                        <p className="font-black text-base text-gray-900 leading-none mb-1.5">{c.name?.toUpperCase() || 'İSİMSİZ MÜŞTERİ'}</p>
+                                                        {packages.some(p => p.customerId === c.id && p.usedSessions < p.totalSessions) && (
+                                                            <div className="px-2 py-0.5 bg-amber-50 border border-amber-100 rounded-md text-[8px] font-black text-amber-600 uppercase tracking-tighter mb-1 select-none">Paketli</div>
+                                                        )}
+                                                    </div>
                                                     <p className="text-[10px] text-gray-400 font-black uppercase tracking-widest">{c.phone || 'Telefon Yok'}</p>
                                                 </div>
                                                 <ChevronRight className="w-5 h-5 text-gray-300 group-hover:text-primary group-hover:translate-x-1 transition-all" />
@@ -262,7 +267,29 @@ export default function BookingModal({ initialData, onClose, date, mode: initial
                                                 </div>
                                             </div>
 
-                                            <div className="grid grid-cols-1 gap-6">
+                                            {/* Package Balance Info */}
+                                            {customerPackages.length > 0 && (
+                                                <div className="bg-amber-50 rounded-[2rem] p-6 border border-amber-100 animate-in fade-in slide-in-from-right-4 duration-500">
+                                                    <div className="flex items-center gap-3 mb-4">
+                                                        <div className="p-2 bg-amber-500 text-white rounded-xl shadow-lg shadow-amber-200">
+                                                            <Package className="w-4 h-4" />
+                                                        </div>
+                                                        <p className="text-[10px] font-black text-amber-600 uppercase tracking-widest">Müşterinin Aktif Paketleri</p>
+                                                    </div>
+                                                    <div className="space-y-2">
+                                                        {customerPackages.map(pkg => (
+                                                            <div key={pkg.id} className="flex justify-between items-center bg-white/80 p-3 rounded-xl border border-amber-100/50">
+                                                                <span className="text-[11px] font-black text-gray-900 uppercase tracking-tight">{pkg.name}</span>
+                                                                <span className="px-3 py-1 bg-amber-500 text-white rounded-lg text-[10px] font-black uppercase tracking-widest">
+                                                                    {pkg.totalSessions - pkg.usedSessions} / {pkg.totalSessions} Seans Kaldı
+                                                                </span>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                            )}
+
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                                 <div className="space-y-2">
                                                     <label className="text-[9px] font-black text-gray-400 uppercase tracking-widest ml-1">Uygulanacak Hizmet</label>
                                                     <div className="relative group">
@@ -277,6 +304,18 @@ export default function BookingModal({ initialData, onClose, date, mode: initial
                                                             {activeServices.map(s => <option key={s.id} value={s.name}>{s.name} (₺{s.price})</option>)}
                                                         </select>
                                                         <ChevronDown className="w-4 h-4 absolute right-6 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+                                                    </div>
+                                                </div>
+                                                <div className="space-y-2">
+                                                    <label className="text-[9px] font-black text-gray-400 uppercase tracking-widest ml-1">Hizmet Bedeli (₺)</label>
+                                                    <div className="relative group">
+                                                        <input 
+                                                            type="number"
+                                                            value={price}
+                                                            onChange={e => setPrice(Number(e.target.value))}
+                                                            className="w-full bg-white border border-gray-100 rounded-2xl px-6 py-5 text-sm font-black text-gray-900 outline-none focus:border-primary transition-all shadow-sm group-hover:shadow-md"
+                                                        />
+                                                        <Banknote className="w-4 h-4 absolute right-6 top-1/2 -translate-y-1/2 text-emerald-400 pointer-events-none" />
                                                     </div>
                                                 </div>
                                                 <div className="space-y-2">

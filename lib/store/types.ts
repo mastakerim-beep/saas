@@ -182,7 +182,17 @@ export interface StoreState {
     deleteRoom: (id: string) => void;
     
     analyzeSystem: () => Promise<void>;
-    processCheckout: (p: any, installments?: { amount: number, dueDate: string }[], soldProducts?: { productId: string, quantity: number, isGift?: boolean }[], earnedPoints?: number, tipAmount?: number, pointsUsed?: number) => Promise<boolean>;
+    processCheckout: (
+        paymentData: any, 
+        options?: {
+            installments?: { amount: number, dueDate: string }[],
+            soldProducts?: { productId: string, name: string, price: number, quantity: number, isGift?: boolean }[],
+            earnedPoints?: number,
+            tipAmount?: number,
+            pointsUsed?: number,
+            packageId?: string
+        }
+    ) => Promise<boolean>;
     sendNotification: (customerId: string, type: NotificationLog['type'], content: string) => void;
     addLog: (action: string, customer: string, oldValue?: string, newValue?: string) => Promise<void>;
     addProduct: (p: any) => Promise<void>;

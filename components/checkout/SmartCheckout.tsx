@@ -19,7 +19,7 @@ export default function SmartCheckout({ appointment, onClose }: SmartCheckoutPro
         customers, customerMemberships, membershipPlans, 
         processCheckout, inventory, getUpsellSuggestions, 
         paymentDefinitions, getTodayDate, currentBusiness,
-        packages
+        packages, services, updateAppointment
     } = useStore();
     const customer = customers.find(c => c.id === appointment.customerId);
     
@@ -66,6 +66,11 @@ export default function SmartCheckout({ appointment, onClose }: SmartCheckoutPro
     // New Smart Features
     const [installments, setInstallments] = useState<number>(1);
     const [installmentDates, setInstallmentDates] = useState<string[]>([]);
+    
+    // Service Override State
+    const [overrideService, setOverrideService] = useState(appointment.service);
+    const [overridePrice, setOverridePrice] = useState(appointment.price);
+    const [isServiceEditorOpen, setIsServiceEditorOpen] = useState(false);
 
     useEffect(() => {
         const dates = [];
@@ -87,9 +92,9 @@ export default function SmartCheckout({ appointment, onClose }: SmartCheckoutPro
     const isPackageUsed = !!selectedPackageId;
     const isServiceGifted = isServiceGift;
     
-    const servicePrice = (isServiceGifted || isPackageUsed) ? 0 : (appointment.price || 0);
+    const servicePrice = (isServiceGifted || isPackageUsed) ? 0 : (overridePrice || 0);
     const productsPrice = soldProducts.reduce((s, p) => s + (giftedItems.has(p.productId) ? 0 : p.price * p.quantity), 0);
-    const totalOriginalPrice = (appointment.price || 0) + soldProducts.reduce((s, p) => s + (p.price * p.quantity), 0);
+    const totalOriginalPrice = (overridePrice || 0) + soldProducts.reduce((s, p) => s + (p.price * p.quantity), 0);
     
     const subTotal = servicePrice + productsPrice;
     const discountAmount = discountMode === 'fixed' ? discountValue : discountMode === 'percentage' ? (subTotal * discountValue / 100) : 0;
@@ -114,7 +119,7 @@ export default function SmartCheckout({ appointment, onClose }: SmartCheckoutPro
                     branchId: appointment.branchId,
                     customerId: appointment.customerId,
                     customerName: appointment.customerName,
-                    service: appointment.service,
+                    service: overrideService,
                     methods: methods.map(m => ({ ...m, id: crypto.randomUUID() })),
                     totalAmount: totalPaid,
                     date: getTodayDate(),
@@ -125,19 +130,29 @@ export default function SmartCheckout({ appointment, onClose }: SmartCheckoutPro
                     note: note,
                     status: remaining <= 0 ? 'paid' : 'partial'
                 },
-                installmentList,
-                soldProducts.map(p => ({ 
-                    productId: p.productId, 
-                    name: p.name,
-                    price: p.price,
-                    quantity: p.quantity,
-                    isGift: giftedItems.has(p.productId)
-                })),
-                earnedPoints,
-                tip,
-                pointsUsed,
-                selectedPackageId || undefined
+                {
+                    installments: installmentList,
+                    soldProducts: soldProducts.map(p => ({ 
+                        productId: p.productId, 
+                        name: p.name,
+                        price: p.price,
+                        quantity: p.quantity,
+                        isGift: giftedItems.has(p.productId)
+                    })),
+                    earnedPoints,
+                    tipAmount: tip,
+                    pointsUsed,
+                    packageId: selectedPackageId || undefined
+                }
             );
+            
+            // Sync appointment if service was changed
+            if (ok && (overrideService !== appointment.service || overridePrice !== appointment.price)) {
+                await updateAppointment(appointment.id, {
+                    service: overrideService,
+                    price: overridePrice
+                });
+            }
 
             if (ok) {
                 setIsSuccess(true);
@@ -404,26 +419,66 @@ export default function SmartCheckout({ appointment, onClose }: SmartCheckoutPro
                                 <Package className="w-4 h-4 text-indigo-600" /> Tahsilat ve İkram Kalemleri
                             </h3>
                             
-                            <div className={`p-8 rounded-[2.5rem] border transition-all duration-500 flex justify-between items-center ${isServiceGift ? 'bg-indigo-50/50 border-indigo-100 opacity-80 shadow-inner' : 'bg-white border-gray-100 shadow-sm'}`}>
-                                <div className="flex items-center gap-6">
-                                    <div className={`w-14 h-14 rounded-2xl flex items-center justify-center transition-colors ${isServiceGift ? 'bg-indigo-600 text-white' : 'bg-gray-50 text-gray-400'}`}><Calendar size={24} /></div>
-                                    <div>
-                                        <p className="font-black text-gray-900 text-xl uppercase tracking-tight">{appointment.service}</p>
-                                        <div className="flex items-center gap-3 mt-1">
-                                            <p className="text-[10px] text-gray-400 font-black uppercase tracking-widest">Hizmet Bedeli</p>
-                                            {isServiceGift && <span className="px-2 py-0.5 bg-indigo-600 text-white text-[8px] font-black rounded uppercase">İkram</span>}
+                            <div className={`p-8 rounded-[2.5rem] border transition-all duration-500 flex flex-col gap-6 ${isServiceGift ? 'bg-indigo-50/50 border-indigo-100 opacity-80 shadow-inner' : 'bg-white border-gray-100 shadow-sm'}`}>
+                                <div className="flex justify-between items-center w-full">
+                                    <div className="flex items-center gap-6">
+                                        <div className={`w-14 h-14 rounded-2xl flex items-center justify-center transition-colors ${isServiceGift ? 'bg-indigo-600 text-white' : 'bg-gray-50 text-gray-400'}`}><Calendar size={24} /></div>
+                                        <div>
+                                            <p className="font-black text-gray-900 text-xl uppercase tracking-tight">{overrideService}</p>
+                                            <div className="flex items-center gap-3 mt-1">
+                                                <p className="text-[10px] text-gray-400 font-black uppercase tracking-widest">Hizmet Bedeli</p>
+                                                {isServiceGift && <span className="px-2 py-0.5 bg-indigo-600 text-white text-[8px] font-black rounded uppercase">İkram</span>}
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div className="flex items-center gap-8">
+                                        <div className="text-right">
+                                            {isServiceGift && <p className="text-[10px] font-black text-gray-300 line-through">₺{overridePrice}</p>}
+                                            <p className={`font-black text-2xl italic tracking-tighter ${isServiceGift ? 'text-indigo-600' : 'text-gray-900'}`}>₺{servicePrice.toLocaleString('tr-TR')}</p>
+                                        </div>
+                                        <div className="flex gap-2">
+                                            <button 
+                                                onClick={() => setIsServiceEditorOpen(!isServiceEditorOpen)}
+                                                className={`p-4 rounded-2xl transition-all ${isServiceEditorOpen ? 'bg-indigo-100 text-indigo-600' : 'bg-gray-50 text-gray-300 hover:text-indigo-600 hover:bg-indigo-50'}`}
+                                            >
+                                                <Zap size={20} />
+                                            </button>
+                                            <button onClick={() => handleGiftToggle('service')} className={`p-4 rounded-2xl transition-all ${isServiceGift ? 'bg-indigo-600 text-white shadow-lg' : 'bg-gray-50 text-gray-300 hover:text-indigo-600 hover:bg-indigo-50'}`}>
+                                                <HeartHandshake size={20} />
+                                            </button>
                                         </div>
                                     </div>
                                 </div>
-                                <div className="flex items-center gap-8">
-                                    <div className="text-right">
-                                        {isServiceGift && <p className="text-[10px] font-black text-gray-300 line-through">₺{appointment.price}</p>}
-                                        <p className={`font-black text-2xl italic tracking-tighter ${isServiceGift ? 'text-indigo-600' : 'text-gray-900'}`}>₺{servicePrice.toLocaleString('tr-TR')}</p>
-                                    </div>
-                                    <button onClick={() => handleGiftToggle('service')} className={`p-4 rounded-2xl transition-all ${isServiceGift ? 'bg-indigo-600 text-white shadow-lg' : 'bg-gray-50 text-gray-300 hover:text-indigo-600 hover:bg-indigo-50'}`}>
-                                        <HeartHandshake size={20} />
-                                    </button>
-                                </div>
+
+                                {isServiceEditorOpen && (
+                                    <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} className="pt-6 border-t border-dashed border-gray-100 space-y-4 overflow-hidden">
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <div className="space-y-2">
+                                                <label className="text-[9px] font-black text-gray-400 uppercase tracking-widest">Hizmet Değiştir</label>
+                                                <select 
+                                                    value={overrideService}
+                                                    onChange={e => {
+                                                        const s = services.find(x => x.name === e.target.value);
+                                                        setOverrideService(e.target.value);
+                                                        if (s) setOverridePrice(s.price);
+                                                    }}
+                                                    className="w-full bg-gray-50 border-none rounded-xl px-4 py-3 text-xs font-black text-gray-900 outline-none focus:ring-2 focus:ring-indigo-500/10"
+                                                >
+                                                    {services.map(s => <option key={s.id} value={s.name}>{s.name}</option>)}
+                                                </select>
+                                            </div>
+                                            <div className="space-y-2">
+                                                <label className="text-[9px] font-black text-gray-400 uppercase tracking-widest">Manuel Fiyat (₺)</label>
+                                                <input 
+                                                    type="number"
+                                                    value={overridePrice}
+                                                    onChange={e => setOverridePrice(Number(e.target.value))}
+                                                    className="w-full bg-gray-50 border-none rounded-xl px-4 py-3 text-xs font-black text-gray-900 outline-none focus:ring-2 focus:ring-indigo-500/10"
+                                                />
+                                            </div>
+                                        </div>
+                                    </motion.div>
+                                )}
                             </div>
 
                             {soldProducts.map(p => {
@@ -618,8 +673,8 @@ export default function SmartCheckout({ appointment, onClose }: SmartCheckoutPro
                                 
                                 <div className="space-y-4">
                                     <div className="flex justify-between items-center group">
-                                        <span className="text-sm font-black text-gray-900 uppercase tracking-tight">{appointment.service}</span>
-                                        <span className={`text-xl font-black italic tracking-tighter ${isServiceGifted || isPackageUsed ? 'text-indigo-600' : 'text-gray-900'}`}>{isServiceGifted || isPackageUsed ? '₺0' : `₺${appointment.price}`}</span>
+                                        <span className="text-sm font-black text-gray-900 uppercase tracking-tight">{overrideService}</span>
+                                        <span className={`text-xl font-black italic tracking-tighter ${isServiceGifted || isPackageUsed ? 'text-indigo-600' : 'text-gray-900'}`}>{isServiceGifted || isPackageUsed ? '₺0' : `₺${overridePrice}`}</span>
                                     </div>
                                     {soldProducts.map(p => (
                                         <div key={p.productId} className="flex justify-between items-center">

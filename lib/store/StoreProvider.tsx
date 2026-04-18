@@ -623,7 +623,8 @@ const StoreOrchestrator = ({ children }: { children: ReactNode }) => {
                 await syncDb('ai_insights', 'insert', insight, insight.id, activeBizId);
             }
         },
-        processCheckout: async (paymentData: any, installments?: any[], soldProducts?: any[], earnedPoints?: number, tipAmount?: number, pointsUsed?: number, packageId?: string) => {
+        processCheckout: async (paymentData: any, options: any = {}) => {
+            const { installments, soldProducts, earnedPoints, tipAmount, pointsUsed, packageId } = options;
             if (!activeBizId) return false;
             setSyncStatus('syncing');
             try {
