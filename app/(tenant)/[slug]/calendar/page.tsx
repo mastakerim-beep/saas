@@ -182,6 +182,15 @@ export default function CalendarPage() {
         if (activeData?.type === 'appointment' && overData?.type === 'slot') {
             const appt = activeData.item as Appointment;
             await moveAppointment(appt.id, overData.time, overData.staffId, overData.roomId);
+        
+        // Randevu başka bir randevunun üzerine bırakıldı → aynı saate/sütuna taşı (split görünüm)
+        } else if (activeData?.type === 'appointment' && overData?.type === 'appointment') {
+            const appt = activeData.item as Appointment;
+            const targetAppt = overData.item as Appointment;
+            if (appt.id !== targetAppt.id) {
+                await moveAppointment(appt.id, targetAppt.time, targetAppt.staffId, targetAppt.roomId);
+            }
+        
         } else if (activeData?.type === 'block' && overData?.type === 'slot') {
             const block = activeData.item as CalendarBlock;
             await updateBlock(block.id, { 
