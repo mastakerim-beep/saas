@@ -356,7 +356,18 @@ const StoreOrchestrator = ({ children }: { children: ReactNode }) => {
         fetchPublicData: async () => {},
 
         addCustomer: async (c: any) => {
-            const customer = data.addCustomer(c);
+            // Müşteri oluşturulurken referenceCode anında üret ve DB'ye kaydet
+            const refCode = c.referenceCode || (() => {
+                const branchName = biz.currentBranch?.name || biz.branches[0]?.name || 'GEN';
+                const prefix = branchName.substring(0, 3).toUpperCase();
+                const existingNums = data.customers
+                    .map(cx => cx.referenceCode)
+                    .filter(code => code && typeof code === 'string' && code.startsWith(prefix))
+                    .map(code => { const parts = (code as string).split('-'); return parts.length > 1 ? parseInt(parts[1]) : 0; });
+                const maxNum = existingNums.length > 0 ? Math.max(...existingNums) : 1000;
+                return `${prefix}-${Math.max(1000, maxNum) + 1}`;
+            })();
+            const customer = data.addCustomer({ ...c, referenceCode: refCode });
             await syncDb('customers', 'insert', customer, customer.id, activeBizId);
             return customer;
         },

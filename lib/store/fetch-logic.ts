@@ -139,17 +139,36 @@ export const fetchData = async (
         setters.setAllAppointments((prev: any[]) => JSON.stringify(prev) === JSON.stringify(appointments) ? prev : appointments);
         
         const rawCustomers = dataMap.customers || [];
+        // BUG FIX: Her müşteri için biriken listeyle üret — hepsi aynı kodu almasın
+        const assignedCodes = new Set(rawCustomers.filter((c: any) => c.referenceCode).map((c: any) => c.referenceCode));
         const updatedCustomers = rawCustomers.map((c: any) => {
             if (!c.referenceCode) {
                 const branch = branches.find((b: any) => b.id === c.branchId) || branches[0];
-                return { ...c, referenceCode: generateReferenceCode(branch?.name || 'AURA', rawCustomers) };
+                // Biriken listedeki müşterilerle çakışmayacak kod üret
+                const allWithAssigned = rawCustomers.map((rc: any) => 
+                    assignedCodes.has(rc.referenceCode) || rc.referenceCode ? rc : { ...rc, referenceCode: 'PLACEHOLDER' }
+                );
+                // Prefix'e göre mevcut max numarayı bul
+                const prefix = (branch?.name || 'GEN').substring(0, 3).toUpperCase();
+                const existingNums = Array.from(assignedCodes)
+                    .filter((code: any) => typeof code === 'string' && code.startsWith(prefix))
+                    .map((code: any) => { const parts = code.split('-'); return parts.length > 1 ? parseInt(parts[1]) : 0; });
+                const maxNum = existingNums.length > 0 ? Math.max(...existingNums) : 1000;
+                const nextNum = Math.max(1000, maxNum) + 1;
+                const newCode = `${prefix}-${nextNum}`;
+                assignedCodes.add(newCode);
+                return { ...c, referenceCode: newCode };
             }
             return c;
         });
         setters.setAllCustomers((prev: any[]) => JSON.stringify(prev) === JSON.stringify(updatedCustomers) ? prev : updatedCustomers);
         
         const rawPayments = dataMap.payments || [];
-        const paymentsWithRefs = rawPayments.map((p: any) => ({ ...p, referenceCode: p.referenceCode || generatePaymentRef() }));
+        // Payment ref: UUID'den türetilmiş sabit kısa kod (her fetch'te değişmez)
+        const paymentsWithRefs = rawPayments.map((p: any) => ({ 
+            ...p, 
+            referenceCode: p.referenceCode || (p.id ? p.id.substring(0, 8).toUpperCase() : generatePaymentRef())
+        }));
         setters.setAllPayments((prev: any[]) => JSON.stringify(prev) === JSON.stringify(paymentsWithRefs) ? prev : paymentsWithRefs);
 
         setters.setMembershipPlans(dataMap.membership_plans || []);
