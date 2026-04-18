@@ -295,22 +295,23 @@ export default function CalendarItem({
                 </div>
             </div>
 
-            {/* Footer Area: Randevu Ref & Müşteri Kodu - Kaçak Kontrol */}
+            {/* Footer Area: Randevu Ref & Müşteri Kayıt Kodu - Kaçak Kontrol */}
             {isAppt && (
-                <div className="px-2 py-1 flex items-center justify-between bg-black/5 backdrop-blur-sm">
-                    {/* Sol: Randevuya özgü numara (RND-2026-0001) */}
-                    <div className="flex items-center gap-1">
+                <div className="px-2 py-1 flex items-center justify-between gap-1 bg-black/5 backdrop-blur-sm">
+                    {/* Sol: Randevu numarası */}
+                    <div className="flex items-center gap-1 min-w-0">
                         <ShieldCheck size={8} className="text-indigo-400 shrink-0" />
-                        <span className="text-[8px] font-black text-indigo-600 tracking-widest">
+                        <span className="text-[8px] font-black text-indigo-600 tracking-widest truncate">
                             {appt.apptRef || ('#' + appt.id.slice(-6).toUpperCase())}
                         </span>
                     </div>
-                    {/* Sağ: Müşteri kodu (MER-1001) */}
-                    {customer?.referenceCode && (
-                        <span className="text-[7px] font-bold text-gray-400 tracking-wider">
-                            {customer.referenceCode}
+                    {/* Sağ: Müşteri kayıt kodu */}
+                    <div className="flex items-center gap-1 min-w-0">
+                        <span className="text-[7px] font-black text-gray-400 tracking-widest truncate">
+                            {customer?.referenceCode || (customer ? customer.id.slice(-6).toUpperCase() : '---')}
                         </span>
-                    )}
+                        <User size={7} className="text-gray-400 shrink-0" />
+                    </div>
                 </div>
             )}
 
