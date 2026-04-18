@@ -339,6 +339,7 @@ export interface Appointment {
     communicationSource: any;
     selectedRegions: string[];
     bodyMapData: any;
+    apptRef?: string;
     note?: any;
     createdAt?: string;
 }

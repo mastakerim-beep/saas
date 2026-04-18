@@ -388,7 +388,17 @@ const StoreOrchestrator = ({ children }: { children: ReactNode }) => {
         addAppointment: async (a: any) => {
             const id = crypto.randomUUID();
             const targetBizId = activeBizId || a.businessId || auth.currentUser?.businessId;
-            const appt = { ...a, id, businessId: targetBizId };
+
+            // Sıralı randevu referans numarası: RND-YYYY-NNNN
+            const year = new Date().getFullYear();
+            const apptPrefix = 'RND';
+            const existingNums = data.appointments
+                .filter(ap => ap.apptRef && (ap.apptRef as string).startsWith(`${apptPrefix}-${year}-`))
+                .map(ap => parseInt((ap.apptRef as string).split('-')[2] || '0'));
+            const maxApptNum = existingNums.length > 0 ? Math.max(...existingNums) : 0;
+            const apptRef = `${apptPrefix}-${year}-${String(maxApptNum + 1).padStart(4, '0')}`;
+
+            const appt = { ...a, id, businessId: targetBizId, apptRef };
             
             data.setAllAppointments((prev: any) => [appt, ...prev]);
 
@@ -640,9 +650,20 @@ const StoreOrchestrator = ({ children }: { children: ReactNode }) => {
             setSyncStatus('syncing');
             try {
                 const paymentId = crypto.randomUUID();
+
+                // Sıralı ödeme referans numarası: ODM-YYYY-NNNN
+                const payYear = new Date().getFullYear();
+                const payPrefix = 'ODM';
+                const existingPayNums = (data.payments || [])
+                    .filter((p: any) => p.referenceCode && typeof p.referenceCode === 'string' && p.referenceCode.startsWith(`${payPrefix}-${payYear}-`))
+                    .map((p: any) => parseInt((p.referenceCode as string).split('-')[2] || '0'));
+                const maxPayNum = existingPayNums.length > 0 ? Math.max(...existingPayNums) : 0;
+                const paymentRef = `${payPrefix}-${payYear}-${String(maxPayNum + 1).padStart(4, '0')}`;
+
                 const paymentRecord = {
                     ...paymentData,
                     id: paymentId,
+                    referenceCode: paymentRef,
                     tipAmount: tipAmount || 0,
                     soldProducts: soldProducts || [],
                     createdAt: new Date().toISOString()

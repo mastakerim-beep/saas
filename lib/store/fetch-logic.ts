@@ -135,7 +135,25 @@ export const fetchData = async (
         const branches = dataMap.branches || [];
         setters.setBranches((prev: any[]) => JSON.stringify(prev) === JSON.stringify(branches) ? prev : branches);
         
-        const appointments = dataMap.appointments || [];
+        const rawAppointments = dataMap.appointments || [];
+        // Mevcut randevulara apptRef ata (DB'de yoksa)
+        const apptYear = new Date().getFullYear();
+        const apptPrefix = 'RND';
+        const assignedApptRefs = new Set(
+            rawAppointments.filter((a: any) => a.apptRef).map((a: any) => a.apptRef as string)
+        );
+        const appointments = rawAppointments.map((a: any) => {
+            if (!a.apptRef) {
+                const existingNums = Array.from(assignedApptRefs)
+                    .filter((code): code is string => typeof code === 'string' && code.startsWith(`${apptPrefix}-${apptYear}-`))
+                    .map(code => { const parts = code.split('-'); return parts.length > 2 ? parseInt(parts[2]) : 0; });
+                const maxNum = existingNums.length > 0 ? Math.max(...existingNums) : 0;
+                const newRef = `${apptPrefix}-${apptYear}-${String(maxNum + 1).padStart(4, '0')}`;
+                assignedApptRefs.add(newRef);
+                return { ...a, apptRef: newRef };
+            }
+            return a;
+        });
         setters.setAllAppointments((prev: any[]) => JSON.stringify(prev) === JSON.stringify(appointments) ? prev : appointments);
         
         const rawCustomers = dataMap.customers || [];
