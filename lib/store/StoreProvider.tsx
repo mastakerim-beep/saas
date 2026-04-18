@@ -736,7 +736,7 @@ const StoreOrchestrator = ({ children }: { children: ReactNode }) => {
         },
         sendNotification: async (cid: string, type: any, content: string) => {
             const id = crypto.randomUUID();
-            const n = { id, customerId: cid, type, content, status: 'SENT', sentAt: new Date().toISOString() };
+            const n = { id, customerId: cid, type, content, status: 'SENT', sentAt: new Date().toISOString(), triggerSource: 'manual' };
             data.setAllNotifs((prev: NotificationLog[]) => [n, ...prev]);
             await syncDb('notification_logs', 'insert', n, id, activeBizId);
         },

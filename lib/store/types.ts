@@ -13,17 +13,20 @@ export type MembershipPlan = DB.MembershipPlan;
 export type CustomerMembership = DB.CustomerMembership;
 export type Package = DB.Package;
 export type PackageDefinition = DB.PackageDefinition;
-export type Appointment = DB.Appointment;
+export interface Appointment extends DB.Appointment {
+    syncStatus?: 'idle' | 'syncing' | 'error';
+}
 export interface CalendarBlock extends DB.CalendarBlock {
     roomId?: string | null;
 }
 export type Debt = DB.Debt;
-export interface Payment extends Omit<DB.Payment, 'methods'> {
+export interface Payment extends Omit<DB.Payment, 'methods' | 'isGift' | 'originalPrice' | 'giftNote' | 'soldProducts'> {
     methods: PaymentMethod[];
     isGift?: boolean;
     originalPrice?: number;
     authorizedBy?: string;
     giftNote?: string;
+    sold_products?: any; // Matches DB column name if needed, but DB.Payment has soldProducts (camelCase)
     soldProducts?: any;
 }
 export type BookingSettings = DB.BookingSettings;

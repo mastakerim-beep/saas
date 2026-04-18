@@ -32,6 +32,9 @@ CREATE TABLE IF NOT EXISTS businesses (
     signup_price NUMERIC, -- For grandfathering logic
     max_users INT DEFAULT 3,
     max_branches INT DEFAULT 1,
+    manager_pin TEXT DEFAULT '0000',
+    calendar_start_hour INT DEFAULT 9,
+    calendar_end_hour INT DEFAULT 21,
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
@@ -253,6 +256,8 @@ CREATE TABLE IF NOT EXISTS payments (
     tip_amount NUMERIC(10,2) DEFAULT 0,
     is_gift BOOLEAN DEFAULT false,
     original_price NUMERIC(10,2) DEFAULT 0,
+    reference_code TEXT,
+    gift_note TEXT,
     sold_products JSONB DEFAULT '[]',
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
@@ -428,9 +433,89 @@ CREATE TABLE IF NOT EXISTS booking_settings (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     business_id UUID REFERENCES businesses(id) ON DELETE CASCADE,
     branch_id UUID REFERENCES branches(id) ON DELETE CASCADE,
-    is_public_booking_enabled BOOLEAN DEFAULT true,
+    is_enabled BOOLEAN DEFAULT true,
+    require_deposit BOOLEAN DEFAULT false,
+    deposit_percentage INT DEFAULT 20,
+    allow_staff_select BOOLEAN DEFAULT true,
+    booking_message TEXT DEFAULT 'Bizi tercih ettiğiniz için teşekkürler.',
     accent_color TEXT DEFAULT '#4f46e5',
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- 9. MARKETING & NOTIFICATIONS
+CREATE TABLE IF NOT EXISTS marketing_rules (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    business_id UUID REFERENCES businesses(id) ON DELETE CASCADE,
+    name TEXT NOT NULL,
+    trigger_type TEXT NOT NULL,
+    threshold INT,
+    message_template TEXT NOT NULL,
+    is_active BOOLEAN DEFAULT true,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS notification_logs (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    business_id UUID REFERENCES businesses(id) ON DELETE CASCADE,
+    customer_id UUID REFERENCES customers(id) ON DELETE CASCADE,
+    type TEXT NOT NULL,
+    content TEXT NOT NULL,
+    status TEXT DEFAULT 'sent',
+    sent_at TIMESTAMPTZ DEFAULT NOW(),
+    trigger_source TEXT DEFAULT 'manual'
+);
+
+-- 10. INTELLIGENCE & WALLETS
+CREATE TABLE IF NOT EXISTS dynamic_pricing_rules (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    business_id UUID REFERENCES businesses(id) ON DELETE CASCADE,
+    name TEXT NOT NULL,
+    day_of_week INT,
+    modifier_percent DECIMAL NOT NULL,
+    is_active BOOLEAN DEFAULT true,
     created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS customer_wallets (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    business_id UUID REFERENCES businesses(id) ON DELETE CASCADE,
+    customer_id UUID REFERENCES customers(id) ON DELETE CASCADE UNIQUE,
+    balance DECIMAL DEFAULT 0,
+    loyalty_points INT DEFAULT 0,
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS wallet_transactions (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    business_id UUID REFERENCES businesses(id) ON DELETE CASCADE,
+    wallet_id UUID REFERENCES customer_wallets(id) ON DELETE CASCADE,
+    type TEXT NOT NULL,
+    amount DECIMAL NOT NULL,
+    points INT DEFAULT 0,
+    description TEXT,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS consultation_body_maps (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    business_id UUID REFERENCES businesses(id) ON DELETE CASCADE,
+    appointment_id UUID REFERENCES appointments(id) ON DELETE CASCADE,
+    customer_id UUID REFERENCES customers(id) ON DELETE CASCADE,
+    map_data JSONB NOT NULL,
+    is_critical BOOLEAN DEFAULT false,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS inventory_usage_norms (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    business_id UUID REFERENCES businesses(id) ON DELETE CASCADE,
+    service_id UUID REFERENCES services(id) ON DELETE CASCADE,
+    product_id UUID REFERENCES inventory(id) ON DELETE CASCADE,
+    amount_per_service DECIMAL NOT NULL,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    UNIQUE(service_id, product_id)
 );
 
 CREATE TABLE IF NOT EXISTS system_announcements (
