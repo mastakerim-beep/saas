@@ -381,7 +381,10 @@ const StoreOrchestrator = ({ children }: { children: ReactNode }) => {
             
             data.setAllAppointments((prev: any) => [appt, ...prev]);
 
-            const ok = await syncDb('appointments', 'insert', appt, id, targetBizId);
+            // Database sanitization: bodyMapData moved to selectedRegions and Separate Table
+            const { bodyMapData, ...dbPayload } = appt;
+
+            const ok = await syncDb('appointments', 'insert', dbPayload, id, targetBizId);
             
             if (!ok) {
                 console.warn("Failed to sync appointment, rolling back local state.");
@@ -389,20 +392,21 @@ const StoreOrchestrator = ({ children }: { children: ReactNode }) => {
                 return false;
             }
 
-            // Body Map Linkage
-            if (a.bodyMapData) {
+            // Body Map Linkage (Uses separate table)
+            const regions = a.selectedRegions || a.bodyMapData;
+            if (regions && regions.length > 0) {
                 const bmId = crypto.randomUUID();
                 const bm = { 
                     id: bmId, 
                     appointmentId: id, 
                     customerId: a.customerId, 
-                    mapData: a.bodyMapData, 
+                    mapData: regions, 
                     isCritical: true,
-                    businessId: activeBizId,
+                    businessId: targetBizId,
                     createdAt: new Date().toISOString()
                 };
                 data.setBodyMaps((prev: any) => [...prev, bm]);
-                await syncDb('consultation_body_maps', 'insert', bm, bmId, activeBizId);
+                await syncDb('consultation_body_maps', 'insert', bm, bmId, targetBizId);
             }
 
             await store.addLog('Randevu Oluşturuldu', a.customerName, '', `${a.service} (${a.communicationSource || 'Direkt'})`);

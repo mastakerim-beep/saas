@@ -129,7 +129,7 @@ export default function BookingModal({ initialData, onClose, date, mode: initial
                         isPackageUsage: item.isPackageUsage,
                         note: item.note,
                         communicationSource: referralSource,
-                        bodyMapData: item.regions
+                        selectedRegions: item.regions
                     });
 
                     if (!success) {

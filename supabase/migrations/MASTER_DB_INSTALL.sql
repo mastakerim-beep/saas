@@ -279,6 +279,9 @@ CREATE TABLE IF NOT EXISTS appointments (
     is_paid BOOLEAN DEFAULT false,
     is_package_usage BOOLEAN DEFAULT false,
     payment_id UUID REFERENCES payments(id),
+    communication_source TEXT,
+    selected_regions TEXT[] DEFAULT '{}',
+    body_map_data JSONB,
     note TEXT,
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
