@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useDraggable, useDroppable } from '@dnd-kit/core';
-import { ShieldCheck, Activity, Ban, Coffee, GripVertical, Trash2, Loader2, Star } from 'lucide-react';
+import { ShieldCheck, Activity, Ban, Coffee, GripVertical, Trash2, Loader2, Star, Clock, User, MapPin } from 'lucide-react';
 import { useStore, Appointment, CalendarBlock, AppointmentStatus } from '@/lib/store';
 
 const SLOT_MINUTES = 15;
@@ -212,25 +212,65 @@ export default function CalendarItem({
                 </div>
             )}
 
-            <div className="flex flex-col gap-0.5 text-center h-full justify-center px-2 py-2">
-                <span className="text-[9px] font-black opacity-40 uppercase tracking-tighter tabular-nums">{item.time}</span>
-                <p className="font-extrabold text-[11px] leading-tight uppercase tracking-tight text-gray-900 drop-shadow-sm">{isAppt ? appt.customerName : 'MEŞGUL'}</p>
-                <p className="text-[9px] font-bold text-indigo-600/70 border-b border-indigo-100/50 inline-block mx-auto pb-0.5 leading-none">
+            {/* Header Area: Time & Status */}
+            <div className={`
+                flex items-center justify-between px-2 py-1.5 border-b border-black/5
+                ${info.indicator} text-white
+            `}>
+                <div className="flex items-center gap-1.5">
+                    <Clock size={10} className="opacity-80" />
+                    <span className="text-[10px] font-black tracking-tighter tabular-nums truncate">
+                        {item.time} - {(() => {
+                            const [h, m] = item.time.split(':').map(Number);
+                            const endMin = h * 60 + m + (item.duration || 60);
+                            return `${Math.floor(endMin / 60).toString().padStart(2, '0')}:${(endMin % 60).toString().padStart(2, '0')}`;
+                        })()}
+                    </span>
+                </div>
+                {info.icon && <div className="p-0.5 bg-white/20 rounded-md backdrop-blur-md">{info.icon}</div>}
+            </div>
+
+            {/* Body Area: Main Content */}
+            <div className="flex-1 flex flex-col justify-center px-2 py-2 overflow-hidden">
+                <div className="flex items-center gap-1 flex-wrap justify-center">
+                    <p className="font-extrabold text-[11px] leading-tight uppercase tracking-tight text-gray-900 drop-shadow-sm truncate max-w-full">
+                        {isAppt ? appt.customerName : 'MEŞGUL'}
+                    </p>
+                    {isAppt && appt.packageId && (
+                        <span className="px-1 py-0.5 bg-indigo-600 text-white text-[7px] font-black rounded-sm shadow-sm ring-1 ring-white/20">P</span>
+                    )}
+                </div>
+                
+                <p className="text-[9px] font-bold text-indigo-600/70 mt-0.5 leading-none truncate w-full text-center">
                     {isAppt ? appt.service : block.reason}
                 </p>
-                <div className="flex flex-col mt-1">
-                    {isAppt && <p className="text-[8px] font-black opacity-40">{appt.staffName || '---'}</p>}
-                    {room && <p className="text-[8px] font-bold opacity-30 italic">{room.name}</p>}
-                </div>
-                {isAppt && (
-                    <div className="mt-auto pt-1 flex items-center justify-center gap-1">
-                        <span className="px-1.5 py-0.5 bg-gray-100 rounded-md text-[7px] font-black text-gray-400">
-                             {customer?.referenceCode || (branchPrefix + '-' + appt.id.slice(-4).toUpperCase())}
-                        </span>
-                        {info.icon}
+
+                <div className="flex items-center justify-center gap-2 mt-2 opacity-40">
+                    <div className="flex items-center gap-1 shrink-0">
+                        <User size={8} />
+                        <span className="text-[8px] font-black uppercase truncate max-w-[60px]">{isAppt ? (appt.staffName || '---') : 'Blok'}</span>
                     </div>
-                )}
+                    {room && (
+                        <div className="flex items-center gap-1 shrink-0">
+                            <MapPin size={8} />
+                            <span className="text-[8px] font-bold italic truncate max-w-[40px]">{room.name}</span>
+                        </div>
+                    )}
+                </div>
             </div>
+
+            {/* Footer Area: ID & Reference */}
+            {isAppt && (
+                <div className="px-2 py-1 flex items-center justify-between bg-black/5 backdrop-blur-sm">
+                    <div className="flex items-center gap-1 group-hover/item:scale-110 transition-transform origin-left">
+                        <ShieldCheck size={8} className="text-indigo-400" />
+                        <span className="text-[8px] font-black text-indigo-600 tracking-widest">
+                            {customer?.referenceCode || (branchPrefix + '-' + (customer?.id?.slice(-4).toUpperCase() || appt.id.slice(-4).toUpperCase()))}
+                        </span>
+                    </div>
+                </div>
+            )}
+
 
             {!isLocked && (
                 <div 

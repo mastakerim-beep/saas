@@ -37,7 +37,9 @@ export default function TimeSlot({
             }}
             className={`
                 h-[42px] border-r border-gray-100/30 transition-all relative box-border
-                ${isHourStart ? 'border-t-[2px] border-t-indigo-100/50' : 'border-t border-t-gray-100/50 border-dashed'}
+                ${time.endsWith(':00') ? 'border-t-[2px] border-t-indigo-200/50' : 
+                  time.endsWith(':30') ? 'border-t border-t-gray-300/50 border-dashed' : 
+                  'border-t border-t-gray-100/30 border-dotted'}
                 ${isOff ? 'bg-indigo-50/20 cursor-not-allowed opacity-40' : (isOver ? 'bg-indigo-50/50 border-2 border-indigo-400 z-30 scale-[1.01] shadow-xl shadow-indigo-100/50' : 'hover:bg-indigo-50/10 cursor-pointer')}
                 ${isSelected ? 'bg-indigo-600/10 ring-2 ring-indigo-500/30 z-20' : ''}
             `}
