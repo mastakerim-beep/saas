@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useDraggable, useDroppable } from '@dnd-kit/core';
-import { ShieldCheck, Activity, Ban, Coffee, GripVertical, Trash2, Loader2, Star, Clock, User, MapPin } from 'lucide-react';
+import { ShieldCheck, Activity, Ban, Coffee, Trash2, Loader2, Star, Clock, User, MapPin } from 'lucide-react';
 import { useStore, Appointment, CalendarBlock, AppointmentStatus } from '@/lib/store';
 
 const SLOT_MINUTES = 15;
@@ -160,7 +160,9 @@ export default function CalendarItem({
     return (
         <div 
             ref={setNodeRefs} 
-            style={style} 
+            style={style}
+            {...(!isLocked ? listeners : {})}
+            {...(!isLocked ? attributes : {})}
             onClick={(e) => { 
                 e.stopPropagation(); 
                 if (isRecentlyResized) return;
@@ -168,6 +170,7 @@ export default function CalendarItem({
             }}
             className={`
                 relative mx-1 rounded-xl transition-all select-none group/item overflow-hidden
+                ${!isLocked ? 'cursor-grab active:cursor-grabbing' : ''}
                 ${isDragging ? 'opacity-30 scale-95 shadow-xl ring-2 ring-indigo-500/50' : 'opacity-100 hover:scale-[1.01] hover:shadow-xl hover:shadow-indigo-100/40'} 
                 ${isOver ? 'ring-2 ring-indigo-400 bg-indigo-50/50 scale-[1.02]' : ''}
                 ${info.bg} ${info.ring} ${info.text} flex flex-col justify-between
@@ -175,35 +178,21 @@ export default function CalendarItem({
         >
             <div className={`absolute left-0 top-0 bottom-0 w-1 ${info.indicator}`} />
             
-            {!isLocked && (
-                <div 
+            {!isLocked && (!isAppt || ['Admin', 'Manager', 'Owner', 'superadmin'].includes(currentUser?.role || 'Staff')) && (
+                <button 
+                    onPointerDown={(e) => e.stopPropagation()}
                     onMouseDown={(e) => e.stopPropagation()}
-                    className="absolute top-2 left-2 right-2 flex justify-between items-start opacity-0 group-hover/item:opacity-100 transition-all duration-300 z-40"
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        if (confirm(isAppt ? "Bu randevuyu silmek istediğinize emin misiniz?" : "Bu bloklamayı/molayı silmek istediğinize emin misiniz?")) {
+                            if (isAppt) deleteAppointment(appt.id);
+                            else removeBlock(block.id);
+                        }
+                    }}
+                    className="absolute top-1.5 right-1.5 p-1.5 bg-white/80 backdrop-blur-md rounded-lg shadow-sm hover:bg-red-50 text-red-300 hover:text-red-500 transition-all border border-gray-100/50 opacity-0 group-hover/item:opacity-100 z-40 cursor-pointer"
                 >
-                    <div 
-                        {...listeners} 
-                        {...attributes} 
-                        className="p-2 bg-indigo-600 text-white rounded-xl shadow-lg shadow-indigo-200 cursor-grab active:cursor-grabbing hover:scale-110 transition-all outline-none ring-2 ring-white"
-                    >
-                        <GripVertical size={16} />
-                    </div>
-                    
-                    {(!isAppt || ['Admin', 'Manager', 'Owner', 'superadmin'].includes(currentUser?.role || 'Staff')) && (
-                        <button 
-                            onMouseDown={(e) => e.stopPropagation()}
-                            onClick={(e) => {
-                                e.stopPropagation();
-                                if (confirm(isAppt ? "Bu randevuyu silmek istediğinize emin misiniz?" : "Bu bloklamayı/molayı silmek istediğinize emin misiniz?")) {
-                                    if (isAppt) deleteAppointment(appt.id);
-                                    else removeBlock(block.id);
-                                }
-                            }}
-                            className="p-2 bg-white/90 backdrop-blur-md rounded-xl shadow-md hover:bg-red-50 text-red-300 hover:text-red-500 transition-all border border-gray-100"
-                        >
-                            <Trash2 size={16} />
-                        </button>
-                    )}
-                </div>
+                    <Trash2 size={12} />
+                </button>
             )}
 
             {isAppt && appt.syncStatus === 'syncing' && (
@@ -274,6 +263,7 @@ export default function CalendarItem({
 
             {!isLocked && (
                 <div 
+                    onPointerDown={(e) => e.stopPropagation()}
                     onMouseDown={handleResizeMouseDown}
                     data-no-dnd="true"
                     className="absolute bottom-0 left-0 right-0 h-4 cursor-ns-resize flex items-center justify-center group/resize z-30"
