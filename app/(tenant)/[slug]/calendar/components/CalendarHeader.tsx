@@ -34,19 +34,49 @@ export default function CalendarHeader({
                             {currentBranch?.name || 'Aura Spa ERP'} Command Center
                         </h1>
                     </div>
-                    <div className="flex items-center gap-4">
+                    <div className="flex items-center bg-white border-2 border-gray-100/80 rounded-[2rem] shadow-sm overflow-hidden p-1.5 transition-all hover:shadow-md hover:border-gray-200">
+                        <button 
+                            onClick={onPrevDay} 
+                            className="p-3 hover:bg-gray-50 rounded-full transition-all text-gray-400 hover:text-indigo-600 active:scale-95 group"
+                            title="Önceki Gün"
+                        >
+                            <ChevronLeft size={20} className="group-hover:-translate-x-0.5 transition-transform" />
+                        </button>
+                        
                         <button 
                             onClick={onDatePickerToggle}
-                            className="flex items-center gap-3 px-5 py-2.5 bg-gray-50 hover:bg-indigo-50 border border-gray-100 rounded-2xl group transition-all"
+                            className="flex items-center gap-3 px-6 py-2 hover:bg-indigo-50/50 rounded-2xl group transition-all mx-1"
                         >
-                            <CalendarIcon className="w-5 h-5 text-indigo-600 group-hover:scale-110 transition-transform" />
-                            <h2 className="text-lg font-black text-gray-900 tracking-tight uppercase italic">{displayDate}</h2>
+                            <div className="p-2.5 bg-indigo-50 text-indigo-600 rounded-xl group-hover:scale-110 group-hover:bg-indigo-100 transition-all">
+                                <CalendarIcon className="w-4 h-4" />
+                            </div>
+                            <div className="flex flex-col items-start leading-none group-hover:text-indigo-900">
+                                <span className="text-[10px] font-black tracking-[0.2em] uppercase text-gray-400 mb-1.5">
+                                    {new Date(selectedDate).toLocaleDateString('tr-TR', { weekday: 'long' })}
+                                </span>
+                                <span className="text-base font-black tracking-tight text-gray-800">
+                                    {new Date(selectedDate).toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric' })}
+                                </span>
+                            </div>
                         </button>
-                        <div className="flex p-1 bg-gray-50 rounded-2xl border border-gray-100 items-center justify-center">
-                            <button onClick={onPrevDay} className="p-2 hover:bg-white hover:shadow-sm rounded-xl transition-all text-gray-400 hover:text-indigo-600"><ChevronLeft size={16} /></button>
-                            <button onClick={onToday} className="px-4 py-2 hover:bg-white hover:shadow-sm rounded-xl transition-all text-[10px] font-black uppercase text-gray-500 hover:text-indigo-600">BUGÜN</button>
-                            <button onClick={onNextDay} className="p-2 hover:bg-white hover:shadow-sm rounded-xl transition-all text-gray-400 hover:text-indigo-600"><ChevronRight size={16} /></button>
-                        </div>
+
+                        <button 
+                            onClick={onNextDay} 
+                            className="p-3 hover:bg-gray-50 rounded-full transition-all text-gray-400 hover:text-indigo-600 active:scale-95 group"
+                            title="Sonraki Gün"
+                        >
+                            <ChevronRight size={20} className="group-hover:translate-x-0.5 transition-transform" />
+                        </button>
+                        
+                        <div className="w-px h-8 bg-gray-100 mx-2" />
+                        
+                        <button 
+                            onClick={onToday} 
+                            className="px-6 py-2.5 bg-gray-50/80 hover:bg-indigo-600 hover:text-white rounded-[1.5rem] transition-all text-[11px] font-black uppercase text-gray-600 tracking-[0.15em] active:scale-95 shadow-sm"
+                            title="Bugüne Dön"
+                        >
+                            Bugün
+                        </button>
                     </div>
                 </div>
             </div>
