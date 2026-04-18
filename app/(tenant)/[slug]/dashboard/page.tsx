@@ -6,7 +6,7 @@ import {
     Users, TrendingUp, DollarSign, Package, AlertCircle, 
     Star, Award, Calendar, ChevronRight, Activity, ShieldCheck, Clock,
     Sparkles, Zap, ArrowUpRight, MessageSquare, TrendingDown, Moon,
-    ArrowRight, Wallet, Target, Info, Plus
+    ArrowRight, Wallet, Target, Info, Plus, Edit2
 } from "lucide-react";
 import { 
     AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, 
@@ -17,9 +17,11 @@ import EndOfDayAI from "@/components/ai/EndOfDayAI";
 export default function Dashboard() {
     const { 
         appointments, payments, staffMembers, customers, debts, aiInsights, 
-        currentUser, can, rates, allLogs 
+        currentUser, currentBusiness, updateBusiness, can, rates, allLogs 
     } = useStore();
     const [isEndOfDayOpen, setIsEndOfDayOpen] = useState(false);
+    const [isTargetModalOpen, setIsTargetModalOpen] = useState(false);
+    const [newTarget, setNewTarget] = useState({ daily: 0, monthly: 0 });
     const [mounted, setMounted] = useState(false);
     const [currency, setCurrency] = useState<'TRY' | 'USD' | 'EUR'>('TRY');
 
@@ -36,11 +38,50 @@ export default function Dashboard() {
         return `${currency === 'USD' ? '$' : '€'}${converted.toLocaleString('tr-TR', { maximumFractionDigits: 2 })}`;
     };
 
-    // 1. Stats Calculation
     const today = new Date().toISOString().split('T')[0];
+    const yesterdayDate = new Date();
+    yesterdayDate.setDate(yesterdayDate.getDate() - 1);
+    const yesterdayStr = yesterdayDate.toISOString().split('T')[0];
+
     const dailyRevenue = payments.filter((p: any) => p.date === today).reduce((s: number, p: any) => s + (p.totalAmount || 0), 0);
+    const yesterdayRevenue = payments.filter((p: any) => p.date === yesterdayStr).reduce((s: number, p: any) => s + (p.totalAmount || 0), 0);
+    
+    const dailyGrowth = useMemo(() => {
+        if (yesterdayRevenue === 0) return dailyRevenue > 0 ? 100 : 0;
+        return Math.round(((dailyRevenue - yesterdayRevenue) / yesterdayRevenue) * 100);
+    }, [dailyRevenue, yesterdayRevenue]);
+
     const monthlyRevenue = payments.filter((p: any) => p.date?.startsWith(today.slice(0, 7))).reduce((s: number, p: any) => s + (p.totalAmount || 0), 0);
-    const pendingAppointments = appointments.filter((a: any) => a.date === today && a.status === 'pending').length;
+    const pendingAppointments = appointments.filter((a: any) => a.date === today && (a.status === 'pending' || a.status === 'confirmed' || a.status === 'arrived')).length;
+
+    const timeGreeting = useMemo(() => {
+        const hour = new Date().getHours();
+        if (hour < 12) return "Günaydın";
+        if (hour < 18) return "Tünaydın";
+        return "İyi Akşamlar";
+    }, []);
+
+    // Capacity Logic: Real data based
+    const capacity = useMemo(() => {
+        const activeStaff = staffMembers.filter(s => s.status === 'active').length;
+        if (activeStaff === 0) return 0;
+        // Simplified: avg 8 appointments per staff max
+        const maxDaily = activeStaff * 8;
+        const current = appointments.filter(a => a.date === today && a.status !== 'cancelled').length;
+        return Math.min(100, Math.round((current / maxDaily) * 100));
+    }, [staffMembers, appointments, today]);
+
+    const monthlyTarget = currentBusiness?.monthly_target || 50000;
+    const monthlyProgress = Math.min(100, Math.round((monthlyRevenue / monthlyTarget) * 100));
+
+    const handleUpdateTargets = async () => {
+        if (!can('manage_business')) return;
+        await updateBusiness({
+            daily_target: newTarget.daily,
+            monthly_target: newTarget.monthly
+        });
+        setIsTargetModalOpen(false);
+    };
 
     // 2. Chart Data (Last 7 Days)
     const chartData = useMemo(() => {
@@ -102,7 +143,8 @@ export default function Dashboard() {
                             <Activity className="w-5 h-5" />
                         </div>
                         <h1 className="text-3xl md:text-4xl font-black tracking-tight text-gray-900 leading-tight">
-                            Hoş Geldiniz, <span className="text-gradient">{currentUser?.name.split(' ')[0]}</span>
+                            {timeGreeting}, <span className="text-gradient">{currentUser?.name.split(' ')[0]}</span>
+                            <span className="block text-lg font-bold text-gray-400 mt-1">{currentBusiness?.name}</span>
                         </h1>
                     </div>
                     <p className="text-gray-400 font-bold text-sm tracking-tight flex items-center gap-2">
@@ -110,7 +152,7 @@ export default function Dashboard() {
                             <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
                             <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
                         </span>
-                        İşletmeniz şu an %84 kapasiteyle çalışıyor. <span className="text-primary hover:underline cursor-pointer">Verimliliği gör</span>
+                        İşletmeniz şu an %{capacity} kapasiteyle çalışıyor. <span className="text-primary hover:underline cursor-pointer">Verimliliği gör</span>
                     </p>
                 </div>
                 
@@ -147,12 +189,13 @@ export default function Dashboard() {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                 <motion.div variants={itemVariants} className="card-apple p-6 relative overflow-hidden group bg-white/40 backdrop-blur-xl border-white/60">
                     <div className="absolute top-0 right-0 p-6 opacity-0 group-hover:opacity-10 transition-opacity">
-                        <TrendingUp size={80} className="text-emerald-500" />
+                        {dailyGrowth >= 0 ? <TrendingUp size={80} className="text-emerald-500" /> : <TrendingDown size={80} className="text-rose-500" />}
                     </div>
                     <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Bugünkü Ciro</p>
                     <h3 className="text-3xl font-black text-gray-900 tracking-tighter">{formatPrice(dailyRevenue)}</h3>
-                    <div className="mt-4 inline-flex items-center gap-1 px-2 py-0.5 bg-emerald-50 text-emerald-600 rounded-lg text-[10px] font-black uppercase tracking-tighter">
-                        <ArrowUpRight className="w-3 h-3" /> +12% vs Dün
+                    <div className={`mt-4 inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[10px] font-black uppercase tracking-tighter ${dailyGrowth >= 0 ? 'bg-emerald-50 text-emerald-600' : 'bg-rose-50 text-rose-600'}`}>
+                        {dailyGrowth >= 0 ? <ArrowUpRight className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />} 
+                        {dailyGrowth >= 0 ? '+' : ''}{dailyGrowth}% vs Dün
                     </div>
                 </motion.div>
 
@@ -165,17 +208,24 @@ export default function Dashboard() {
                     </div>
                 </motion.div>
 
-                <motion.div variants={itemVariants} className="bg-primary p-6 rounded-[2.5rem] shadow-xl shadow-primary/20 hover:shadow-2xl hover:scale-[1.02] transition-all duration-500 text-white group cursor-pointer relative overflow-hidden">
+                <motion.div 
+                    variants={itemVariants} 
+                    onClick={() => can('manage_business') && setIsTargetModalOpen(true)}
+                    className={`p-6 rounded-[2.5rem] shadow-xl transition-all duration-500 text-white group cursor-pointer relative overflow-hidden ${can('manage_business') ? 'bg-primary hover:shadow-2xl hover:scale-[1.02]' : 'bg-primary/80 opacity-90'}`}
+                >
                     <div className="absolute top-0 right-0 p-6 opacity-10 group-hover:opacity-20 transition-opacity">
-                        <DollarSign size={80} />
+                        <Target size={80} />
                     </div>
-                    <p className="text-[10px] font-black text-white/70 uppercase tracking-widest mb-1 leading-none">Aylık Hedef</p>
-                    <h3 className="text-3xl font-black text-white tracking-tighter">{formatPrice(monthlyRevenue)}</h3>
+                    <div className="flex justify-between items-start mb-1">
+                        <p className="text-[10px] font-black text-white/70 uppercase tracking-widest leading-none">Aylık Hedef</p>
+                        {can('manage_business') && <Edit2 size={14} className="opacity-0 group-hover:opacity-60 transition-opacity" />}
+                    </div>
+                    <h3 className="text-3xl font-black text-white tracking-tighter">{formatPrice(monthlyTarget)}</h3>
                     <div className="w-full h-1.5 bg-white/20 rounded-full mt-5 overflow-hidden">
-                        <motion.div initial={{ width: 0 }} animate={{ width: '65%' }} transition={{ duration: 1.5, delay: 0.5 }} className="h-full bg-white" />
+                        <motion.div initial={{ width: 0 }} animate={{ width: `${monthlyProgress}%` }} transition={{ duration: 1.5, delay: 0.5 }} className="h-full bg-white" />
                     </div>
                     <div className="flex justify-between items-center mt-2 text-[9px] font-black uppercase text-white/80">
-                        <span>Tamamlandı %65</span>
+                        <span>Tamamlandı %{monthlyProgress}</span>
                         <Zap className="w-3 h-3 text-yellow-300 fill-yellow-300" />
                     </div>
                 </motion.div>
@@ -275,6 +325,58 @@ export default function Dashboard() {
                    </motion.div>
                 </div>
             </div>
+
+            {/* Target Settings Modal */}
+            <AnimatePresence>
+                {isTargetModalOpen && (
+                    <div className="fixed inset-0 z-[200] flex items-center justify-center p-6">
+                        <motion.div 
+                            initial={{ opacity: 0 }} 
+                            animate={{ opacity: 1 }} 
+                            exit={{ opacity: 0 }}
+                            onClick={() => setIsTargetModalOpen(false)}
+                            className="absolute inset-0 bg-black/40 backdrop-blur-sm"
+                        />
+                        <motion.div 
+                            initial={{ opacity: 0, scale: 0.9, y: 20 }}
+                            animate={{ opacity: 1, scale: 1, y: 0 }}
+                            exit={{ opacity: 0, scale: 0.9, y: 20 }}
+                            className="bg-white rounded-[3rem] p-10 w-full max-w-md relative z-10 shadow-2xl"
+                        >
+                            <h3 className="text-2xl font-black text-gray-900 tracking-tighter uppercase italic mb-2">Hedef Belirle</h3>
+                            <p className="text-xs font-bold text-gray-400 mb-8 uppercase tracking-widest">İşletmenizin geleceğini inşa edin</p>
+                            
+                            <div className="space-y-6">
+                                <div>
+                                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block mb-2">Günlük Ciro Hedefi</label>
+                                    <input 
+                                        type="number"
+                                        defaultValue={currentBusiness?.daily_target}
+                                        onChange={(e) => setNewTarget(prev => ({ ...prev, daily: Number(e.target.value) }))}
+                                        className="w-full bg-gray-50 border-none rounded-2xl px-6 py-4 text-xl font-black text-indigo-600 outline-none focus:ring-2 focus:ring-indigo-100"
+                                        placeholder="₺0"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block mb-2">Aylık Ciro Hedefi</label>
+                                    <input 
+                                        type="number"
+                                        defaultValue={currentBusiness?.monthly_target}
+                                        onChange={(e) => setNewTarget(prev => ({ ...prev, monthly: Number(e.target.value) }))}
+                                        className="w-full bg-gray-50 border-none rounded-2xl px-6 py-4 text-xl font-black text-primary outline-none focus:ring-2 focus:ring-primary/10"
+                                        placeholder="₺0"
+                                    />
+                                </div>
+                            </div>
+
+                            <div className="flex gap-3 mt-10">
+                                <button onClick={() => setIsTargetModalOpen(false)} className="flex-1 py-4 bg-gray-50 text-gray-400 rounded-2xl font-black text-[11px] uppercase tracking-widest">Vazgeç</button>
+                                <button onClick={handleUpdateTargets} className="flex-1 py-4 bg-black text-white rounded-2xl font-black text-[11px] uppercase tracking-widest shadow-xl">Kaydet</button>
+                            </div>
+                        </motion.div>
+                    </div>
+                )}
+            </AnimatePresence>
 
             {/* Modal */}
             <EndOfDayAI isOpen={isEndOfDayOpen} onClose={() => setIsEndOfDayOpen(false)} />

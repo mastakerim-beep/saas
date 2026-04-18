@@ -93,6 +93,8 @@ export interface Business {
     managerPin: string;
     calendarStartHour: number;
     calendarEndHour: number;
+    daily_target: number;
+    monthly_target: number;
     createdAt?: string;
 }
 
