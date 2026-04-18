@@ -78,6 +78,8 @@ export default function CalendarPage() {
     const [selectedDate, setSelectedDate] = useState(initialDate);
     const [isDatePickerOpen, setIsDatePickerOpen] = useState(false);
     const [pickerMonth, setPickerMonth] = useState(new Date());
+    const [hoveredTime, setHoveredTime] = useState<string | null>(null);
+    const [hoveredY, setHoveredY] = useState<number | null>(null);
 
     const sensors = useSensors(
         useSensor(PointerSensor, { activationConstraint: { distance: 3 } }),
@@ -223,26 +225,31 @@ export default function CalendarPage() {
                             <div className="flex min-w-max h-full relative">
                                 
                                 {/* Time Column */}
-                                <div className="sticky left-0 w-24 bg-white/95 backdrop-blur-md z-30 border-r border-gray-100 flex flex-col pt-[80px] shadow-2xl shadow-indigo-50/20">
-                                    {SLOTS.map(time => {
+                                <div className="sticky left-0 w-20 bg-white/95 backdrop-blur-md z-30 border-r border-gray-100 flex flex-col pt-[80px] shadow-2xl shadow-indigo-50/20">
+                                    {SLOTS.map((time, idx) => {
                                         const isHour = time.endsWith(':00');
+                                        const isHovered = hoveredTime === time;
                                         return (
-                                            <div key={time} className={`h-[42px] flex flex-col items-center justify-start relative group/time px-2 ${isHour ? 'bg-indigo-50/10' : ''}`}>
+                                            <div key={time} className={`h-[42px] flex flex-col items-center justify-start relative group/time px-2 ${isHour ? 'bg-indigo-50/5' : ''}`}>
                                                 {/* Alignment logic: label center sits on the top boundary of the slot */}
                                                 <div className={`
                                                     w-full h-7 rounded-lg flex items-center justify-center transition-all duration-300 transform translate-y-[-50%]
-                                                    ${isHour 
-                                                        ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-100 ring-2 ring-indigo-500/20 z-10' 
-                                                        : 'bg-white/50 text-gray-400 border border-gray-100/50 group-hover/time:bg-white group-hover/time:text-gray-600 group-hover/time:border-indigo-200 z-0'}
+                                                    ${isHovered 
+                                                        ? 'bg-indigo-600 text-white shadow-xl shadow-indigo-300 scale-110 z-20' 
+                                                        : (isHour 
+                                                            ? 'bg-indigo-50 text-indigo-600 font-black border border-indigo-100/50' 
+                                                            : 'bg-transparent text-gray-400 group-hover/time:text-gray-600')}
                                                 `}>
                                                     <span className={`text-[10px] font-black tracking-tight tabular-nums ${isHour ? '' : 'text-[8px] opacity-70 tracking-widest'}`}>
                                                         {time}
                                                     </span>
                                                 </div>
                                                 
-                                                {isHour && (
-                                                    <div className="absolute top-0 right-0 w-3 h-[2px] bg-indigo-600/30 rounded-full translate-y-[-50%]" />
-                                                )}
+                                                {/* Ruler Ticks */}
+                                                <div className={`absolute top-0 right-0 h-[2px] rounded-full translate-y-[-50%] transition-all
+                                                    ${isHour ? 'w-4 bg-indigo-500' : 'w-2 bg-gray-300'}
+                                                    ${isHovered ? 'w-6 bg-indigo-600' : ''}
+                                                `} />
                                             </div>
                                         );
                                     })}
@@ -285,6 +292,10 @@ export default function CalendarPage() {
                                                             onAdd={(data) => setSelectedSlot(data)}
                                                             onSelectionStart={handleSelectionStart}
                                                             onSelectionEnter={handleSelectionEnter}
+                                                            onHover={(t: string, isEnter: boolean) => {
+                                                                if (isEnter) setHoveredTime(t);
+                                                                else if (hoveredTime === t) setHoveredTime(null);
+                                                            }}
                                                         />
                                                     );
                                                 })}
@@ -321,6 +332,19 @@ export default function CalendarPage() {
                                         </div>
                                     ))}
                                 </div>
+
+                                {/* Scanner Line (Crosshair) */}
+                                {hoveredTime && (
+                                    <div 
+                                        className="absolute left-0 right-0 h-[1.5px] bg-indigo-600/40 pointer-events-none z-40"
+                                        style={{ 
+                                            top: `${80 + SLOTS.indexOf(hoveredTime) * 42}px`,
+                                            boxShadow: '0 0 10px rgba(79, 70, 229, 0.4)'
+                                        }}
+                                    >
+                                        <div className="absolute left-[-4px] top-[-3px] w-2 h-2 bg-indigo-600 rounded-full" />
+                                    </div>
+                                )}
                             </div>
                         </div>
                     </div>

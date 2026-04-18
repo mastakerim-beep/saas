@@ -11,10 +11,11 @@ interface TimeSlotProps {
     onSelectionStart: (id: string, t: string) => void;
     onSelectionEnter: (t: string) => void;
     isSelected: boolean;
+    onHover?: (time: string, isEnter: boolean) => void;
 }
 
 export default function TimeSlot({ 
-    staffId, roomId, time, isOff, onAdd, onSelectionStart, onSelectionEnter, isSelected 
+    staffId, roomId, time, isOff, onAdd, onSelectionStart, onSelectionEnter, isSelected, onHover 
 }: TimeSlotProps) {
     const isHourStart = time.endsWith(':00');
     const { isOver, setNodeRef } = useDroppable({
@@ -30,7 +31,13 @@ export default function TimeSlot({
                 if (!isOff && e.button === 0) onSelectionStart(staffId || roomId || '', time);
             }}
             onMouseEnter={() => {
-                if (!isOff) onSelectionEnter(time);
+                if (!isOff) {
+                    onSelectionEnter(time);
+                    onHover?.(time, true);
+                }
+            }}
+            onMouseLeave={() => {
+                onHover?.(time, false);
             }}
             onClick={() => {
                 if (!isOff) onAdd({ staffId, roomId, time });
