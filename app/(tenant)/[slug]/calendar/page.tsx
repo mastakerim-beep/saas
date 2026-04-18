@@ -71,6 +71,7 @@ export default function CalendarPage() {
     const [checkoutAppt, setCheckoutAppt] = useState<Appointment | null>(null);
     const [actionAppt, setActionAppt] = useState<Appointment | null>(null); // For blocks
     const [actionMenuAppt, setActionMenuAppt] = useState<Appointment | null>(null); // For appointment details/actions
+    const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null); // Inline delete confirmation
     const [activeId, setActiveId] = useState<string | null>(null);
     const [activeDragData, setActiveDragData] = useState<any>(null);
     const [isPanelOpen, setIsPanelOpen] = useState(false);
@@ -191,6 +192,11 @@ export default function CalendarPage() {
         const d = new Date(selectedDate + 'T00:00:00');
         d.setDate(d.getDate() - 1);
         setSelectedDate(formatDate(d));
+    };
+
+    const closeActionMenu = () => {
+        setActionMenuAppt(null);
+        setConfirmDeleteId(null);
     };
 
     const goToday = () => setSelectedDate(formatDate(new Date()));
@@ -418,46 +424,64 @@ export default function CalendarPage() {
                 </AnimatePresence>
 
                 {/* Other Modals */}
-                {selectedSlot && (
-                    <BookingModal 
-                        isOpen={!!selectedSlot}
-                        onClose={() => setSelectedSlot(null)}
-                        date={selectedDate}
-                        initialData={{
-                            time: selectedSlot.time,
-                            duration: selectedSlot.duration || SLOT_MINUTES,
-                            staffId: selectedSlot.staffId,
-                            roomId: selectedSlot.roomId
-                        }}
-                    />
-                )}
-                {dropPreview && (
-                    <ServiceDropModal 
-                        customer={dropPreview.customer}
-                        staffId={dropPreview.staffId}
-                        roomId={dropPreview.roomId}
-                        time={dropPreview.time}
-                        date={selectedDate}
-                        onClose={() => setDropPreview(null)}
-                    />
-                )}
-                {checkoutAppt && <SmartCheckout appointment={checkoutAppt} onClose={() => setCheckoutAppt(null)} />}
-                {actionAppt && (
-                    <BookingModal 
-                        isOpen={!!actionAppt} 
-                        onClose={() => setActionAppt(null)} 
-                        date={actionAppt.date}
-                        initialData={actionAppt} 
-                        mode="edit" 
-                    />
-                )}
+                <AnimatePresence>
+                    {selectedSlot && (
+                        <motion.div key="booking-new" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+                            <BookingModal 
+                                isOpen={!!selectedSlot}
+                                onClose={() => setSelectedSlot(null)}
+                                date={selectedDate}
+                                initialData={{
+                                    time: selectedSlot.time,
+                                    duration: selectedSlot.duration || SLOT_MINUTES,
+                                    staffId: selectedSlot.staffId,
+                                    roomId: selectedSlot.roomId
+                                }}
+                            />
+                        </motion.div>
+                    )}
+                </AnimatePresence>
+                <AnimatePresence>
+                    {dropPreview && (
+                        <motion.div key="drop-preview" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+                            <ServiceDropModal 
+                                customer={dropPreview.customer}
+                                staffId={dropPreview.staffId}
+                                roomId={dropPreview.roomId}
+                                time={dropPreview.time}
+                                date={selectedDate}
+                                onClose={() => setDropPreview(null)}
+                            />
+                        </motion.div>
+                    )}
+                </AnimatePresence>
+                <AnimatePresence>
+                    {checkoutAppt && (
+                        <motion.div key="checkout" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+                            <SmartCheckout appointment={checkoutAppt} onClose={() => setCheckoutAppt(null)} />
+                        </motion.div>
+                    )}
+                </AnimatePresence>
+                <AnimatePresence>
+                    {actionAppt && (
+                        <motion.div key="booking-edit" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+                            <BookingModal 
+                                isOpen={!!actionAppt} 
+                                onClose={() => setActionAppt(null)} 
+                                date={actionAppt.date}
+                                initialData={actionAppt} 
+                                mode="edit" 
+                            />
+                        </motion.div>
+                    )}
+                </AnimatePresence>
 
                 <AnimatePresence>
                     {actionMenuAppt && (
                         <div className="fixed inset-0 z-[1000] flex items-center justify-center p-4">
                             <motion.div 
                                 initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-                                onClick={() => setActionMenuAppt(null)}
+                                onClick={() => closeActionMenu()}
                                 className="absolute inset-0 bg-indigo-950/40 backdrop-blur-xl"
                             />
                             <motion.div 
@@ -478,7 +502,7 @@ export default function CalendarPage() {
                                                 <h3 className="text-xl font-black text-gray-900 tracking-tight italic">{actionMenuAppt.customerName}</h3>
                                             </div>
                                         </div>
-                                        <button onClick={() => setActionMenuAppt(null)} className="p-3 hover:bg-white/50 rounded-2xl transition-colors border border-transparent hover:border-gray-100">
+                                        <button onClick={() => closeActionMenu()} className="p-3 hover:bg-white/50 rounded-2xl transition-colors border border-transparent hover:border-gray-100">
                                             <X size={20} className="text-gray-400" />
                                         </button>
                                     </div>
@@ -488,7 +512,7 @@ export default function CalendarPage() {
                                         <button 
                                             onClick={async () => {
                                                 await updateAppointmentStatus(actionMenuAppt.id, 'arrived');
-                                                setActionMenuAppt(null);
+                                                closeActionMenu();
                                             }}
                                             className="w-full flex items-center gap-4 p-5 bg-white hover:bg-indigo-50/50 rounded-[2rem] transition-all group border border-gray-100 hover:border-indigo-200 shadow-sm"
                                         >
@@ -504,7 +528,7 @@ export default function CalendarPage() {
                                         <button 
                                             onClick={() => {
                                                 setCheckoutAppt(actionMenuAppt);
-                                                setActionMenuAppt(null);
+                                                closeActionMenu();
                                             }}
                                             className="w-full flex items-center gap-4 p-5 bg-gradient-to-br from-emerald-600 to-teal-700 hover:shadow-xl hover:shadow-emerald-200/50 rounded-[2rem] transition-all group border border-emerald-500/20"
                                         >
@@ -521,7 +545,7 @@ export default function CalendarPage() {
                                             <button 
                                                 onClick={async () => {
                                                     await updateAppointmentStatus(actionMenuAppt.id, 'unexcused-cancel');
-                                                    setActionMenuAppt(null);
+                                                    closeActionMenu();
                                                 }}
                                                 className="flex flex-col items-center gap-2 p-5 bg-orange-50/50 hover:bg-orange-50 rounded-[2rem] transition-all group border border-orange-100/50 shadow-sm"
                                             >
@@ -537,7 +561,7 @@ export default function CalendarPage() {
                                             <button 
                                                 onClick={async () => {
                                                     await updateAppointmentStatus(actionMenuAppt.id, 'excused');
-                                                    setActionMenuAppt(null);
+                                                    closeActionMenu();
                                                 }}
                                                 className="flex flex-col items-center gap-2 p-5 bg-blue-50/50 hover:bg-blue-50 rounded-[2rem] transition-all group border border-blue-100/50 shadow-sm"
                                             >
@@ -555,23 +579,41 @@ export default function CalendarPage() {
                                             <button 
                                                 onClick={() => {
                                                     setActionAppt(actionMenuAppt);
-                                                    setActionMenuAppt(null);
+                                                    closeActionMenu();
                                                 }}
                                                 className="flex items-center justify-center gap-2 py-4 px-4 bg-gray-50/50 hover:bg-white hover:border-gray-200 border border-transparent rounded-2xl transition-all text-[11px] font-black text-gray-500 uppercase tracking-widest"
                                             >
                                                 <ExternalLink size={14} /> Detaylar
                                             </button>
-                                            <button 
-                                                onClick={async () => {
-                                                    if (confirm('Bu randevuyu silmek istediğinize emin misiniz?')) {
-                                                        await deleteAppointment(actionMenuAppt.id);
-                                                        setActionMenuAppt(null);
-                                                    }
-                                                }}
-                                                className="flex items-center justify-center gap-2 py-4 px-4 hover:bg-red-50 rounded-2xl transition-all text-[11px] font-black text-red-400 uppercase tracking-widest"
-                                            >
-                                                <Trash2 size={14} /> Sil
-                                            </button>
+                                            {confirmDeleteId === actionMenuAppt.id ? (
+                                                <div className="flex items-center gap-2">
+                                                    <button
+                                                        onClick={async (e) => {
+                                                            e.stopPropagation();
+                                                            const id = actionMenuAppt.id;
+                                                            setConfirmDeleteId(null);
+                                                            closeActionMenu();
+                                                            await deleteAppointment(id);
+                                                        }}
+                                                        className="flex-1 py-4 px-3 bg-red-500 hover:bg-red-600 text-white rounded-2xl transition-all text-[10px] font-black uppercase tracking-widest"
+                                                    >
+                                                        Evet, Sil
+                                                    </button>
+                                                    <button
+                                                        onClick={(e) => { e.stopPropagation(); setConfirmDeleteId(null); }}
+                                                        className="flex-1 py-4 px-3 bg-gray-100 hover:bg-gray-200 text-gray-500 rounded-2xl transition-all text-[10px] font-black uppercase tracking-widest"
+                                                    >
+                                                        Vazgeç
+                                                    </button>
+                                                </div>
+                                            ) : (
+                                                <button 
+                                                    onClick={(e) => { e.stopPropagation(); setConfirmDeleteId(actionMenuAppt.id); }}
+                                                    className="flex items-center justify-center gap-2 py-4 px-4 hover:bg-red-50 rounded-2xl transition-all text-[11px] font-black text-red-400 uppercase tracking-widest"
+                                                >
+                                                    <Trash2 size={14} /> Sil
+                                                </button>
+                                            )}
                                         </div>
                                     </div>
                                 </div>
