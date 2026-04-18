@@ -225,7 +225,7 @@ function StaffProfilePanel({ staff, onClose, onEdit }: { staff: any, onClose: ()
             </div>
 
             {/* Footer Actions */}
-            <div className="p-6 border-t border-gray-50 flex gap-3">
+            <div className="p-6 border-t border-gray-50 flex flex-wrap gap-2">
                 <button
                     onClick={onEdit}
                     className="flex-1 bg-primary text-white py-4 rounded-2xl font-black text-xs uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-primary/90 transition-all shadow-lg shadow-primary/20"
@@ -242,6 +242,19 @@ function StaffProfilePanel({ staff, onClose, onEdit }: { staff: any, onClose: ()
                 >
                     {staff.status === 'active' ? 'İzne Al' : 'Aktifleştir'}
                 </button>
+                {staff.status !== 'Ayrıldı' && (
+                    <button
+                        onClick={async () => {
+                            if (confirm(`${staff.name} isimli personeli 'İşten Ayrıldı' olarak işaretlemek istediğinize emin misiniz?`)) {
+                                await updateStaff(staff.id, { status: 'Ayrıldı', isVisibleOnCalendar: false });
+                                onClose();
+                            }
+                        }}
+                        className="w-full bg-red-50 text-red-600 py-4 rounded-2xl font-black text-xs uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-red-100 transition-all border border-red-100 mt-1"
+                    >
+                        <ZapOff className="w-4 h-4" /> İŞTEN AYRILDI OLARAK İŞARETLE
+                    </button> // Bu buton ayrıldı işaretleyip arşive atar
+                )}
             </div>
         </motion.div>
     );
@@ -832,11 +845,11 @@ export default function StaffPage() {
             {view === 'manage' && (
                 <div className="animate-[slideUp_0.4s_ease]">
                     {/* Filter bar */}
-                    <div className="flex gap-3 mb-6">
-                        {['all', 'active', 'İzinli'].map(f => (
+                    <div className="flex gap-3 mb-6 overflow-x-auto pb-2 no-scrollbar">
+                        {['all', 'active', 'İzinli', 'Ayrıldı'].map(f => (
                             <button key={f} onClick={() => setStatusFilter(f as any)}
-                                className={`px-5 py-2.5 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all border-2 ${statusFilter === f ? 'bg-primary text-white border-primary shadow-lg shadow-primary/20' : 'border-gray-100 text-gray-400 hover:border-gray-300'}`}>
-                                {f === 'all' ? 'Tümü' : f} {f !== 'all' && `(${staffMembers.filter(s => s.status === f).length})`}
+                                className={`px-5 py-2.5 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all border-2 whitespace-nowrap ${statusFilter === f ? 'bg-primary text-white border-primary shadow-lg shadow-primary/20' : 'border-gray-100 text-gray-400 hover:border-gray-300'}`}>
+                                {f === 'all' ? 'Tümü' : f === 'Ayrıldı' ? 'Arşiv (Ayrılanlar)' : f} {f !== 'all' && `(${staffMembers.filter(s => s.status === f).length})`}
                             </button>
                         ))}
                     </div>

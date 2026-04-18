@@ -391,6 +391,7 @@ CREATE TABLE IF NOT EXISTS z_reports (
     total_difference NUMERIC(10,2) DEFAULT 0,
     closed_by TEXT,
     notes TEXT,
+    ai_summary TEXT, -- Added for daily report summaries
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 

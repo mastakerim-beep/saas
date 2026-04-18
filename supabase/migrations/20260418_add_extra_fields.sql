@@ -150,3 +150,8 @@ CREATE TABLE IF NOT EXISTS inventory_usage_norms (
     created_at TIMESTAMPTZ DEFAULT NOW(),
     UNIQUE(service_id, product_id)
 );
+
+-- 6. FINAL PATCHES FOR PREMIUM FEATURES (v2.1)
+-- Added missing columns for AI Reports and Internal Notifications
+ALTER TABLE public.z_reports ADD COLUMN IF NOT EXISTS ai_summary TEXT;
+ALTER TABLE public.notification_logs ALTER COLUMN customer_id DROP NOT NULL;

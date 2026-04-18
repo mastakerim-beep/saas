@@ -881,6 +881,22 @@ const StoreOrchestrator = ({ children }: { children: ReactNode }) => {
         deleteStaff: async (id: string) => {
             const staff = data.staffMembers.find(s => s.id === id);
             if (!staff) return;
+            
+            // 1. Randevu Kontrolü: Geçmiş randevusu varsa silmeye izin verme, Arşivle.
+            const hasAppts = data.appointments.some(a => a.staffId === id);
+            if (hasAppts) {
+                if (confirm(`${staff.name} isimli personelin geçmiş randevuları mevcut. Veri bütünlüğünü korumak için personeli SİLEMEZSİNİZ.\n\nBunun yerine personeli 'İşten Ayrıldı' olarak işaretleyip takvimden gizleyelim mi?`)) {
+                    await store.updateStaff(id, { 
+                        status: 'Ayrıldı', 
+                        isVisibleOnCalendar: false,
+                        staffType: 'Eski Personel'
+                    });
+                    await store.addLog('Personel Arşivlendi', staff.name, 'Randevu Geçmişi Nedeniyle');
+                }
+                return;
+            }
+
+            // 2. Hard Delete (Yalnızca randevusu olmayanlar için)
             data.setAllStaff((prev: Staff[]) => prev.filter((s: Staff) => s.id !== id));
             const ok = await syncDb('staff', 'delete', {}, id, activeBizId);
             if (!ok) {
