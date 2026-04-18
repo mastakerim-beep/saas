@@ -242,7 +242,7 @@ function CustomerDetail({ customer, onClose }: { customer: Customer; onClose: ()
         <motion.div 
             initial={{ opacity: 0, x: 20 }} 
             animate={{ opacity: 1, x: 0 }} 
-            className="fixed inset-0 bg-[#F8F9FD] z-50 flex overflow-hidden"
+            className="fixed inset-0 top-[84px] bg-[#F8F9FD] z-40 flex overflow-hidden"
         >
             {/* Delete Confirmation Modal */}
             <AnimatePresence>
@@ -286,7 +286,7 @@ function CustomerDetail({ customer, onClose }: { customer: Customer; onClose: ()
                 transition={{ type: 'spring', stiffness: 300, damping: 30 }}
                 onMouseEnter={() => setIsSidebarCollapsed(false)}
                 onMouseLeave={() => setIsSidebarCollapsed(true)}
-                className="bg-white border-r border-gray-100 flex flex-col p-6 sticky top-0 h-screen overflow-hidden group/sbar z-[60]"
+                className="bg-white border-r border-gray-100 flex flex-col p-6 sticky top-0 h-full overflow-hidden group/sbar z-[60]"
             >
                 <div className="flex items-center justify-between mb-10">
                     {!isSidebarCollapsed && (
@@ -326,7 +326,7 @@ function CustomerDetail({ customer, onClose }: { customer: Customer; onClose: ()
             </motion.div>
 
             {/* Main Content Area */}
-            <div className="flex-1 flex flex-col min-w-0 h-screen overflow-y-auto bg-[#F8F9FD] scroll-smooth">
+            <div className="flex-1 flex flex-col min-w-0 h-full overflow-y-auto bg-[#F8F9FD] scroll-smooth">
                 {/* Top Banner Profile */}
                 <div className="bg-white border-b border-gray-100 p-8 flex justify-between items-center">
                     <div className="flex items-center gap-6">
