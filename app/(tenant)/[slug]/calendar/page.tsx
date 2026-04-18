@@ -203,7 +203,7 @@ export default function CalendarPage() {
 
     return (
         <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
-            <div className="flex flex-col h-screen bg-[#fafafa] overflow-hidden select-none" onMouseUp={handleSelectionEnd}>
+            <div className="flex flex-col h-[calc(100vh-84px)] bg-[#fafafa] overflow-hidden select-none" onMouseUp={handleSelectionEnd}>
                 
                 <CalendarHeader 
                     selectedDate={selectedDate}
