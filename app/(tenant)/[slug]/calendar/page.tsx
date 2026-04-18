@@ -225,7 +225,7 @@ export default function CalendarPage() {
                             <div className="flex min-w-max h-full relative">
                                 
                                 {/* Time Column */}
-                                <div className="sticky left-0 w-20 bg-white/95 backdrop-blur-md z-30 border-r border-gray-100 flex flex-col pt-[80px] shadow-2xl shadow-indigo-50/20">
+                                <div className="sticky left-0 w-20 bg-white/95 backdrop-blur-md z-30 border-r border-gray-100 flex flex-col pt-[80px]">
                                     {SLOTS.map((time, idx) => {
                                         const isHour = time.endsWith(':00');
                                         const isHovered = hoveredTime === time;
@@ -260,7 +260,7 @@ export default function CalendarPage() {
                                     {(viewMode === 'staff' ? staffToDisplay : roomsToDisplay).map(target => (
                                         <div key={target.id} className="min-w-[280px] flex-1 flex flex-col relative group/col border-r border-gray-100/30">
                                             {/* Column Header */}
-                                            <div className="sticky top-0 h-[80px] bg-white/90 backdrop-blur-xl z-20 border-b border-gray-100 flex flex-col items-center justify-center group-hover/col:bg-indigo-50/20 transition-all px-4">
+                                            <div className="sticky top-0 h-[80px] bg-white/95 backdrop-blur-xl z-40 border-b border-gray-100 flex flex-col items-center justify-center group-hover/col:bg-indigo-50/20 transition-all px-4">
                                                 <div className="relative">
                                                     <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-indigo-50 to-gray-50 flex items-center justify-center mb-1 group-hover/col:scale-110 transition-transform duration-500 shadow-sm border border-gray-100">
                                                         <User size={18} className="text-gray-400 group-hover/col:text-indigo-600" />
@@ -336,7 +336,7 @@ export default function CalendarPage() {
                                 {/* Scanner Line (Crosshair) */}
                                 {hoveredTime && (
                                     <div 
-                                        className="absolute left-0 right-0 h-[1.5px] bg-indigo-600/40 pointer-events-none z-40"
+                                        className="absolute left-0 right-0 h-[1.5px] bg-indigo-600/40 pointer-events-none z-20"
                                         style={{ 
                                             // 80: Header Height, 42: Slot Height
                                             top: `${80 + (SLOTS.indexOf(hoveredTime) * 42)}px`,

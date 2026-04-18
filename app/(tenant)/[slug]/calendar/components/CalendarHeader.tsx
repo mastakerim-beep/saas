@@ -24,7 +24,7 @@ export default function CalendarHeader({
     const safeDate = selectedDate + 'T00:00:00';
 
     return (
-        <header className="sticky top-0 h-[80px] border-b border-gray-100 bg-white px-6 flex items-center justify-between z-[100] bg-white/95 backdrop-blur-md">
+        <header className="h-[80px] border-b border-gray-100 bg-white px-6 flex items-center justify-between z-10">
             <div className="flex items-center gap-10">
                 <div className="flex flex-col">
                     <div className="flex items-center gap-2 mb-1">
