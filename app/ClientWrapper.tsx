@@ -113,10 +113,13 @@ export default function ClientWrapper({ children }: { children: React.ReactNode 
                     }
                 } else if (userBiz) {
                     const tenantPath = `/${userBiz.slug}`;
+                    const currentSlugInPath = pathname.split('/')[1];
+                    const isAnyBizSlugMatch = allBusinesses.some(b => b.slug === currentSlugInPath);
+
                     if (isRootPath || isLoginPath) {
                         router.push(`${tenantPath}/dashboard`);
-                    } else if (isSuperAdminPath || (!pathname.startsWith(tenantPath) && !pathname.includes("/api/"))) {
-                        // Intelligent subpath redirect (e.g. /calendar -> /slug/calendar)
+                    } else if (!isAnyBizSlugMatch && !pathname.includes("/api/")) {
+                        // Only force redirect if the path does NOT start with ANY valid business slug
                         const subPath = pathname.replace(/^\//, '');
                         const targetPath = subPath ? `${tenantPath}/${subPath}` : `${tenantPath}/dashboard`;
                         router.push(targetPath);
@@ -124,10 +127,6 @@ export default function ClientWrapper({ children }: { children: React.ReactNode 
                     if (syncStatus === 'idle' || syncStatus === 'error') {
                         setIsChecking(false);
                     }
-                } else if (allBusinesses.length > 0) {
-                    // Veri yüklendi ama hala eşleşme yoksa (yeni üyelik veya veri hatası)
-                    // Kullanıcıyı içeri sok ama dashboard'a zorlama, isChecking'i kapat
-                    setIsChecking(false);
                 }
             }
         }, 100);

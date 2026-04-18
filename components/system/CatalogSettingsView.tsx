@@ -9,6 +9,7 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import PinGate from '@/components/security/PinGate';
+import { seedCatalogData } from '@/lib/store/seed-data';
 
 type TabType = 'hizmetler' | 'paketler' | 'urunler';
 
@@ -43,18 +44,28 @@ export default function CatalogSettingsView({ query }: { query: string }) {
     const [form, setForm] = useState<any>({ name: '', duration: 60, price: 0, category: 'Masaj Terapileri', totalSessions: 1 });
 
     const openPanel = (item: any = null) => {
+        setShowNewCatInput(false);
+        setNewCategoryName('');
+        
         if (item) {
             setForm({
-                name: item.name,
+                name: item.name || '',
                 duration: item.duration || 60,
                 price: item.price || 0,
                 category: activeTab === 'paketler' ? (item.groupName || 'Genel') : (item.category || 'Genel'),
                 totalSessions: item.totalSessions || 1,
-                consumables: item.consumables || []
+                consumables: Array.isArray(item.consumables) ? item.consumables : []
             });
             setEditingItem(item);
         } else {
-            setForm({ name: '', duration: 60, price: 0, category: 'Masaj Terapileri', totalSessions: 1 });
+            setForm({ 
+                name: '', 
+                duration: activeTab === 'hizmetler' ? 60 : 1, 
+                price: 0, 
+                category: currentGroups[0] || 'Genel', 
+                totalSessions: 1,
+                consumables: []
+            });
             setEditingItem(null);
         }
         setIsAdding(true);
@@ -64,25 +75,31 @@ export default function CatalogSettingsView({ query }: { query: string }) {
         if (!form.name || form.price < 0) return;
         
         const finalCategory = showNewCatInput ? newCategoryName : form.category;
+        const payload: any = {
+            name: form.name,
+            price: Number(form.price),
+        };
         
         if (activeTab === 'hizmetler') {
-            const data = { 
-                name: form.name, 
-                duration: Number(form.duration), 
-                price: Number(form.price), 
-                category: finalCategory || 'Genel',
-                consumables: form.consumables || [] // Reçete verisi eklendi
-            };
-            if (editingItem) await updateService(editingItem.id, data);
-            else await addService(data);
+            payload.duration = Number(form.duration);
+            payload.category = finalCategory || 'Genel';
+            payload.consumables = form.consumables || [];
+            
+            if (editingItem) await updateService(editingItem.id, payload);
+            else await addService(payload);
         } else if (activeTab === 'paketler') {
-            const data = { name: form.name, groupName: finalCategory || 'Genel', totalSessions: Number(form.totalSessions), price: Number(form.price), details: '' };
-            if (editingItem) await updatePackageDefinition(editingItem.id, data);
-            else await addPackageDefinition(data);
+            payload.groupName = finalCategory || 'Genel';
+            payload.totalSessions = Number(form.totalSessions);
+            payload.details = '';
+            
+            if (editingItem) await updatePackageDefinition(editingItem.id, payload);
+            else await addPackageDefinition(payload);
         } else if (activeTab === 'urunler') {
-            const data = { name: form.name, category: finalCategory || 'Genel', price: Number(form.price), stock: Number(form.totalSessions) };
-            if (editingItem) await updateProduct(editingItem.id, data);
-            else await addProduct(data);
+            payload.category = finalCategory || 'Genel';
+            payload.stock = Number(form.totalSessions);
+            
+            if (editingItem) await updateProduct(editingItem.id, payload);
+            else await addProduct(payload);
         }
         
         setIsAdding(false);
@@ -123,6 +140,17 @@ export default function CatalogSettingsView({ query }: { query: string }) {
                             className="pl-12 pr-6 py-4 bg-white border border-indigo-50 rounded-[2rem] text-sm font-bold w-64 focus:ring-4 focus:ring-indigo-500/5 focus:border-indigo-200 outline-none transition-all shadow-sm"
                         />
                     </div>
+                    <button 
+                        onClick={async () => {
+                            if (confirm('Katalog verileri örnek verilerle doldurulacak. Onaylıyor musunuz?')) {
+                                await seedCatalogData({ addService, addPackageDefinition, addProduct });
+                                alert('Katalog başarıyla güncellendi!');
+                            }
+                        }}
+                        className="bg-stone-100 text-stone-600 px-6 py-4 rounded-[1.8rem] font-bold text-[9px] uppercase tracking-widest hover:bg-stone-200 transition-all flex items-center gap-2"
+                    >
+                        <Sparkles size={14} /> ÖRNEK VERİ YÜKLE
+                    </button>
                     <button 
                         onClick={() => openPanel()}
                         className="bg-indigo-600 text-white px-8 py-4 rounded-[1.8rem] font-black text-[10px] uppercase tracking-widest shadow-xl shadow-indigo-200 flex items-center gap-2 hover:bg-indigo-700 active:scale-95 transition-all"
