@@ -20,18 +20,17 @@ export default function CalendarHeader({
     selectedDate, onPrevDay, onNextDay, onToday, onDatePickerToggle, 
     currentBranch, viewMode, setViewMode, syncStatus, onPanelToggle 
 }: CalendarHeaderProps) {
-    const displayDate = new Date(selectedDate).toLocaleDateString('tr-TR', { 
-        day: 'numeric', month: 'long', year: 'numeric', weekday: 'long' 
-    });
+    // Standardize date parsing to computer local time to prevent day shifts
+    const safeDate = selectedDate + 'T00:00:00';
 
     return (
-        <header className="h-[100px] border-b border-gray-100 bg-white px-10 flex items-center justify-between z-40 bg-white">
+        <header className="sticky top-0 h-[80px] border-b border-gray-100 bg-white px-6 flex items-center justify-between z-[100] bg-white/95 backdrop-blur-md">
             <div className="flex items-center gap-10">
                 <div className="flex flex-col">
                     <div className="flex items-center gap-2 mb-1">
                         <MapPin className="w-3 h-3 text-indigo-600" />
                         <h1 className="text-[10px] font-black text-indigo-600 uppercase tracking-[0.2em] leading-none">
-                            {currentBranch?.name || 'Aura Spa ERP'} Command Center
+                            {currentBranch?.name || 'Aura Spa ERP'} Yönetim Merkezi
                         </h1>
                     </div>
                     <div className="flex items-center bg-white border-2 border-gray-100/80 rounded-[2rem] shadow-sm overflow-hidden p-1.5 transition-all hover:shadow-md hover:border-gray-200">
@@ -45,17 +44,17 @@ export default function CalendarHeader({
                         
                         <button 
                             onClick={onDatePickerToggle}
-                            className="flex items-center gap-3 px-6 py-2 hover:bg-indigo-50/50 rounded-2xl group transition-all mx-1"
+                            className="flex items-center gap-3 px-4 py-1.5 hover:bg-indigo-50/50 rounded-2xl group transition-all mx-1"
                         >
-                            <div className="p-2.5 bg-indigo-50 text-indigo-600 rounded-xl group-hover:scale-110 group-hover:bg-indigo-100 transition-all">
+                            <div className="p-2 bg-indigo-50 text-indigo-600 rounded-xl group-hover:scale-110 group-hover:bg-indigo-100 transition-all">
                                 <CalendarIcon className="w-4 h-4" />
                             </div>
                             <div className="flex flex-col items-start leading-none group-hover:text-indigo-900">
-                                <span className="text-[10px] font-black tracking-[0.2em] uppercase text-gray-400 mb-1.5">
-                                    {new Date(selectedDate).toLocaleDateString('tr-TR', { weekday: 'long' })}
+                                <span className="text-[9px] font-black tracking-[0.2em] uppercase text-gray-400 mb-1">
+                                    {new Date(safeDate).toLocaleDateString('tr-TR', { weekday: 'long' })}
                                 </span>
-                                <span className="text-base font-black tracking-tight text-gray-800">
-                                    {new Date(selectedDate).toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric' })}
+                                <span className="text-sm font-black tracking-tight text-gray-800">
+                                    {new Date(safeDate).toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric' })}
                                 </span>
                             </div>
                         </button>
@@ -107,7 +106,7 @@ export default function CalendarHeader({
                 >
                     <div className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/10 to-white/0 -translate-x-full group-hover:translate-x-full transition-transform duration-1000" />
                     <Search className="w-5 h-5 group-hover:rotate-12 transition-transform" />
-                    <span className="text-[11px] font-black uppercase tracking-[0.2em]">Müşteri Rehberi</span>
+                    <span className="text-[11px] font-black uppercase tracking-[0.2em] hidden xl:block">Müşteri Rehberi</span>
                 </button>
             </div>
         </header>

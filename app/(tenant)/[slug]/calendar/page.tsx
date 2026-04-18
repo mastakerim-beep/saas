@@ -203,7 +203,7 @@ export default function CalendarPage() {
 
     return (
         <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
-            <div className="flex flex-col h-[calc(100vh-84px)] bg-[#fafafa] overflow-hidden select-none" onMouseUp={handleSelectionEnd}>
+            <div className="flex-1 flex flex-col h-full bg-[#fafafa] overflow-hidden select-none" onMouseUp={handleSelectionEnd}>
                 
                 <CalendarHeader 
                     selectedDate={selectedDate}
@@ -454,7 +454,7 @@ export default function CalendarPage() {
 
                 <AnimatePresence>
                     {actionMenuAppt && (
-                        <div className="fixed inset-0 z-[700] flex items-center justify-center p-4">
+                        <div className="fixed inset-0 z-[1000] flex items-center justify-center p-4">
                             <motion.div 
                                 initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
                                 onClick={() => setActionMenuAppt(null)}
@@ -512,7 +512,7 @@ export default function CalendarPage() {
                                                 <Banknote size={24} />
                                             </div>
                                             <div className="text-left text-white">
-                                                <p className="font-black text-sm uppercase italic">Ödeme Al / Checkout</p>
+                                                <p className="font-black text-sm uppercase italic">Checkout / Ödeme Al</p>
                                                 <p className="text-[10px] text-emerald-100 font-bold uppercase tracking-widest opacity-80">Tahsilat Safhası</p>
                                             </div>
                                         </button>
