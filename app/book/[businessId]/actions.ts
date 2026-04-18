@@ -70,5 +70,5 @@ export async function submitBooking(data: {
   // Revalidate the cache so the page refetches slots
   revalidatePath(`/book`);
 
-  return { success: true };
+  return { success: true, appointmentId: apptId };
 }

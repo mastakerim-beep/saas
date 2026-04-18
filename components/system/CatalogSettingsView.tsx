@@ -358,7 +358,7 @@ export default function CatalogSettingsView({ query }: { query: string }) {
                                                 />
                                             </div>
                                         </div>
-                                        <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 blur-[40px] rounded-full -translate-y-1/2 translate-x-1/2" />
+                                        <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 blur-[40px] rounded-full -translate-y-1/2 translate-x-1/2 pointer-events-none" />
                                     </div>
  
                                     {/* Reçete Eşleştirme (Multiple Products) */}
@@ -521,7 +521,7 @@ function PremiumCard({ item, activeTab, onEdit, onDelete, onRestore }: any) {
                 <div className={`w-16 h-16 rounded-[1.8rem] flex items-center justify-center transition-all duration-500 shadow-inner ${isArchived ? 'bg-gray-200 text-gray-500' : 'bg-gray-50 group-hover:bg-gray-900 group-hover:text-white'}`}>
                     {activeTab === 'hizmetler' ? <Clock size={28} /> : activeTab === 'paketler' ? <PackageIcon size={28} /> : <ShoppingBag size={28} />}
                 </div>
-                <div className="flex gap-4 opacity-0 group-hover:opacity-100 transition-all translate-y-2 group-hover:translate-y-0">
+                <div className="flex gap-4 opacity-0 group-hover:opacity-100 transition-all translate-y-2 group-hover:translate-y-0 relative z-10">
                     {!isArchived ? (
                         <>
                             <button onClick={onEdit} className="w-10 h-10 bg-gray-50 flex items-center justify-center rounded-xl text-gray-400 hover:bg-black hover:text-white transition-all"><Edit3 size={18} /></button>
@@ -568,7 +568,7 @@ function PremiumCard({ item, activeTab, onEdit, onDelete, onRestore }: any) {
             </div>
 
             {/* Subtle Gradient decoration */}
-            <div className={`absolute top-0 right-0 w-32 h-32 blur-[60px] rounded-full transition-all duration-500 ${isArchived ? 'bg-gray-200/5' : 'bg-indigo-500/5 group-hover:bg-indigo-500/10'}`} />
+            <div className={`absolute top-0 right-0 w-32 h-32 blur-[60px] rounded-full transition-all duration-500 pointer-events-none ${isArchived ? 'bg-gray-200/5' : 'bg-indigo-500/5 group-hover:bg-indigo-500/10'}`} />
         </div>
     );
 }

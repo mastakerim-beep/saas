@@ -5,7 +5,7 @@ import {
     Users, CreditCard, Landmark, ListTree, 
     MapPin, FileText, Share2, Settings as SettingsIcon,
     Plus, Search, Edit2, Trash2, Check, X,
-    ChevronRight, Shield, Smartphone, Calendar,
+    ChevronRight, ChevronUp, ChevronDown, Shield, Smartphone, Calendar,
     ExternalLink, Info, AlertCircle, Save, Layers, Zap, Clock, Building2, Megaphone
 } from "lucide-react";
 import { useState, useMemo } from "react";
@@ -487,10 +487,32 @@ export default function SystemSettingsPage() {
 }
 
 function StaffSettingsView({ staff, onUpdate, query }: { staff: Staff[], onUpdate: any, query: string }) {
-    const filtered = staff.filter(s => s.name.toLowerCase().includes(query.toLowerCase()));
+    const filtered = [...staff]
+        .sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0))
+        .filter(s => s.name.toLowerCase().includes(query.toLowerCase()));
 
     const toggle = (id: string, field: keyof Staff, value: boolean) => {
         onUpdate(id, { [field]: value });
+    };
+
+    const moveStaff = (index: number, direction: 'up' | 'down') => {
+        if (query) {
+            alert("Lütfen sıralama yapmak için aramayı temizleyin.");
+            return;
+        }
+        const newIndex = direction === 'up' ? index - 1 : index + 1;
+        if (newIndex < 0 || newIndex >= filtered.length) return;
+        
+        const newFiltered = [...filtered];
+        const temp = newFiltered[index];
+        newFiltered[index] = newFiltered[newIndex];
+        newFiltered[newIndex] = temp;
+        
+        newFiltered.forEach((s, idx) => {
+            if (s.sortOrder !== idx) {
+                onUpdate(s.id, { sortOrder: idx });
+            }
+        });
     };
 
     return (
@@ -498,6 +520,7 @@ function StaffSettingsView({ staff, onUpdate, query }: { staff: Staff[], onUpdat
             <table className="w-full text-left border-collapse">
                 <thead>
                     <tr className="bg-gray-50/30 border-b border-gray-50">
+                        <th className="px-10 py-6 text-[10px] font-black text-gray-400 uppercase tracking-widest w-20 text-center">SIRA</th>
                         <th className="px-10 py-6 text-[10px] font-black text-gray-400 uppercase tracking-widest">AD SOYAD</th>
                         <th className="px-10 py-6 text-[10px] font-black text-gray-400 uppercase tracking-widest">YETKİ</th>
                         <th className="px-10 py-6 text-[10px] font-black text-gray-400 uppercase tracking-widest">GRUP</th>
@@ -510,8 +533,19 @@ function StaffSettingsView({ staff, onUpdate, query }: { staff: Staff[], onUpdat
                     </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-50">
-                    {filtered.map((s) => (
+                    {filtered.map((s, index) => (
                         <tr key={s.id} className="hover:bg-gray-50/50 transition-colors group">
+                            <td className="px-10 py-6">
+                                <div className="flex flex-col gap-1 items-center justify-center">
+                                    <button onClick={() => moveStaff(index, 'up')} disabled={index === 0 || !!query} className="p-1 text-gray-300 hover:text-indigo-600 disabled:opacity-30 disabled:hover:text-gray-300 transition-colors">
+                                        <ChevronUp size={16} />
+                                    </button>
+                                    <span className="text-[11px] font-black text-indigo-900 bg-indigo-50 px-3 py-1 rounded-full">{index + 1}</span>
+                                    <button onClick={() => moveStaff(index, 'down')} disabled={index === filtered.length - 1 || !!query} className="p-1 text-gray-300 hover:text-indigo-600 disabled:opacity-30 disabled:hover:text-gray-300 transition-colors">
+                                        <ChevronDown size={16} />
+                                    </button>
+                                </div>
+                            </td>
                             <td className="px-10 py-6">
                                 <div className="flex items-center gap-4">
                                     <div className="w-12 h-12 rounded-2xl bg-indigo-50 text-indigo-600 flex items-center justify-center font-black text-xs border border-indigo-100 uppercase">

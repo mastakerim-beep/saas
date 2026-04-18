@@ -2,8 +2,10 @@
 
 import { useState, useMemo } from 'react';
 import { Database } from '@/lib/supabase';
-import { Check, Calendar, Clock, User, Phone, ArrowRight, Loader2, Sparkles, MapPin } from 'lucide-react';
+import { Check, Calendar, Clock, User, Phone, ArrowRight, Loader2, Sparkles, MapPin, Tag } from 'lucide-react';
 import { submitBooking } from './actions';
+import SmartTriage from './components/SmartTriage';
+import WalletPassTicket from './components/WalletPassTicket';
 
 type Business = Database['public']['Tables']['businesses']['Row'];
 type Staff = Database['public']['Tables']['staff']['Row'];
@@ -29,12 +31,14 @@ export default function BookingClient({
   business,
   staff,
   bookedSlots,
-  services = []
+  services = [],
+  pricingRules = []
 }: {
   business: Business;
   staff: Staff[];
   bookedSlots: BookedSlot[];
   services?: Service[];
+  pricingRules?: any[];
 }) {
   const getToday = () => new Date().toLocaleDateString('sv-SE');
 
@@ -48,6 +52,7 @@ export default function BookingClient({
   const [phone, setPhone] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
+  const [ticketId, setTicketId] = useState('');
   const [error, setError] = useState('');
 
   // Sadece bugünden itibaren 14 gün
@@ -68,6 +73,26 @@ export default function BookingClient({
     return ALL_SLOTS.filter(s => !bookedTimes.has(s));
   }, [selectedStaff, date, bookedSlots]);
 
+  // Yield Management - Dinamik Fiyat Algoritması
+  const getDynamicPrice = (basePrice: number, t: string) => {
+    let discount = 0;
+    
+    // Yalnızca veritabanındaki kurallar (İşletmenin kendi tercihi) geçerlidir.
+    pricingRules.forEach(rule => {
+        const checkDay = new Date(date).getDay() === 0 ? 7 : new Date(date).getDay();
+        if (rule.dayOfWeek === checkDay || rule.dayOfWeek === -1) {
+            // İşletme kuralı buldu, yüzde kaç indirim veya zam yaptıysa uygula
+            // Not: Şimdilik sadece oran bazlı çalışır.
+            discount = rule.modifierPercent;
+        }
+    });
+
+    if (discount > 0) {
+        return { isDiscounted: true, percent: discount, newPrice: basePrice - (basePrice * discount / 100) };
+    }
+    return { isDiscounted: false, percent: 0, newPrice: basePrice };
+  };
+
   const handleSubmit = async () => {
     if (!name || !phone || !selectedStaff || !time) return;
     setIsSubmitting(true);
@@ -83,13 +108,15 @@ export default function BookingClient({
       date,
       time,
       duration: service.duration,
-      price: service.price
+      price: time ? getDynamicPrice(service.price, time).newPrice : service.price
     });
 
     setIsSubmitting(false);
     if (res.error) {
       setError(res.error);
-    } else {
+    } else if (res.success && res.appointmentId) {
+      // Use the first part of UUID as an elegant, unique Ticket ID
+      setTicketId(res.appointmentId.split('-')[0].toUpperCase());
       setIsSuccess(true);
     }
   };
@@ -102,11 +129,16 @@ export default function BookingClient({
         </div>
         <h2 className="text-3xl font-black text-gray-900 mb-2">Randevunuz Alındı!</h2>
         <p className="text-gray-500 font-medium mb-8">İşleminiz başarıyla sisteme iletildi. {business.name} ekibi sizi yakında ağırlamayı bekliyor.</p>
-        <div className="bg-gray-50 p-4 rounded-2xl flex flex-col gap-2 text-sm font-bold text-gray-700 text-left">
-          <p>📌 Hizmet: <span className="text-gray-900">{service.name}</span></p>
-          <p>📅 Tarih: <span className="text-gray-900">{date} - {time}</span></p>
-          <p>👩‍⚕️ Uzman: <span className="text-gray-900">{selectedStaff?.name}</span></p>
-        </div>
+        
+        <WalletPassTicket 
+            businessName={business.name}
+            serviceName={service.name}
+            date={date}
+            time={time}
+            staffName={selectedStaff?.name}
+            customerName={name}
+            ticketId={ticketId || `TK-${Math.floor(Math.random() * 10000)}`}
+        />
       </div>
     );
   }
@@ -158,6 +190,8 @@ export default function BookingClient({
           
           {step === 1 && (
             <div className="animate-[fadeIn_0.3s_ease]">
+              <SmartTriage onSelectService={(s: any) => { setService(s); setStep(2); }} services={services} />
+              
               <h2 className="text-2xl font-black mb-6">Size Uygun Hizmeti Seçin</h2>
               <div className="grid grid-cols-1 gap-4">
                 {services.map((s: Service) => (
@@ -226,15 +260,27 @@ export default function BookingClient({
                     <p className="text-red-500 font-bold bg-red-50 p-4 rounded-xl text-sm">Bu tarihte hiç boş yer yok. Başka tarih seçin.</p>
                   ) : (
                     <div className="grid grid-cols-4 md:grid-cols-5 gap-2">
-                      {availableSlots.map(t => (
+                      {availableSlots.map(t => {
+                        const priceInfo = getDynamicPrice(service.price, t);
+                        return (
                         <button
                           key={t}
                           onClick={() => setTime(t)}
-                          className={`p-3 rounded-xl border-2 font-black text-sm transition-all ${time === t ? 'border-indigo-600 bg-indigo-600 text-white shadow-md' : 'border-gray-100 text-gray-700 hover:border-indigo-300'}`}
+                          className={`p-3 rounded-xl border-2 font-black text-sm transition-all relative overflow-hidden group ${time === t ? 'border-indigo-600 bg-indigo-600 text-white shadow-md' : 'border-gray-100 text-gray-700 hover:border-indigo-300'} ${priceInfo.isDiscounted && time !== t ? 'bg-emerald-50/50 border-emerald-100 hover:border-emerald-300' : ''}`}
                         >
-                          {t}
+                          {priceInfo.isDiscounted && (
+                              <div className="absolute top-0 right-0 w-full h-full pointer-events-none opacity-20">
+                                  <div className="absolute -top-4 -right-4 w-8 h-8 rotate-45 bg-emerald-500" />
+                              </div>
+                          )}
+                          <div className="relative z-10 flex flex-col items-center">
+                              <span>{t}</span>
+                              {priceInfo.isDiscounted && time !== t && (
+                                  <span className="text-[8px] font-black text-emerald-600 uppercase mt-0.5 tracking-tight flex items-center"><Tag className="w-2 h-2 mr-0.5" /> -%{priceInfo.percent}</span>
+                              )}
+                          </div>
                         </button>
-                      ))}
+                      )})}
                     </div>
                   )}
                 </>

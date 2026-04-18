@@ -36,8 +36,16 @@ export default async function BookingPage({ params }: { params: { businessId: st
     .eq('business_id', businessId)
     .gte('date', today);
 
+  // Fetch Dynamic Pricing Rules
+  const { data: pricingData } = await supabase
+    .from('dynamic_pricing_rules')
+    .select('*')
+    .eq('business_id', businessId)
+    .eq('is_active', true);
+
   const staff = staffData || [];
   const bookedSlots = apptData || [];
+  const pricingRules = pricingData || [];
 
   // MVP: Hardcoded defaults for now, can be moved to a 'services' table later
   const DEFAULT_SERVICES = [
@@ -55,6 +63,7 @@ export default async function BookingPage({ params }: { params: { businessId: st
             staff={staff} 
             bookedSlots={bookedSlots} 
             services={DEFAULT_SERVICES}
+            pricingRules={pricingRules}
           />
       </div>
     </div>
