@@ -5,7 +5,7 @@ import {
     Users, CreditCard, Landmark, ListTree, 
     MapPin, FileText, Share2, Settings as SettingsIcon,
     Plus, Search, Edit2, Trash2, Check, X,
-    ChevronRight, ChevronUp, ChevronDown, Shield, Smartphone, Calendar,
+    ChevronRight, ChevronUp, ChevronDown, Shield, Smartphone, Calendar, Star,
     ExternalLink, Info, AlertCircle, Save, Layers, Zap, Clock, Building2, Megaphone
 } from "lucide-react";
 import { useState, useMemo } from "react";
@@ -28,6 +28,7 @@ type SettingsTab =
     | 'rooms'
     | 'security'
     | 'announcements'
+    | 'channels'
     | 'business';
 
 export default function SystemSettingsPage() {
@@ -54,6 +55,7 @@ export default function SystemSettingsPage() {
     const menuItems = [
         { group: "ENVANTER & KATALOG", items: [
             { id: 'catalog', label: 'Hizmet Kataloğu', icon: Zap },
+            { id: 'channels', label: 'Vitrin & Kanallar', icon: Share2 },
         ]},
         { group: "SİSTEM", items: [
             { id: 'business', label: 'İşletme Ayarları', icon: Building2 },
@@ -199,6 +201,9 @@ export default function SystemSettingsPage() {
                             )}
                             {activeTab === 'announcements' && (
                                 <AnnouncementsSettingsView />
+                            )}
+                            {activeTab === 'channels' && (
+                                <ChannelsSettingsView business={currentBusiness} />
                             )}
                             {activeTab === 'staff' && (
                                 <StaffSettingsView staff={staffMembers} onUpdate={updateStaff} query={searchQuery} />
@@ -869,6 +874,114 @@ function BusinessSettingsView() {
                         </p>
                     </div>
                     <Calendar className="absolute -right-4 -bottom-4 w-24 h-24 opacity-10 rotate-12" />
+                </div>
+            </div>
+        </div>
+    );
+}
+
+function ChannelsSettingsView({ business }: { business: any }) {
+    const [copiedId, setCopiedId] = useState<string | null>(null);
+    const origin = typeof window !== 'undefined' ? window.location.origin : '';
+
+    const channels = [
+        {
+            id: 'kiosk',
+            label: 'Resepsiyon Kiosk (Check-in)',
+            icon: Smartphone,
+            description: 'Resepsiyon masasına koyacağınız tablet için bilet okuma/kayıt ekranı.',
+            url: `${origin}/${business?.slug}/kiosk`
+        },
+        {
+            id: 'booking',
+            label: 'Müşteri Rezervasyon Sayfası',
+            icon: Calendar,
+            description: 'Instagram veya web sitenize koyacağınız online randevu linki.',
+            url: `${origin}/book/${business?.id}`
+        },
+        {
+            id: 'portal',
+            label: 'Müşteri VIP Portalı',
+            icon: Star,
+            description: 'Müşterilerinizin paketlerini ve puanlarını takip edebileceği PWA ekranı.',
+            url: `${origin}/portal/${business?.id}`
+        }
+    ];
+
+    const copyToClipboard = (url: string, id: string) => {
+        navigator.clipboard.writeText(url);
+        setCopiedId(id);
+        setTimeout(() => setCopiedId(null), 2000);
+    };
+
+    return (
+        <div className="space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                {channels.map((channel) => (
+                    <motion.div 
+                        key={channel.id}
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="bg-white p-8 rounded-[3rem] border border-gray-100 shadow-sm relative overflow-hidden group hover:shadow-xl hover:shadow-indigo-500/5 transition-all duration-500"
+                    >
+                        <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-50 opacity-0 group-hover:opacity-30 rounded-full -mr-16 -mt-16 transition-all duration-700" />
+                        
+                        <div className="w-14 h-14 bg-gray-50 rounded-2xl flex items-center justify-center text-indigo-600 mb-6 group-hover:scale-110 group-hover:bg-indigo-600 group-hover:text-white transition-all duration-500">
+                            <channel.icon size={28} />
+                        </div>
+
+                        <h3 className="text-lg font-black text-gray-900 mb-2 uppercase tracking-tight">{channel.label}</h3>
+                        <p className="text-xs font-bold text-gray-400 mb-8 leading-relaxed h-10">
+                            {channel.description}
+                        </p>
+
+                        <div className="space-y-3 relative z-10">
+                            <div className="bg-gray-50 p-4 rounded-2xl border border-gray-100 flex items-center justify-between gap-4 overflow-hidden">
+                                <span className="text-[10px] font-black text-gray-500 truncate lowercase opacity-60">
+                                    {channel.url}
+                                </span>
+                            </div>
+                            
+                            <div className="flex gap-2">
+                                <button
+                                    onClick={() => copyToClipboard(channel.url, channel.id)}
+                                    className={`flex-1 py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest transition-all flex items-center justify-center gap-2 ${
+                                        copiedId === channel.id 
+                                        ? "bg-green-500 text-white" 
+                                        : "bg-black text-white hover:bg-gray-800"
+                                    }`}
+                                >
+                                    {copiedId === channel.id ? <><Check size={14} /> KOPYALANDI</> : <><Plus size={14} /> LİNKİ KOPYALA</>}
+                                </button>
+                                <a 
+                                    href={channel.url} 
+                                    target="_blank" 
+                                    rel="noreferrer"
+                                    className="p-4 bg-gray-50 text-gray-500 hover:text-indigo-600 rounded-2xl transition-all border border-gray-100"
+                                >
+                                    <ExternalLink size={18} />
+                                </a>
+                            </div>
+                        </div>
+                    </motion.div>
+                ))}
+            </div>
+
+            <div className="bg-indigo-50 p-10 rounded-[3.5rem] border border-indigo-100 flex flex-col md:flex-row items-center gap-8 relative overflow-hidden">
+                <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-100 opacity-20 rounded-full blur-3xl -mr-32 -mt-32" />
+                <div className="w-20 h-20 bg-white rounded-3xl flex items-center justify-center text-indigo-600 shadow-xl shrink-0 relative z-10">
+                    <Smartphone size={40} />
+                </div>
+                <div className="relative z-10 text-center md:text-left">
+                    <h4 className="text-xl font-black text-indigo-900 uppercase tracking-tighter mb-2">QR KOD & TABLET KURULUMU</h4>
+                    <p className="text-xs font-bold text-indigo-700 leading-relaxed max-w-xl">
+                        Kiosk ekranını resepsiyonunuzdaki bir tabletten açıp "Tam Ekran" (F11) yapmanız yeterlidir. Müşterileriniz biletlerini okuttuğunda sistem otomatik olarak randevuyu onaylar.
+                    </p>
+                </div>
+                <div className="md:ml-auto relative z-10">
+                    <button className="px-8 py-4 bg-white text-indigo-600 rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-xl shadow-indigo-200 hover:scale-105 transition-all">
+                        KURULUM REHBERİ
+                    </button>
                 </div>
             </div>
         </div>

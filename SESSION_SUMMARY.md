@@ -23,4 +23,24 @@ Bu belge, yapılan tüm elit güncellemelerin ve sistem iyileştirmelerinin öze
 - **Database Schema:** `consumables` (JSONB) ve `system_announcements` tabloları optimize edildi.
 
 ---
-**Not:** Bir sonraki oturumda **Reçete Sistemi'nin (Inventory Deduction)** envanterden otomatik düşme mantığı ve **Manager PIN Security** detaylarına odaklanabiliriz.
+
+# Aura Spa ERP - B2C Vitrin & Anti-Hırsızlık Günlüğü (18 Nisan 2026)
+
+Bu oturumda sistemin müşteri yüzü (B2C) ve resepsiyon güvenliği baştan sona premium bir altyapıyla donatıldı.
+
+## 💎 B2C Lüks Vitrin ve Sadakat
+- **VIP Müşteri Portalı (PWA):** `app/portal/[businessId]` rotasında müşterilerin sadakat puanlarını görebildiği şifresiz, "Magic Login" (Sadece Bilet/Telefon No ile girilen) native-app hisli bir gösterge paneli yapıldı.
+- **Apple Wallet / Sanal Bilet:** Rezervasyon sonrası müşteriye özel bir Ticket ID atayıp (Veritabanındaki gerçek UUID'nin prefixi), Apple Wallet tasarımıyla barkodlu bir bilet sunan ekran eklendi.
+- **Akıllı Triyaj (AI Asistan):** Rezervasyon/Book ekranına müşteriye derdini sorup (Örn. sırtım ağrıyor) masaj öneren `SmartTriage.tsx` modülü kuruldu.
+- **Dalgalı Fiyatlandırma (Yield Management):** İşletmenin yönetici panelinden belirlediği indirim/zam kurallarının rezervasyon ekranında "🔥 %10 İndirim" gibi rozetlerle otomatik uygulanması sağlandı. (Bu tamamen işletmenin kontrolündedir, hardcoded mantık kaldırıldı).
+
+## 🛡️ Anti-Hırsızlık Kiosk Modülü
+- **Resepsiyon Check-in Cihazı:** `app/(tenant)/[slug]/kiosk` sayfası oluşturuldu.
+- **Sistem İleyişi:** Müşteri resepsiyona geldiğinde personele muhtaç olmadan cüzdanındaki barkodu okutarak (Ticket ID girerek) kendi kendini check-in yapıyor.
+- **Gerçek Zamanlı Zırh:** Check-in işlemi yapıldığı an, veritabanındaki (Supabase) randevu `status` değeri anında **'arrived'** (Geldi) olarak güncellenir. Böylece personelin seansı silip parayı cebine alması imkansızlaştırıldı.
+
+## 🛠️ Operasyonel İyileştirmeler
+- **Personel Takvimi Sıralaması:** Sistem Ayarları -> Personeller panelinden personellerin takvimde hangi sırada görüneceğinin (Yukarı/Aşağı oklarla) atanabilmesi sağlandı.
+- **Müşteri Rehberi UX:** Sağ tarafta açılan Rehber panelinde, yeni müşteri (+) kaydedilir edilmez akıllı arama barının yeni adla otomatik dolması ve o kişinin anında Drag-and-Drop için açık kalması sağlandı.
+
+**Not:** Bir sonraki olası oturumlarda, yukarıda bitirdiğimiz `kiosk` modülüne donanımsal bir QR Scanner bağlama mantığı veya Personel Primlerinin yeni yapısı gibi konulara girilebilir. Projedeki tüm kodlar GitHub'a `push` edilmiştir.
