@@ -226,18 +226,53 @@ export default function CalendarPage() {
 
                 <main className="flex-1 flex overflow-hidden relative">
                     <div className="flex-1 flex flex-col overflow-hidden">
-                        {/* Time Grid Wrapper */}
-                        <div className="flex-1 overflow-x-auto overflow-y-auto no-scrollbar relative bg-white">
-                            <div className="flex min-w-max h-full relative">
+
+                        {/* ── SABIT BAŞLIK SATIRI (scroll dışı) ── */}
+                        <div className="flex shrink-0 bg-white border-b border-gray-100 z-50 overflow-hidden" style={{ minWidth: 0 }}>
+                            {/* Saat kolonu boşluğu */}
+                            <div className="w-20 shrink-0 border-r border-gray-100 bg-white" />
+                            {/* Terapist / Oda Başlıkları */}
+                            <div
+                                id="col-header-scroll"
+                                className="flex flex-1 overflow-x-hidden"
+                            >
+                                {(viewMode === 'staff' ? staffToDisplay : roomsToDisplay).map(target => (
+                                    <div
+                                        key={target.id}
+                                        className="min-w-[280px] flex-1 h-[80px] flex flex-col items-center justify-center group/col border-r border-gray-100/30 bg-white hover:bg-indigo-50/20 transition-all px-4"
+                                    >
+                                        <div className="relative">
+                                            <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-indigo-50 to-gray-50 flex items-center justify-center mb-1 group-hover/col:scale-110 transition-transform duration-500 shadow-sm border border-gray-100">
+                                                <User size={18} className="text-gray-400 group-hover/col:text-indigo-600" />
+                                            </div>
+                                            {viewMode === 'staff' && (target as Staff).status === 'active' && (
+                                                <div className="absolute -top-1 -right-1 w-3.5 h-3.5 bg-emerald-500 rounded-full border-2 border-white shadow-sm" />
+                                            )}
+                                        </div>
+                                        <h3 className="text-[10px] font-black text-gray-900 uppercase tracking-widest truncate w-full text-center">{target.name}</h3>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+
+                        {/* ── SCROLL EDİLEBİLİR GRID ── */}
+                        <div
+                            id="grid-scroll"
+                            className="flex-1 overflow-x-auto overflow-y-auto no-scrollbar relative bg-white"
+                            onScroll={(e) => {
+                                const headerEl = document.getElementById('col-header-scroll');
+                                if (headerEl) headerEl.scrollLeft = (e.target as HTMLDivElement).scrollLeft;
+                            }}
+                        >
+                            <div className="flex min-w-max relative">
                                 
                                 {/* Time Column */}
-                                <div className="sticky left-0 w-20 bg-white/95 backdrop-blur-md z-30 border-r border-gray-100 flex flex-col pt-[80px]">
-                                    {SLOTS.map((time, idx) => {
+                                <div className="sticky left-0 w-20 bg-white/95 backdrop-blur-md z-30 border-r border-gray-100 flex flex-col">
+                                    {SLOTS.map((time) => {
                                         const isHour = time.endsWith(':00');
                                         const isHovered = hoveredTime === time;
                                         return (
                                             <div key={time} className={`min-h-[42px] h-[42px] shrink-0 flex flex-col items-center justify-start relative group/time px-2 ${isHour ? 'bg-indigo-50/5' : ''}`}>
-                                                {/* Alignment logic: label center sits on the top boundary of the slot */}
                                                 <div className={`
                                                     w-full h-7 rounded-lg flex items-center justify-center transition-all duration-300 transform translate-y-[-50%]
                                                     ${isHovered 
@@ -250,8 +285,6 @@ export default function CalendarPage() {
                                                         {time}
                                                     </span>
                                                 </div>
-                                                
-                                                {/* Ruler Ticks */}
                                                 <div className={`absolute top-0 right-0 h-[2px] rounded-full translate-y-[-50%] transition-all
                                                     ${isHour ? 'w-4 bg-indigo-500' : 'w-2 bg-gray-300'}
                                                     ${isHovered ? 'w-6 bg-indigo-600' : ''}
@@ -265,19 +298,6 @@ export default function CalendarPage() {
                                 <div className="flex flex-1 min-w-full">
                                     {(viewMode === 'staff' ? staffToDisplay : roomsToDisplay).map(target => (
                                         <div key={target.id} className="min-w-[280px] flex-1 flex flex-col relative group/col border-r border-gray-100/30">
-                                            {/* Column Header */}
-                                            <div className="sticky top-0 h-[80px] bg-white/95 backdrop-blur-xl z-40 border-b border-gray-100 flex flex-col items-center justify-center group-hover/col:bg-indigo-50/20 transition-all px-4">
-                                                <div className="relative">
-                                                    <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-indigo-50 to-gray-50 flex items-center justify-center mb-1 group-hover/col:scale-110 transition-transform duration-500 shadow-sm border border-gray-100">
-                                                        <User size={18} className="text-gray-400 group-hover/col:text-indigo-600" />
-                                                    </div>
-                                                    {viewMode === 'staff' && (target as Staff).status === 'active' && (
-                                                        <div className="absolute -top-1 -right-1 w-3.5 h-3.5 bg-emerald-500 rounded-full border-2 border-white shadow-sm" />
-                                                    )}
-                                                </div>
-                                                <h3 className="text-[10px] font-black text-gray-900 uppercase tracking-widest truncate w-full text-center">{target.name}</h3>
-                                            </div>
-
                                             {/* Slots Grid */}
                                             <div className="relative flex-1">
                                                 {SLOTS.map(time => {
@@ -344,8 +364,7 @@ export default function CalendarPage() {
                                     <div 
                                         className="absolute left-0 right-0 h-[1.5px] bg-indigo-600/40 pointer-events-none z-20"
                                         style={{ 
-                                            // 80: Header Height, 42: Slot Height
-                                            top: `${80 + (SLOTS.indexOf(hoveredTime) * 42)}px`,
+                                            top: `${SLOTS.indexOf(hoveredTime) * 42}px`,
                                             boxShadow: '0 0 15px rgba(79, 70, 229, 0.4)'
                                         }}
                                     >
