@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useDraggable, useDroppable } from '@dnd-kit/core';
-import { ShieldCheck, Activity, Ban, Coffee, Trash2, Loader2, Star, Clock, User, MapPin } from 'lucide-react';
+import { ShieldCheck, Activity, Ban, Coffee, Trash2, Loader2, Clock, User, MapPin, XCircle, RefreshCcw, CheckCircle2 } from 'lucide-react';
 import { useStore, Appointment, CalendarBlock, AppointmentStatus } from '@/lib/store';
 
 const SLOT_MINUTES = 15;
@@ -120,40 +120,80 @@ export default function CalendarItem({
         window.addEventListener('mouseup', onMouseUp);
     };
 
-    const getAppledTheme = (status: AppointmentStatus) => {
+    const getApptTheme = (status: AppointmentStatus) => {
         switch(status) {
             case 'completed': return { 
                 bg: 'bg-gradient-to-br from-emerald-50 to-white', 
                 text: 'text-emerald-900', 
                 ring: 'ring-2 ring-emerald-500/20 shadow-lg shadow-emerald-100/50', 
-                indicator: 'bg-emerald-600', 
-                icon: <ShieldCheck className="w-4 h-4 text-emerald-600 animate-[bounce_1s_infinite]" /> 
+                indicator: 'bg-emerald-600',
+                headerBg: 'bg-emerald-600',
+                icon: <CheckCircle2 className="w-3.5 h-3.5" />,
+                badge: null,
+                badgeStyle: ''
             };
             case 'arrived': return { 
                 bg: 'bg-gradient-to-br from-indigo-50 to-white', 
                 text: 'text-indigo-900', 
-                ring: 'ring-2 ring-indigo-500/20 shadow-lg shadow-indigo-100/50', 
-                indicator: 'bg-indigo-600', 
-                icon: <Activity className="w-4 h-4 text-indigo-600" /> 
+                ring: 'ring-2 ring-indigo-500/20 shadow-lg shadow-indigo-100/50',
+                indicator: 'bg-indigo-600',
+                headerBg: 'bg-indigo-600',
+                icon: <Activity className="w-3.5 h-3.5" />,
+                badge: null,
+                badgeStyle: ''
+            };
+            case 'unexcused-cancel': return { 
+                bg: 'bg-gradient-to-br from-red-50 to-white', 
+                text: 'text-red-900', 
+                ring: 'ring-2 ring-red-400/30 shadow-lg shadow-red-100/50',
+                indicator: 'bg-red-500',
+                headerBg: 'bg-red-500',
+                icon: <XCircle className="w-3.5 h-3.5" />,
+                badge: 'GELMEDİ',
+                badgeStyle: 'bg-red-500 text-white'
+            };
+            case 'excused':
+            case 'cancelled': return { 
+                bg: 'bg-gradient-to-br from-orange-50 to-white', 
+                text: 'text-orange-900', 
+                ring: 'ring-2 ring-orange-300/30 shadow-md shadow-orange-100/30',
+                indicator: 'bg-orange-400',
+                headerBg: 'bg-orange-400',
+                icon: <RefreshCcw className="w-3.5 h-3.5" />,
+                badge: 'İPTAL',
+                badgeStyle: 'bg-orange-400 text-white'
             };
             case 'no-show': return { 
                 bg: 'bg-gradient-to-br from-red-50 to-white', 
                 text: 'text-red-900', 
-                ring: 'ring-2 ring-red-500/20 shadow-lg shadow-red-100/50', 
-                indicator: 'bg-red-600', 
-                icon: <Ban className="w-4 h-4 text-red-600" /> 
+                ring: 'ring-2 ring-red-400/30 shadow-lg shadow-red-100/50',
+                indicator: 'bg-red-600',
+                headerBg: 'bg-red-600',
+                icon: <Ban className="w-3.5 h-3.5" />,
+                badge: 'GELMEDİ',
+                badgeStyle: 'bg-red-600 text-white'
             };
             default: return { 
                 bg: 'bg-white', 
                 text: 'text-gray-900', 
-                ring: 'ring-1 ring-gray-200/50 shadow-md', 
-                indicator: 'bg-gray-300', 
-                icon: null 
+                ring: 'ring-1 ring-gray-200/50 shadow-md',
+                indicator: 'bg-indigo-600',
+                headerBg: 'bg-indigo-600',
+                icon: null,
+                badge: null,
+                badgeStyle: ''
             };
         }
     };
 
-    const info = isAppt ? getAppledTheme(appt.status as AppointmentStatus) : { bg: 'bg-white', text: 'text-gray-500', ring: 'ring-1 ring-gray-200 border-dashed', indicator: 'bg-gray-200', icon: <Coffee className="w-3.5 h-3.5 opacity-40" /> };
+    const info = isAppt ? getApptTheme(appt.status as AppointmentStatus) : { 
+        bg: 'bg-white', text: 'text-gray-500', 
+        ring: 'ring-1 ring-gray-200 border-dashed',
+        indicator: 'bg-gray-300',
+        headerBg: 'bg-gray-300',
+        icon: <Coffee className="w-3.5 h-3.5 opacity-40" />,
+        badge: null, badgeStyle: ''
+    };
     const room = isAppt && appt.roomId ? rooms.find(r => r.id === appt.roomId) : null;
     const customer = isAppt ? customers.find(c => c.id === appt.customerId) : null;
 
@@ -203,20 +243,27 @@ export default function CalendarItem({
 
             {/* Header Area: Time & Status */}
             <div className={`
-                flex items-center justify-between px-2 py-1.5 border-b border-black/5
-                ${info.indicator} text-white
+                flex items-center justify-between px-2 py-1 border-b border-black/10
+                ${(info as any).headerBg || info.indicator} text-white
             `}>
-                <div className="flex items-center gap-1.5">
-                    <Clock size={10} className="opacity-80" />
-                    <span className="text-[10px] font-black tracking-tighter tabular-nums truncate">
+                <div className="flex items-center gap-1">
+                    <Clock size={9} className="opacity-80 shrink-0" />
+                    <span className="text-[9px] font-black tracking-tighter tabular-nums truncate">
                         {item.time} - {(() => {
                             const [h, m] = item.time.split(':').map(Number);
-                            const endMin = h * 60 + m + (item.duration || 60);
+                            const endMin = h * 60 + m + (localDuration || 60);
                             return `${Math.floor(endMin / 60).toString().padStart(2, '0')}:${(endMin % 60).toString().padStart(2, '0')}`;
                         })()}
                     </span>
                 </div>
-                {info.icon && <div className="p-0.5 bg-white/20 rounded-md backdrop-blur-md">{info.icon}</div>}
+                <div className="flex items-center gap-1">
+                    {(info as any).badge && (
+                        <span className="text-[8px] font-black uppercase tracking-wider bg-white/20 px-1.5 py-0.5 rounded-md">
+                            {(info as any).badge}
+                        </span>
+                    )}
+                    {info.icon && <div className="opacity-90">{info.icon}</div>}
+                </div>
             </div>
 
             {/* Body Area: Main Content */}

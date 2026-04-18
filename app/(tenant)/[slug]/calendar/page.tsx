@@ -51,6 +51,45 @@ const generateSlots = (start: number, end: number) => {
     return slots;
 };
 
+// Çakışan randevuları tespit edip yan yana yerleştirmek için layout hesaplar
+const computeOverlapLayout = (items: Array<{ id: string; time: string; duration?: number }>) => {
+    const layout = new Map<string, { leftPct: number; widthPct: number }>();
+    if (items.length === 0) return layout;
+
+    const getStart = (it: typeof items[0]) => {
+        const [h, m] = it.time.split(':').map(Number);
+        return h * 60 + m;
+    };
+    const getEnd = (it: typeof items[0]) => getStart(it) + (it.duration || 60);
+
+    const sorted = [...items].sort((a, b) => getStart(a) - getStart(b));
+    const processed = new Set<string>();
+
+    for (let i = 0; i < sorted.length; i++) {
+        if (processed.has(sorted[i].id)) continue;
+        const group = [sorted[i]];
+        processed.add(sorted[i].id);
+        let maxEnd = getEnd(sorted[i]);
+
+        for (let j = i + 1; j < sorted.length; j++) {
+            if (!processed.has(sorted[j].id) && getStart(sorted[j]) < maxEnd) {
+                group.push(sorted[j]);
+                processed.add(sorted[j].id);
+                maxEnd = Math.max(maxEnd, getEnd(sorted[j]));
+            }
+        }
+
+        group.forEach((item, idx) => {
+            layout.set(item.id, {
+                leftPct: (idx / group.length) * 100,
+                widthPct: (1 / group.length) * 100,
+            });
+        });
+    }
+
+    return layout;
+};
+
 export default function CalendarPage() {
     const { 
         staffMembers, appointments, blocks, settings, moveAppointment, 
@@ -328,31 +367,46 @@ export default function CalendarPage() {
 
                                                 {/* Global Items (Appointments & Blocks) */}
                                                 <div className="absolute inset-0 pointer-events-none">
-                                                    {(viewMode === 'staff' 
-                                                        ? [...appointments.filter(a => a.staffId === target.id), ...blocks.filter(b => b.staffId === target.id && b.date === selectedDate)]
-                                                        : [...appointments.filter(a => a.roomId === target.id), ...blocks.filter(b => b.roomId === target.id && b.date === selectedDate)]
-                                                    ).filter(item => item.date === selectedDate).map(item => {
-                                                        const [h, m] = item.time.split(':').map(Number);
-                                                        const startMinutes = (h - settings.startHour) * 60 + m;
-                                                        const top = (startMinutes / SLOT_MINUTES) * SLOT_HEIGHT;
-                                                        const height = (item.duration || 60) * (SLOT_HEIGHT / 15);
-                                                        
-                                                        return (
-                                                            <div key={item.id} className="absolute inset-x-0 pointer-events-auto" style={{ top, height }}>
-                                                                <CalendarItem 
-                                                                    item={item} 
-                                                                    type={(item as Appointment).customerId ? 'appt' : 'block'}
-                                                                    onAction={(data) => {
-                                                                        if ((data as Appointment).customerId) {
-                                                                            setActionMenuAppt(data as Appointment);
-                                                                        } else {
-                                                                            setActionAppt(data as Appointment);
-                                                                        }
+                                                    {(() => {
+                                                        const colItems = (viewMode === 'staff' 
+                                                            ? [...appointments.filter(a => a.staffId === target.id), ...blocks.filter(b => b.staffId === target.id && b.date === selectedDate)]
+                                                            : [...appointments.filter(a => a.roomId === target.id), ...blocks.filter(b => b.roomId === target.id && b.date === selectedDate)]
+                                                        ).filter(item => item.date === selectedDate);
+
+                                                        const overlapLayout = computeOverlapLayout(colItems);
+
+                                                        return colItems.map(item => {
+                                                            const [h, m] = item.time.split(':').map(Number);
+                                                            const startMinutes = (h - settings.startHour) * 60 + m;
+                                                            const top = (startMinutes / SLOT_MINUTES) * SLOT_HEIGHT;
+                                                            const height = (item.duration || 60) * (SLOT_HEIGHT / 15);
+                                                            const pos = overlapLayout.get(item.id) || { leftPct: 0, widthPct: 100 };
+
+                                                            return (
+                                                                <div 
+                                                                    key={item.id} 
+                                                                    className="absolute pointer-events-auto" 
+                                                                    style={{ 
+                                                                        top, height,
+                                                                        left: `${pos.leftPct}%`,
+                                                                        width: `${pos.widthPct}%`
                                                                     }}
-                                                                />
-                                                            </div>
-                                                        );
-                                                    })}
+                                                                >
+                                                                    <CalendarItem 
+                                                                        item={item} 
+                                                                        type={(item as Appointment).customerId ? 'appt' : 'block'}
+                                                                        onAction={(data) => {
+                                                                            if ((data as Appointment).customerId) {
+                                                                                setActionMenuAppt(data as Appointment);
+                                                                            } else {
+                                                                                setActionAppt(data as Appointment);
+                                                                            }
+                                                                        }}
+                                                                    />
+                                                                </div>
+                                                            );
+                                                        });
+                                                    })()}
                                                 </div>
                                             </div>
                                         </div>
