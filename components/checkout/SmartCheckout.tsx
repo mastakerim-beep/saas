@@ -23,13 +23,20 @@ export default function SmartCheckout({ appointment, onClose }: SmartCheckoutPro
     } = useStore();
     const customer = customers.find(c => c.id === appointment.customerId);
     
-    // Filter applicable packages (Must match service or be a general package, and have sessions left)
-    const applicablePackages = packages.filter(p => 
+    // TÜM paketleri göster (seans kalan) - eşleşenler üstte, diğerleri altta
+    // NOT: Servis ismi eşleşmese de müşterinin paketi checkoutt'ta görünmeli
+    const allCustomerPackages = packages.filter(p => 
         p.customerId === appointment.customerId && 
-        (p.totalSessions - (p.usedSessions || 0)) > 0 &&
-        (p.name.toLowerCase().includes(appointment.service.toLowerCase()) || 
-         (p.serviceName && p.serviceName.toLowerCase() === appointment.service.toLowerCase()))
+        (p.totalSessions - (p.usedSessions || 0)) > 0
     );
+    const isMatchingPackage = (p: typeof allCustomerPackages[0]) => 
+        p.id === appointment.packageId ||
+        p.name.toLowerCase().includes(appointment.service.toLowerCase()) || 
+        (p.serviceName && p.serviceName.toLowerCase().includes(appointment.service.toLowerCase()));
+    const applicablePackages = [
+        ...allCustomerPackages.filter(p => isMatchingPackage(p)),      // Önerilen (üstte)
+        ...allCustomerPackages.filter(p => !isMatchingPackage(p))       // Diğerleri (altta)
+    ];
 
     const activeMembership = customerMemberships.find(m => m.customerId === appointment.customerId && m.status === 'active' && m.remainingSessions > 0);
     const membershipPlan = activeMembership ? membershipPlans.find(p => p.id === activeMembership.planId) : null;
@@ -325,34 +332,44 @@ export default function SmartCheckout({ appointment, onClose }: SmartCheckoutPro
                                         <Package className="w-4 h-4" /> AKTİF PAKETLER (SEANSLAR)
                                     </h3>
                                     <div className="grid grid-cols-1 gap-3">
-                                        {applicablePackages.map(pkg => (
-                                            <button 
-                                                key={pkg.id}
-                                                onClick={() => setSelectedPackageId(selectedPackageId === pkg.id ? null : pkg.id)}
-                                                className={`flex items-center justify-between p-6 rounded-[2rem] border-2 transition-all ${selectedPackageId === pkg.id ? 'bg-emerald-600 border-emerald-600 shadow-lg shadow-emerald-200' : 'bg-white border-white hover:border-emerald-200'}`}
-                                            >
-                                                <div className="flex items-center gap-4">
-                                                    <div className={`w-12 h-12 rounded-2xl flex items-center justify-center transition-colors ${selectedPackageId === pkg.id ? 'bg-white/20 text-white' : 'bg-emerald-50 text-emerald-600'}`}>
-                                                        <Zap size={20} />
+                                        {applicablePackages.map(pkg => {
+                                            const isMatch = isMatchingPackage(pkg);
+                                            const isSelected = selectedPackageId === pkg.id;
+                                            return (
+                                                <button 
+                                                    key={pkg.id}
+                                                    onClick={() => setSelectedPackageId(isSelected ? null : pkg.id)}
+                                                    className={`flex items-center justify-between p-6 rounded-[2rem] border-2 transition-all ${isSelected ? 'bg-emerald-600 border-emerald-600 shadow-lg shadow-emerald-200' : 'bg-white border-white hover:border-emerald-200'}`}
+                                                >
+                                                    <div className="flex items-center gap-4">
+                                                        <div className={`w-12 h-12 rounded-2xl flex items-center justify-center transition-colors ${isSelected ? 'bg-white/20 text-white' : 'bg-emerald-50 text-emerald-600'}`}>
+                                                            <Zap size={20} />
+                                                        </div>
+                                                        <div className="text-left">
+                                                            <div className="flex items-center gap-2 mb-0.5">
+                                                                <p className={`font-black uppercase text-xs italic ${isSelected ? 'text-white' : 'text-emerald-900'}`}>{pkg.name}</p>
+                                                                {isMatch 
+                                                                    ? <span className={`text-[7px] font-black px-1.5 py-0.5 rounded-md uppercase tracking-wider ${isSelected ? 'bg-white/20 text-white' : 'bg-emerald-500 text-white'}`}>Önerilen</span>
+                                                                    : <span className={`text-[7px] font-black px-1.5 py-0.5 rounded-md uppercase tracking-wider ${isSelected ? 'bg-white/20 text-white' : 'bg-gray-100 text-gray-400'}`}>Diğer Paket</span>
+                                                                }
+                                                            </div>
+                                                            <p className={`text-[10px] font-bold uppercase tracking-widest ${isSelected ? 'text-emerald-100' : 'text-emerald-400'}`}>
+                                                                {pkg.serviceName || 'Genel Paket'}
+                                                            </p>
+                                                        </div>
                                                     </div>
-                                                    <div className="text-left">
-                                                        <p className={`font-black uppercase text-xs italic ${selectedPackageId === pkg.id ? 'text-white' : 'text-emerald-900'}`}>{pkg.name}</p>
-                                                        <p className={`text-[10px] font-bold uppercase tracking-widest ${selectedPackageId === pkg.id ? 'text-emerald-100' : 'text-emerald-400'}`}>
-                                                            {pkg.serviceName || 'Hizmet Paketi'}
-                                                        </p>
+                                                    <div className="flex items-center gap-4">
+                                                        <div className="text-right">
+                                                            <p className={`text-[10px] font-black uppercase ${isSelected ? 'text-emerald-100' : 'text-gray-400'}`}>KALAN SEANS</p>
+                                                            <p className={`text-2xl font-black italic tracking-tighter ${isSelected ? 'text-white' : 'text-emerald-600'}`}>
+                                                                {pkg.totalSessions - (pkg.usedSessions || 0)}
+                                                            </p>
+                                                        </div>
+                                                        {isSelected && <CheckCircle2 className="text-white w-6 h-6" />}
                                                     </div>
-                                                </div>
-                                                <div className="flex items-center gap-4">
-                                                    <div className="text-right">
-                                                        <p className={`text-[10px] font-black uppercase ${selectedPackageId === pkg.id ? 'text-emerald-100' : 'text-gray-400'}`}>KALAN SEANS</p>
-                                                        <p className={`text-2xl font-black italic tracking-tighter ${selectedPackageId === pkg.id ? 'text-white' : 'text-emerald-600'}`}>
-                                                            {pkg.totalSessions - (pkg.usedSessions || 0)}
-                                                        </p>
-                                                    </div>
-                                                    {selectedPackageId === pkg.id && <CheckCircle2 className="text-white w-6 h-6" />}
-                                                </div>
-                                            </button>
-                                        ))}
+                                                </button>
+                                            );
+                                        })}
                                     </div>
                                 </div>
                             </div>
