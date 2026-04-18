@@ -18,13 +18,24 @@ export default function SmartCheckout({ appointment, onClose }: SmartCheckoutPro
     const { 
         customers, customerMemberships, membershipPlans, 
         processCheckout, inventory, getUpsellSuggestions, 
-        paymentDefinitions, getTodayDate, currentBusiness 
+        paymentDefinitions, getTodayDate, currentBusiness,
+        packages
     } = useStore();
     const customer = customers.find(c => c.id === appointment.customerId);
+    
+    // Filter applicable packages (Must match service or be a general package, and have sessions left)
+    const applicablePackages = packages.filter(p => 
+        p.customerId === appointment.customerId && 
+        (p.totalSessions - (p.usedSessions || 0)) > 0 &&
+        (p.name.toLowerCase().includes(appointment.service.toLowerCase()) || 
+         (p.serviceName && p.serviceName.toLowerCase() === appointment.service.toLowerCase()))
+    );
+
     const activeMembership = customerMemberships.find(m => m.customerId === appointment.customerId && m.status === 'active' && m.remainingSessions > 0);
     const membershipPlan = activeMembership ? membershipPlans.find(p => p.id === activeMembership.planId) : null;
     
     // UI State
+    const [selectedPackageId, setSelectedPackageId] = useState<string | null>(appointment.packageId || null);
     const [methods, setMethods] = useState<Omit<PaymentMethod, 'id'>[]>([]);
     const [soldProducts, setSoldProducts] = useState<{ productId: string, name: string, price: number, quantity: number }[]>([]);
     const [note, setNote] = useState("");
@@ -34,7 +45,6 @@ export default function SmartCheckout({ appointment, onClose }: SmartCheckoutPro
         return date.toISOString().split('T')[0];
     });
 
-    // New phase 2 features
     const [discountMode, setDiscountMode] = useState<'none'|'fixed'|'percentage'>('percentage');
     const [discountValue, setDiscountValue] = useState<number>(0);
     const [tip, setTip] = useState<number>(0);
@@ -51,12 +61,12 @@ export default function SmartCheckout({ appointment, onClose }: SmartCheckoutPro
     const [giftTarget, setGiftTarget] = useState<{type: 'service' | 'product', id?: string} | null>(null);
     const [isAuthorized, setIsAuthorized] = useState(false);
     const [giftedItems, setGiftedItems] = useState<Set<string>>(new Set()); 
-    
+    const [isServiceGift, setIsServiceGift] = useState(false);
+
     // New Smart Features
     const [installments, setInstallments] = useState<number>(1);
     const [installmentDates, setInstallmentDates] = useState<string[]>([]);
 
-    // Auto-update installment dates when count changes
     useEffect(() => {
         const dates = [];
         for (let i = 0; i < installments; i++) {
@@ -66,7 +76,6 @@ export default function SmartCheckout({ appointment, onClose }: SmartCheckoutPro
         }
         setInstallmentDates(dates);
     }, [installments]);
-    const [isServiceGift, setIsServiceGift] = useState(false);
 
     // Auto-add deposit if exists
     useEffect(() => {
@@ -75,24 +84,70 @@ export default function SmartCheckout({ appointment, onClose }: SmartCheckoutPro
         }
     }, [appointment.depositPaid]);
 
+    const isPackageUsed = !!selectedPackageId;
     const isServiceGifted = isServiceGift;
-    const servicePrice = isServiceGifted ? 0 : appointment.price;
+    
+    const servicePrice = (isServiceGifted || isPackageUsed) ? 0 : (appointment.price || 0);
     const productsPrice = soldProducts.reduce((s, p) => s + (giftedItems.has(p.productId) ? 0 : p.price * p.quantity), 0);
-    const totalOriginalPrice = appointment.price + soldProducts.reduce((s, p) => s + (p.price * p.quantity), 0);
+    const totalOriginalPrice = (appointment.price || 0) + soldProducts.reduce((s, p) => s + (p.price * p.quantity), 0);
     
     const subTotal = servicePrice + productsPrice;
-    
-    // Calculate discounts
     const discountAmount = discountMode === 'fixed' ? discountValue : discountMode === 'percentage' ? (subTotal * discountValue / 100) : 0;
-    
-    // Grand Total is Subtotal - Discount + Tip
     const grandTotal = Math.max(0, subTotal - discountAmount) + tip;
     
     const totalPaid = methods.reduce((sum, m) => sum + (m.amount * m.rate), 0);
-    const totalWithPoints = totalPaid + pointsUsed;
-    const remaining = grandTotal - totalWithPoints;
-    
+    const remaining = grandTotal - totalPaid - pointsUsed;
     const earnedPoints = Math.floor(totalPaid / 10);
+
+    const handleProcess = async () => {
+        if (isSaving) return;
+        setIsSaving(true);
+        try {
+            const installmentList = remaining > 0 ? installmentDates.map((date, idx) => ({
+                amount: Math.floor(remaining / installments) + (idx === 0 ? remaining % installments : 0),
+                dueDate: date
+            })) : undefined;
+
+            const ok = await processCheckout(
+                {
+                    appointmentId: appointment.id,
+                    branchId: appointment.branchId,
+                    customerId: appointment.customerId,
+                    customerName: appointment.customerName,
+                    service: appointment.service,
+                    methods: methods.map(m => ({ ...m, id: crypto.randomUUID() })),
+                    totalAmount: totalPaid,
+                    date: getTodayDate(),
+                    isGift: isServiceGift || giftedItems.size > 0,
+                    originalPrice: totalOriginalPrice,
+                    finalPrice: grandTotal,
+                    discountAmount: discountAmount,
+                    note: note,
+                    status: remaining <= 0 ? 'paid' : 'partial'
+                },
+                installmentList,
+                soldProducts.map(p => ({ 
+                    productId: p.productId, 
+                    name: p.name,
+                    price: p.price,
+                    quantity: p.quantity,
+                    isGift: giftedItems.has(p.productId)
+                })),
+                earnedPoints,
+                tip,
+                pointsUsed,
+                selectedPackageId || undefined
+            );
+
+            if (ok) {
+                setIsSuccess(true);
+            }
+        } catch (error) {
+            console.error(error);
+        } finally {
+            setIsSaving(false);
+        }
+    };
 
     const handleGiftToggle = (type: 'service' | 'product', id?: string) => {
         const isCurrentlyGifted = type === 'service' ? isServiceGift : giftedItems.has(id!);
@@ -110,10 +165,8 @@ export default function SmartCheckout({ appointment, onClose }: SmartCheckoutPro
         setIsPinModalOpen(true);
     };
 
-    // Calculate effective percentage for security
     const effectiveDiscountPercent = subTotal > 0 ? (discountAmount / subTotal) * 100 : 0;
     const needsAuthForDiscount = effectiveDiscountPercent > staffMaxDiscount && !isAuthorized;
-
 
     const confirmPin = () => {
         const correctPin = currentBusiness?.managerPin || "0000"; 
@@ -179,48 +232,6 @@ export default function SmartCheckout({ appointment, onClose }: SmartCheckoutPro
         setSoldProducts(soldProducts.filter(x => x.productId !== id));
     };
 
-    const handleProcess = async () => {
-        if (isSaving) return;
-        setIsSaving(true);
-
-        const installmentList = remaining > 0 ? installmentDates.map((date, idx) => ({
-            amount: Math.floor(remaining / installments) + (idx === 0 ? remaining % installments : 0),
-            dueDate: date
-        })) : undefined;
-
-        const ok = await processCheckout(
-            {
-                appointmentId: appointment.id,
-                branchId: appointment.branchId,
-                customerId: appointment.customerId,
-                customerName: appointment.customerName,
-                service: appointment.service,
-                methods: methods.map(m => ({ ...m, id: crypto.randomUUID() })),
-                paymentDefinitionId: methods[0]?.toolId,
-                totalAmount: totalPaid,
-                date: getTodayDate(),
-                isGift: isServiceGift || giftedItems.size > 0,
-                originalPrice: totalOriginalPrice,
-                finalPrice: subTotal - discountAmount,
-                discountAmount: discountAmount,
-                discountNote: discountMode !== 'none' ? `${discountMode === 'percentage' ? '%' : '₺'}${discountValue} indirim` : '',
-                note: note,
-                status: remaining <= 0 ? 'paid' : 'partial'
-            },
-            installmentList,
-            soldProducts.map(p => ({ 
-                productId: p.productId, 
-                name: p.name,
-                price: p.price,
-                quantity: p.quantity,
-                isGift: giftedItems.has(p.productId)
-            })),
-            earnedPoints,
-            tip,
-            pointsUsed
-        );
-    };
-
     if (isSuccess) {
         return (
             <div className="fixed inset-0 bg-background/80 backdrop-blur-md z-[1000] flex items-center justify-center p-6 text-sans">
@@ -229,7 +240,7 @@ export default function SmartCheckout({ appointment, onClose }: SmartCheckoutPro
                         <CheckCircle2 className="w-12 h-12" />
                     </motion.div>
                     <h2 className="text-3xl font-black text-gray-900 mb-2 uppercase italic tracking-tighter">Ödeme Alındı!</h2>
-                    <p className="text-gray-500 font-semibold mb-8">Tahsilat ve ikramlar başarıyla sisteme kaydedildi.</p>
+                    <p className="text-gray-500 font-semibold mb-8">Tahsilat ve seans kullanımı başarıyla kaydedildi.</p>
                     <button onClick={onClose} className="w-full bg-indigo-600 text-white py-4 rounded-2xl font-black text-sm transition uppercase tracking-widest shadow-xl shadow-indigo-100">Kapat</button>
                 </motion.div>
             </div>
@@ -249,7 +260,7 @@ export default function SmartCheckout({ appointment, onClose }: SmartCheckoutPro
                                     <Sparkles size={40} />
                                 </div>
                                 <h3 className="text-2xl font-black text-gray-900 uppercase italic tracking-tighter mb-2">Yönetici Onayı</h3>
-                                <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-8">Hediye işlemi için 4 haneli PIN kodunu girin.</p>
+                                <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-8">Hediye işlem için 4 haneli PIN kodunu girin.</p>
                                 <input 
                                     type="password" 
                                     maxLength={4}
@@ -290,7 +301,49 @@ export default function SmartCheckout({ appointment, onClose }: SmartCheckoutPro
                     {/* Left Panel */}
                     <div className="flex-1 p-10 overflow-y-auto no-scrollbar space-y-10 border-r border-gray-50 bg-gray-50/20">
                         
-                        {/* 1. Ödeme Kanalları (TOP) */}
+                        {/* 0. Paket Kullanımı */}
+                        {applicablePackages.length > 0 && (
+                            <div className="space-y-6 bg-emerald-50/30 p-10 rounded-[3rem] border border-emerald-100 shadow-sm relative overflow-hidden group">
+                                <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-100/50 rounded-full -translate-y-1/2 translate-x-1/2 group-hover:scale-110 transition-transform" />
+                                <div className="relative">
+                                    <h3 className="text-[10px] font-black text-emerald-600 uppercase tracking-widest flex items-center gap-2 mb-6">
+                                        <Package className="w-4 h-4" /> AKTİF PAKETLER (SEANSLAR)
+                                    </h3>
+                                    <div className="grid grid-cols-1 gap-3">
+                                        {applicablePackages.map(pkg => (
+                                            <button 
+                                                key={pkg.id}
+                                                onClick={() => setSelectedPackageId(selectedPackageId === pkg.id ? null : pkg.id)}
+                                                className={`flex items-center justify-between p-6 rounded-[2rem] border-2 transition-all ${selectedPackageId === pkg.id ? 'bg-emerald-600 border-emerald-600 shadow-lg shadow-emerald-200' : 'bg-white border-white hover:border-emerald-200'}`}
+                                            >
+                                                <div className="flex items-center gap-4">
+                                                    <div className={`w-12 h-12 rounded-2xl flex items-center justify-center transition-colors ${selectedPackageId === pkg.id ? 'bg-white/20 text-white' : 'bg-emerald-50 text-emerald-600'}`}>
+                                                        <Zap size={20} />
+                                                    </div>
+                                                    <div className="text-left">
+                                                        <p className={`font-black uppercase text-xs italic ${selectedPackageId === pkg.id ? 'text-white' : 'text-emerald-900'}`}>{pkg.name}</p>
+                                                        <p className={`text-[10px] font-bold uppercase tracking-widest ${selectedPackageId === pkg.id ? 'text-emerald-100' : 'text-emerald-400'}`}>
+                                                            {pkg.serviceName || 'Hizmet Paketi'}
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                                <div className="flex items-center gap-4">
+                                                    <div className="text-right">
+                                                        <p className={`text-[10px] font-black uppercase ${selectedPackageId === pkg.id ? 'text-emerald-100' : 'text-gray-400'}`}>KALAN SEANS</p>
+                                                        <p className={`text-2xl font-black italic tracking-tighter ${selectedPackageId === pkg.id ? 'text-white' : 'text-emerald-600'}`}>
+                                                            {pkg.totalSessions - (pkg.usedSessions || 0)}
+                                                        </p>
+                                                    </div>
+                                                    {selectedPackageId === pkg.id && <CheckCircle2 className="text-white w-6 h-6" />}
+                                                </div>
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* 1. Ödeme Kanalları */}
                         <div className="space-y-8 bg-white p-10 rounded-[3rem] border border-indigo-50 shadow-sm relative overflow-hidden group">
                              <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-50/50 rounded-full -translate-y-1/2 translate-x-1/2 group-hover:scale-110 transition-transform" />
                              <div className="relative">
@@ -345,7 +398,7 @@ export default function SmartCheckout({ appointment, onClose }: SmartCheckoutPro
                              </div>
                         </div>
 
-                        {/* 2. Tahsilat Kalemleri (MIDDLE) */}
+                        {/* 2. Tahsilat Kalemleri */}
                         <div className="space-y-6">
                             <h3 className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] flex items-center gap-3">
                                 <Package className="w-4 h-4 text-indigo-600" /> Tahsilat ve İkram Kalemleri
@@ -404,7 +457,7 @@ export default function SmartCheckout({ appointment, onClose }: SmartCheckoutPro
                             })}
                         </div>
 
-                        {/* 3. Önerilen Ürünler (MIDDLE) */}
+                        {/* 3. Önerilen Ürünler */}
                         <div className="pt-8 border-t border-dashed border-gray-100">
                              <div className="flex justify-between items-center mb-6">
                                  <h3 className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] flex items-center gap-2">
@@ -432,7 +485,7 @@ export default function SmartCheckout({ appointment, onClose }: SmartCheckoutPro
                              </div>
                         </div>
 
-                        {/* 4. Sadakat ve İndirim (BOTTOM) */}
+                        {/* 4. Sadakat ve İndirim */}
                         <div className="grid grid-cols-2 gap-6 pt-10 border-t border-gray-100">
                             <div className="bg-white p-8 rounded-[3rem] border border-gray-100 shadow-sm relative overflow-hidden group">
                                 <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-50 rounded-full -translate-y-1/2 translate-x-1/2 group-hover:scale-110 transition-transform" />
@@ -509,7 +562,7 @@ export default function SmartCheckout({ appointment, onClose }: SmartCheckoutPro
                             </div>
                         </div>
 
-                        {/* 5. Memnuniyet Bahşişi (BOTTOM) */}
+                        {/* 5. Memnuniyet Bahşişi */}
                         <div className="bg-indigo-950 p-10 rounded-[3rem] shadow-2xl relative overflow-hidden group">
                             <div className="absolute inset-0 bg-gradient-to-br from-indigo-800 to-indigo-950 opacity-50" />
                             <div className="relative flex flex-col md:flex-row items-center justify-between gap-8">
@@ -566,7 +619,7 @@ export default function SmartCheckout({ appointment, onClose }: SmartCheckoutPro
                                 <div className="space-y-4">
                                     <div className="flex justify-between items-center group">
                                         <span className="text-sm font-black text-gray-900 uppercase tracking-tight">{appointment.service}</span>
-                                        <span className={`text-xl font-black italic tracking-tighter ${isServiceGift ? 'text-indigo-600' : 'text-gray-900'}`}>{isServiceGift ? '₺0' : `₺${appointment.price}`}</span>
+                                        <span className={`text-xl font-black italic tracking-tighter ${isServiceGifted || isPackageUsed ? 'text-indigo-600' : 'text-gray-900'}`}>{isServiceGifted || isPackageUsed ? '₺0' : `₺${appointment.price}`}</span>
                                     </div>
                                     {soldProducts.map(p => (
                                         <div key={p.productId} className="flex justify-between items-center">
@@ -625,7 +678,6 @@ export default function SmartCheckout({ appointment, onClose }: SmartCheckoutPro
                                                 <div key={idx} className="bg-gray-50 p-4 rounded-2xl border border-gray-100 space-y-2">
                                                     <div className="flex justify-between items-center text-[10px] font-black text-gray-900 uppercase tracking-widest">
                                                         <span>{idx + 1}. Taksit Vadesi:</span>
-                                                        <span className="text-indigo-600 italic">Vade Seçin</span>
                                                     </div>
                                                     <input 
                                                         type="date"

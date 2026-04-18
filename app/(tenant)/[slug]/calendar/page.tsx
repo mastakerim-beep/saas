@@ -417,7 +417,6 @@ export default function CalendarPage() {
                     />
                 )}
 
-                {/* Randevu İşlem Modalı (Action Menu) */}
                 <AnimatePresence>
                     {actionMenuAppt && (
                         <div className="fixed inset-0 z-[700] flex items-center justify-center p-4">
@@ -428,50 +427,75 @@ export default function CalendarPage() {
                             />
                             <motion.div 
                                 initial={{ scale: 0.9, opacity: 0, y: 20 }} animate={{ scale: 1, opacity: 1, y: 0 }} exit={{ scale: 0.9, opacity: 0, y: 20 }}
-                                className="relative bg-white rounded-[2.5rem] shadow-2xl border border-white overflow-hidden w-full max-w-sm"
+                                className="relative bg-white/90 backdrop-blur-2xl rounded-[3rem] shadow-2xl border border-white overflow-hidden w-full max-w-sm"
                             >
+                                {/* Modal Header with Luxury Accent */}
+                                <div className="h-2 w-full bg-gradient-to-r from-indigo-500 via-purple-500 to-emerald-500" />
+                                
                                 <div className="p-8">
-                                    <div className="flex items-center justify-between mb-6">
-                                        <div>
-                                            <span className="text-[10px] font-black text-indigo-500 uppercase tracking-widest block mb-1">Randevu İşlemleri</span>
-                                            <h3 className="text-xl font-black text-gray-900 tracking-tight">{actionMenuAppt.customerName}</h3>
+                                    <div className="flex items-center justify-between mb-8">
+                                        <div className="flex items-center gap-4">
+                                            <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-indigo-600 to-purple-700 flex items-center justify-center text-white font-black text-xl shadow-xl shadow-indigo-100">
+                                                {actionMenuAppt.customerName.charAt(0)}
+                                            </div>
+                                            <div>
+                                                <span className="text-[10px] font-black text-indigo-500 uppercase tracking-[0.2em] block mb-0.5">Müşteri İşlemleri</span>
+                                                <h3 className="text-xl font-black text-gray-900 tracking-tight italic">{actionMenuAppt.customerName}</h3>
+                                            </div>
                                         </div>
-                                        <button onClick={() => setActionMenuAppt(null)} className="p-2 hover:bg-gray-100 rounded-2xl transition-colors">
+                                        <button onClick={() => setActionMenuAppt(null)} className="p-3 hover:bg-white/50 rounded-2xl transition-colors border border-transparent hover:border-gray-100">
                                             <X size={20} className="text-gray-400" />
                                         </button>
                                     </div>
 
-                                    <div className="space-y-3">
+                                    {/* Action Cards Grid */}
+                                    <div className="space-y-4">
                                         <button 
                                             onClick={async () => {
                                                 await updateAppointmentStatus(actionMenuAppt.id, 'arrived');
                                                 setActionMenuAppt(null);
                                             }}
-                                            className="w-full flex items-center gap-4 p-4 bg-indigo-50 hover:bg-indigo-100 rounded-2xl transition-all group"
+                                            className="w-full flex items-center gap-4 p-5 bg-white hover:bg-indigo-50/50 rounded-[2rem] transition-all group border border-gray-100 hover:border-indigo-200 shadow-sm"
                                         >
-                                            <div className="w-10 h-10 rounded-xl bg-white flex items-center justify-center shadow-sm group-hover:scale-110 transition-transform">
-                                                <CheckCircle2 className="text-indigo-600" size={20} />
+                                            <div className="w-12 h-12 rounded-2xl bg-indigo-50 flex items-center justify-center text-indigo-600 transition-transform group-hover:scale-110 shadow-inner">
+                                                <CheckCircle2 size={24} />
                                             </div>
                                             <div className="text-left">
-                                                <p className="font-bold text-indigo-900 text-sm">Geldi Olarak İşaretle</p>
-                                                <p className="text-[10px] text-indigo-400 font-medium">Müşteri salona giriş yaptı</p>
+                                                <p className="font-black text-indigo-900 text-sm uppercase italic">Giriş Yapıldı</p>
+                                                <p className="text-[10px] text-indigo-400 font-bold uppercase tracking-widest">Müşteri salona geldi</p>
                                             </div>
                                         </button>
 
-                                        <div className="grid grid-cols-2 gap-3">
+                                        <button 
+                                            onClick={() => {
+                                                setCheckoutAppt(actionMenuAppt);
+                                                setActionMenuAppt(null);
+                                            }}
+                                            className="w-full flex items-center gap-4 p-5 bg-gradient-to-br from-emerald-600 to-teal-700 hover:shadow-xl hover:shadow-emerald-200/50 rounded-[2rem] transition-all group border border-emerald-500/20"
+                                        >
+                                            <div className="w-12 h-12 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center text-white transition-transform group-hover:scale-110">
+                                                <Banknote size={24} />
+                                            </div>
+                                            <div className="text-left text-white">
+                                                <p className="font-black text-sm uppercase italic">Ödeme Al / Checkout</p>
+                                                <p className="text-[10px] text-emerald-100 font-bold uppercase tracking-widest opacity-80">Tahsilat Safhası</p>
+                                            </div>
+                                        </button>
+
+                                        <div className="grid grid-cols-2 gap-4">
                                             <button 
                                                 onClick={async () => {
                                                     await updateAppointmentStatus(actionMenuAppt.id, 'unexcused-cancel');
                                                     setActionMenuAppt(null);
                                                 }}
-                                                className="flex flex-col items-center gap-2 p-4 bg-orange-50 hover:bg-orange-100 rounded-2xl transition-all group border border-orange-100/50 shadow-sm"
+                                                className="flex flex-col items-center gap-2 p-5 bg-orange-50/50 hover:bg-orange-50 rounded-[2rem] transition-all group border border-orange-100/50 shadow-sm"
                                             >
-                                                <div className="w-10 h-10 rounded-xl bg-white flex items-center justify-center shadow-sm group-hover:scale-110 transition-transform">
-                                                    <XCircle className="text-orange-600" size={20} />
+                                                <div className="w-10 h-10 rounded-xl bg-white flex items-center justify-center shadow-sm group-hover:scale-110 transition-transform text-orange-600">
+                                                    <XCircle size={20} />
                                                 </div>
                                                 <div className="text-center">
-                                                    <p className="font-bold text-orange-900 text-[11px] leading-tight mb-0.5">Mazeretsiz İptal</p>
-                                                    <p className="text-[8px] text-orange-400 font-black uppercase tracking-tighter">Seans Yakılır</p>
+                                                    <p className="font-black text-orange-950 text-[11px] uppercase italic">Gelmedi</p>
+                                                    <p className="text-[8px] text-orange-400 font-black uppercase tracking-tighter">Seansı Yak</p>
                                                 </div>
                                             </button>
 
@@ -480,41 +504,25 @@ export default function CalendarPage() {
                                                     await updateAppointmentStatus(actionMenuAppt.id, 'excused');
                                                     setActionMenuAppt(null);
                                                 }}
-                                                className="flex flex-col items-center gap-2 p-4 bg-blue-50 hover:bg-blue-100 rounded-2xl transition-all group border border-blue-100/50 shadow-sm"
+                                                className="flex flex-col items-center gap-2 p-5 bg-blue-50/50 hover:bg-blue-50 rounded-[2rem] transition-all group border border-blue-100/50 shadow-sm"
                                             >
-                                                <div className="w-10 h-10 rounded-xl bg-white flex items-center justify-center shadow-sm group-hover:scale-110 transition-transform">
-                                                    <RefreshCcw className="text-blue-600" size={20} />
+                                                <div className="w-10 h-10 rounded-xl bg-white flex items-center justify-center shadow-sm group-hover:scale-110 transition-transform text-blue-600">
+                                                    <RefreshCcw size={20} />
                                                 </div>
                                                 <div className="text-center">
-                                                    <p className="font-bold text-blue-900 text-[11px] leading-tight mb-0.5">Mazeretli İptal</p>
-                                                    <p className="text-[8px] text-blue-400 font-black uppercase tracking-tighter">Seans İade</p>
+                                                    <p className="font-black text-blue-950 text-[11px] uppercase italic">İptal</p>
+                                                    <p className="text-[8px] text-blue-400 font-black uppercase tracking-tighter">İade Edilsin</p>
                                                 </div>
                                             </button>
                                         </div>
 
-                                        <button 
-                                            onClick={() => {
-                                                setCheckoutAppt(actionMenuAppt);
-                                                setActionMenuAppt(null);
-                                            }}
-                                            className="w-full flex items-center gap-4 p-4 bg-emerald-50 hover:bg-emerald-100 rounded-2xl transition-all group"
-                                        >
-                                            <div className="w-10 h-10 rounded-xl bg-white flex items-center justify-center shadow-sm group-hover:scale-110 transition-transform">
-                                                <Banknote className="text-emerald-600" size={20} />
-                                            </div>
-                                            <div className="text-left">
-                                                <p className="font-bold text-emerald-900 text-sm">Ödeme Al / Checkout</p>
-                                                <p className="text-[10px] text-emerald-400 font-medium">Tahsilat sayfasına git</p>
-                                            </div>
-                                        </button>
-
-                                        <div className="pt-2 grid grid-cols-2 gap-3">
+                                        <div className="pt-4 grid grid-cols-2 gap-3 border-t border-dashed border-gray-100 mt-4">
                                             <button 
                                                 onClick={() => {
                                                     setActionAppt(actionMenuAppt);
                                                     setActionMenuAppt(null);
                                                 }}
-                                                className="flex items-center justify-center gap-2 py-3 px-4 bg-gray-50 hover:bg-gray-100 rounded-2xl transition-all text-[11px] font-black text-gray-400 uppercase tracking-widest"
+                                                className="flex items-center justify-center gap-2 py-4 px-4 bg-gray-50/50 hover:bg-white hover:border-gray-200 border border-transparent rounded-2xl transition-all text-[11px] font-black text-gray-500 uppercase tracking-widest"
                                             >
                                                 <ExternalLink size={14} /> Detaylar
                                             </button>
@@ -525,7 +533,7 @@ export default function CalendarPage() {
                                                         setActionMenuAppt(null);
                                                     }
                                                 }}
-                                                className="flex items-center justify-center gap-2 py-3 px-4 hover:bg-red-50 rounded-2xl transition-all text-[11px] font-black text-red-400 uppercase tracking-widest"
+                                                className="flex items-center justify-center gap-2 py-4 px-4 hover:bg-red-50 rounded-2xl transition-all text-[11px] font-black text-red-400 uppercase tracking-widest"
                                             >
                                                 <Trash2 size={14} /> Sil
                                             </button>

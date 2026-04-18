@@ -122,10 +122,34 @@ export default function CalendarItem({
 
     const getAppledTheme = (status: AppointmentStatus) => {
         switch(status) {
-            case 'completed': return { bg: 'bg-white', text: 'text-emerald-700', ring: 'ring-1 ring-emerald-100 shadow-sm', indicator: 'bg-emerald-500', icon: <ShieldCheck className="w-3.5 h-3.5 text-emerald-500" /> };
-            case 'arrived': return { bg: 'bg-white', text: 'text-indigo-700', ring: 'ring-1 ring-indigo-100 shadow-sm', indicator: 'bg-indigo-500', icon: <Activity className="w-3.5 h-3.5 text-indigo-500" /> };
-            case 'no-show': return { bg: 'bg-white', text: 'text-red-700', ring: 'ring-1 ring-red-100 shadow-sm', indicator: 'bg-red-500', icon: <Ban className="w-3.5 h-3.5 text-red-500" /> };
-            default: return { bg: 'bg-white', text: 'text-gray-900', ring: 'ring-1 ring-gray-200/50 shadow-sm', indicator: 'bg-gray-300', icon: null };
+            case 'completed': return { 
+                bg: 'bg-gradient-to-br from-emerald-50 to-white', 
+                text: 'text-emerald-900', 
+                ring: 'ring-2 ring-emerald-500/20 shadow-lg shadow-emerald-100/50', 
+                indicator: 'bg-emerald-600', 
+                icon: <ShieldCheck className="w-4 h-4 text-emerald-600 animate-[bounce_1s_infinite]" /> 
+            };
+            case 'arrived': return { 
+                bg: 'bg-gradient-to-br from-indigo-50 to-white', 
+                text: 'text-indigo-900', 
+                ring: 'ring-2 ring-indigo-500/20 shadow-lg shadow-indigo-100/50', 
+                indicator: 'bg-indigo-600', 
+                icon: <Activity className="w-4 h-4 text-indigo-600" /> 
+            };
+            case 'no-show': return { 
+                bg: 'bg-gradient-to-br from-red-50 to-white', 
+                text: 'text-red-900', 
+                ring: 'ring-2 ring-red-500/20 shadow-lg shadow-red-100/50', 
+                indicator: 'bg-red-600', 
+                icon: <Ban className="w-4 h-4 text-red-600" /> 
+            };
+            default: return { 
+                bg: 'bg-white', 
+                text: 'text-gray-900', 
+                ring: 'ring-1 ring-gray-200/50 shadow-md', 
+                indicator: 'bg-gray-300', 
+                icon: null 
+            };
         }
     };
 

@@ -623,7 +623,7 @@ const StoreOrchestrator = ({ children }: { children: ReactNode }) => {
                 await syncDb('ai_insights', 'insert', insight, insight.id, activeBizId);
             }
         },
-        processCheckout: async (paymentData: any, installments?: any[], soldProducts?: any[], earnedPoints?: number, tipAmount?: number, pointsUsed?: number) => {
+        processCheckout: async (paymentData: any, installments?: any[], soldProducts?: any[], earnedPoints?: number, tipAmount?: number, pointsUsed?: number, packageId?: string) => {
             if (!activeBizId) return false;
             setSyncStatus('syncing');
             try {
@@ -642,7 +642,19 @@ const StoreOrchestrator = ({ children }: { children: ReactNode }) => {
 
                 // 2. Randevu Güncelleme & Reçete Bazlı Stok Düşümü
                 if (paymentData.appointmentId) {
-                    const updates = { status: 'completed', isPaid: true, paymentId };
+                    const updates: any = { status: 'completed', isPaid: true, paymentId };
+                    if (packageId) {
+                        updates.packageId = packageId;
+                        
+                        // Paket Seans Düşümü
+                        const pkg = data.packages.find(p => p.id === packageId);
+                        if (pkg) {
+                            const newUsed = Math.min(pkg.totalSessions, (pkg.usedSessions || 0) + 1);
+                            data.setAllPackages((prev: any[]) => prev.map(p => p.id === packageId ? { ...p, usedSessions: newUsed } : p));
+                            await syncDb('packages', 'update', { used_sessions: newUsed }, packageId, activeBizId);
+                            await store.addLog('Paket Seansı Kullanıldı', paymentData.customerName, `Kalan: ${pkg.totalSessions - newUsed}`, pkg.name);
+                        }
+                    }
                     data.updateAppointment(paymentData.appointmentId, updates);
                     await syncDb('appointments', 'update', updates, paymentData.appointmentId, activeBizId);
 
