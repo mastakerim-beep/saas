@@ -38,6 +38,7 @@ export default function CustomerPanel({ isOpen, onClose }: CustomerPanelProps) {
             isChurnRisk: false
         });
         setIsAdding(false);
+        setSearch(newName); // Otomatik olarak yeni eklenen kişiyi arama kutusuna yaz ki listelerde açık kalsın.
         setNewName('');
         setNewPhone('');
     };
