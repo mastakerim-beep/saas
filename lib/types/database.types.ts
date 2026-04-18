@@ -155,6 +155,7 @@ export interface Service {
     color: string;
     consumables: any;
     isPublic: boolean;
+    isActive: boolean;
     imageUrl: any;
     createdAt?: string;
 }

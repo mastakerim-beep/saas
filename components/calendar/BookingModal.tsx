@@ -33,7 +33,8 @@ export default function BookingModal({ initialData, onClose, date, mode: initial
     const [basket, setBasket] = useState<any[]>([]);
     
     // Current entry state
-    const [currentService, setCurrentService] = useState(services.length > 0 ? (initialData.service || services[0]?.name) : '');
+    const activeServices = useMemo(() => services.filter(s => s.isActive !== false), [services]);
+    const [currentService, setCurrentService] = useState(activeServices.length > 0 ? (initialData.service || activeServices[0]?.name) : '');
     const [currentStaffId, setCurrentStaffId] = useState(initialData.staffId || staffMembers[0]?.id || '');
     const [currentRoomId, setCurrentRoomId] = useState<string | null>(initialData.roomId || (rooms.length > 0 ? rooms[0]?.id : null));
     const [currentPackageId, setCurrentPackageId] = useState<string | null>(null);
@@ -41,7 +42,9 @@ export default function BookingModal({ initialData, onClose, date, mode: initial
     const [isSaving, setIsSaving] = useState(false);
     const [blockReason, setBlockReason] = useState('Toplantı');
     const [note, setNote] = useState('');
-    const [overrideDuration, setOverrideDuration] = useState<number | null>(initialData.duration || null);
+    const [overrideDuration, setOverrideDuration] = useState<number | null>(
+        (initialData.duration && initialData.duration !== 15) ? initialData.duration : null
+    );
     const [referralSource, setReferralSource] = useState('Direkt');
 
     const toggleRegion = (id: string) => {
@@ -271,7 +274,7 @@ export default function BookingModal({ initialData, onClose, date, mode: initial
                                                                 setOverrideDuration(s.duration);
                                                             }
                                                         }} className="w-full bg-white border border-gray-100 rounded-2xl px-6 py-5 text-sm font-black text-gray-900 outline-none focus:border-primary transition-all appearance-none shadow-sm group-hover:shadow-md">
-                                                            {services.map(s => <option key={s.id} value={s.name}>{s.name} (₺{s.price})</option>)}
+                                                            {activeServices.map(s => <option key={s.id} value={s.name}>{s.name} (₺{s.price})</option>)}
                                                         </select>
                                                         <ChevronDown className="w-4 h-4 absolute right-6 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
                                                     </div>

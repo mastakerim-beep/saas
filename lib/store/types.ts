@@ -190,11 +190,11 @@ export interface StoreState {
     addExpense: (e: any) => Promise<void>;
     addService: (s: any) => Promise<void>;
     updateService: (id: string, s: Partial<Service>) => void;
-    removeService: (id: string) => void;
+    removeService: (id: string) => Promise<boolean>;
     
     addPackageDefinition: (p: any) => void;
     updatePackageDefinition: (id: string, p: Partial<PackageDefinition>) => void;
-    removePackageDefinition: (id: string) => void;
+    removePackageDefinition: (id: string) => Promise<boolean>;
     
     addQuote: (q: Omit<Quote, 'id' | 'businessId'>) => void;
     updateQuote: (id: string, updates: Partial<Quote>) => void;

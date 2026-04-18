@@ -30,10 +30,20 @@ export default function CatalogSettingsView({ query }: { query: string }) {
     // price management permissions
     const canManagePrices = can('manage_prices') || true;
 
-    // Filtered data based on external query + internal tab
-    const filteredServices = services.filter(s => s.name.toLowerCase().includes(query.toLowerCase()));
-    const filteredPackages = packageDefinitions.filter(p => p.name.toLowerCase().includes(query.toLowerCase()));
-    const filteredProducts = inventory.filter(p => p.name.toLowerCase().includes(query.toLowerCase()));
+    const [showArchived, setShowArchived] = useState(false);
+
+    // Filtered data based on external query + internal tab + archive status
+    const filteredServices = services.filter(s => 
+        (showArchived || s.isActive !== false) && 
+        s.name.toLowerCase().includes(query.toLowerCase())
+    );
+    const filteredPackages = packageDefinitions.filter(p => 
+        (showArchived || p.isActive !== false) &&
+        p.name.toLowerCase().includes(query.toLowerCase())
+    );
+    const filteredProducts = inventory.filter(p => 
+        p.name.toLowerCase().includes(query.toLowerCase())
+    );
 
     const serviceGroups = Array.from(new Set(services.map(s => s.category || 'Genel')));
     const packageGroups = Array.from(new Set(packageDefinitions.map(p => p.groupName || 'Genel')));
@@ -109,9 +119,28 @@ export default function CatalogSettingsView({ query }: { query: string }) {
     };
 
     const handleDelete = async (item: any) => {
-        if (activeTab === 'hizmetler') removeService(item.id);
-        else if (activeTab === 'paketler') removePackageDefinition(item.id);
+        if (activeTab === 'hizmetler') {
+            const ok = await removeService(item.id);
+            if (!ok) {
+                if (confirm('Bu hizmet geçmiş kayıtlarda kullanıldığı için tamamen silinemez. Arşivlemek ister misiniz? (Randevu listesinden kaldırılır)')) {
+                    await updateService(item.id, { isActive: false });
+                }
+            }
+        }
+        else if (activeTab === 'paketler') {
+            const ok = await removePackageDefinition(item.id);
+            if (!ok) {
+                if (confirm('Bu paket silinemez. Arşivlemek ister misiniz?')) {
+                    await updatePackageDefinition(item.id, { isActive: false });
+                }
+            }
+        }
         else if (activeTab === 'urunler') removeProduct(item.id);
+    };
+
+    const handleRestore = async (item: any) => {
+        if (activeTab === 'hizmetler') await updateService(item.id, { isActive: true });
+        else if (activeTab === 'paketler') await updatePackageDefinition(item.id, { isActive: true });
     };
 
     return (
@@ -202,6 +231,22 @@ export default function CatalogSettingsView({ query }: { query: string }) {
                             {group}
                         </button>
                     ))}
+                </div>
+
+                {/* Archive Toggle */}
+                <div className="flex items-center gap-2 mt-4 px-2">
+                    <button 
+                        onClick={() => setShowArchived(!showArchived)}
+                        className={`flex items-center gap-2 text-[10px] font-black uppercase tracking-widest transition-all ${showArchived ? 'text-indigo-600' : 'text-gray-400 hover:text-indigo-400'}`}
+                    >
+                        <Activity className={`w-4 h-4 ${showArchived ? 'animate-pulse' : ''}`} />
+                        {showArchived ? 'ARŞİVLENMİŞ ÖĞELERİ GİZLE' : 'ARŞİVLENMİŞ ÖĞELERİ GÖSTER'}
+                    </button>
+                    {showArchived && (
+                        <span className="px-2 py-0.5 bg-indigo-100 text-indigo-600 rounded-md text-[8px] font-black">
+                            {services.filter(s => s.isActive === false).length + packageDefinitions.filter(p => p.isActive === false).length} ARŞİVDE
+                        </span>
+                    )}
                 </div>
             </div>
 
@@ -432,6 +477,7 @@ export default function CatalogSettingsView({ query }: { query: string }) {
                                         activeTab={activeTab} 
                                         onEdit={() => openPanel(item)}
                                         onDelete={() => handleDelete(item)}
+                                        onRestore={() => handleRestore(item)}
                                     />
                                 ))}
                             </div>
@@ -458,24 +504,42 @@ function InputField({ label, value, onChange, placeholder = "", type = "text" }:
     );
 }
 
-function PremiumCard({ item, activeTab, onEdit, onDelete }: any) {
+function PremiumCard({ item, activeTab, onEdit, onDelete, onRestore }: any) {
+    const isArchived = item.isActive === false;
+
     return (
-        <div className="bg-white rounded-[3.5rem] p-10 shadow-sm border border-gray-100 transition-all duration-500 hover:shadow-2xl hover:-translate-y-3 group overflow-hidden relative">
+        <div className={`bg-white rounded-[3.5rem] p-10 shadow-sm border border-gray-100 transition-all duration-500 hover:shadow-2xl hover:-translate-y-3 group overflow-hidden relative ${isArchived ? 'opacity-60 saturate-50' : ''}`}>
+            {isArchived && (
+                <div className="absolute top-6 left-1/2 -translate-x-1/2 z-20">
+                    <span className="px-4 py-1.5 bg-gray-900 text-white text-[8px] font-black uppercase tracking-widest rounded-full shadow-lg">
+                        ARŞİVLENMİŞ
+                    </span>
+                </div>
+            )}
+            
             <div className="flex justify-between items-start mb-8">
-                <div className="w-16 h-16 bg-gray-50 group-hover:bg-gray-900 rounded-[1.8rem] flex items-center justify-center transition-all duration-500 group-hover:text-white shadow-inner">
+                <div className={`w-16 h-16 rounded-[1.8rem] flex items-center justify-center transition-all duration-500 shadow-inner ${isArchived ? 'bg-gray-200 text-gray-500' : 'bg-gray-50 group-hover:bg-gray-900 group-hover:text-white'}`}>
                     {activeTab === 'hizmetler' ? <Clock size={28} /> : activeTab === 'paketler' ? <PackageIcon size={28} /> : <ShoppingBag size={28} />}
                 </div>
                 <div className="flex gap-4 opacity-0 group-hover:opacity-100 transition-all translate-y-2 group-hover:translate-y-0">
-                    <button onClick={onEdit} className="w-10 h-10 bg-gray-50 flex items-center justify-center rounded-xl text-gray-400 hover:bg-black hover:text-white transition-all"><Edit3 size={18} /></button>
-                    <PinGate onSuccess={onDelete} title="KATALOG ÖĞESİ SİLİNECEK">
-                        <button className="w-10 h-10 bg-gray-50 flex items-center justify-center rounded-xl text-gray-400 hover:bg-red-500 hover:text-white transition-all">
-                            <Trash2 size={18} />
+                    {!isArchived ? (
+                        <>
+                            <button onClick={onEdit} className="w-10 h-10 bg-gray-50 flex items-center justify-center rounded-xl text-gray-400 hover:bg-black hover:text-white transition-all"><Edit3 size={18} /></button>
+                            <PinGate onSuccess={onDelete} title="KATALOG ÖĞESİ SİLİNECEK">
+                                <button className="w-10 h-10 bg-gray-50 flex items-center justify-center rounded-xl text-gray-400 hover:bg-red-500 hover:text-white transition-all">
+                                    <Trash2 size={18} />
+                                </button>
+                            </PinGate>
+                        </>
+                    ) : (
+                        <button onClick={onRestore} className="px-6 py-2 bg-indigo-600 text-white flex items-center justify-center rounded-xl text-[9px] font-black uppercase tracking-widest hover:bg-indigo-700 transition-all">
+                            ARŞİVDEN ÇIKAR
                         </button>
-                    </PinGate>
+                    )}
                 </div>
             </div>
 
-            <h3 className="text-2xl font-black text-gray-900 mb-2 uppercase tracking-tight line-clamp-1">{item.name}</h3>
+            <h3 className={`text-2xl font-black mb-2 uppercase tracking-tight line-clamp-1 ${isArchived ? 'text-gray-400' : 'text-gray-900'}`}>{item.name}</h3>
             
             <div className="flex items-center gap-4 text-[10px] font-black uppercase tracking-[0.2em] text-gray-400 mb-12">
                 {activeTab === 'hizmetler' && (
@@ -492,9 +556,9 @@ function PremiumCard({ item, activeTab, onEdit, onDelete }: any) {
             <div className="flex justify-between items-end pt-8 border-t border-gray-50 group-hover:border-indigo-100/50 transition-colors">
                 <div>
                     <p className="text-[10px] font-black text-indigo-300 uppercase tracking-widest mb-1.5">SATIŞ FİYATI</p>
-                    <p className="text-5xl font-black text-indigo-950 tracking-tighter italic">₺{item.price.toLocaleString('tr-TR')}</p>
+                    <p className={`text-5xl font-black tracking-tighter italic ${isArchived ? 'text-gray-300' : 'text-indigo-950'}`}>₺{item.price.toLocaleString('tr-TR')}</p>
                 </div>
-                {activeTab === 'hizmetler' && (
+                {activeTab === 'hizmetler' && !isArchived && (
                     <div className="flex flex-col items-end gap-2">
                          <div className="px-6 py-2 bg-indigo-50 border border-indigo-100/50 rounded-full text-[10px] font-black text-indigo-600 uppercase tracking-[0.2em] shadow-sm flex items-center gap-2">
                              <Star className="w-3 h-3 fill-indigo-600" /> %{Math.floor(Math.random() * 20) + 80} POPÜLERLİK
@@ -504,7 +568,7 @@ function PremiumCard({ item, activeTab, onEdit, onDelete }: any) {
             </div>
 
             {/* Subtle Gradient decoration */}
-            <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-500/5 blur-[60px] rounded-full group-hover:bg-indigo-500/10 transition-all duration-500" />
+            <div className={`absolute top-0 right-0 w-32 h-32 blur-[60px] rounded-full transition-all duration-500 ${isArchived ? 'bg-gray-200/5' : 'bg-indigo-500/5 group-hover:bg-indigo-500/10'}`} />
         </div>
     );
 }

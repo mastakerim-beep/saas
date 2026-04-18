@@ -781,26 +781,28 @@ const StoreOrchestrator = ({ children }: { children: ReactNode }) => {
             data.setAllServices((prev: any) => [ns, ...prev]);
             await syncDb('services', 'insert', ns, id, activeBizId);
         },
-        updateService: async (id: string, s: any) => {
-            data.updateService(id, s);
-            await syncDb('services', 'update', s, id, activeBizId);
-        },
         removeService: async (id: string) => {
             const service = data.services.find(s => s.id === id);
-            if (!service) return;
+            if (!service) return false;
             
             try {
                 data.removeService(id);
                 const ok = await syncDb('services', 'delete', {}, id, activeBizId || service.businessId);
                 if (!ok) {
                     data.setAllServices((prev: any) => [...prev, service]);
-                    return;
+                    return false;
                 }
                 await store.addLog('Hizmet Silindi', service.name, 'Yönetici Onaylı');
+                return true;
             } catch (err) {
-                console.error("Failed to remove service:", err);
+                console.error("Remove Service Error:", err);
                 data.setAllServices((prev: any) => [...prev, service]);
+                return false;
             }
+        },
+        updateService: async (id: string, s: any) => {
+            data.updateService(id, s);
+            await syncDb('services', 'update', s, id, activeBizId);
         },
         addPackageDefinition: async (p: any) => {
             const id = crypto.randomUUID();
@@ -813,15 +815,23 @@ const StoreOrchestrator = ({ children }: { children: ReactNode }) => {
             await syncDb('package_definitions', 'update', p, id, activeBizId);
         },
         removePackageDefinition: async (id: string) => {
-            const pkg = data.packageDefinitions.find(p => p.id === id);
-            if (!pkg) return;
-            data.removePackageDefinition(id);
-            const ok = await syncDb('package_definitions', 'delete', {}, id, activeBizId);
-            if (!ok) {
-                data.setAllPackageDefinitions((prev: any) => [pkg, ...prev]);
-                return;
+            const item = data.packageDefinitions.find(p => p.id === id);
+            if (!item) return false;
+            
+            try {
+                data.removePackageDefinition(id);
+                const ok = await syncDb('package_definitions', 'delete', {}, id, activeBizId);
+                if (!ok) {
+                    data.setAllPackageDefinitions((prev: any) => [...prev, item]);
+                    return false;
+                }
+                await store.addLog('Paket Tanımı Silindi', item.name, 'Yönetici Onaylı');
+                return true;
+            } catch (err) {
+                console.error("Remove Package Def Error:", err);
+                data.setAllPackageDefinitions((prev: any) => [...prev, item]);
+                return false;
             }
-            await store.addLog('Paket Tanımı Silindi', pkg.name, 'Yönetici Onaylı');
         },
         addQuote: async (q: any) => {
             const id = crypto.randomUUID();
