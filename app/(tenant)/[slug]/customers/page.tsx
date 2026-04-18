@@ -286,7 +286,7 @@ function CustomerDetail({ customer, onClose }: { customer: Customer; onClose: ()
                 transition={{ type: 'spring', stiffness: 300, damping: 30 }}
                 onMouseEnter={() => setIsSidebarCollapsed(false)}
                 onMouseLeave={() => setIsSidebarCollapsed(true)}
-                className="bg-white border-r border-gray-100 flex flex-col p-6 sticky top-0 h-screen overflow-hidden group/sbar"
+                className="bg-white border-r border-gray-100 flex flex-col p-6 sticky top-0 h-screen overflow-hidden group/sbar z-[60]"
             >
                 <div className="flex items-center justify-between mb-10">
                     {!isSidebarCollapsed && (
@@ -307,13 +307,6 @@ function CustomerDetail({ customer, onClose }: { customer: Customer; onClose: ()
                 >
                     <div className="w-1 h-8 bg-indigo-600/30 rounded-full" />
                 </div>
-
-                <button 
-                    onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
-                    className={`absolute top-24 -right-4 w-8 h-8 bg-indigo-600 text-white border-2 border-white rounded-full flex items-center justify-center shadow-xl z-50 transition-all duration-500 ${isSidebarCollapsed ? 'scale-100 opacity-100' : 'scale-0 opacity-0 group-hover/sbar:scale-100 group-hover/sbar:opacity-100'}`}
-                >
-                    {isSidebarCollapsed ? <ChevronRight className="w-5 h-5" /> : <ChevronLeft className="w-5 h-5" />}
-                </button>
                 
                 <div className="space-y-1 flex-1 overflow-y-auto no-scrollbar">
                     {menuItems.map(item => (
@@ -333,7 +326,7 @@ function CustomerDetail({ customer, onClose }: { customer: Customer; onClose: ()
             </motion.div>
 
             {/* Main Content Area */}
-            <div className="flex-1 flex flex-col">
+            <div className="flex-1 flex flex-col min-w-0 h-screen overflow-y-auto bg-[#F8F9FD] scroll-smooth">
                 {/* Top Banner Profile */}
                 <div className="bg-white border-b border-gray-100 p-8 flex justify-between items-center">
                     <div className="flex items-center gap-6">
@@ -594,12 +587,21 @@ function CustomerDetail({ customer, onClose }: { customer: Customer; onClose: ()
                         {activeMenu === 'Randevu' && (
                             <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}>
                                 <div className="bg-white rounded-[2.5rem] border border-gray-100 shadow-sm overflow-hidden">
-                                     <div className="p-8 border-b border-gray-50 flex justify-between items-center">
-                                         <h3 className="text-xl font-black italic tracking-tighter uppercase italic">Randevular</h3>
-                                         <button className="px-4 py-2 bg-gray-50 rounded-xl text-[10px] font-black uppercase tracking-widest text-gray-500 hover:bg-gray-100 flex items-center gap-2">
-                                            İşlemler <ChevronRight className="w-4 h-4 rotate-90" />
-                                        </button>
-                                    </div>
+                                     <div className="p-8 border-b border-gray-50 flex justify-between items-center bg-white sticky top-0 z-10">
+                                         <h3 className="text-xl font-black italic tracking-tighter uppercase">Randevular</h3>
+                                         <div className="relative group">
+                                             <button className="px-5 py-2.5 bg-gray-50 rounded-xl text-[10px] font-black uppercase tracking-widest text-gray-600 hover:bg-indigo-600 hover:text-white transition-all flex items-center gap-2 shadow-sm">
+                                                 İşlemler <ChevronRight className="w-4 h-4 rotate-90 group-focus-within:-rotate-90 transition-transform" />
+                                             </button>
+                                             <div className="absolute right-0 top-full mt-2 w-56 bg-white rounded-2xl shadow-2xl border border-gray-100 opacity-0 invisible group-focus-within:opacity-100 group-focus-within:visible transition-all z-[100] overflow-hidden transform origin-top-right scale-95 group-focus-within:scale-100 p-2">
+                                                 <button 
+                                                    onClick={() => setSelectedSlot({ staffId: staffMembers[0]?.id || '', time: '09:00', customerId: customer.id })}
+                                                    className="w-full px-4 py-3 text-left text-[10px] font-black text-gray-600 uppercase tracking-widest hover:bg-indigo-50 hover:text-indigo-600 rounded-xl transition-colors flex items-center gap-3"><Plus className="w-4 h-4" /> Yeni Randevu</button>
+                                                 <div className="my-1 border-t border-gray-50"></div>
+                                                 <button className="w-full px-4 py-3 text-left text-[10px] font-black text-gray-600 uppercase tracking-widest hover:bg-gray-50 rounded-xl transition-colors flex items-center gap-3"><Download className="w-4 h-4" /> Çıktı Al</button>
+                                             </div>
+                                         </div>
+                                     </div>
                                     <div className="overflow-x-auto">
                                         <table className="w-full text-left">
                                             <thead className="bg-[#FBFCFF] text-[10px] font-black uppercase text-gray-400 tracking-widest">
@@ -866,11 +868,19 @@ function CustomerDetail({ customer, onClose }: { customer: Customer; onClose: ()
                         {activeMenu === 'Satış & Tahsilat' && (
                             <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="space-y-6">
                                 <div className="bg-white rounded-[2.5rem] border border-gray-100 shadow-sm overflow-hidden">
-                                    <div className="p-8 border-b border-gray-50 flex justify-between items-center">
-                                        <h3 className="text-xl font-black italic tracking-tighter uppercase italic">Satışlar</h3>
-                                        <button className="px-4 py-2 bg-gray-50 rounded-xl text-[10px] font-black uppercase tracking-widest text-gray-500 hover:bg-gray-100 flex items-center gap-2">
-                                            İşlemler <ChevronRight className="w-4 h-4 rotate-90" />
-                                        </button>
+                                    <div className="p-8 border-b border-gray-50 flex justify-between items-center bg-white sticky top-0 z-10">
+                                        <h3 className="text-xl font-black italic tracking-tighter uppercase">Satışlar</h3>
+                                        <div className="relative group/menu">
+                                            <button className="px-5 py-2.5 bg-gray-50 rounded-xl text-[10px] font-black uppercase tracking-widest text-gray-600 hover:bg-indigo-600 hover:text-white transition-all flex items-center gap-2 shadow-sm focus:outline-none">
+                                                İşlemler <ChevronRight className="w-4 h-4 rotate-90 group-focus-within/menu:-rotate-90 transition-transform" />
+                                            </button>
+                                            <div className="absolute right-0 top-full mt-2 w-56 bg-white rounded-2xl shadow-2xl border border-gray-100 opacity-0 invisible group-focus-within/menu:opacity-100 group-focus-within/menu:visible transition-all z-[100] overflow-hidden transform origin-top-right scale-95 group-focus-within/menu:scale-100 p-2">
+                                                <button className="w-full px-4 py-3 text-left text-[10px] font-black text-gray-600 uppercase tracking-widest hover:bg-indigo-50 hover:text-indigo-600 rounded-xl transition-colors flex items-center gap-3"><Plus className="w-4 h-4" /> Yeni Satış / Paket</button>
+                                                <button className="w-full px-4 py-3 text-left text-[10px] font-black text-gray-600 uppercase tracking-widest hover:bg-green-50 hover:text-green-600 rounded-xl transition-colors flex items-center gap-3"><ArrowDownRight className="w-4 h-4 text-green-500" /> Tahsilat Gir</button>
+                                                <div className="my-1 border-t border-gray-50"></div>
+                                                <button className="w-full px-4 py-3 text-left text-[10px] font-black text-gray-600 uppercase tracking-widest hover:bg-gray-50 rounded-xl transition-colors flex items-center gap-3"><Download className="w-4 h-4" /> Excel'e Aktar</button>
+                                            </div>
+                                        </div>
                                     </div>
                                     <div className="overflow-x-auto">
                                         <table className="w-full text-left">
