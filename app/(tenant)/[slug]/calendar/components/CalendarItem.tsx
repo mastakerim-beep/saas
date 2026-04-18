@@ -178,14 +178,14 @@ export default function CalendarItem({
             {!isLocked && (
                 <div 
                     onMouseDown={(e) => e.stopPropagation()}
-                    className="absolute top-2 left-2 right-2 flex justify-between items-start opacity-0 group-hover/item:opacity-100 transition-opacity z-40"
+                    className="absolute top-2 left-2 right-2 flex justify-between items-start opacity-0 group-hover/item:opacity-100 transition-all duration-300 z-40"
                 >
                     <div 
                         {...listeners} 
                         {...attributes} 
-                        className="p-1.5 bg-white/80 backdrop-blur-sm rounded-lg shadow-sm cursor-grab active:cursor-grabbing hover:bg-white text-indigo-400 hover:text-indigo-600 transition-all"
+                        className="p-2 bg-indigo-600 text-white rounded-xl shadow-lg shadow-indigo-200 cursor-grab active:cursor-grabbing hover:scale-110 transition-all outline-none ring-2 ring-white"
                     >
-                        <GripVertical size={12} />
+                        <GripVertical size={16} />
                     </div>
                     
                     {(!isAppt || ['Admin', 'Manager', 'Owner', 'superadmin'].includes(currentUser?.role || 'Staff')) && (
@@ -198,9 +198,9 @@ export default function CalendarItem({
                                     else removeBlock(block.id);
                                 }
                             }}
-                            className="p-1.5 bg-white/80 backdrop-blur-sm rounded-lg shadow-sm hover:bg-red-50 text-gray-300 hover:text-red-500 transition-all"
+                            className="p-2 bg-white/90 backdrop-blur-md rounded-xl shadow-md hover:bg-red-50 text-red-300 hover:text-red-500 transition-all border border-gray-100"
                         >
-                            <Trash2 size={12} />
+                            <Trash2 size={16} />
                         </button>
                     )}
                 </div>

@@ -36,9 +36,9 @@ export default function TimeSlot({
                 if (!isOff) onAdd({ staffId, roomId, time });
             }}
             className={`
-                h-[42px] border-r border-gray-200/50 transition-all relative
-                ${isHourStart ? 'border-t-[1.5px] border-t-gray-300' : 'border-t border-t-gray-200/60 border-dashed'}
-                ${isOff ? 'bg-secondary/30 cursor-not-allowed opacity-40' : (isOver ? 'bg-indigo-50/50 border-2 border-indigo-200 z-10 scale-[1.01]' : 'hover:bg-indigo-50/10 cursor-pointer')}
+                h-[42px] border-r border-gray-200/50 transition-all relative box-border
+                ${isHourStart ? 'border-t-[1.5px] border-t-indigo-200' : 'border-t border-t-gray-100/50 border-dashed'}
+                ${isOff ? 'bg-secondary/30 cursor-not-allowed opacity-40' : (isOver ? 'bg-indigo-50/50 border-2 border-indigo-400 z-30 scale-[1.02] shadow-xl shadow-indigo-100' : 'hover:bg-indigo-50/10 cursor-pointer')}
                 ${isSelected ? 'bg-indigo-600/20 ring-2 ring-indigo-500/50 z-20' : ''}
             `}
         >

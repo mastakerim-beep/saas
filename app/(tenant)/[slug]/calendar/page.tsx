@@ -80,7 +80,7 @@ export default function CalendarPage() {
     const [pickerMonth, setPickerMonth] = useState(new Date());
 
     const sensors = useSensors(
-        useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+        useSensor(PointerSensor, { activationConstraint: { distance: 3 } }),
         useSensor(MouseSensor),
         useSensor(TouchSensor, { activationConstraint: { delay: 150, tolerance: 5 } })
     );
@@ -224,19 +224,26 @@ export default function CalendarPage() {
                                 
                                 {/* Time Column */}
                                 <div className="sticky left-0 w-24 bg-white/95 backdrop-blur-md z-30 border-r border-gray-100 flex flex-col pt-[80px] shadow-2xl shadow-indigo-50/20">
-                                    {SLOTS.map(time => (
-                                        <div key={time} className="h-[42px] flex items-center justify-center relative group/time">
-                                            <span className={`text-[12px] font-black tracking-tight tabular-nums transition-all ${time.endsWith(':00') ? 'text-indigo-900 scale-110' : 'text-gray-400 opacity-60'}`}>
-                                                {time}
-                                            </span>
-                                            {time.endsWith(':00') && (
-                                                <>
-                                                    <div className="absolute right-0 w-3 h-[2.5px] bg-indigo-600 rounded-l-full shadow-[0_0_12px_rgba(79,70,229,0.8)]" />
-                                                    <div className="absolute left-0 w-1 h-full bg-indigo-50/0 group-hover/time:bg-indigo-500/10 transition-colors" />
-                                                </>
-                                            )}
-                                        </div>
-                                    ))}
+                                    {SLOTS.map(time => {
+                                        const isHour = time.endsWith(':00');
+                                        return (
+                                            <div key={time} className={`h-[42px] flex items-center justify-center relative group/time px-2 ${isHour ? 'bg-indigo-50/30' : ''}`}>
+                                                <div className={`
+                                                    w-full h-8 rounded-xl flex items-center justify-center transition-all duration-300
+                                                    ${isHour ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-200 ring-2 ring-indigo-500/20' : 'bg-gray-50/50 text-gray-400 border border-gray-100/50 group-hover/time:bg-white'}
+                                                `}>
+                                                    <span className={`text-[10px] font-black tracking-tight tabular-nums ${isHour ? '' : 'text-[9px] opacity-60'}`}>
+                                                        {time}
+                                                    </span>
+                                                </div>
+                                                {isHour && (
+                                                    <div className="absolute right-0 w-1.5 h-full flex flex-col justify-center">
+                                                        <div className="w-full h-1/2 bg-indigo-600/10 rounded-l-full" />
+                                                    </div>
+                                                )}
+                                            </div>
+                                        );
+                                    })}
                                 </div>
 
                                 {/* Columns Grid */}
