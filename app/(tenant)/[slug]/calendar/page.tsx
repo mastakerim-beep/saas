@@ -338,11 +338,13 @@ export default function CalendarPage() {
                                     <div 
                                         className="absolute left-0 right-0 h-[1.5px] bg-indigo-600/40 pointer-events-none z-40"
                                         style={{ 
-                                            top: `${80 + SLOTS.indexOf(hoveredTime) * 42}px`,
-                                            boxShadow: '0 0 10px rgba(79, 70, 229, 0.4)'
+                                            // 80: Header Height, 42: Slot Height
+                                            top: `${80 + (SLOTS.indexOf(hoveredTime) * 42)}px`,
+                                            boxShadow: '0 0 15px rgba(79, 70, 229, 0.4)'
                                         }}
                                     >
-                                        <div className="absolute left-[-4px] top-[-3px] w-2 h-2 bg-indigo-600 rounded-full" />
+                                        <div className="absolute left-[-4px] top-[-4px] w-2.5 h-2.5 bg-indigo-600 rounded-full shadow-lg shadow-indigo-600/50" />
+                                        <div className="absolute left-0 w-full h-full bg-gradient-to-r from-indigo-600/20 to-transparent" />
                                     </div>
                                 )}
                             </div>
