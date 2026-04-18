@@ -486,8 +486,20 @@ const StoreOrchestrator = ({ children }: { children: ReactNode }) => {
                             await syncDb('packages', 'update', { used_sessions: newUsed }, pkg.id, activeBizId);
                             await store.addLog('İptal (Seans İade)', appt.customerName, `Eski: ${pkg.usedSessions}`, `Yeni: ${newUsed}`);
                         } else if (status === 'unexcused-cancel' || status === 'no-show') {
-                            // Mazeretsiz İptal: Seans Yanmaya Devam Eder (Zaten Checkout'ta veya ekleme anında düşülmüştü)
+                            // Mazeretsiz İptal: Seans Yanmaya Devam Eder
                             await store.addLog('Mazeretsiz İptal (Seans Yakıldı)', appt.customerName, '', 'Hizmet Bedeli Tahsil Edildi');
+                        } else if (status === 'completed') {
+                            // ⚠️ KRİTİK: Checkout yapılmadan 'completed' işaretlendi
+                            // Gerçek seans düşümü ve ödeme kaydı processCheckout'ta olur
+                            // Bu durum ödeme kaçağını önlemek için audit loguna düşer
+                            if (!appt.isPaid && !appt.paymentId) {
+                                await store.addLog(
+                                    '⚠️ UYARI: Checkout Yapılmadan Tamamlandı',
+                                    appt.customerName,
+                                    appt.apptRef || appt.id,
+                                    `Paket: ${pkg.name} | Ödeme Bekleniyor`
+                                );
+                            }
                         }
                     }
                 } else {
@@ -634,6 +646,53 @@ const StoreOrchestrator = ({ children }: { children: ReactNode }) => {
                     impact: 'medium',
                     category: 'crm',
                     suggestedAction: 'Geri Kazanım Kampanyası'
+                });
+            }
+
+            data.setAiInsights(newInsights);
+
+            // ════════════════════════════════════════════
+            // KAÇAK KONTROL RECONCİLİATION
+            // ════════════════════════════════════════════
+
+            // 1. Checkout yapılmadan 'completed' işaretlenen randevular
+            const leakAppts = data.appointments.filter(a => 
+                a.status === 'completed' && 
+                !a.isPaid && 
+                !a.paymentId
+            );
+            if (leakAppts.length > 0) {
+                const leakIds = leakAppts.map(a => a.apptRef || a.id.slice(-6)).join(', ');
+                newInsights.push({
+                    id: crypto.randomUUID(),
+                    title: '🔴 KAÇAK RİSKİ: Ödemesiz Tamamlanmış Randevular',
+                    desc: `${leakAppts.length} randevu 'Tamamlandı' durumunda ancak ödeme kaydı YOK. Ref: ${leakIds}`,
+                    impact: 'high',
+                    category: 'audit',
+                    suggestedAction: 'Hemen Kontrol Et'
+                });
+            }
+
+            // 2. Paket seans uyuşmazlığı: DB'deki usedSessions vs gerçek tamamlanan randevu sayısı
+            const packageLeaks: string[] = [];
+            data.packages.forEach(pkg => {
+                const actualUsed = data.appointments.filter(a =>
+                    a.packageId === pkg.id &&
+                    ['completed', 'no-show', 'unexcused-cancel'].includes(a.status)
+                ).length;
+                if (actualUsed !== (pkg.usedSessions || 0)) {
+                    const customer = data.customers.find(c => c.id === pkg.customerId);
+                    packageLeaks.push(`${customer?.name || '?'} - ${pkg.name} (DB:${pkg.usedSessions} / Gerçek:${actualUsed})`);
+                }
+            });
+            if (packageLeaks.length > 0) {
+                newInsights.push({
+                    id: crypto.randomUUID(),
+                    title: '🔴 KAÇAK RİSKİ: Paket Seans Uyuşmazlığı',
+                    desc: `${packageLeaks.length} pakette kullanılan seans sayısı kayıtla eşleşmiyor:\n${packageLeaks.slice(0, 3).join(' | ')}`,
+                    impact: 'high',
+                    category: 'audit',
+                    suggestedAction: 'Paket Geçmişini Denetle'
                 });
             }
 
