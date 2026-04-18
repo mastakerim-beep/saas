@@ -227,19 +227,21 @@ export default function CalendarPage() {
                                     {SLOTS.map(time => {
                                         const isHour = time.endsWith(':00');
                                         return (
-                                            <div key={time} className={`h-[42px] flex items-center justify-center relative group/time px-2 ${isHour ? 'bg-indigo-50/30' : ''}`}>
+                                            <div key={time} className={`h-[42px] flex flex-col items-center justify-start relative group/time px-2 ${isHour ? 'bg-indigo-50/10' : ''}`}>
+                                                {/* Alignment logic: label center sits on the top boundary of the slot */}
                                                 <div className={`
-                                                    w-full h-8 rounded-xl flex items-center justify-center transition-all duration-300
-                                                    ${isHour ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-200 ring-2 ring-indigo-500/20' : 'bg-gray-50/50 text-gray-400 border border-gray-100/50 group-hover/time:bg-white'}
+                                                    w-full h-7 rounded-lg flex items-center justify-center transition-all duration-300 transform translate-y-[-50%]
+                                                    ${isHour 
+                                                        ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-100 ring-2 ring-indigo-500/20 z-10' 
+                                                        : 'bg-white/50 text-gray-400 border border-gray-100/50 group-hover/time:bg-white group-hover/time:text-gray-600 group-hover/time:border-indigo-200 z-0'}
                                                 `}>
-                                                    <span className={`text-[10px] font-black tracking-tight tabular-nums ${isHour ? '' : 'text-[9px] opacity-60'}`}>
+                                                    <span className={`text-[10px] font-black tracking-tight tabular-nums ${isHour ? '' : 'text-[8px] opacity-70 tracking-widest'}`}>
                                                         {time}
                                                     </span>
                                                 </div>
+                                                
                                                 {isHour && (
-                                                    <div className="absolute right-0 w-1.5 h-full flex flex-col justify-center">
-                                                        <div className="w-full h-1/2 bg-indigo-600/10 rounded-l-full" />
-                                                    </div>
+                                                    <div className="absolute top-0 right-0 w-3 h-[2px] bg-indigo-600/30 rounded-full translate-y-[-50%]" />
                                                 )}
                                             </div>
                                         );
