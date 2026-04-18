@@ -43,7 +43,7 @@ export default function TimeSlot({
                 if (!isOff) onAdd({ staffId, roomId, time });
             }}
             className={`
-                h-[42px] border-r border-gray-100/30 transition-all relative box-border
+                h-[42px] min-h-[42px] shrink-0 border-r border-gray-100/30 transition-all relative box-border
                 ${time.endsWith(':00') ? 'border-t-[2px] border-t-indigo-200/50' : 
                   time.endsWith(':30') ? 'border-t border-t-gray-300/50 border-dashed' : 
                   'border-t border-t-gray-100/30 border-dotted'}

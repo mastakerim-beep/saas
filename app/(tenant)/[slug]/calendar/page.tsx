@@ -230,7 +230,7 @@ export default function CalendarPage() {
                                         const isHour = time.endsWith(':00');
                                         const isHovered = hoveredTime === time;
                                         return (
-                                            <div key={time} className={`h-[42px] flex flex-col items-center justify-start relative group/time px-2 ${isHour ? 'bg-indigo-50/5' : ''}`}>
+                                            <div key={time} className={`min-h-[42px] h-[42px] shrink-0 flex flex-col items-center justify-start relative group/time px-2 ${isHour ? 'bg-indigo-50/5' : ''}`}>
                                                 {/* Alignment logic: label center sits on the top boundary of the slot */}
                                                 <div className={`
                                                     w-full h-7 rounded-lg flex items-center justify-center transition-all duration-300 transform translate-y-[-50%]
