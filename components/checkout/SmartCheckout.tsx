@@ -500,18 +500,17 @@ export default function SmartCheckout({ appointment, onClose }: SmartCheckoutPro
                                              <div className="grid grid-cols-2 gap-4">
                                                 <button 
                                                     onClick={() => addMethod('nakit', remaining)}
-                                                    className="py-4 bg-gray-900 text-white rounded-[1.5rem] font-black text-[10px] uppercase tracking-widest hover:bg-black transition-all shadow-xl shadow-gray-200"
+                                                    className="py-4 bg-gray-900 text-white rounded-[2rem] font-black text-[10px] uppercase tracking-widest hover:bg-black transition-all shadow-xl shadow-gray-200"
                                                 >
                                                     TAMAMINI TAHSİL ET
                                                 </button>
-                                                <button 
-                                                    disabled={true}
-                                                    className="py-4 bg-white border-2 border-indigo-600 text-indigo-600 rounded-[1.5rem] font-black text-[10px] uppercase tracking-widest opacity-50 cursor-not-allowed"
+                                                <div 
+                                                    className="py-4 bg-indigo-50 border-2 border-indigo-200 text-indigo-600 rounded-[2rem] font-black text-[10px] uppercase tracking-widest text-center flex items-center justify-center gap-2"
                                                 >
-                                                    AÇIK HESABA AKTARILDI
-                                                </button>
+                                                    <CheckCircle2 size={14} /> AÇIK HESEBA EKLENECEK
+                                                </div>
                                              </div>
-                                             <p className="mt-4 text-[9px] font-bold text-gray-400 text-center uppercase tracking-widest italic">Kalan tutar müşterinin açık hesabına (veresiye) borç olarak işlenecektir.</p>
+                                             <p className="mt-4 text-[9px] font-bold text-gray-400 text-center uppercase tracking-widest italic animate-pulse">Kalan tutar müşterinin açık hesabına (veresiye) borç olarak işlenecektir.</p>
                                          </div>
                                      )}
 
@@ -640,7 +639,7 @@ export default function SmartCheckout({ appointment, onClose }: SmartCheckoutPro
                                     <button 
                                         key={p.id} 
                                         onClick={() => addProduct(p.id)}
-                                        className="p-4 bg-white border border-gray-100 rounded-[1.5rem] hover:border-indigo-600 transition-all text-center group relative overflow-hidden"
+                                        className="p-4 bg-white border border-indigo-50 rounded-[2.2rem] hover:border-indigo-400 hover:shadow-xl hover:shadow-indigo-100/50 transition-all text-center group relative overflow-hidden"
                                     >
                                         <div className="w-10 h-10 bg-indigo-50 rounded-xl flex items-center justify-center mx-auto mb-2 group-hover:bg-indigo-600 group-hover:text-white transition-all transform group-hover:scale-110">
                                             <ShoppingBag size={18} />
@@ -654,57 +653,73 @@ export default function SmartCheckout({ appointment, onClose }: SmartCheckoutPro
 
 
                         {/* 5. Sadakat Puanı (Sayfa Sonu) */}
-                        <div className="bg-white p-5 rounded-[2rem] border border-gray-100 shadow-sm flex items-center justify-between group">
-                            <div className="flex items-center gap-3">
-                                <div className="w-10 h-10 bg-indigo-50 rounded-xl flex items-center justify-center text-indigo-600"><Sparkles size={20} /></div>
+                        <div className="bg-white p-6 rounded-[2.5rem] border border-indigo-50 shadow-sm flex items-center justify-between group transition-all hover:border-indigo-200">
+                            <div className="flex items-center gap-4">
+                                <div className="w-12 h-12 bg-indigo-50 rounded-2xl flex items-center justify-center text-indigo-600 shadow-inner group-hover:scale-110 transition-transform"><Sparkles size={24} /></div>
                                 <div>
-                                    <p className="text-[9px] font-black text-indigo-600 uppercase tracking-widest">LOYALTY POINTS</p>
-                                    <p className="text-lg font-black text-gray-900 tracking-tighter italic">{customer?.loyaltyPoints || 0}</p>
+                                    <p className="text-[10px] font-black text-indigo-600 uppercase tracking-[0.2em] mb-0.5">SADAKAT PUANLARI</p>
+                                    <p className="text-2xl font-black text-gray-900 tracking-tighter italic leading-none">{customer?.loyaltyPoints || 0} <span className="text-[10px] text-gray-400 not-italic ml-1 uppercase">PUAN</span></p>
                                 </div>
                             </div>
-                            <button 
-                                onClick={() => {
-                                    const obtainable = Math.min(customer?.loyaltyPoints || 0, Math.floor(remaining));
-                                    if(obtainable > 0) setPointsUsed(prev => prev + obtainable);
-                                }}
-                                disabled={!customer?.loyaltyPoints || remaining <= 0}
-                                className="px-5 py-2.5 bg-indigo-600 text-white rounded-xl font-black text-[9px] uppercase tracking-widest disabled:opacity-30"
-                            >
-                                Puan Kullan
-                            </button>
+                            <div className="flex gap-2">
+                               {pointsUsed > 0 && (
+                                   <button 
+                                       onClick={() => setPointsUsed(0)}
+                                       className="p-3 bg-red-50 text-red-500 rounded-xl hover:bg-red-500 hover:text-white transition-all shadow-sm"
+                                       title="Puanı Sıfırla"
+                                   >
+                                       <Trash2 size={16} />
+                                   </button>
+                               )}
+                               <button 
+                                   onClick={() => {
+                                       const obtainable = Math.min(customer?.loyaltyPoints || 0, Math.floor(remaining + pointsUsed));
+                                       if (pointsUsed > 0) {
+                                           setPointsUsed(0);
+                                       } else if(obtainable > 0) {
+                                           setPointsUsed(obtainable);
+                                       }
+                                   }}
+                                   disabled={!customer?.loyaltyPoints || (remaining <= 0 && pointsUsed === 0)}
+                                   className={`px-6 py-3 rounded-2xl font-black text-[10px] uppercase tracking-widest transition-all shadow-lg ${pointsUsed > 0 ? 'bg-amber-400 text-indigo-950 shadow-amber-200' : 'bg-indigo-600 text-white shadow-indigo-100 disabled:opacity-30'}`}
+                               >
+                                   {pointsUsed > 0 ? 'PUAN İPTAL' : 'PUAN KULLAN'}
+                               </button>
+                            </div>
                         </div>
 
                         {/* 6. Memnuniyet Bahşişi */}
-                        <div className="bg-indigo-950 p-8 rounded-[2rem] shadow-2xl relative overflow-hidden group">
-                            <div className="absolute inset-0 bg-gradient-to-br from-indigo-800 to-indigo-950 opacity-50" />
-                            <div className="relative flex flex-col md:flex-row items-center justify-between gap-8">
-                                <div className="flex items-center gap-6">
-                                    <div className="w-16 h-16 bg-white/10 rounded-[1.8rem] flex items-center justify-center text-white backdrop-blur-md border border-white/20">
-                                        <Sparkles size={32} className="text-amber-400 animate-pulse" />
+                        <div className="bg-[#0D0D2B] p-8 rounded-[3rem] shadow-2xl relative overflow-hidden group border border-white/5 animate-[fadeIn_0.6s_ease]">
+                            <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/10 to-transparent pointer-events-none" />
+                            <div className="relative flex flex-col md:flex-row items-center justify-between gap-10">
+                                <div className="flex items-center gap-6 self-start md:self-center">
+                                    <div className="w-20 h-20 bg-white/5 rounded-[2rem] flex items-center justify-center text-white backdrop-blur-md border border-white/10 shadow-inner group-hover:scale-105 transition-transform duration-500">
+                                        <Sparkles size={40} className="text-amber-400 animate-pulse" />
                                     </div>
                                     <div>
-                                        <h3 className="text-xl font-black text-white italic tracking-tighter uppercase mb-1">Memnuniyet Bahşişi</h3>
-                                        <p className="text-[10px] font-black text-indigo-300 uppercase tracking-widest">Doğrudan uzmana iletilecek 🎁</p>
+                                        <h3 className="text-2xl font-black text-white italic tracking-tighter uppercase mb-1">Memnuniyet Bahşişi</h3>
+                                        <p className="text-[10px] font-black text-indigo-300/60 uppercase tracking-[0.2em]">Doğrudan uzmana iletilecek 🎁</p>
                                     </div>
                                 </div>
-                                <div className="flex flex-col items-end gap-4">
-                                    <div className="flex gap-3">
+                                <div className="flex flex-col items-end gap-5 w-full md:w-auto">
+                                    <div className="flex flex-wrap md:flex-nowrap gap-3 justify-center md:justify-end w-full">
                                         {[100, 250, 500].map(amt => (
                                             <button 
                                                 key={amt} 
                                                 onClick={() => setTip(amt)}
-                                                className={`px-6 py-3 rounded-2xl text-[11px] font-black border-2 transition-all active:scale-95 ${tip === amt ? 'bg-amber-400 border-amber-400 text-indigo-950 shadow-xl' : 'bg-white/5 border-white/10 text-white hover:bg-white/10'}`}
+                                                className={`px-8 py-4 rounded-[1.5rem] text-xs font-black border-2 transition-all active:scale-95 flex-1 md:flex-none ${tip === amt ? 'bg-amber-400 border-amber-400 text-indigo-950 shadow-[0_10px_30px_rgba(251,191,36,0.3)]' : 'bg-white/5 border-white/10 text-white hover:bg-white/10 hover:border-white/20'}`}
                                             >
                                                 ₺{amt}
                                             </button>
                                         ))}
-                                        <div className="relative">
+                                        <div className="relative flex-1 md:flex-none">
+                                            <div className="absolute left-4 top-1/2 -translate-y-1/2 text-white/30 font-black text-xs">₺</div>
                                             <input 
                                                 type="number"
                                                 value={tip || ''}
                                                 onChange={e => setTip(Number(e.target.value))}
-                                                placeholder="₺Özel"
-                                                className="w-24 bg-white/5 border-2 border-white/10 rounded-2xl px-4 py-3 text-[11px] font-black text-white outline-none focus:border-amber-400 transition-all placeholder:text-white/30"
+                                                placeholder="Özel"
+                                                className={`w-full md:w-32 bg-white/5 border-2 rounded-[1.5rem] pl-8 pr-4 py-4 text-xs font-black text-white outline-none transition-all placeholder:text-white/20 ${[100,250,500].includes(tip) ? 'border-white/10' : tip > 0 ? 'border-amber-400 shadow-[0_10px_30px_rgba(251,191,36,0.3)]' : 'border-white/10 focus:border-white/30'}`}
                                             />
                                         </div>
                                     </div>
