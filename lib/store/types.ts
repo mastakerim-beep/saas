@@ -41,7 +41,10 @@ export type BankAccount = DB.BankAccount;
 export type ExpenseCategory = DB.ExpenseCategory;
 export type ReferralSource = DB.ReferralSource;
 export type ConsentFormTemplate = DB.ConsentFormTemplate;
-export type Product = DB.Product;
+export interface Product extends DB.Product {
+    lowStockThreshold?: number;
+    lastPurchasePrice?: number;
+}
 export type Service = DB.Service;
 export type AuditLog = DB.AuditLog;
 export type NotificationLog = DB.NotificationLog;
@@ -62,6 +65,13 @@ export type CustomerWallet = DB.CustomerWallet;
 export type WalletTransaction = DB.WalletTransaction;
 export type ConsultationBodyMap = DB.ConsultationBodyMap;
 export type InventoryUsageNorm = DB.InventoryUsageNorm;
+export interface InventoryCategory {
+    id: string;
+    businessId: string;
+    name: string;
+    color?: string;
+    createdAt?: string;
+}
 
 export type AppointmentStatus = 'pending' | 'completed' | 'no-show' | 'cancelled' | 'excused' | 'arrived' | 'unexcused-cancel';
 
@@ -155,6 +165,7 @@ export interface StoreState {
     walletTransactions: WalletTransaction[];
     bodyMaps: ConsultationBodyMap[];
     usageNorms: InventoryUsageNorm[];
+    inventoryCategories: InventoryCategory[];
     
     login: (email: string, pass: string) => Promise<AppUser | null>;
     logout: () => void;
@@ -221,6 +232,10 @@ export interface StoreState {
 
     updateProduct: (id: string, p: Partial<Product>) => void;
     removeProduct: (id: string) => void;
+    
+    addInventoryCategory: (c: Omit<InventoryCategory, 'id' | 'businessId' | 'createdAt'>) => Promise<void>;
+    updateInventoryCategory: (id: string, updates: Partial<InventoryCategory>) => Promise<void>;
+    removeInventoryCategory: (id: string, deleteProducts: boolean) => Promise<void>;
     
     deleteCustomer: (id: string) => Promise<boolean>;
     updateBusinessLicense: (id: string, max: number) => void;

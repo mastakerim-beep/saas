@@ -8,20 +8,31 @@ import {
     Settings2, ChevronRight, X, Plus, Beaker
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import ExportDropdown from "@/components/ui/ExportDropdown";
+import { InventoryCategory, Product, InventoryUsageNorm, Service } from "@/lib/store/types";
 
 export default function InventoryPage() {
   const { 
     inventory, addProduct, predictInventory, 
-    usageNorms, services, addUsageNorm, updateUsageNorm 
+    usageNorms, services, addUsageNorm, updateUsageNorm,
+    inventoryCategories, addInventoryCategory, removeInventoryCategory,
+    updateProduct, removeProduct
   } = useStore();
   const [aiInput, setAiInput] = useState('');
   const [selectedProduct, setSelectedProduct] = useState<any>(null);
+  const [selectedCategory, setSelectedCategory] = useState('Hepsi');
+  const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState<{ isOpen: boolean, categoryId: string | null }>({ isOpen: false, categoryId: null });
+  const [newCategoryName, setNewCategoryName] = useState('');
+  const [isEditingProduct, setIsEditingProduct] = useState(false);
+  const [editProductData, setEditProductData] = useState<any>(null);
+  const [showOnlyCritical, setShowOnlyCritical] = useState(false);
 
   const handleAiInput = (e: React.FormEvent) => {
     e.preventDefault();
     if (!aiInput) return;
     
-    // Simulate AI extraction logic
+    // AI extraction
     let name = "Yeni Ürün";
     let category = "Genel";
     let price = 0;
@@ -29,19 +40,22 @@ export default function InventoryPage() {
 
     const lower = aiInput.toLowerCase();
     
-    // Name extraction (example patterns)
+    // Pattern matching
     if (lower.includes("yağ")) name = "Hindistan Cevizi Yağı";
     if (lower.includes("jel")) name = "Temizleme Jeli";
     if (lower.includes("krem")) name = "Bakım Kremi";
     
-    // Category extraction
-    if (lower.includes("yağ") || lower.includes("jel")) category = "Tüketim";
-    
-    // Amount extraction
+    // Match with existing categories
+    const matchingCat = inventoryCategories.find(c => lower.includes(c.name.toLowerCase()));
+    if (matchingCat) {
+        category = matchingCat.name;
+    } else if (lower.includes("yağ") || lower.includes("jel")) {
+        category = "Tüketim";
+    }
+
     const amountMatch = lower.match(/(\d+(?:\.\d+)?)\s*(?:tl|lira|₺)/i);
     if (amountMatch) price = parseFloat(amountMatch[1]);
 
-    // Stock extraction
     const stockMatch = lower.match(/(\d+)\s*(?:adet|birim|litre|lt)/i);
     if (stockMatch) stock = parseInt(stockMatch[1]);
 
@@ -49,14 +63,51 @@ export default function InventoryPage() {
       name: name || aiInput.slice(0, 20),
       category,
       price: price || 0,
-      stock: stock || 1
+      stock: stock || 1,
+      lowStockThreshold: 5,
+      lastPurchasePrice: price
     });
     
     setAiInput('');
   };
 
+  const filteredInventory = useMemo(() => {
+    return inventory.filter((item: Product) => {
+        const matchesCategory = selectedCategory === 'Hepsi' || item.category === selectedCategory;
+        const matchesCritical = !showOnlyCritical || item.stock <= (item.lowStockThreshold || 5);
+        return matchesCategory && matchesCritical;
+    });
+  }, [inventory, selectedCategory, showOnlyCritical]);
+
   const predictions = useMemo(() => predictInventory(), [inventory, usageNorms]);
-  const totalValue = inventory.reduce((s, p) => s + (p.price * p.stock), 0);
+  const totalValue = inventory.reduce((s: number, p: Product) => s + (p.price * p.stock), 0);
+
+  const handleAddCategory = () => {
+    if (!newCategoryName) return;
+    addInventoryCategory({ name: newCategoryName });
+    setNewCategoryName('');
+  };
+
+  const handleDeleteCategory = (deleteProducts: boolean) => {
+    if (isDeleteDialogOpen.categoryId) {
+        removeInventoryCategory(isDeleteDialogOpen.categoryId, deleteProducts);
+        setIsDeleteDialogOpen({ isOpen: false, categoryId: null });
+        setSelectedCategory('Hepsi');
+    }
+  };
+
+  const openProductEdit = (product: any) => {
+    setEditProductData({ ...product });
+    setIsEditingProduct(true);
+  };
+
+  const handleUpdateProduct = () => {
+    if (editProductData) {
+        updateProduct(editProductData.id, editProductData);
+        setIsEditingProduct(false);
+        setEditProductData(null);
+    }
+  };
 
   return (
     <div className="p-10 max-w-7xl mx-auto space-y-12">
@@ -129,6 +180,64 @@ export default function InventoryPage() {
         </div>
       )}
 
+      {/* Categories & Filter Bar */}
+      <div className="flex flex-col md:flex-row items-center justify-between gap-6 px-4">
+        <div className="flex items-center gap-2 overflow-x-auto pb-2 no-scrollbar max-w-full">
+            <button 
+                onClick={() => setSelectedCategory('Hepsi')}
+                className={`px-6 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all ${selectedCategory === 'Hepsi' ? 'bg-indigo-600 text-white shadow-lg' : 'bg-white text-gray-400 border border-gray-100 hover:bg-gray-50'}`}
+            >
+                Hepsi
+            </button>
+            {inventoryCategories.map(cat => (
+                <button 
+                    key={cat.id}
+                    onClick={() => setSelectedCategory(cat.name)}
+                    className={`px-6 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all ${selectedCategory === cat.name ? 'bg-indigo-600 text-white shadow-lg' : 'bg-white text-gray-400 border border-gray-100 hover:bg-gray-50'}`}
+                >
+                    {cat.name}
+                </button>
+            ))}
+            <button 
+                onClick={() => setIsCategoryModalOpen(true)}
+                className="p-3 bg-indigo-50 text-indigo-600 rounded-2xl hover:bg-indigo-100 transition-all border border-indigo-100"
+            >
+                <Plus size={16} />
+            </button>
+        </div>
+
+        <div className="flex items-center gap-4">
+            <button 
+                onClick={() => setShowOnlyCritical(!showOnlyCritical)}
+                className={`px-6 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-2 ${showOnlyCritical ? 'bg-red-600 text-white shadow-lg' : 'bg-white text-red-500 border border-red-100 hover:bg-red-50'}`}
+            >
+                <AlertTriangle size={14} />
+                {showOnlyCritical ? 'KRİTİK STOKLAR GÖSTERİLİYOR' : 'KRİTİKLERİ FİLTRELE'}
+            </button>
+            <ExportDropdown 
+                data={filteredInventory}
+                filename="Aura_Stok_Raporu"
+                title="Stok ve Envanter Veri Raporu"
+                headers={["Ürün", "Kategori", "Maliyet", "Stok", "Durum"]}
+                excelMapping={(item) => ({
+                    "Ürün Adı": item.name,
+                    "Kategori": item.category,
+                    "Birim Maliyet": item.price,
+                    "Stok Adedi": item.stock,
+                    "Kritik Eşik": item.lowStockThreshold || 5,
+                    "Durum": item.stock <= (item.lowStockThreshold || 5) ? 'Kritik' : 'Normal'
+                })}
+                pdfMapping={(item: Product) => [
+                    item.name,
+                    item.category,
+                    `₺${item.price.toLocaleString('tr-TR')}`,
+                    item.stock.toString(),
+                    item.stock <= (item.lowStockThreshold || 5) ? 'KRITIK' : 'NORMAL'
+                ]}
+            />
+        </div>
+      </div>
+
       {/* AI Management Section */}
       <div className="bg-indigo-600 rounded-[4rem] p-12 text-white relative overflow-hidden group shadow-2xl shadow-indigo-600/30">
         <div className="absolute top-0 right-0 p-12 opacity-10 group-hover:rotate-12 transition-transform">
@@ -137,7 +246,7 @@ export default function InventoryPage() {
         <div className="relative z-10 max-w-2xl">
           <h2 className="text-3xl font-black italic tracking-tighter uppercase mb-4">Ürün Girişi</h2>
           <p className="text-indigo-100 text-sm font-bold mb-10 leading-relaxed uppercase tracking-tighter italic opacity-80">
-            Fatura veya ürün bilgilerini asistanınıza iletin. Aura Intelligence stok adetlerini, maliyetleri ve kategorileri otomatik ayrıştırır.
+            Fatura veya ürün bilgilerini asisanınıza iletin. Aura Intelligence stok adetlerini, maliyetleri ve kategorileri otomatik ayrıştırır.
           </p>
           <form onSubmit={handleAiInput} className="flex gap-4">
             <div className="flex-1 relative">
@@ -176,7 +285,7 @@ export default function InventoryPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50">
-              {inventory.map((item) => (
+              {filteredInventory.map((item) => (
                 <tr key={item.id} className="hover:bg-gray-50/50 transition-all group">
                   <td className="px-10 py-8">
                     <p className="font-black text-lg italic tracking-tighter text-gray-900 uppercase italic">{item.name}</p>
@@ -188,25 +297,44 @@ export default function InventoryPage() {
                     </span>
                   </td>
                   <td className="px-10 py-8">
-                    <p className="text-xl font-black italic text-gray-900 tracking-tighter italic">₺{item.price.toLocaleString('tr-TR')}</p>
+                    <div className="flex flex-col">
+                        <p className="text-xl font-black italic text-gray-900 tracking-tighter italic">₺{item.price.toLocaleString('tr-TR')}</p>
+                        <p className="text-[8px] font-bold text-gray-400 uppercase mt-1 italic">Son Alış: ₺{(item as any).lastPurchasePrice || item.price}</p>
+                    </div>
                   </td>
                   <td className="px-10 py-8 text-right">
                     <div className="flex flex-col items-end">
-                      <span className={`text-2xl font-black italic ${item.stock < 5 ? 'text-red-600' : 'text-indigo-600'}`}>
+                      <span className={`text-2xl font-black italic ${item.stock <= (item.lowStockThreshold || 5) ? 'text-red-600' : 'text-indigo-600'}`}>
                         {item.stock}
                       </span>
-                      <span className="text-[8px] font-black text-gray-400 uppercase tracking-widest">ADET / BİRİM</span>
+                      <span className="text-[8px] font-black text-gray-400 uppercase tracking-widest">
+                        {item.stock <= (item.lowStockThreshold || 5) ? 'KRİTİK SEVİYE!' : 'ADET / BİRİM'}
+                      </span>
                     </div>
                   </td>
                   <td className="px-10 py-8 text-right">
                     <div className="flex justify-end gap-3 opacity-0 group-hover:opacity-100 transition-opacity">
                       <button 
-                        onClick={() => setSelectedProduct(item)}
+                         onClick={() => {
+                            setSelectedProduct(item);
+                         }}
+                         title="Hizmet Normları"
+                         className="p-3 bg-white border border-gray-100 rounded-2xl text-gray-400 hover:text-indigo-600 hover:border-indigo-100 shadow-sm transition-all"
+                      >
+                        <Beaker className="w-5 h-5" />
+                      </button>
+                      <button 
+                        onClick={() => openProductEdit(item)}
+                        title="Düzenle"
                         className="p-3 bg-white border border-gray-100 rounded-2xl text-gray-400 hover:text-indigo-600 hover:border-indigo-100 shadow-sm transition-all"
                       >
                         <Settings2 className="w-5 h-5" />
                       </button>
-                      <button className="p-3 bg-white border border-gray-100 rounded-2xl text-gray-400 hover:text-red-600 hover:border-red-100 shadow-sm transition-all">
+                      <button 
+                        onClick={() => removeProduct(item.id)}
+                        title="Sil"
+                        className="p-3 bg-white border border-gray-100 rounded-2xl text-gray-400 hover:text-red-600 hover:border-red-100 shadow-sm transition-all"
+                      >
                         <Trash2 className="w-5 h-5" />
                       </button>
                     </div>
@@ -218,10 +346,110 @@ export default function InventoryPage() {
         </div>
       </div>
 
+      {/* Product Edit Modal */}
+      <AnimatePresence>
+        {isEditingProduct && editProductData && (
+          <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-6 text-left">
+            <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} className="bg-white rounded-[3.5rem] w-full max-w-xl overflow-hidden shadow-2xl">
+              <div className="p-10 border-b border-gray-50 flex justify-between items-center bg-[#FBFCFF]">
+                <h3 className="text-2xl font-black italic tracking-tighter uppercase italic text-gray-900">Ürün Düzenle</h3>
+                <button onClick={() => setIsEditingProduct(false)} className="p-3 hover:bg-gray-100 rounded-2xl text-gray-400 transition-all"><X className="w-6 h-6" /></button>
+              </div>
+              <div className="p-10 space-y-6">
+                <div className="grid grid-cols-2 gap-4">
+                    <div className="col-span-2">
+                        <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 block">ÜRÜN ADI</label>
+                        <input type="text" value={editProductData.name} onChange={e => setEditProductData({...editProductData, name: e.target.value})} className="w-full bg-gray-50 border border-gray-100 rounded-2xl px-6 py-4 font-black italic outline-none focus:border-indigo-600" />
+                    </div>
+                    <div>
+                        <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 block">KATEGORİ</label>
+                        <select value={editProductData.category} onChange={e => setEditProductData({...editProductData, category: e.target.value})} className="w-full bg-gray-50 border border-gray-100 rounded-2xl px-6 py-4 font-black outline-none focus:border-indigo-600">
+                            <option value="Genel">Genel</option>
+                            {inventoryCategories.map((c: InventoryCategory) => <option key={c.id} value={c.name}>{c.name}</option>)}
+                        </select>
+                    </div>
+                    <div>
+                        <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 block">KRİTİK EŞİK</label>
+                        <input type="number" value={editProductData.lowStockThreshold || 5} onChange={e => setEditProductData({...editProductData, lowStockThreshold: Number(e.target.value)})} className="w-full bg-gray-50 border border-gray-100 rounded-2xl px-6 py-4 font-black outline-none focus:border-indigo-600" />
+                    </div>
+                    <div>
+                        <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 block">BİRİM MALİYET (₺)</label>
+                        <input type="number" value={editProductData.price} onChange={e => setEditProductData({...editProductData, price: Number(e.target.value)})} className="w-full bg-gray-50 border border-gray-100 rounded-2xl px-6 py-4 font-black outline-none focus:border-indigo-600" />
+                    </div>
+                    <div>
+                        <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 block">STOK MİKTARI</label>
+                        <input type="number" value={editProductData.stock} onChange={e => setEditProductData({...editProductData, stock: Number(e.target.value)})} className="w-full bg-gray-50 border border-gray-100 rounded-2xl px-6 py-4 font-black outline-none focus:border-indigo-600" />
+                    </div>
+                </div>
+              </div>
+              <div className="p-10 bg-gray-50 border-t border-gray-100 flex gap-4">
+                <button onClick={() => setIsEditingProduct(false)} className="flex-1 py-4 bg-white text-gray-400 rounded-2xl text-[10px] font-black uppercase tracking-widest border border-gray-100">İptal</button>
+                <button onClick={handleUpdateProduct} className="flex-1 py-4 bg-indigo-600 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-lg shadow-indigo-600/20">Güncelle</button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Category Management Modal */}
+      <AnimatePresence>
+        {isCategoryModalOpen && (
+          <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-6 text-left">
+            <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} className="bg-white rounded-[3.5rem] w-full max-w-xl overflow-hidden shadow-2xl">
+              <div className="p-10 border-b border-gray-50 flex justify-between items-center bg-[#FBFCFF]">
+                <h3 className="text-2xl font-black italic tracking-tighter uppercase italic text-gray-900">Kategorileri Yönet</h3>
+                <button onClick={() => setIsCategoryModalOpen(false)} className="p-3 hover:bg-gray-100 rounded-2xl text-gray-400 transition-all"><X className="w-6 h-6" /></button>
+              </div>
+              <div className="p-10 space-y-6">
+                <div className="flex gap-4">
+                    <input type="text" value={newCategoryName} onChange={e => setNewCategoryName(e.target.value)} placeholder="Yeni Kategori Adı..." className="flex-1 bg-gray-50 border border-gray-100 rounded-2xl px-6 py-4 font-black transition-all outline-none focus:border-indigo-600" />
+                    <button onClick={handleAddCategory} className="px-8 py-4 bg-indigo-600 text-white rounded-2xl font-black uppercase text-[10px] tracking-widest shadow-lg shadow-indigo-600/20"><Plus size={18} /></button>
+                </div>
+                <div className="space-y-3">
+                    {inventoryCategories.map((cat: InventoryCategory) => (
+                        <div key={cat.id} className="flex items-center justify-between p-5 bg-gray-50 rounded-[1.5rem] border border-gray-100 group">
+                            <span className="font-black text-xs uppercase tracking-widest text-gray-900 italic">{cat.name}</span>
+                            <button 
+                                onClick={() => setIsDeleteDialogOpen({ isOpen: true, categoryId: cat.id })}
+                                className="p-2 text-gray-300 hover:text-red-500 transition-colors"
+                            >
+                                <Trash2 size={16} />
+                            </button>
+                        </div>
+                    ))}
+                    {inventoryCategories.length === 0 && <p className="text-center py-10 text-[10px] font-black text-gray-300 uppercase tracking-widest italic">Henüz kategori oluşturulmamış</p>}
+                </div>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Category Delete Confirmation Modal */}
+      <AnimatePresence>
+        {isDeleteDialogOpen.isOpen && (
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-md z-[60] flex items-center justify-center p-6 text-center">
+            <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} className="bg-white rounded-[4rem] p-12 max-w-md shadow-2xl">
+                <div className="w-20 h-20 bg-rose-50 text-rose-500 rounded-[2rem] flex items-center justify-center mx-auto mb-8 shadow-inner"><AlertTriangle size={40} /></div>
+                <h3 className="text-3xl font-black italic tracking-tighter uppercase mb-4 text-gray-900 leading-tight">Kategoriyi Siliyorsunuz</h3>
+                <p className="text-gray-400 font-bold mb-10 leading-relaxed uppercase text-[10px] tracking-widest">
+                    Bu kategori altındaki ürünler için ne yapmak istersiniz? <br/>
+                    <span className="text-rose-500 font-black">Dikkat: Silme işlemi geri alınamaz.</span>
+                </p>
+                <div className="flex flex-col gap-4">
+                    <button onClick={() => handleDeleteCategory(false)} className="w-full py-5 bg-indigo-600 text-white rounded-[1.5rem] font-black uppercase text-[10px] tracking-widest shadow-xl shadow-indigo-200">Ürünleri "Genel" Kategorisine Taşı</button>
+                    <button onClick={() => handleDeleteCategory(true)} className="w-full py-5 bg-rose-600 text-white rounded-[1.5rem] font-black uppercase text-[10px] tracking-widest shadow-xl shadow-rose-200">Tüm Ürünleri Kalıcı Olarak Sil</button>
+                    <button onClick={() => setIsDeleteDialogOpen({ isOpen: false, categoryId: null })} className="w-full py-5 bg-white text-gray-400 rounded-[1.5rem] font-black uppercase text-[10px] tracking-widest border border-gray-100">Vazgeç</button>
+                </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
       {/* Norms Management Modal */}
       <AnimatePresence>
         {selectedProduct && (
-          <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-6">
+          <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-6 text-left">
             <motion.div 
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
@@ -254,7 +482,7 @@ export default function InventoryPage() {
                     <Plus className="w-4 h-4 text-indigo-600 cursor-pointer" />
                   </div>
                   
-                  {usageNorms.filter(n => n.productId === selectedProduct.id).map(norm => (
+                  {usageNorms.filter((n: InventoryUsageNorm) => n.productId === selectedProduct.id).map((norm: InventoryUsageNorm) => (
                     <div key={norm.id} className="p-6 bg-white border border-gray-100 rounded-3xl flex items-center justify-between shadow-sm group">
                       <div className="flex items-center gap-4">
                         <div className="w-10 h-10 bg-gray-50 rounded-xl flex items-center justify-center text-indigo-300 group-hover:bg-indigo-600 group-hover:text-white transition-all">
@@ -262,7 +490,7 @@ export default function InventoryPage() {
                         </div>
                         <div>
                           <p className="text-[11px] font-black uppercase text-gray-900 italic tracking-tight">
-                            {services.find(s => s.id === norm.serviceId)?.name || 'Hizmet Tanımsız'}
+                            {services.find((s: Service) => s.id === norm.serviceId)?.name || 'Hizmet Tanımsız'}
                           </p>
                           <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest">
                             Seans Başı: {norm.amountPerService} Birim
@@ -273,7 +501,7 @@ export default function InventoryPage() {
                     </div>
                   ))}
 
-                  {usageNorms.filter(n => n.productId === selectedProduct.id).length === 0 && (
+                  {usageNorms.filter((n: InventoryUsageNorm) => n.productId === selectedProduct.id).length === 0 && (
                     <div className="py-20 text-center border-2 border-dashed border-gray-100 rounded-[3rem]">
                        <Beaker className="w-12 h-12 text-gray-100 mx-auto mb-4" />
                        <p className="text-[10px] font-black text-gray-300 uppercase tracking-widest">Henüz norm tanımlanmamış</p>
@@ -298,7 +526,7 @@ export default function InventoryPage() {
                       }}
                     >
                       <option value="">Yeni Hizmet Seç...</option>
-                      {services.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                      {services.map((s: Service) => <option key={s.id} value={s.id}>{s.name}</option>)}
                     </select>
                   </div>
                   <button onClick={() => setSelectedProduct(null)} className="py-4 bg-indigo-600 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-600/20">

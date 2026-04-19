@@ -8,7 +8,7 @@ import {
     ZReport, Quote, TenantModule, MarketingRule, 
     DynamicPricingRule, CustomerWallet, WalletTransaction, 
     ConsultationBodyMap, InventoryUsageNorm, CustomerMedia,
-    PackageDefinition, CommissionRule, AppointmentStatus, Staff, Payment
+    PackageDefinition, CommissionRule, AppointmentStatus, Staff, Payment, InventoryCategory
 } from './types';
 
 export interface DataContextType {
@@ -40,6 +40,7 @@ export interface DataContextType {
     packageDefinitions: PackageDefinition[];
     commissionRules: CommissionRule[];
     payments: Payment[];
+    inventoryCategories: InventoryCategory[];
 
     setAllAppointments: React.Dispatch<React.SetStateAction<Appointment[]>>;
     setAllBlocks: React.Dispatch<React.SetStateAction<CalendarBlock[]>>;
@@ -69,6 +70,7 @@ export interface DataContextType {
     setAllPackageDefinitions: React.Dispatch<React.SetStateAction<PackageDefinition[]>>;
     setAllCommissionRules: React.Dispatch<React.SetStateAction<CommissionRule[]>>;
     setAllPayments: React.Dispatch<React.SetStateAction<any[]>>;
+    setAllInventoryCategories: React.Dispatch<React.SetStateAction<InventoryCategory[]>>;
 
     // CRUD Methods
     addCustomer: (c: any) => Customer;
@@ -107,6 +109,9 @@ export interface DataContextType {
     updateRoom: (id: string, updates: Partial<Room>) => void;
     removeRoom: (id: string) => void;
     addRoom: (r: any) => void;
+    addInventoryCategory: (c: any) => Promise<void>;
+    updateInventoryCategory: (id: string, updates: Partial<InventoryCategory>) => Promise<void>;
+    removeInventoryCategory: (id: string, deleteProducts: boolean) => Promise<void>;
 }
 
 const DataContext = createContext<DataContextType | null>(null);
@@ -140,6 +145,7 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
     const [packageDefinitions, setAllPackageDefinitions] = useState<PackageDefinition[]>([]);
     const [commissionRules, setAllCommissionRules] = useState<CommissionRule[]>([]);
     const [allPayments, setAllPayments] = useState<any[]>([]);
+    const [inventoryCategories, setAllInventoryCategories] = useState<InventoryCategory[]>([]);
 
     const addCustomer = useCallback((c: any) => {
         const newCustomer = { ...c, id: crypto.randomUUID(), createdAt: new Date().toISOString() };
@@ -312,6 +318,27 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
         setAllRooms(prev => [...prev, newRoom]);
     }, []);
 
+    const addInventoryCategory = useCallback(async (c: any) => {
+        const newCat = { ...c, id: crypto.randomUUID(), createdAt: new Date().toISOString() };
+        setAllInventoryCategories(prev => [...prev, newCat]);
+    }, []);
+
+    const updateInventoryCategory = useCallback(async (id: string, updates: Partial<InventoryCategory>) => {
+        setAllInventoryCategories(prev => prev.map(c => c.id === id ? { ...c, ...updates } : c));
+    }, []);
+
+    const removeInventoryCategory = useCallback(async (id: string, deleteProducts: boolean) => {
+        const category = inventoryCategories.find(c => c.id === id);
+        if (!category) return;
+
+        if (deleteProducts) {
+            setAllInventory(prev => prev.filter(p => p.category !== category.name));
+        } else {
+            setAllInventory(prev => prev.map(p => p.category === category.name ? { ...p, category: 'Genel' } : p));
+        }
+        setAllInventoryCategories(prev => prev.filter(c => c.id !== id));
+    }, [inventoryCategories]);
+
     const contextValue: DataContextType = useMemo(() => ({
         appointments, blocks, customers, debts, inventory, rooms, services, packages,
         membershipPlans, customerMemberships, staffMembers, allLogs, allNotifs, aiInsights, expenses,
@@ -323,19 +350,21 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
         setAllStaff, setAllLogs, setAllNotifs, setAiInsights, setAllExpenses, setZReports, setAllQuotes,
         setTenantModules, setMarketingRules, setPricingRules, setWallets, setWalletTransactions,
         setBodyMaps, setUsageNorms, setAllCustomerMedia, setAllPackageDefinitions, setAllCommissionRules,
-        setAllPayments, addCustomerMedia, deleteCustomerMedia,
+        setAllPayments, setAllInventoryCategories, addCustomerMedia, deleteCustomerMedia,
         addCustomer, updateCustomer, deleteCustomer, addAppointment, updateAppointment, deleteAppointment,
         moveAppointment, updateAppointmentStatus, addBlock, updateBlock, removeBlock, addPackage,
         addMembershipPlan, assignMembership, addProduct, updateProduct, removeProduct, addExpense, addService,
         updateService, removeService, addPackageDefinition, updatePackageDefinition,
         removePackageDefinition, addQuote, updateQuote, deleteQuote, addBodyMap, updateBodyMap,
-        addUsageNorm, updateUsageNorm, updateRoom, removeRoom, addRoom
+        addUsageNorm, updateUsageNorm, updateRoom, removeRoom, addRoom,
+        addInventoryCategory, updateInventoryCategory, removeInventoryCategory,
+        inventoryCategories
     }), [
         appointments, blocks, customers, debts, inventory, rooms, services, packages,
         membershipPlans, customerMemberships, staffMembers, allLogs, allNotifs, aiInsights, expenses,
         zReports, quotes, tenantModules, marketingRules, pricingRules, wallets,
         allPayments, walletTransactions, bodyMaps, usageNorms, customerMedia,
-        packageDefinitions, commissionRules
+        packageDefinitions, commissionRules, inventoryCategories
     ]);
 
     return <DataContext.Provider value={contextValue}>{children}</DataContext.Provider>;

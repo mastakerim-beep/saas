@@ -32,6 +32,14 @@ export const REALISTIC_PRODUCTS = [
     { name: 'Hamam Seti (Peştamal & Kese)', category: 'Aksesuar', price: 650, stock: 10 },
 ];
 
+export const REALISTIC_INVENTORY_CATEGORIES = [
+    { name: 'Masaj Yağları', color: '#6366f1' },
+    { name: 'Cilt Ürünleri', color: '#ec4899' },
+    { name: 'Tüketim Malzemeleri', color: '#f59e0b' },
+    { name: 'Aksesuar', color: '#10b981' },
+    { name: 'Genel', color: '#64748b' },
+];
+
 export const seedCatalogData = async (store: any) => {
     // 1. Clear existing first (optional but safer for clean state)
     // Actually user said "donatalım" which usually means add.
@@ -46,6 +54,9 @@ export const seedCatalogData = async (store: any) => {
     }
     for (const i of REALISTIC_PRODUCTS) {
         results.push(store.addProduct(i));
+    }
+    for (const c of REALISTIC_INVENTORY_CATEGORIES) {
+        results.push(store.addInventoryCategory(c));
     }
     
     await Promise.all(results);
