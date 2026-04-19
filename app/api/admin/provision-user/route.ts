@@ -5,7 +5,7 @@ import { NextResponse } from 'next/server';
 
 export async function POST(req: Request) {
   try {
-    const { email, password, name, businessId } = await req.json();
+    const { email, password, name, businessId, isStaff } = await req.json();
 
     if (!email || !password || !businessId) {
       return NextResponse.json({ error: 'Eksik bilgi: Email, şifre ve işletme ID gerekli.' }, { status: 400 });
@@ -98,10 +98,27 @@ export async function POST(req: Request) {
         .limit(1)
         .single();
     
+    // 3.5. Eğer Personel ise staff Kaydı Oluştur
+    let staffId: string | null = null;
+    if (isStaff) {
+        staffId = crypto.randomUUID();
+        await serviceClient.from('staff').insert({
+            id: staffId,
+            business_id: businessId,
+            branch_id: branch?.id || null,
+            name: name || 'İşletme Sahibi',
+            role: 'Yönetici',
+            status: 'Aktif',
+            can_login_system: true,
+            is_visible_on_calendar: true
+        });
+    }
+
     const { error: dbError } = await serviceClient.from('app_users').upsert({
       id: authUserId,
       business_id: businessId,
       branch_id: branch?.id || null,
+      staff_id: staffId,
       role: 'Business_Owner',
       name: name || 'İşletme Sahibi',
       email: email,

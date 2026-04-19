@@ -302,12 +302,54 @@ const StoreOrchestrator = ({ children }: { children: ReactNode }) => {
 
         impersonatedBusinessId: auth.impersonatedBusinessId,
         isImpersonating: auth.isImpersonating,
-        setImpersonatedBusinessId: auth.setImpersonatedBusinessId,
+        setImpersonatedBusinessId: (id: string | null) => {
+            auth.setImpersonatedBusinessId(id);
+            if (id) {
+                const bizItem = biz.allBusinesses.find(b => b.id === id);
+                if (bizItem) {
+                    window.location.href = `/${bizItem.slug}/dashboard`;
+                }
+            } else {
+                window.location.href = '/admin';
+            }
+        },
         
         updateBusinessStatus: auth.updateBusinessStatus,
         deleteBusiness: auth.deleteBusiness,
         addBusiness: auth.addBusiness,
         provisionBusinessUser: auth.provisionBusinessUser,
+        renewSubscription: async (id: string, days: number, amount: number) => {
+            const bizItem = biz.allBusinesses.find(b => b.id === id);
+            if (!bizItem) return false;
+
+            const now = new Date();
+            const currentExpiry = bizItem.expiryDate ? new Date(bizItem.expiryDate) : now;
+            const startDate = currentExpiry > now ? currentExpiry : now;
+            const newExpiry = new Date(startDate.getTime() + (days * 24 * 60 * 60 * 1000));
+
+            const history = bizItem.subscriptionHistory || [];
+            const newEntry = {
+                date: now.toISOString(),
+                amount,
+                days,
+                oldExpiry: bizItem.expiryDate,
+                newExpiry: newExpiry.toISOString()
+            };
+
+            const updates = {
+                expiryDate: newExpiry.toISOString(),
+                paymentStatus: 'paid',
+                lastPaymentDate: now.toISOString(),
+                lastPaymentAmount: amount,
+                subscriptionHistory: [...history, newEntry]
+            };
+
+            const ok = await syncDb('businesses', 'update', updates, id);
+            if (ok) {
+                biz.setAllBusinesses(prev => prev.map(b => b.id === id ? { ...b, ...updates } : b));
+            }
+            return ok;
+        },
         setCurrentBranch: biz.setCurrentBranch,
 
         currentStaff: auth.currentUser ? data.staffMembers.find(s => s.id === auth.currentUser?.staffId || s.name === auth.currentUser?.name) : undefined,

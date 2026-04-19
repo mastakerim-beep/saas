@@ -38,10 +38,17 @@ export default function SuperAdminPage() {
     const [newBiz, setNewBiz] = useState({
         name: '',
         slug: '',
+        mrr: 1500,
+        expiryDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+        taxId: '',
+        taxOffice: '',
+        billingAddress: '',
         email: '',
         password: '',
-        seatCount: 5
+        seatCount: 5,
+        isStaff: true
     });
+    const [modalStep, setModalStep] = useState(1);
 
     const handleRefresh = async () => {
         setIsRefreshing(true);
@@ -52,30 +59,45 @@ export default function SuperAdminPage() {
 
     const handleCreateBusiness = async () => {
         if (!newBiz.name || !newBiz.slug || !newBiz.email || !newBiz.password) {
-            return alert("Lütfen tüm alanları doldurun.");
+            return alert("Lütfen gerekli alanları doldurun.");
         }
 
         if (isCreating) return;
         setIsCreating(true);
 
         try {
-            const biz = await addBusiness({
+            const bizData = {
                 name: newBiz.name,
                 slug: newBiz.slug.toLowerCase(),
                 maxUsers: newBiz.seatCount,
-                ownerName: "İşletme Sahibi"
-            });
+                ownerName: newBiz.name + " Sahibi",
+                mrr: newBiz.mrr,
+                expiryDate: newBiz.expiryDate,
+                taxId: newBiz.taxId,
+                taxOffice: newBiz.taxOffice,
+                billingAddress: newBiz.billingAddress
+            };
+
+            const biz = await addBusiness(bizData);
 
             if (biz) {
                 await provisionBusinessUser({
                     email: newBiz.email,
                     password: newBiz.password,
                     name: "İşletme Sahibi",
-                    businessId: biz.id
-                });
-                alert("İşletme ve yönetici hesabı başarıyla oluşturuldu!");
+                    businessId: biz.id,
+                    isStaff: newBiz.isStaff
+                } as any);
+                
+                alert("İşletme, ödeme planı ve yönetici hesabı başarıyla kuruldu!");
                 setShowCreateModal(false);
-                setNewBiz({ name: '', slug: '', email: '', password: '', seatCount: 5 });
+                setModalStep(1);
+                setNewBiz({
+                    name: '', slug: '', mrr: 1500, 
+                    expiryDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+                    taxId: '', taxOffice: '', billingAddress: '',
+                    email: '', password: '', seatCount: 5, isStaff: true
+                });
                 await fetchData(undefined, undefined, true);
             }
         } catch (err: any) {
@@ -445,7 +467,6 @@ export default function SuperAdminPage() {
                 </div>
             </div>
 
-            {/* Create Business Modal */}
             <AnimatePresence>
                 {showCreateModal && (
                     <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 backdrop-blur-md bg-slate-900/40 text-left">
@@ -453,80 +474,95 @@ export default function SuperAdminPage() {
                             initial={{ scale: 0.9, opacity: 0 }}
                             animate={{ scale: 1, opacity: 1 }}
                             exit={{ scale: 0.9, opacity: 0 }}
-                            className="bg-white border border-indigo-100 rounded-[2.5rem] w-full max-w-lg overflow-hidden shadow-2xl"
+                            className="bg-white border border-indigo-100 rounded-[2.5rem] w-full max-w-xl overflow-hidden shadow-2xl"
                         >
                             <div className="p-10">
                                 <div className="flex justify-between items-center mb-10">
-                                    <div>
-                                        <h2 className="text-slate-900 text-2xl font-black italic uppercase tracking-tighter">Yeni İşletme</h2>
-                                        <p className="text-[10px] font-bold text-indigo-600 uppercase tracking-widest mt-1">Sistem üzerinde yeni bir node oluştur</p>
+                                    <div className="flex items-center gap-4">
+                                        <div className="w-12 h-12 bg-indigo-600 rounded-2xl flex items-center justify-center text-white font-black italic">
+                                            {modalStep}
+                                        </div>
+                                        <div>
+                                            <h2 className="text-slate-900 text-2xl font-black italic uppercase tracking-tighter">İşletme Kurulumu</h2>
+                                            <p className="text-[10px] font-bold text-indigo-600 uppercase tracking-widest mt-1">Aşama {modalStep} / 3</p>
+                                        </div>
                                     </div>
                                     <button onClick={() => setShowCreateModal(false)} className="w-10 h-10 bg-slate-50 rounded-full flex items-center justify-center text-slate-400 hover:bg-slate-100 transition-all">
                                         <X size={20} />
                                     </button>
                                 </div>
 
-                                <div className="space-y-6">
-                                    <div className="space-y-2">
-                                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">İşletme Adı</label>
-                                        <input 
-                                            value={newBiz.name}
-                                            onChange={e => setNewBiz({...newBiz, name: e.target.value})}
-                                            placeholder="Örn: Aura Spa Merkezi"
-                                            className="w-full bg-slate-50 border border-indigo-50 rounded-2xl py-4 px-6 text-slate-900 font-bold outline-none focus:border-indigo-500 transition-all shadow-inner"
-                                        />
-                                    </div>
+                                <div className="min-h-[350px]">
+                                    {modalStep === 1 && (
+                                        <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="space-y-6">
+                                            <div className="space-y-2">
+                                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">İşletme Adı</label>
+                                                <input value={newBiz.name} onChange={e => setNewBiz({...newBiz, name: e.target.value})} placeholder="Örn: Aura Spa Merkezi" className="w-full bg-slate-50 border border-indigo-50 rounded-2xl py-4 px-6 text-slate-900 font-bold outline-none focus:border-indigo-500 transition-all shadow-inner" />
+                                            </div>
+                                            <div className="grid grid-cols-2 gap-4">
+                                                <div className="space-y-2">
+                                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Slug (URL)</label>
+                                                    <input value={newBiz.slug} onChange={e => setNewBiz({...newBiz, slug: e.target.value})} placeholder="aura-spa" className="w-full bg-slate-50 border border-indigo-50 rounded-2xl py-4 px-6 text-slate-900 font-bold outline-none focus:border-indigo-500 transition-all shadow-inner" />
+                                                </div>
+                                                <div className="space-y-2">
+                                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Koltuk Sayısı</label>
+                                                    <input type="number" value={newBiz.seatCount} onChange={e => setNewBiz({...newBiz, seatCount: parseInt(e.target.value)})} className="w-full bg-slate-50 border border-indigo-50 rounded-2xl py-4 px-6 text-slate-900 font-bold outline-none focus:border-indigo-500 transition-all shadow-inner" />
+                                                </div>
+                                            </div>
+                                            <button onClick={() => setModalStep(2)} className="w-full py-5 bg-slate-900 text-white rounded-2xl font-black text-[11px] uppercase tracking-widest mt-8">SONRAKİ ADIM: CARİ & FİNANS</button>
+                                        </motion.div>
+                                    )}
 
-                                    <div className="grid grid-cols-2 gap-4">
-                                        <div className="space-y-2">
-                                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Slug (URL)</label>
-                                            <input 
-                                                value={newBiz.slug}
-                                                onChange={e => setNewBiz({...newBiz, slug: e.target.value})}
-                                                placeholder="aura-spa"
-                                                className="w-full bg-slate-50 border border-indigo-50 rounded-2xl py-4 px-6 text-slate-900 font-bold outline-none focus:border-indigo-500 transition-all shadow-inner"
-                                            />
-                                        </div>
-                                        <div className="space-y-2">
-                                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Koltuk (Kullanıcı)</label>
-                                            <input 
-                                                type="number"
-                                                value={newBiz.seatCount}
-                                                onChange={e => setNewBiz({...newBiz, seatCount: parseInt(e.target.value)})}
-                                                className="w-full bg-slate-50 border border-indigo-50 rounded-2xl py-4 px-6 text-slate-900 font-bold outline-none focus:border-indigo-500 transition-all shadow-inner"
-                                            />
-                                        </div>
-                                    </div>
+                                    {modalStep === 2 && (
+                                        <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="space-y-6">
+                                            <div className="grid grid-cols-2 gap-4">
+                                                <div className="space-y-2">
+                                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Vergi Numarası</label>
+                                                    <input value={newBiz.taxId} onChange={e => setNewBiz({...newBiz, taxId: e.target.value})} placeholder="1234567890" className="w-full bg-slate-50 border border-indigo-50 rounded-2xl py-4 px-6 text-slate-900 font-bold outline-none focus:border-indigo-500 transition-all shadow-inner" />
+                                                </div>
+                                                <div className="space-y-2">
+                                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Vergi Dairesi</label>
+                                                    <input value={newBiz.taxOffice} onChange={e => setNewBiz({...newBiz, taxOffice: e.target.value})} placeholder="Ümraniye V.D." className="w-full bg-slate-50 border border-indigo-50 rounded-2xl py-4 px-6 text-slate-900 font-bold outline-none focus:border-indigo-500 transition-all shadow-inner" />
+                                                </div>
+                                            </div>
+                                            <div className="space-y-2">
+                                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Ücret (₺) / Aylık</label>
+                                                <input type="number" value={newBiz.mrr} onChange={e => setNewBiz({...newBiz, mrr: parseFloat(e.target.value)})} className="w-full bg-slate-50 border border-indigo-50 rounded-2xl py-4 px-6 text-slate-900 font-bold outline-none focus:border-indigo-500 transition-all shadow-inner" />
+                                            </div>
+                                            <div className="space-y-2">
+                                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Abonelik Bitiş Tarihi</label>
+                                                <input type="date" value={newBiz.expiryDate} onChange={e => setNewBiz({...newBiz, expiryDate: e.target.value})} className="w-full bg-slate-50 border border-indigo-50 rounded-2xl py-4 px-6 text-slate-900 font-bold outline-none focus:border-indigo-500 transition-all shadow-inner" />
+                                            </div>
+                                            <div className="flex gap-4 mt-8">
+                                                <button onClick={() => setModalStep(1)} className="flex-1 py-5 bg-slate-50 text-slate-400 rounded-2xl font-black text-[11px] uppercase tracking-widest">GERİ</button>
+                                                <button onClick={() => setModalStep(3)} className="flex-[2] py-5 bg-slate-900 text-white rounded-2xl font-black text-[11px] uppercase tracking-widest">SONRAKİ: YÖNETİCİ HESABI</button>
+                                            </div>
+                                        </motion.div>
+                                    )}
 
-                                    <div className="space-y-2">
-                                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Sahip E-posta</label>
-                                        <input 
-                                            value={newBiz.email}
-                                            onChange={e => setNewBiz({...newBiz, email: e.target.value})}
-                                            placeholder="admin@isletme.com"
-                                            className="w-full bg-slate-50 border border-indigo-50 rounded-2xl py-4 px-6 text-slate-900 font-bold outline-none focus:border-indigo-500 transition-all shadow-inner"
-                                        />
-                                    </div>
-
-                                    <div className="space-y-2">
-                                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Geçici Şifre</label>
-                                        <input 
-                                            type="password"
-                                            value={newBiz.password}
-                                            onChange={e => setNewBiz({...newBiz, password: e.target.value})}
-                                            placeholder="••••••••"
-                                            className="w-full bg-slate-50 border border-indigo-50 rounded-2xl py-4 px-6 text-slate-900 font-bold outline-none focus:border-indigo-500 transition-all shadow-inner"
-                                        />
-                                    </div>
+                                    {modalStep === 3 && (
+                                        <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="space-y-6">
+                                            <div className="space-y-2">
+                                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">E-posta</label>
+                                                <input value={newBiz.email} onChange={e => setNewBiz({...newBiz, email: e.target.value})} placeholder="admin@isletme.com" className="w-full bg-slate-50 border border-indigo-50 rounded-2xl py-4 px-6 text-slate-900 font-bold outline-none focus:border-indigo-500 transition-all shadow-inner" />
+                                            </div>
+                                            <div className="space-y-2">
+                                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Geçici Şifre</label>
+                                                <input type="password" value={newBiz.password} onChange={e => setNewBiz({...newBiz, password: e.target.value})} placeholder="••••••••" className="w-full bg-slate-50 border border-indigo-50 rounded-2xl py-4 px-6 text-slate-900 font-bold outline-none focus:border-indigo-500 transition-all shadow-inner" />
+                                            </div>
+                                            <div className="flex items-center gap-4 bg-indigo-50 p-6 rounded-2xl border border-indigo-100">
+                                                <input type="checkbox" id="isStaff" checked={newBiz.isStaff} onChange={e => setNewBiz({...newBiz, isStaff: e.target.checked})} className="w-5 h-5 accent-indigo-600" />
+                                                <label htmlFor="isStaff" className="text-xs font-bold text-slate-700 leading-tight">İşletme sahibi aynı zamanda bir personel koltuğu kaplasın (Aktif Uzman olarak çalışacak)</label>
+                                            </div>
+                                            <div className="flex gap-4 mt-8">
+                                                <button onClick={() => setModalStep(2)} className="flex-1 py-5 bg-slate-50 text-slate-400 rounded-2xl font-black text-[11px] uppercase tracking-widest">GERİ</button>
+                                                <button onClick={handleCreateBusiness} disabled={isCreating} className="flex-[2] py-5 bg-indigo-600 text-white rounded-2xl font-black text-[11px] uppercase tracking-widest shadow-xl shadow-indigo-600/30">
+                                                    {isCreating ? 'İŞLENİYOR...' : 'SİSTEMİ KUR VE TAMAMLA ✓'}
+                                                </button>
+                                            </div>
+                                        </motion.div>
+                                    )}
                                 </div>
-
-                                <button 
-                                    onClick={handleCreateBusiness}
-                                    disabled={isCreating}
-                                    className="w-full mt-10 py-5 bg-indigo-600 text-white rounded-[1.8rem] font-black text-[11px] uppercase tracking-[0.2em] shadow-xl shadow-indigo-600/40 hover:bg-indigo-700 active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-                                >
-                                    {isCreating ? 'İŞLENİYOR...' : 'İŞLETMEYİ OLUŞTUR ✓'}
-                                </button>
                             </div>
                         </motion.div>
                     </div>
@@ -676,14 +712,40 @@ function MetricBox({ label, value, trend }: any) {
 }
 
 function TenantCard({ biz, onImpersonate, onDelete, onToggleStatus, isLoading }: any) {
-    const isActive = biz.status === 'active';
+    const { renewSubscription } = useStore();
+    const isActive = biz.status === 'active' || biz.status === 'Aktif';
+    
+    // Day calculation
+    const daysLeft = useMemo(() => {
+        if (!biz.expiryDate) return null;
+        const diff = new Date(biz.expiryDate).getTime() - Date.now();
+        return Math.ceil(diff / (1000 * 60 * 60 * 24));
+    }, [biz.expiryDate]);
+
+    const isNearExpiry = daysLeft !== null && daysLeft < 5;
+    const isOverdue = daysLeft !== null && daysLeft < 0;
+
+    const handleRenew = async () => {
+        const days = prompt("Kaç gün eklemek istersiniz?", "30");
+        const amount = prompt("Tahsilat tutarı (TL)?", "1500");
+        if (days && amount) {
+            const ok = await renewSubscription(biz.id, parseInt(days), parseFloat(amount));
+            if (ok) alert("Abonelik başarıyla uzatıldı!");
+        }
+    };
+
     return (
-        <div className="bg-white border border-indigo-100 rounded-[2.5rem] p-8 group hover:border-indigo-500/50 transition-all flex flex-col justify-between h-[360px] shadow-sm hover:shadow-xl relative overflow-hidden">
+        <div className="bg-white border border-indigo-100 rounded-[2.5rem] p-8 group hover:border-indigo-500/50 transition-all flex flex-col justify-between h-[420px] shadow-sm hover:shadow-xl relative overflow-hidden">
             {isLoading && (
                 <div className="absolute inset-0 bg-white/60 backdrop-blur-[2px] z-20 flex items-center justify-center">
                     <RefreshCw className="animate-spin text-indigo-600" size={24} />
                 </div>
             )}
+            
+            {biz.isManualOverride && (
+                <div className="absolute top-4 right-20 bg-emerald-500 text-white text-[7px] font-black px-2 py-1 rounded-md rotate-12 shadow-lg">SOVEREIGN OVERRIDE</div>
+            )}
+
             <div>
                 <div className="flex justify-between items-start mb-6">
                     <div className="w-12 h-12 bg-indigo-50 rounded-2xl flex items-center justify-center text-indigo-600 text-xl font-black italic">
@@ -705,27 +767,49 @@ function TenantCard({ biz, onImpersonate, onDelete, onToggleStatus, isLoading }:
                         </button>
                     </div>
                 </div>
+                
                 <h4 className="text-slate-900 text-xl font-black italic tracking-tighter line-clamp-1">{biz.name}</h4>
                 <p className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em] mb-4">/{biz.slug}</p>
-                <div className="flex gap-4">
+                
+                <div className="grid grid-cols-2 gap-4 mb-4">
                      <div className="flex flex-col">
-                         <span className="text-[8px] font-black text-slate-300 uppercase">PLAN</span>
-                         <span className="text-[10px] font-black text-indigo-600 uppercase">{biz.plan || 'Enterprise'}</span>
+                         <span className="text-[8px] font-black text-slate-300 uppercase">VERGİ NO</span>
+                         <span className="text-[10px] font-black text-slate-900 uppercase truncate">{biz.taxId || '-'}</span>
                      </div>
                      <div className="flex flex-col">
-                         <span className="text-[8px] font-black text-slate-300 uppercase">ÜYELER</span>
-                         <span className="text-[10px] font-black text-slate-900 uppercase">{biz.maxUsers || 5} Koltuk</span>
+                         <span className="text-[8px] font-black text-slate-300 uppercase">KOLTUK</span>
+                         <span className="text-[10px] font-black text-slate-900 uppercase">{biz.maxUsers || 5} Node</span>
                      </div>
+                </div>
+
+                <div className={`p-4 rounded-2xl border ${isOverdue ? 'bg-rose-50 border-rose-100' : isNearExpiry ? 'bg-amber-50 border-amber-100' : 'bg-slate-50 border-slate-100'}`}>
+                    <div className="flex justify-between items-center mb-1">
+                        <span className="text-[8px] font-black text-slate-400 uppercase">KALAN SÜRE</span>
+                        <span className={`text-[9px] font-black ${isOverdue ? 'text-rose-600' : isNearExpiry ? 'text-amber-600' : 'text-indigo-600'}`}>
+                            {daysLeft !== null ? (isOverdue ? `${Math.abs(daysLeft)} GÜN GEÇTİ` : `${daysLeft} GÜN`) : 'BELİRSİZ'}
+                        </span>
+                    </div>
+                    <div className="h-1 bg-white rounded-full overflow-hidden">
+                        <motion.div initial={{ width: 0 }} animate={{ width: daysLeft !== null ? `${Math.max(0, Math.min(100, (daysLeft / 30) * 100))}%` : '0%' }} className={`h-full ${isOverdue ? 'bg-rose-500' : isNearExpiry ? 'bg-amber-500' : 'bg-indigo-600'}`} />
+                    </div>
                 </div>
             </div>
             
             <div className="space-y-2 mt-6">
-                <button 
-                    onClick={onImpersonate}
-                    className="w-full py-4 bg-slate-900 text-white rounded-2xl font-black text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-indigo-600 transition-all shadow-xl shadow-slate-900/20"
-                >
-                    <Zap size={14} className="fill-current" /> YÖNETİCİ OLARAK GİR
-                </button>
+                <div className="flex gap-2">
+                    <button 
+                        onClick={onImpersonate}
+                        className="flex-1 py-4 bg-slate-900 text-white rounded-2xl font-black text-[9px] uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-indigo-600 transition-all"
+                    >
+                        <Zap size={12} className="fill-current" /> GOD MODE
+                    </button>
+                    <button 
+                        onClick={handleRenew}
+                        className="flex-1 py-4 bg-white border border-slate-200 text-slate-900 rounded-2xl font-black text-[9px] uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-slate-50 transition-all"
+                    >
+                        <RefreshCw size={12} /> YENİLE
+                    </button>
+                </div>
             </div>
         </div>
     );

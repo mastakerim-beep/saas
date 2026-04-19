@@ -95,6 +95,14 @@ export interface Business {
     calendarEndHour: number;
     daily_target: number;
     monthly_target: number;
+    taxId?: string;
+    taxOffice?: string;
+    billingAddress?: string;
+    paymentStatus?: string;
+    lastPaymentDate?: string;
+    lastPaymentAmount?: number;
+    isManualOverride?: boolean;
+    subscriptionHistory?: any[];
     createdAt?: string;
 }
 

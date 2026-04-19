@@ -110,6 +110,7 @@ export interface StoreState {
     updateBusinessStatus: (id: string, status: Business['status']) => void;
     deleteBusiness: (id: string) => void;
     addBusiness: (b: Partial<Business> & { name: string; slug: string }) => Promise<Business | null>;
+    renewSubscription: (id: string, days: number, amount: number) => Promise<boolean>;
     provisionBusinessUser: (data: { email: string; password: string; name: string; businessId: string }) => Promise<{ success: boolean; error?: string }>;
     setCurrentBranch: (branch: Branch | null) => void;
     

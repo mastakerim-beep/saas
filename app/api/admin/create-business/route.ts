@@ -5,7 +5,10 @@ import { NextResponse } from 'next/server';
 
 export async function POST(req: Request) {
   try {
-    const { name, ownerName, slug, plan, expiryDate, maxUsers, mrr } = await req.json();
+    const { 
+        name, ownerName, slug, plan, expiryDate, 
+        maxUsers, mrr, taxId, taxOffice, billingAddress 
+    } = await req.json();
 
     if (!name || !slug) {
       return NextResponse.json({ error: 'Eksik bilgi: İsim ve URL (slug) gerekli.' }, { status: 400 });
@@ -63,7 +66,19 @@ export async function POST(req: Request) {
             max_users: maxUsers || 5,
             max_branches: maxUsers && maxUsers > 10 ? 3 : 1, // Örnek otomatik limit mantığı
             mrr: mrr || 0,
-            status: 'Aktif'
+            status: 'Aktif',
+            tax_id: taxId,
+            tax_office: taxOffice,
+            billing_address: billingAddress,
+            payment_status: 'paid',
+            last_payment_date: new Date().toISOString(),
+            last_payment_amount: mrr || 0,
+            subscription_history: [{
+                date: new Date().toISOString(),
+                event: 'Kurulum (SaaS Start)',
+                amount: mrr || 0,
+                plan: plan || 'Basic'
+            }]
         })
         .select()
         .single();

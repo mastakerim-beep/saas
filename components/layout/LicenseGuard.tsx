@@ -1,13 +1,29 @@
-"use client";
 import { useStore } from "@/lib/store";
+import React, { useMemo } from 'react';
 import { ShieldAlert, LogOut, RefreshCw } from "lucide-react";
 import { motion } from "framer-motion";
 
 export default function LicenseGuard({ children }: { children: React.ReactNode }) {
-    const { isLicenseExpired, currentBusiness, logout, currentUser } = useStore();
+    const { currentBusiness, logout } = useStore();
 
-    const isSuspended = currentBusiness?.status === 'Askıya Alındı';
-    const isBlocked = isLicenseExpired || isSuspended;
+    const { isSuspended, isExpired, isBlocked } = useMemo(() => {
+        if (!currentBusiness) return { isSuspended: false, isExpired: false, isBlocked: false };
+        
+        const manualOverride = currentBusiness.isManualOverride;
+        const suspended = currentBusiness.status === 'Askıya Alındı' || currentBusiness.status === 'inactive' || currentBusiness.status === 'Pasif';
+        
+        let expired = false;
+        if (currentBusiness.expiryDate) {
+            const expiry = new Date(currentBusiness.expiryDate);
+            const now = new Date();
+            const gracePeriodDate = new Date(expiry.getTime() + (3 * 24 * 60 * 60 * 1000));
+            expired = now > gracePeriodDate;
+        }
+
+        const blocked = !manualOverride && (suspended || expired);
+
+        return { isSuspended: suspended, isExpired: expired, isBlocked: blocked };
+    }, [currentBusiness]);
 
     if (!isBlocked) return <>{children}</>;
 
