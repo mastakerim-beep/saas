@@ -16,8 +16,9 @@ import {
     PieChart, Pie, Cell 
 } from 'recharts';
 import { motion, AnimatePresence } from 'framer-motion';
+import { MigrationWizard } from '@/components/system/migration/MigrationWizard';
 
-type AdminTab = 'monitor' | 'tenants' | 'notifications' | 'announcements' | 'system';
+type AdminTab = 'monitor' | 'tenants' | 'notifications' | 'announcements' | 'system' | 'migration';
 
 export default function SuperAdminPage() {
     const { 
@@ -260,6 +261,7 @@ export default function SuperAdminPage() {
                     <NavBtn id="tenants" active={activeTab} onClick={setActiveTab} icon={Globe} label="İşletmeler" badge={allBusinesses.length.toString()} />
                     <NavBtn id="notifications" active={activeTab} onClick={setActiveTab} icon={Bell} label="İç Akış" badge={stats.pendingNotifs.toString()} />
                     <NavBtn id="announcements" active={activeTab} onClick={setActiveTab} icon={Bell} label="Yayın Merkezi" />
+                    <NavBtn id="migration" active={activeTab} onClick={setActiveTab} icon={Database} label="Veri Aktarımı" />
                     <NavBtn id="system" active={activeTab} onClick={setActiveTab} icon={Terminal} label="Sistem Terminali" />
                     
                     <button 
@@ -491,6 +493,12 @@ export default function SuperAdminPage() {
                                         <input className="bg-transparent border-none outline-none text-white w-full caret-indigo-500" autoFocus />
                                     </div>
                                 </div>
+                            </motion.div>
+                        )}
+
+                        {activeTab === 'migration' && (
+                            <motion.div key="migration" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="space-y-6">
+                                <MigrationWizard />
                             </motion.div>
                         )}
                     </AnimatePresence>

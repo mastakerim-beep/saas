@@ -6,13 +6,14 @@ import {
     MapPin, FileText, Share2, Settings as SettingsIcon,
     Plus, Search, Edit2, Trash2, Check, X,
     ChevronRight, ChevronUp, ChevronDown, Shield, Smartphone, Calendar, Star,
-    ExternalLink, Info, AlertCircle, Save, Layers, Zap, Clock, Building2, Megaphone
+    ExternalLink, Info, AlertCircle, Save, Layers, Zap, Clock, Building2, Megaphone, Database
 } from "lucide-react";
 import { useState, useMemo, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import CatalogSettingsView from "@/components/system/CatalogSettingsView";
 import AnnouncementsSettingsView from "@/components/system/AnnouncementsSettingsView";
 import PinGate from "@/components/security/PinGate";
+import { MigrationWizard } from "@/components/system/migration/MigrationWizard";
 
 const DAYS = ['Pazar', 'Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma', 'Cumartesi'];
 
@@ -29,7 +30,8 @@ type SettingsTab =
     | 'security'
     | 'announcements'
     | 'channels'
-    | 'business';
+    | 'business'
+    | 'migration';
 
 export default function SystemSettingsPage() {
     const { 
@@ -71,6 +73,7 @@ export default function SystemSettingsPage() {
         ]},
         { group: "DİĞER", items: [
             { id: 'announcements', label: 'Duyurular', icon: Megaphone },
+            { id: 'migration', label: 'Veri Aktarımı (Migration)', icon: Database },
             { id: 'consent_forms', label: 'Onam Formları', icon: FileText },
             { id: 'referral_sources', label: 'Referans Kaynakları', icon: Share2 },
         ]}
@@ -294,6 +297,9 @@ export default function SystemSettingsPage() {
                             )}
                             { activeTab === 'security' && (
                                 <SecuritySettingsView />
+                            )}
+                            { activeTab === 'migration' && (
+                                <MigrationWizard />
                             )}
                         </motion.div>
                     </AnimatePresence>
