@@ -306,13 +306,13 @@ export default function CalendarPage() {
                         {/* ── SCROLL EDİLEBİLİR GRID ── */}
                         <div
                             id="grid-scroll"
-                            className="flex-1 overflow-x-auto overflow-y-auto no-scrollbar relative bg-white"
+                            className="flex-1 overflow-x-auto overflow-y-auto no-scrollbar relative bg-[#fafafa]"
                             onScroll={(e) => {
                                 const headerEl = document.getElementById('col-header-scroll');
                                 if (headerEl) headerEl.scrollLeft = (e.target as HTMLDivElement).scrollLeft;
                             }}
                         >
-                            <div className="flex min-w-max relative">
+                            <div className="flex min-w-max relative pt-10 pb-20 bg-white">
                                 
                                 {/* Time Column */}
                                 <div className="sticky left-0 w-20 bg-white/95 backdrop-blur-md z-30 border-r border-gray-100 flex flex-col">
@@ -427,7 +427,7 @@ export default function CalendarPage() {
                                     <div 
                                         className="absolute left-0 right-0 h-[1.5px] bg-indigo-600/40 pointer-events-none z-20"
                                         style={{ 
-                                            top: `${SLOTS.indexOf(hoveredTime) * 42}px`,
+                                            top: `${SLOTS.indexOf(hoveredTime) * 42 + 40}px`,
                                             boxShadow: '0 0 15px rgba(79, 70, 229, 0.4)'
                                         }}
                                     >
