@@ -216,12 +216,12 @@ export default function CalendarItem({
                 if (isAppt) onAction?.(appt); 
             }}
             className={`
-                relative mx-1 rounded-2xl transition-all select-none group/item overflow-hidden
+                relative mx-1 rounded-2xl select-none group/item overflow-hidden will-change-transform
                 ${!isLocked ? 'cursor-grab active:cursor-grabbing' : ''}
-                ${isDragging ? 'opacity-30 scale-95 shadow-2xl ring-4 ring-indigo-500/50' : 'opacity-100 hover:scale-[1.02] hover:shadow-2xl hover:shadow-indigo-200/40'} 
+                ${isDragging ? 'opacity-30 scale-95 shadow-2xl ring-4 ring-indigo-500/50 z-[100]' : 'opacity-100 hover:scale-[1.02] hover:shadow-xl hover:shadow-indigo-200/20'} 
                 ${isOver ? 'ring-4 ring-indigo-400 bg-indigo-50/80 scale-[1.03]' : ''}
                 ${info.bg} ${info.ring} ${info.text} flex flex-col justify-between
-                backdrop-blur-[24px] border border-white/20
+                border border-white/20 transition-[transform,opacity,shadow] duration-200
             `}
         >
             <div className={`absolute left-0 top-0 bottom-0 w-1 ${info.indicator}`} />
@@ -275,7 +275,7 @@ export default function CalendarItem({
             </div>
 
             {/* Body Area: Main Content */}
-            <div className={`flex-1 flex flex-col justify-center px-3 py-2 overflow-hidden ${(info as any).bodyBg || 'bg-white/40'} backdrop-blur-md`}>
+            <div className={`flex-1 flex flex-col justify-center px-3 py-2 overflow-hidden ${(info as any).bodyBg || 'bg-white/40'} backdrop-blur-[12px]`}>
                 <div className="flex items-center gap-1 flex-wrap justify-center">
                     <p className="font-extrabold text-[11px] leading-tight uppercase tracking-tight text-gray-900 drop-shadow-sm truncate max-w-full">
                         {isAppt ? appt.customerName : 'MEŞGUL'}
