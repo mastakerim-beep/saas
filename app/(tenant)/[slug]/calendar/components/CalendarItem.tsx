@@ -128,6 +128,7 @@ export default function CalendarItem({
                 ring: 'ring-2 ring-emerald-500/20 shadow-lg shadow-emerald-100/50', 
                 indicator: 'bg-emerald-600',
                 headerBg: 'bg-emerald-600',
+                bodyBg: 'bg-emerald-500/10',
                 icon: <CheckCircle2 className="w-3.5 h-3.5" />,
                 badge: null,
                 badgeStyle: ''
@@ -138,6 +139,7 @@ export default function CalendarItem({
                 ring: 'ring-2 ring-indigo-500/20 shadow-lg shadow-indigo-100/50',
                 indicator: 'bg-indigo-600',
                 headerBg: 'bg-indigo-600',
+                bodyBg: 'bg-indigo-500/10',
                 icon: <Activity className="w-3.5 h-3.5" />,
                 badge: null,
                 badgeStyle: ''
@@ -148,6 +150,7 @@ export default function CalendarItem({
                 ring: 'ring-2 ring-red-400/30 shadow-lg shadow-red-100/50',
                 indicator: 'bg-red-500',
                 headerBg: 'bg-red-500',
+                bodyBg: 'bg-red-500/10',
                 icon: <XCircle className="w-3.5 h-3.5" />,
                 badge: 'GELMEDİ',
                 badgeStyle: 'bg-red-500 text-white'
@@ -159,6 +162,7 @@ export default function CalendarItem({
                 ring: 'ring-2 ring-orange-300/30 shadow-md shadow-orange-100/30',
                 indicator: 'bg-orange-400',
                 headerBg: 'bg-orange-400',
+                bodyBg: 'bg-orange-500/10',
                 icon: <RefreshCcw className="w-3.5 h-3.5" />,
                 badge: 'İPTAL',
                 badgeStyle: 'bg-orange-400 text-white'
@@ -169,6 +173,7 @@ export default function CalendarItem({
                 ring: 'ring-2 ring-red-400/30 shadow-lg shadow-red-100/50',
                 indicator: 'bg-red-600',
                 headerBg: 'bg-red-600',
+                bodyBg: 'bg-red-600/10',
                 icon: <Ban className="w-3.5 h-3.5" />,
                 badge: 'GELMEDİ',
                 badgeStyle: 'bg-red-600 text-white'
@@ -179,6 +184,7 @@ export default function CalendarItem({
                 ring: 'ring-2 ring-orange-200/40 shadow-xl shadow-orange-100/20',
                 indicator: 'bg-orange-500',
                 headerBg: 'bg-orange-500',
+                bodyBg: 'bg-orange-500/15',
                 icon: null,
                 badge: 'TASLAK',
                 badgeStyle: 'bg-orange-500 text-white'
@@ -191,6 +197,7 @@ export default function CalendarItem({
         ring: 'ring-1 ring-gray-200 border-dashed',
         indicator: 'bg-gray-300',
         headerBg: 'bg-gray-300',
+        bodyBg: 'bg-gray-400/5',
         icon: <Coffee className="w-3.5 h-3.5 opacity-40" />,
         badge: null, badgeStyle: ''
     };
@@ -268,7 +275,7 @@ export default function CalendarItem({
             </div>
 
             {/* Body Area: Main Content */}
-            <div className={`flex-1 flex flex-col justify-center px-3 py-2 overflow-hidden bg-white/40 backdrop-blur-sm`}>
+            <div className={`flex-1 flex flex-col justify-center px-3 py-2 overflow-hidden ${(info as any).bodyBg || 'bg-white/40'} backdrop-blur-md`}>
                 <div className="flex items-center gap-1 flex-wrap justify-center">
                     <p className="font-extrabold text-[11px] leading-tight uppercase tracking-tight text-gray-900 drop-shadow-sm truncate max-w-full">
                         {isAppt ? appt.customerName : 'MEŞGUL'}
