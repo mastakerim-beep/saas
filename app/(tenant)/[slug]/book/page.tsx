@@ -17,7 +17,8 @@ export default function PublicBookingPortal() {
     const { 
         fetchPublicData, branches, services, staffMembers, 
         bookingSettings, currentBusiness, addAppointment, 
-        processCheckout, bookingSettings: settings 
+        processCheckout, bookingSettings: settings,
+        customers, addCustomer
     } = useStore();
 
     const [step, setStep] = useState(1);
@@ -30,6 +31,7 @@ export default function PublicBookingPortal() {
     const [selectedDate, setSelectedDate] = useState<string>('');
     const [selectedTime, setSelectedTime] = useState<string>('');
     const [customerInfo, setCustomerInfo] = useState({ name: '', phone: '', email: '' });
+    const [selectedPaymentMode, setSelectedPaymentMode] = useState<'deposit' | 'full'>('full');
 
     useEffect(() => {
         const load = async () => {
@@ -47,13 +49,38 @@ export default function PublicBookingPortal() {
         return staffMembers.filter(s => s.branchId === selectedBranch.id);
     }, [selectedBranch, staffMembers]);
 
-    const depositAmount = useMemo(() => {
-        if (!selectedService || !settings?.requireDeposit) return 0;
-        return (selectedService.price * (settings.depositPercentage || 20)) / 100;
-    }, [selectedService, settings]);
+    const paymentAmount = useMemo(() => {
+        if (!selectedService) return 0;
+        if (settings?.paymentMode === 'full') return selectedService.price;
+        if (settings?.paymentMode === 'deposit') return (selectedService.price * (settings.depositPercentage || 20)) / 100;
+        if (settings?.paymentMode === 'both') {
+            return selectedPaymentMode === 'full' 
+                ? selectedService.price 
+                : (selectedService.price * (settings.depositPercentage || 20)) / 100;
+        }
+        return 0;
+    }, [selectedService, settings, selectedPaymentMode]);
 
     const handleConfirm = async () => {
+        // 1. Existing Customer Check
+        let finalCustomerId = '';
+        const existing = customers.find(c => c.phone === customerInfo.phone);
+        
+        if (existing) {
+            finalCustomerId = existing.id;
+        } else {
+            const newCust = await addCustomer({
+                name: customerInfo.name,
+                phone: customerInfo.phone,
+                email: customerInfo.email,
+                branchId: selectedBranch?.id
+            });
+            finalCustomerId = newCust.id;
+        }
+
+        // 2. Create Appointment
         const apptData = {
+            customerId: finalCustomerId,
             customerName: customerInfo.name,
             service: selectedService?.name,
             staffId: selectedStaff?.id,
@@ -61,25 +88,27 @@ export default function PublicBookingPortal() {
             date: selectedDate,
             time: selectedTime,
             price: selectedService?.price,
-            depositPaid: depositAmount,
+            paidAmount: paymentAmount,
             isOnline: true,
-            branchId: selectedBranch?.id
+            branchId: selectedBranch?.id,
+            status: 'completed' // Online payment means it's confirmed
         };
         
         const success = await addAppointment(apptData);
-        if (success && depositAmount > 0) {
-            // Log the deposit payment in the system
+        
+        // 3. Process Payment record if there's an amount
+        if (success && paymentAmount > 0) {
             await processCheckout({
-                customerId: 'online-customer', 
+                customerId: finalCustomerId, 
                 customerName: customerInfo.name,
-                totalAmount: depositAmount,
+                totalAmount: paymentAmount,
                 method: 'kredi-karti',
                 currency: 'TRY',
                 rate: 1,
-                isDeposit: true
+                isDeposit: settings?.paymentMode === 'deposit' || (settings?.paymentMode === 'both' && selectedPaymentMode === 'deposit')
             });
         }
-        if (success) setStep(7); // Success Step
+        if (success) setStep(7); 
     };
 
     if (isLoading) {
@@ -341,13 +370,35 @@ export default function PublicBookingPortal() {
                                 <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="bg-indigo-600 rounded-[2.5rem] p-8 text-white space-y-6 shadow-2xl shadow-indigo-600/30">
                                     <div className="flex justify-between items-start">
                                         <div>
-                                            <p className="text-[10px] font-black uppercase tracking-widest text-indigo-200">Gerekli Kapora</p>
-                                            <p className="text-4xl font-black">₺{depositAmount}</p>
+                                            <p className="text-[10px] font-black uppercase tracking-widest text-indigo-200">
+                                                {settings.paymentMode === 'full' ? 'Toplam Ödeme' : 'Gerekli Kapora'}
+                                            </p>
+                                            <p className="text-4xl font-black">₺{paymentAmount}</p>
                                         </div>
                                         <CreditCard size={32} className="text-indigo-300 opacity-50" />
                                     </div>
+                                    
+                                    {settings.paymentMode === 'both' && (
+                                        <div className="grid grid-cols-2 gap-2 bg-white/10 p-1 rounded-2xl">
+                                            <button 
+                                                onClick={() => setSelectedPaymentMode('deposit')}
+                                                className={`py-3 rounded-xl text-[10px] font-black transition-all ${selectedPaymentMode === 'deposit' ? 'bg-white text-indigo-600 shadow-lg' : 'text-white/60 hover:text-white'}`}
+                                            >
+                                                KAPORA (%{settings.depositPercentage})
+                                            </button>
+                                            <button 
+                                                onClick={() => setSelectedPaymentMode('full')}
+                                                className={`py-3 rounded-xl text-[10px] font-black transition-all ${selectedPaymentMode === 'full' ? 'bg-white text-indigo-600 shadow-lg' : 'text-white/60 hover:text-white'}`}
+                                            >
+                                                TAM ÖDEME
+                                            </button>
+                                        </div>
+                                    )}
+
                                     <p className="text-xs font-bold leading-relaxed opacity-80">
-                                        Randevunuzun kesinleşmesi için hizmet bedelinin %{settings.depositPercentage}'i tutarında kapora ödemesi gerekmektedir. Kalan tutar işlem sonrası şubede tahsil edilecektir.
+                                        {selectedPaymentMode === 'full' 
+                                            ? 'Hizmet bedelinin tamamını şimdi ödeyerek randevunuzu garantileyin.' 
+                                            : `Randevunuzun kesinleşmesi için %${settings.depositPercentage} tutarında kapora ödemesi gerekmektedir.`}
                                     </p>
                                     <button 
                                         disabled={!customerInfo.name || !customerInfo.phone}
@@ -400,7 +451,7 @@ export default function PublicBookingPortal() {
                                 <div className="pt-4 space-y-4">
                                     <div className="flex justify-between items-center text-sm font-black uppercase tracking-widest text-gray-400">
                                         <span>ÖDENECEK TUTAR</span>
-                                        <span className="text-gray-900">₺{depositAmount}</span>
+                                        <span className="text-gray-900">₺{paymentAmount}</span>
                                     </div>
                                     <button 
                                         onClick={handleConfirm}

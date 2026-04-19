@@ -13,7 +13,7 @@ import { useParams } from 'next/navigation';
 
 export default function BookingSettingsPage() {
     const { slug } = useParams();
-    const { currentBusiness, bookingSettings, fetchData } = useStore();
+    const { currentBusiness, bookingSettings, fetchData, updateBookingSettings } = useStore();
     const [settings, setSettings] = useState<Partial<BookingSettings>>({
         isEnabled: true,
         requireDeposit: false,
@@ -33,12 +33,17 @@ export default function BookingSettingsPage() {
     }, [bookingSettings]);
 
     const handleSave = async () => {
+        if (!settings) return;
         setIsSaving(true);
-        // Supabase sync simulation (Actual sync would happen via store/api)
-        // In a real scenario, we'd have an updateBookingSettings in store
-        // For now, I'll simulate success. In the background, I should implement updateBookingSettings.
-        await new Promise(r => setTimeout(r, 1000));
-        setIsSaving(false);
+        try {
+            await updateBookingSettings(settings);
+            alert("Ayarlar başarıyla kaydedildi.");
+        } catch (error) {
+            console.error(error);
+            alert("Kaydetme sırasında bir hata oluştu.");
+        } finally {
+            setIsSaving(false);
+        }
     };
 
     const bookingUrl = typeof window !== 'undefined' ? `${window.location.origin}/${slug}/book` : '';
@@ -126,28 +131,40 @@ export default function BookingSettingsPage() {
                         )}
                     </div>
 
-                    {/* Deposit Settings */}
+                    {/* Payment Settings */}
                     <div className="bg-white border border-gray-100 p-8 md:p-10 rounded-[3rem] shadow-sm space-y-10">
                         <div className="flex justify-between items-center">
                             <div className="flex items-center gap-4">
-                                <div className={`w-12 h-12 rounded-2xl flex items-center justify-center text-indigo-600 ${settings.requireDeposit ? 'bg-indigo-50' : 'bg-gray-50'}`}>
+                                <div className={`w-12 h-12 rounded-2xl flex items-center justify-center text-indigo-600 ${settings.paymentMode !== 'none' ? 'bg-indigo-50' : 'bg-gray-50'}`}>
                                     <CreditCard size={24} />
                                 </div>
                                 <div>
-                                    <h3 className="text-xl font-black tracking-tight">Kapora Ayarları</h3>
-                                    <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Rezervasyon güvencesi</p>
+                                    <h3 className="text-xl font-black tracking-tight">Ödeme Seçenekleri</h3>
+                                    <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Tahsilat ve Kapora Modelleri</p>
                                 </div>
                             </div>
-                            <button 
-                                onClick={() => setSettings({...settings, requireDeposit: !settings.requireDeposit})}
-                                className={`w-16 h-8 rounded-full transition-all relative ${settings.requireDeposit ? 'bg-indigo-600' : 'bg-gray-200'}`}
-                            >
-                                <div className={`absolute top-1 w-6 h-6 bg-white rounded-full shadow transition-all ${settings.requireDeposit ? 'left-9' : 'left-1'}`} />
-                            </button>
                         </div>
 
-                        {settings.requireDeposit && (
-                            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            {[
+                                { id: 'none', title: 'Ödeme Alınmasın', desc: 'Müşteri randevuyu ücretsiz oluşturur.' },
+                                { id: 'deposit', title: 'Sadece Kapora', desc: 'Belirlediğiniz oranda ön ödeme alınır.' },
+                                { id: 'full', title: 'Tam Ödeme', desc: 'Hizmet bedelinin tamamı tahsil edilir.' },
+                                { id: 'both', title: 'Müşteri Seçsin', desc: 'Müşteri kapora veya tam ödeme seçebilir.' },
+                            ].map((mode) => (
+                                <button
+                                    key={mode.id}
+                                    onClick={() => setSettings({...settings, paymentMode: mode.id as any})}
+                                    className={`p-6 rounded-[2rem] border-2 text-left transition-all ${settings.paymentMode === mode.id ? 'border-indigo-600 bg-indigo-50/50 shadow-lg' : 'border-gray-50 hover:border-indigo-100 bg-white'}`}
+                                >
+                                    <h4 className="font-black text-sm mb-1">{mode.title}</h4>
+                                    <p className="text-[10px] font-bold text-gray-500 leading-tight">{mode.desc}</p>
+                                </button>
+                            ))}
+                        </div>
+
+                        {settings.paymentMode === 'deposit' || settings.paymentMode === 'both' ? (
+                            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6 pt-6 border-t border-gray-50">
                                 <div className="space-y-4">
                                     <div className="flex justify-between">
                                         <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Kapora Oranı (%)</label>
@@ -159,19 +176,16 @@ export default function BookingSettingsPage() {
                                         onChange={e => setSettings({...settings, depositPercentage: parseInt(e.target.value)})}
                                         className="w-full h-2 bg-gray-100 rounded-full appearance-none accent-indigo-600 cursor-pointer"
                                     />
-                                    <p className="text-[10px] text-gray-400 font-bold leading-relaxed">
-                                        Müşteriler randevu alırken hizmet bedelinin bu yüzdesi kadar ödeme yapmak zorunda kalacaktır.
-                                    </p>
                                 </div>
 
-                                <div className="p-6 bg-rose-50 rounded-2xl border border-rose-100 flex items-start gap-4">
-                                    <AlertCircle className="text-rose-500 shrink-0" size={20} />
-                                    <p className="text-[11px] font-bold text-rose-700 leading-relaxed">
-                                        Kapora sistemi aktifken ödeme gateway'inizin (iyzico/Stripe) bağlı olduğundan emin olun. Ödeme başarılı olmayan randevular "Beklemede" statüsünde düşer.
+                                <div className="p-6 bg-amber-50 rounded-2xl border border-amber-100 flex items-start gap-4">
+                                    <AlertCircle className="text-amber-500 shrink-0" size={20} />
+                                    <p className="text-[11px] font-bold text-amber-700 leading-relaxed">
+                                        Ödeme sistemi aktifken iyzico veya Stripe hesabınızın bağlı olduğundan emin olun.
                                     </p>
                                 </div>
                             </motion.div>
-                        )}
+                        ) : null}
                     </div>
                 </motion.div>
 

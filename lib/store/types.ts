@@ -209,6 +209,7 @@ export interface StoreState {
     addQuote: (q: Omit<Quote, 'id' | 'businessId'>) => void;
     updateQuote: (id: string, updates: Partial<Quote>) => void;
     deleteQuote: (id: string) => void;
+    updateBookingSettings: (s: Partial<BookingSettings>) => Promise<void>;
 
     updateProduct: (id: string, p: Partial<Product>) => void;
     removeProduct: (id: string) => void;

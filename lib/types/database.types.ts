@@ -492,6 +492,8 @@ export interface BookingSettings {
     allowStaffSelect: boolean;
     bookingMessage: string;
     accentColor: string;
+    allowFullPayment: boolean;
+    paymentMode: 'none' | 'deposit' | 'full' | 'both';
     createdAt?: string;
     updatedAt?: string;
 }

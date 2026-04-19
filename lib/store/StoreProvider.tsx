@@ -10,7 +10,7 @@ import {
     Product, Service, Package, MembershipPlan, CustomerMembership,
     PaymentDefinition, BankAccount, ExpenseCategory, ReferralSource, 
     ConsentFormTemplate, AuditLog, NotificationLog, CommissionRule,
-    PackageDefinition, Quote, MarketingRule, DynamicPricingRule, Room, Expense, CalendarBlock, AppointmentStatus
+    PackageDefinition, Quote, MarketingRule, DynamicPricingRule, Room, Expense, CalendarBlock, AppointmentStatus, BookingSettings
 } from './types';
 import { fetchData as fetchDataLogic } from './fetch-logic';
 import { syncDb } from './sync-db';
@@ -856,6 +856,19 @@ const StoreOrchestrator = ({ children }: { children: ReactNode }) => {
             data.setAllInventory((prev: Product[]) => [np, ...prev]);
             await syncDb('inventory', 'insert', np, id, activeBizId);
             await store.addLog('Envanter Eklendi', 'Depo', '', p.name);
+        },
+        updateBookingSettings: async (s: Partial<BookingSettings>) => {
+            if (!biz.bookingSettings) return;
+            const updated = { ...biz.bookingSettings, ...s };
+            biz.setBookingSettings(updated);
+            
+            const targetBizId = activeBizId || auth.currentUser?.businessId;
+            const ok = await syncDb('booking_settings', 'update', s, biz.bookingSettings.id, targetBizId);
+            
+            if (!ok) {
+                console.warn("Booking settings sync failed, reversing state.");
+                biz.setBookingSettings(biz.bookingSettings);
+            }
         },
         updateProduct: async (id: string, p: any) => {
             data.updateProduct(id, p);
