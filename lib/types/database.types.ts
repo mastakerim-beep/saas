@@ -377,10 +377,16 @@ export interface Quote {
     customerId?: string;
     customerName: string;
     serviceName: any;
+    serviceId?: string;
+    packageDefinitionId?: string;
     amount: number;
+    discountRate?: number;
     status: string;
     note?: any;
     validUntil: any;
+    followUpDate?: any;
+    followUpTime?: any;
+    referenceCode?: string;
     createdAt?: string;
     updatedAt?: string;
 }

@@ -5,22 +5,40 @@ import { useStore, Quote } from '@/lib/store';
 import { 
     Zap, Search, Plus, Filter, FileText, Download, 
     CheckCircle, X, Clock, ChevronRight, ArrowUpRight,
-    TrendingUp, BarChart3, Users, Calendar
+    TrendingUp, BarChart3, Users, Calendar, Hash, Percent, Tag, Store
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
 
 export default function QuotesPage() {
-    const { quotes, customers, addQuote, updateQuote, deleteQuote, currentBranch } = useStore();
+    const { 
+        quotes, customers, services, packageDefinitions, branches,
+        addQuote, updateQuote, deleteQuote, currentBranch,
+        processCheckout 
+    } = useStore();
     const [search, setSearch] = useState('');
     const [statusFilter, setStatusFilter] = useState('Hepsi');
     const [showAddModal, setShowAddModal] = useState(false);
+    
+    // Add Quote Modal State
+    const [selectedCustomerId, setSelectedCustomerId] = useState('');
+    const [selectedItemId, setSelectedItemId] = useState('');
+    const [itemType, setItemType] = useState<'service' | 'package'>('service');
+    const [discountRate, setDiscountRate] = useState(0);
+    const [note, setNote] = useState('');
+    const [followUpDate, setFollowUpDate] = useState('');
+    const [followUpTime, setFollowUpTime] = useState('');
+    const [customerSearch, setCustomerSearch] = useState('');
+    const [itemSearch, setItemSearch] = useState('');
 
     const filteredQuotes = useMemo(() => {
         return quotes.filter(q => {
-            const matchesSearch = q.customerName.toLowerCase().includes(search.toLowerCase()) || 
-                                q.serviceName?.toString().toLowerCase().includes(search.toLowerCase());
+            const customerName = q.customerName?.toLowerCase() || '';
+            const serviceName = q.serviceName?.toString().toLowerCase() || '';
+            const searchTerm = search.toLowerCase();
+            
+            const matchesSearch = customerName.includes(searchTerm) || serviceName.includes(searchTerm);
             const matchesStatus = statusFilter === 'Hepsi' || q.status === statusFilter;
             return matchesSearch && matchesStatus;
         }).sort((a,b) => new Date(b.createdAt || '').getTime() - new Date(a.createdAt || '').getTime());
@@ -35,65 +53,159 @@ export default function QuotesPage() {
     }, [quotes]);
 
     const downloadPDF = (quote: Quote) => {
-        const doc = new jsPDF() as any;
+        const doc = new jsPDF();
         
-        // Premium Header
+        // Premium Header with Aura Branding
         doc.setFillColor(79, 70, 229); // Indigo-600
-        doc.rect(0, 0, 210, 40, 'F');
+        doc.rect(0, 0, 210, 45, 'F');
         
         doc.setTextColor(255, 255, 255);
-        doc.setFontSize(24);
-        doc.setFont('helvetica', 'bolditalic');
-        doc.text('AURA SPA PRO', 20, 25);
+        doc.setFontSize(28);
+        doc.setFont('helvetica', 'bold');
+        doc.text('AURA SPA', 20, 25);
         
         doc.setFontSize(10);
         doc.setFont('helvetica', 'normal');
-        doc.text('HIZMET TEKLIF FORMU', 160, 25);
+        doc.text('PREMIUM WELLNESS & ERP SOLUTIONS', 20, 33);
         
-        // Quote Details
-        doc.setTextColor(50, 50, 50);
+        doc.setFontSize(16);
+        doc.setFont('helvetica', 'bold');
+        doc.text('HIZMET TEKLIF FORMU', 140, 25);
+        doc.setFontSize(9);
+        doc.text(`No: #Q-${quote.referenceCode || quote.id.split('-')[0].toUpperCase()}`, 140, 33);
+        
+        // Metadata Bar
+        doc.setFillColor(249, 250, 251);
+        doc.rect(0, 45, 210, 15, 'F');
+        doc.setTextColor(100, 116, 139);
+        doc.setFontSize(8);
+        doc.text(`Tarih: ${new Date(quote.createdAt || '').toLocaleDateString('tr-TR')}`, 20, 54);
+        doc.text(`Gecerlilik: ${quote.validUntil || '30 Gun'}`, 80, 54);
+        doc.text(`Sube: ${currentBranch?.name || 'Merkez Sube'}`, 140, 54);
+
+        // Customer & Summary Section
+        doc.setTextColor(30, 41, 59);
         doc.setFontSize(12);
-        doc.text(`Teklif No: #Q-${quote.id.split('-')[0].toUpperCase()}`, 20, 60);
-        doc.text(`Tarih: ${new Date(quote.createdAt || '').toLocaleDateString('tr-TR')}`, 20, 68);
-        doc.text(`Gecerlilik: ${quote.validUntil || '---'}`, 20, 76);
+        doc.setFont('helvetica', 'bold');
+        doc.text('SAYIN', 20, 75);
+        doc.setFontSize(18);
+        doc.text(quote.customerName.toUpperCase(), 20, 85);
         
-        // Customer Info
-        doc.setFillColor(248, 249, 252);
-        doc.rect(20, 85, 170, 30, 'F');
-        doc.setTextColor(79, 70, 229);
-        doc.setFontSize(10);
-        doc.text('MUSTERI BILGILERI', 25, 92);
-        doc.setTextColor(0, 0, 0);
-        doc.setFontSize(14);
-        doc.text(quote.customerName, 25, 105);
+        // Info Box
+        doc.setDrawColor(226, 232, 240);
+        doc.line(20, 95, 190, 95);
         
-        // Table
+        // Details Table
+        const basePrice = quote.amount / (1 - (quote.discountRate || 0) / 100);
+        
         (doc as any).autoTable({
-            startY: 125,
-            head: [['Aciklama', 'Birim', 'Tutar']],
+            startY: 105,
+            head: [['ACIKLAMA', 'BIRIM FIYAT', 'INDIRIM', 'TOPLAM']],
             body: [
-                [quote.serviceName || 'Belirtilmedi', '1 Adet', `TL ${quote.amount?.toLocaleString('tr-TR')}`]
+                [
+                    quote.serviceName || 'Belirtilmedi', 
+                    `TL ${basePrice.toLocaleString('tr-TR')}`,
+                    `% ${quote.discountRate || 0}`,
+                    `TL ${quote.amount?.toLocaleString('tr-TR')}`
+                ]
             ],
-            theme: 'striped',
-            headStyles: { fillColor: [79, 70, 229] },
-            styles: { font: 'helvetica', fontSize: 10 }
+            theme: 'grid',
+            headStyles: { fillColor: [79, 70, 229], fontSize: 10, cellPadding: 5 },
+            bodyStyles: { fontSize: 11, cellPadding: 8 },
+            columnStyles: {
+                3: { halign: 'right', fontStyle: 'bold' }
+            }
         });
         
         const finalY = (doc as any).lastAutoTable.finalY + 20;
         
-        // Totals
-        doc.setFontSize(14);
+        // Final Totals
+        doc.setFillColor(79, 70, 229);
+        doc.rect(130, finalY - 10, 60, 15, 'F');
+        doc.setTextColor(255, 255, 255);
+        doc.setFontSize(12);
         doc.setFont('helvetica', 'bold');
-        doc.text(`TOPLAM TUTAR: TL ${quote.amount?.toLocaleString('tr-TR')}`, 130, finalY);
+        doc.text(`TOPLAM: TL ${quote.amount?.toLocaleString('tr-TR')}`, 135, finalY);
         
-        // Terms
+        // Terms & Notes
+        doc.setTextColor(51, 65, 85);
+        doc.setFontSize(10);
+        doc.setFont('helvetica', 'bold');
+        doc.text('TEKLIF NOTLARI:', 20, finalY + 20);
+        doc.setFontSize(9);
+        doc.setFont('helvetica', 'normal');
+        doc.text(quote.note || 'Ozel bir not bulunmamaktadir.', 20, finalY + 28);
+        
+        doc.setTextColor(148, 163, 184);
         doc.setFontSize(8);
-        doc.setTextColor(150, 150, 150);
-        doc.text('NOTLAR VE SARTLAR:', 20, finalY + 40);
-        doc.text('* Bu teklif belirtilen tarihe kadar gecerlidir.', 20, finalY + 46);
-        doc.text('* Onaylanan teklifler randevu garantisi saglar.', 20, finalY + 52);
+        doc.text('SARTLAR VE KOSULLAR:', 20, finalY + 50);
+        doc.text('* Bu teklif belirtilen tarihe kadar gecerlidir.', 20, finalY + 56);
+        doc.text('* Odeme sonrasi hizmet tanimlamasi aninda yapilir.', 20, finalY + 62);
+        doc.text('* Aura Spa Pro uzerinden olusturulmustur.', 20, 285);
         
         doc.save(`Aura_Teklif_${quote.customerName.replace(/\s/g, '_')}.pdf`);
+    };
+
+    const handleAddQuote = () => {
+        if (!selectedCustomerId || !selectedItemId) return;
+
+        const customer = customers.find(c => c.id === selectedCustomerId);
+        const item = itemType === 'service' 
+            ? services.find(s => s.id === selectedItemId)
+            : packageDefinitions.find(p => p.id === selectedItemId);
+
+        if (!customer || !item) return;
+
+        const basePrice = item.price || 0;
+        const finalAmount = basePrice * (1 - discountRate / 100);
+
+        addQuote({
+            customerId: selectedCustomerId,
+            customerName: customer.name,
+            serviceName: item.name,
+            serviceId: itemType === 'service' ? item.id : undefined,
+            packageDefinitionId: itemType === 'package' ? item.id : undefined,
+            amount: finalAmount,
+            discountRate: discountRate,
+            status: 'Taslak',
+            note: note,
+            validUntil: new Date(Date.now() + 30 * 86400000).toISOString().split('T')[0],
+            followUpDate: followUpDate || undefined,
+            followUpTime: followUpTime || undefined,
+            branchId: currentBranch?.id
+        });
+
+        setShowAddModal(false);
+        // Reset
+        setSelectedCustomerId('');
+        setSelectedItemId('');
+        setDiscountRate(0);
+        setNote('');
+        setFollowUpDate('');
+    };
+
+    const handleApproveAndPay = async (quote: Quote) => {
+        const ok = confirm(`${quote.customerName} için ₺${quote.amount.toLocaleString('tr-TR')} ödeme alınarak teklif onaylansın mı?`);
+        if (!ok) return;
+
+        // 1. Process Checkout
+        const success = await processCheckout({
+            customerId: quote.customerId,
+            customerName: quote.customerName,
+            totalAmount: quote.amount,
+            service: quote.serviceName,
+            methods: [{ method: 'nakit', amount: quote.amount, currency: 'TRY', rate: 1, isDeposit: false }],
+            date: new Date().toISOString().split('T')[0],
+            note: `Tekliften Dönüştürüldü (#Q-${quote.id.split('-')[0].toUpperCase()})`
+        }, {
+            packageId: quote.packageDefinitionId // If it was a package quote
+        });
+
+        if (success) {
+            // 2. Update Quote Status
+            updateQuote(quote.id, { status: 'Onaylandı' });
+            alert("Teklif onaylandı ve satış başarıyla tamamlandı.");
+        }
     };
 
     return (
@@ -107,7 +219,7 @@ export default function QuotesPage() {
                 
                 <div className="flex gap-4">
                      <div className="relative w-full md:w-[300px]">
-                        <Search className="w-5 h-5 absolute left-5 top-4.5 text-gray-300" />
+                        <Search className="w-5 h-5 absolute left-5 top-1/2 -translate-y-1/2 text-gray-300" />
                         <input 
                             type="text" 
                             value={search} 
@@ -116,6 +228,13 @@ export default function QuotesPage() {
                             className="w-full bg-white border border-gray-100 rounded-2xl pl-14 pr-6 py-4 font-bold text-sm shadow-sm transition-all outline-none focus:ring-2 focus:ring-indigo-100" 
                         />
                     </div>
+                    <button 
+                        onClick={() => setShowAddModal(true)}
+                        className="flex items-center gap-2 bg-indigo-600 text-white px-8 py-4 rounded-2xl font-black uppercase text-xs tracking-widest shadow-lg shadow-indigo-600/20 hover:scale-105 active:scale-95 transition-all"
+                    >
+                        <Plus className="w-4 h-4" />
+                        Yeni Teklif
+                    </button>
                 </div>
             </div>
 
@@ -169,7 +288,7 @@ export default function QuotesPage() {
                                 <th className="px-8 py-6">Müşteri</th>
                                 <th className="px-8 py-6">Hizmet / Açıklama</th>
                                 <th className="px-8 py-6">Teklif Tutarı</th>
-                                <th className="px-8 py-6">Tarih</th>
+                                <th className="px-8 py-6">İletişim Tarihi</th>
                                 <th className="px-8 py-6">Durum</th>
                                 <th className="px-8 py-6 text-right">Aksiyonlar</th>
                             </tr>
@@ -193,18 +312,36 @@ export default function QuotesPage() {
                                                     </div>
                                                     <div>
                                                         <p className="font-black text-gray-900 leading-tight uppercase italic">{q.customerName}</p>
-                                                        <p className="text-[10px] font-bold text-gray-400">#Q-{q.id.split('-')[0].toUpperCase()}</p>
+                                                        <p className="text-[10px] font-bold text-gray-400">#Q-{q.referenceCode || q.id.split('-')[0].toUpperCase()}</p>
                                                     </div>
                                                 </div>
                                             </td>
                                             <td className="px-8 py-6">
-                                                <p className="text-sm font-bold text-gray-600">{q.serviceName || '---'}</p>
+                                                <div className="flex flex-col">
+                                                    <p className="text-sm font-bold text-gray-600">{q.serviceName || '---'}</p>
+                                                    {q.branchId && (
+                                                        <div className="flex items-center gap-1 text-[8px] text-gray-400 font-black uppercase mt-1">
+                                                            <Store className="w-2.5 h-2.5" />
+                                                            {branches.find((b: any) => b.id === q.branchId)?.name || 'Şube'}
+                                                        </div>
+                                                    )}
+                                                </div>
                                             </td>
                                             <td className="px-8 py-6">
-                                                <span className="inline-block bg-indigo-50 text-indigo-600 px-3 py-1 rounded-lg text-[10px] font-black tracking-widest">₺{q.amount?.toLocaleString('tr-TR')}</span>
+                                                <div className="flex flex-col gap-1">
+                                                    <span className="inline-block bg-indigo-50 text-indigo-600 px-3 py-1 rounded-lg text-[10px] font-black tracking-widest w-fit">₺{q.amount?.toLocaleString('tr-TR')}</span>
+                                                    {(q.discountRate || 0) > 0 && <p className="text-[9px] font-bold text-green-500">%{q.discountRate} İndirim Uygulandı</p>}
+                                                </div>
                                             </td>
                                             <td className="px-8 py-6">
-                                                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{new Date(q.createdAt || '').toLocaleDateString('tr-TR', { day: 'numeric', month: 'long' })}</p>
+                                                {q.followUpDate ? (
+                                                    <div className="flex flex-col">
+                                                        <p className="text-[10px] font-bold text-gray-600 uppercase tracking-widest">{new Date(q.followUpDate).toLocaleDateString('tr-TR', { day: 'numeric', month: 'short' })}</p>
+                                                        <p className="text-[9px] font-bold text-gray-400">{q.followUpTime || '--:--'}</p>
+                                                    </div>
+                                                ) : (
+                                                    <p className="text-[10px] font-bold text-gray-300 italic">Planlanmadı</p>
+                                                )}
                                             </td>
                                             <td className="px-8 py-6">
                                                 <span className={`px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest border ${
@@ -219,16 +356,21 @@ export default function QuotesPage() {
                                             <td className="px-8 py-6 text-right">
                                                 <div className="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                                                     <button 
-                                                        onClick={() => downloadPDF(q)}
+                                                        onClick={() => downloadPDF(q)} title="PDF İndir"
                                                         className="p-2.5 bg-indigo-600 text-white rounded-xl shadow-lg shadow-indigo-600/20 hover:scale-110 transition-all"
                                                     >
                                                         <Download className="w-4 h-4" />
                                                     </button>
-                                                    <button className="p-2.5 bg-white border border-gray-100 rounded-xl text-gray-400 hover:text-indigo-600 transition-all">
-                                                        <CheckCircle className="w-4 h-4" />
-                                                    </button>
+                                                    {q.status !== 'Onaylandı' && (
+                                                        <button 
+                                                            onClick={() => handleApproveAndPay(q)} title="Onayla & Tahsil Et"
+                                                            className="p-2.5 bg-green-600 text-white rounded-xl shadow-lg shadow-green-600/20 hover:scale-110 transition-all"
+                                                        >
+                                                            <CheckCircle className="w-4 h-4" />
+                                                        </button>
+                                                    )}
                                                     <button 
-                                                        onClick={() => deleteQuote(q.id)}
+                                                        onClick={() => deleteQuote(q.id)} title="Sil"
                                                         className="p-2.5 bg-white border border-gray-100 rounded-xl text-gray-400 hover:text-red-500 transition-all"
                                                     >
                                                         <X className="w-4 h-4" />
@@ -243,6 +385,133 @@ export default function QuotesPage() {
                     </table>
                 </div>
             </div>
+
+            {/* Add Quote Modal */}
+            <AnimatePresence>
+                {showAddModal && (
+                    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+                        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setShowAddModal(false)} className="absolute inset-0 bg-gray-900/40 backdrop-blur-sm" />
+                        <motion.div initial={{ opacity: 0, scale: 0.9, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.9, y: 20 }} className="bg-white w-full max-w-4xl rounded-[3rem] shadow-2xl relative overflow-hidden flex flex-col max-h-[90vh]">
+                            <div className="p-10 border-b border-gray-50 flex justify-between items-center bg-gray-50/50">
+                                <div>
+                                    <h2 className="text-3xl font-black italic uppercase tracking-tighter">Yeni Teklif Hazırla</h2>
+                                    <p className="text-[10px] font-black text-indigo-600 uppercase tracking-widest mt-1">Müşteriye özel premium teklif formu</p>
+                                </div>
+                                <button onClick={() => setShowAddModal(false)} className="p-4 hover:bg-white rounded-2xl text-gray-400 transition-all"><X className="w-6 h-6" /></button>
+                            </div>
+                            
+                            <div className="p-10 overflow-y-auto grid grid-cols-1 md:grid-cols-2 gap-10">
+                                {/* Left: Customer & Service */}
+                                <div className="space-y-8">
+                                    <section>
+                                        <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-3 block">MÜŞTERİ SEÇİMİ</label>
+                                        <div className="relative">
+                                            <Users className="w-5 h-5 absolute left-5 top-1/2 -translate-y-1/2 text-gray-300" />
+                                            <select 
+                                                value={selectedCustomerId}
+                                                onChange={e => setSelectedCustomerId(e.target.value)}
+                                                className="w-full bg-white border border-gray-100 rounded-2xl pl-14 pr-6 py-4 font-bold text-sm shadow-sm outline-none focus:ring-2 focus:ring-indigo-100 appearance-none"
+                                            >
+                                                <option value="">Müşteri Seçin...</option>
+                                                {customers.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                                            </select>
+                                        </div>
+                                    </section>
+
+                                    <section>
+                                        <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-3 block">TEKLİF TÜRÜ</label>
+                                        <div className="flex gap-2 p-1 bg-gray-50 rounded-2xl">
+                                            <button onClick={() => { setItemType('service'); setSelectedItemId(''); }} className={`flex-1 py-3 rounded-xl text-[10px] font-black uppercase transition-all ${itemType === 'service' ? 'bg-white shadow-sm text-indigo-600' : 'text-gray-400'}`}>Hizmet</button>
+                                            <button onClick={() => { setItemType('package'); setSelectedItemId(''); }} className={`flex-1 py-3 rounded-xl text-[10px] font-black uppercase transition-all ${itemType === 'package' ? 'bg-white shadow-sm text-indigo-600' : 'text-gray-400'}`}>Paket</button>
+                                        </div>
+                                    </section>
+
+                                    <section>
+                                        <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-3 block">{itemType === 'service' ? 'HİZMET' : 'PAKET ŞABLONU'}</label>
+                                        <div className="relative">
+                                            <Tag className="w-5 h-5 absolute left-5 top-1/2 -translate-y-1/2 text-gray-300" />
+                                            <select 
+                                                value={selectedItemId}
+                                                onChange={e => setSelectedItemId(e.target.value)}
+                                                className="w-full bg-white border border-gray-100 rounded-2xl pl-14 pr-6 py-4 font-bold text-sm shadow-sm outline-none focus:ring-2 focus:ring-indigo-100 appearance-none"
+                                            >
+                                                <option value="">{itemType === 'service' ? 'Hizmet Seçin...' : 'Paket Seçin...'}</option>
+                                                {itemType === 'service' 
+                                                    ? services.map(s => <option key={s.id} value={s.id}>{s.name} - ₺{s.price}</option>)
+                                                    : packageDefinitions.map(p => <option key={p.id} value={p.id}>{p.name} - ₺{p.price}</option>)
+                                                }
+                                            </select>
+                                        </div>
+                                    </section>
+                                </div>
+
+                                {/* Right: Financials & Scheduling */}
+                                <div className="space-y-8">
+                                    <div className="grid grid-cols-2 gap-6">
+                                        <section>
+                                            <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-3 block">İNDİRİM ORANI (%)</label>
+                                            <div className="relative">
+                                                <Percent className="w-5 h-5 absolute left-5 top-1/2 -translate-y-1/2 text-gray-300" />
+                                                <input 
+                                                    type="number" value={discountRate} onChange={e => setDiscountRate(Number(e.target.value))}
+                                                    className="w-full bg-white border border-gray-100 rounded-2xl pl-14 pr-6 py-4 font-bold text-sm shadow-sm outline-none focus:ring-2 focus:ring-indigo-100"
+                                                />
+                                            </div>
+                                        </section>
+                                        <section>
+                                            <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-3 block">TAHMİNİ TUTAR</label>
+                                            <div className="w-full bg-indigo-50 border border-indigo-100 rounded-2xl px-6 py-4 font-black text-indigo-600 text-lg">
+                                                ₺{(() => {
+                                                    const item = itemType === 'service' ? services.find(s => s.id === selectedItemId) : packageDefinitions.find(p => p.id === selectedItemId);
+                                                    return ((item?.price || 0) * (1 - discountRate / 100)).toLocaleString('tr-TR');
+                                                })()}
+                                            </div>
+                                        </section>
+                                    </div>
+
+                                    <section>
+                                        <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-3 block">TAKİP / GÖRÜŞME TARİHİ</label>
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <div className="relative">
+                                                <Calendar className="w-5 h-5 absolute left-5 top-1/2 -translate-y-1/2 text-gray-300" />
+                                                <input type="date" value={followUpDate} onChange={e => setFollowUpDate(e.target.value)} className="w-full bg-white border border-gray-100 rounded-2xl pl-14 pr-6 py-4 font-bold text-sm outline-none focus:ring-2 focus:ring-indigo-100" />
+                                            </div>
+                                            <div className="relative">
+                                                <Clock className="w-5 h-5 absolute left-5 top-1/2 -translate-y-1/2 text-gray-300" />
+                                                <input type="time" value={followUpTime} onChange={e => setFollowUpTime(e.target.value)} className="w-full bg-white border border-gray-100 rounded-2xl pl-14 pr-6 py-4 font-bold text-sm outline-none focus:ring-2 focus:ring-indigo-100" />
+                                            </div>
+                                        </div>
+                                    </section>
+
+                                    <section>
+                                        <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-3 block">ÖZEL NOTLAR</label>
+                                        <textarea 
+                                            value={note} onChange={e => setNote(e.target.value)}
+                                            placeholder="Teklif şartları veya müşteri beklentileri..."
+                                            className="w-full bg-white border border-gray-100 rounded-2xl p-6 font-bold text-sm shadow-sm outline-none focus:ring-2 focus:ring-indigo-100 min-h-[120px]"
+                                        />
+                                    </section>
+                                </div>
+                            </div>
+
+                            <div className="p-10 bg-gray-50 flex gap-4 border-t border-gray-100">
+                                <button 
+                                    onClick={() => setShowAddModal(false)}
+                                    className="flex-1 bg-white border border-gray-100 text-gray-400 py-5 rounded-2xl font-black uppercase text-xs tracking-widest hover:bg-gray-100 transition-all"
+                                >
+                                    Vazgeç
+                                </button>
+                                <button 
+                                    onClick={handleAddQuote}
+                                    className="flex-[2] bg-indigo-600 text-white py-5 rounded-2xl font-black uppercase text-xs tracking-widest shadow-xl shadow-indigo-600/20 hover:scale-105 active:scale-95 transition-all"
+                                >
+                                    Teklifi Kaydet
+                                </button>
+                            </div>
+                        </motion.div>
+                    </div>
+                )}
+            </AnimatePresence>
         </div>
     );
 }
