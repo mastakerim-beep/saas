@@ -9,7 +9,7 @@ import { useBusiness } from '@/lib/store/BusinessContext';
 type Step = 'select' | 'upload' | 'mapping' | 'validation' | 'executing' | 'success';
 
 export const MigrationWizard: React.FC = () => {
-    const { business } = useBusiness();
+    const { currentTenant: business } = useBusiness();
     const [step, setStep] = useState<Step>('select');
     const [dataType, setDataType] = useState<'customer' | 'service' | 'appointment'>('customer');
     const [rawData, setRawData] = useState<any[]>([]);
