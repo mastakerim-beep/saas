@@ -26,14 +26,7 @@ export default function CalendarHeader({
     return (
         <header className="h-[80px] border-b border-gray-100 bg-white px-6 flex items-center justify-between z-10">
             <div className="flex items-center gap-10">
-                <div className="flex flex-col">
-                    <div className="flex items-center gap-2 mb-1">
-                        <MapPin className="w-3 h-3 text-indigo-600" />
-                        <h1 className="text-[10px] font-black text-indigo-600 uppercase tracking-[0.2em] leading-none">
-                            {currentBranch?.name || 'Aura Spa ERP'} Yönetim Merkezi
-                        </h1>
-                    </div>
-                    <div className="flex items-center bg-white border-2 border-gray-100/80 rounded-[2rem] shadow-sm overflow-hidden p-1.5 transition-all hover:shadow-md hover:border-gray-200">
+                <div className="flex items-center bg-white border-2 border-gray-100/80 rounded-[2rem] shadow-sm overflow-hidden p-1.5 transition-all hover:shadow-md hover:border-gray-200">
                         <button 
                             onClick={onPrevDay} 
                             className="p-3 hover:bg-gray-50 rounded-full transition-all text-gray-400 hover:text-indigo-600 active:scale-95 group"
@@ -77,7 +70,6 @@ export default function CalendarHeader({
                             Bugün
                         </button>
                     </div>
-                </div>
             </div>
 
             <div className="flex items-center gap-6">
