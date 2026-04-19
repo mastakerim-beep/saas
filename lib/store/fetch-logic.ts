@@ -66,13 +66,18 @@ export const fetchData = async (
                     
                     // TARGETED SCALE FETCH: 
                     // If we are SaaS and don't have a bizId yet, but have a slug, fetch ONLY that business.
-                    // This prevents pulling 10,000 businesses on every refresh.
                     if (table === 'businesses' && isSaaS && !bizId && slug) {
                         q = q.eq('slug', slug);
                     } else if (idToUse) {
                         // Standard tenant filtering
                         if (table === 'businesses') q = q.eq('id', idToUse);
-                        else q = q.eq('business_id', idToUse);
+                        else if ((table === 'audit_logs' || table === 'payments' || table === 'notification_logs') && isSaaS && !bizId) {
+                            // SaaS Global Dash: Do not filter by business_id for logs and SaaS payments
+                            // This allows seeing system-wide activity and income
+                            q = q.order('created_at', { ascending: false }).limit(50);
+                        } else {
+                            q = q.eq('business_id', idToUse);
+                        }
                     }
 
                     if (startDate && (table === 'payments' || table === 'expenses')) q = q.gte('date', startDate);

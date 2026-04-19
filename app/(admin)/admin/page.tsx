@@ -138,9 +138,15 @@ export default function SuperAdminPage() {
 
     // GLOBAL STATS CALCULATIONS
     const stats = useMemo(() => {
-        const totalRev = allPayments.reduce((s, p) => s + p.totalAmount, 0);
-        const activeTenants = allBusinesses.filter(b => b.status === 'active').length;
-        const mrr = totalRev * 0.1; // Simulated MRR logic
+        // SaaS Geliri: SaaS Org'a yapılan tüm ödemelerin toplamı
+        const totalRev = allPayments.reduce((s, p) => s + (p.totalAmount || 0), 0);
+        
+        // Aktif Node'lar: Durumu Aktif veya active olan tüm işletmeler
+        const activeTenants = allBusinesses.filter(b => b.status === 'active' || b.status === 'Aktif').length;
+        
+        // Gerçek MRR: Tüm işletmelerin tanımlı aylık ücretlerinin (MRR) toplamı
+        const mrr = allBusinesses.reduce((s, b) => s + (b.mrr || 0), 0);
+        
         const pendingNotifs = allNotifs.filter(n => n.type === 'INTERNAL_REPORT').length;
 
         return { totalRev, activeTenants, mrr, pendingNotifs };
@@ -154,11 +160,18 @@ export default function SuperAdminPage() {
             const dateStr = date.toISOString().split('T')[0];
             const name = `${date.getDate().toString().padStart(2, '0')}/${(date.getMonth() + 1).toString().padStart(2, '0')}`;
             
-            const dayRev = allPayments.filter(p => p.date === dateStr).reduce((s, p) => s + p.totalAmount, 0);
-            data.push({ name, revenue: dayRev, growth: Math.floor(dayRev * 0.8) });
+            // O güne ait gerçek SaaS geliri
+            const dayRev = allPayments
+                .filter(p => (p.date || p.createdAt?.split('T')[0]) === dateStr)
+                .reduce((s, p) => s + (p.totalAmount || 0), 0);
+            
+            // Projeksiyon: Mevcut MRR'ın günlük ortalaması (Canlı hissi verir)
+            const dailyMrrGoal = stats.mrr / 30;
+
+            data.push({ name, revenue: dayRev, growth: dailyMrrGoal });
         }
         return data;
-    }, [allPayments]);
+    }, [allPayments, stats.mrr]);
 
     const filteredBusinesses = allBusinesses.filter(b => 
         b.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
@@ -193,11 +206,15 @@ export default function SuperAdminPage() {
                         <h1 className="text-slate-900 font-black text-xl italic tracking-tighter uppercase leading-none">Aura Komuta Merkezi</h1>
                         <div className="flex items-center gap-3 mt-1.5">
                             <span className="text-[9px] font-black text-indigo-500 uppercase tracking-[0.2em] flex items-center gap-1.5 bg-indigo-50 px-2 py-0.5 rounded-md">
-                                <Server size={10} /> V 4.0.2
+                                <Server size={10} /> V 5.0.0
                             </span>
                             <span className="w-1 h-1 bg-slate-200 rounded-full" />
                             <span className="text-[9px] font-black text-emerald-600 uppercase tracking-[0.2em] flex items-center gap-1.5">
-                                <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" /> SİSTEM OPTİMAL
+                                <motion.div 
+                                    animate={{ scale: [1, 1.2, 1], opacity: [0.5, 1, 0.5] }}
+                                    transition={{ duration: 2, repeat: Infinity }}
+                                    className="w-1.5 h-1.5 bg-emerald-500 rounded-full" 
+                                /> SİSTEM CANLI
                             </span>
                         </div>
                     </div>
@@ -321,22 +338,35 @@ export default function SuperAdminPage() {
                                 {/* Recent Pulse Stream */}
                                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 pb-10">
                                     <div className="bg-white border border-indigo-100 rounded-[2.5rem] p-8 shadow-sm">
-                                        <h4 className="text-slate-900 text-xs font-black uppercase tracking-widest mb-6 flex items-center gap-3">
-                                            <Activity size={14} className="text-indigo-600" /> Sistem Akışı
+                                        <h4 className="text-slate-900 text-xs font-black uppercase tracking-widest mb-6 flex items-center justify-between">
+                                            <div className="flex items-center gap-3">
+                                                <Activity size={14} className="text-indigo-600" /> Küresel Sistem Akışı
+                                            </div>
+                                            <span className="text-[8px] font-black text-indigo-500 bg-indigo-50 px-2 py-1 rounded-lg">CANLI BESLEME</span>
                                         </h4>
-                                        <div className="space-y-4">
-                                            {allLogs.slice(0, 8).map((log, i) => (
+                                        <div className="space-y-4 max-h-[400px] overflow-y-auto no-scrollbar pr-2">
+                                            {allLogs.length > 0 ? allLogs.slice(0, 15).map((log, i) => (
                                                 <div key={i} className="flex gap-4 items-center group cursor-pointer hover:translate-x-1 transition-transform">
-                                                    <div className="w-8 h-8 bg-slate-50 border border-indigo-50 rounded-lg flex items-center justify-center text-indigo-600 group-hover:text-white group-hover:bg-indigo-600 transition-all font-mono text-[10px]">
-                                                        {i+1}
+                                                    <div className="w-10 h-10 bg-slate-50 border border-indigo-50 rounded-2xl flex items-center justify-center text-indigo-600 group-hover:text-white group-hover:bg-indigo-600 transition-all">
+                                                        {log.action?.includes('Business') ? <Globe size={14} /> : <Database size={14} />}
                                                     </div>
                                                     <div className="flex-1 min-w-0">
-                                                        <p className="text-[11px] font-black text-slate-700 truncate">{log.action}</p>
-                                                        <p className="text-[8px] font-bold text-slate-400 uppercase tracking-tighter">{log.user} @ {new Date(log.date).toLocaleTimeString()}</p>
+                                                        <p className="text-[11px] font-black text-slate-700 truncate capitalize">{log.action || 'Sistem Olayı'}</p>
+                                                        <div className="flex items-center gap-2 mt-0.5">
+                                                            <span className="text-[8px] font-bold text-indigo-400 uppercase tracking-tighter">{log.user || 'Sistem'}</span>
+                                                            <span className="w-1 h-1 bg-slate-200 rounded-full" />
+                                                            <span className="text-[8px] font-bold text-slate-400 uppercase tracking-tighter">
+                                                                {new Date((log as any).date || (log as any).createdAt || Date.now()).toLocaleTimeString()}
+                                                            </span>
+                                                        </div>
                                                     </div>
                                                     <ChevronRight size={14} className="text-slate-200" />
                                                 </div>
-                                            ))}
+                                            )) : (
+                                                <div className="text-center py-10">
+                                                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Henüz global log verisi yok</p>
+                                                </div>
+                                            )}
                                         </div>
                                     </div>
 
