@@ -52,6 +52,8 @@ export type Expense = DB.Expense;
 export type CustomerMedia = DB.CustomerMedia;
 export type ZReport = DB.ZReport;
 export type Quote = DB.Quote;
+export type LoyaltySettings = DB.LoyaltySettings;
+export type Webhook = DB.Webhook;
 export type SystemAnnouncement = DB.SystemAnnouncement;
 export type TenantModule = DB.TenantModule;
 export type MarketingRule = DB.MarketingRule;
@@ -143,6 +145,8 @@ export interface StoreState {
     consentFormTemplates: ConsentFormTemplate[];
     quotes: Quote[];
     systemAnnouncements: SystemAnnouncement[];
+    loyaltySettings: LoyaltySettings | null;
+    webhooks: Webhook[];
     tenantModules: TenantModule[];
     marketingRules: MarketingRule[];
     pricingRules: DynamicPricingRule[];
@@ -210,6 +214,9 @@ export interface StoreState {
     updateQuote: (id: string, updates: Partial<Quote>) => void;
     deleteQuote: (id: string) => void;
     updateBookingSettings: (s: Partial<BookingSettings>) => Promise<void>;
+    updateLoyaltySettings: (s: Partial<LoyaltySettings>) => Promise<void>;
+    addWebhook: (w: Omit<Webhook, 'id' | 'businessId'>) => Promise<void>;
+    deleteWebhook: (id: string) => Promise<void>;
 
     updateProduct: (id: string, p: Partial<Product>) => void;
     removeProduct: (id: string) => void;

@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode, useMemo } from 'react';
-import { Business, Branch, BusinessSettings, CurrencyRate, BookingSettings, PaymentDefinition, BankAccount, ExpenseCategory, ReferralSource, ConsentFormTemplate, AppUser } from './types';
+import { Business, Branch, BusinessSettings, CurrencyRate, BookingSettings, PaymentDefinition, BankAccount, ExpenseCategory, ReferralSource, ConsentFormTemplate, AppUser, LoyaltySettings, Webhook } from './types';
 import { supabase } from '@/lib/supabase';
 import { toCamel } from '@/lib/utils/converter';
 
@@ -16,6 +16,8 @@ interface BusinessContextType {
     expenseCategories: ExpenseCategory[];
     referralSources: ReferralSource[];
     consentFormTemplates: ConsentFormTemplate[];
+    loyaltySettings: LoyaltySettings | null;
+    webhooks: Webhook[];
     
     setAllBusinesses: React.Dispatch<React.SetStateAction<Business[]>>;
     setCurrentTenant: React.Dispatch<React.SetStateAction<Business | null>>;
@@ -29,6 +31,8 @@ interface BusinessContextType {
     setExpenseCategories: React.Dispatch<React.SetStateAction<ExpenseCategory[]>>;
     setReferralSources: React.Dispatch<React.SetStateAction<ReferralSource[]>>;
     setConsentFormTemplates: React.Dispatch<React.SetStateAction<ConsentFormTemplate[]>>;
+    setLoyaltySettings: React.Dispatch<React.SetStateAction<LoyaltySettings | null>>;
+    setWebhooks: React.Dispatch<React.SetStateAction<Webhook[]>>;
     clearCatalog: () => void;
 }
 
@@ -71,6 +75,8 @@ export const BusinessProvider = ({ children }: { children: ReactNode }) => {
     const [expenseCategories, setExpenseCategories] = useState<ExpenseCategory[]>([]);
     const [referralSources, setReferralSources] = useState<ReferralSource[]>([]);
     const [consentFormTemplates, setConsentFormTemplates] = useState<ConsentFormTemplate[]>([]);
+    const [loyaltySettings, setLoyaltySettings] = useState<LoyaltySettings | null>(null);
+    const [webhooks, setWebhooks] = useState<Webhook[]>([]);
     const [settings, setSettingsState] = useState<BusinessSettings>({ 
         startHour: 9, 
         endHour: 21, 
@@ -95,13 +101,15 @@ export const BusinessProvider = ({ children }: { children: ReactNode }) => {
     const contextValue = useMemo(() => ({
         allBusinesses, currentTenant, currentBranch, branches, settings, bookingSettings, allRates,
         paymentDefinitions, bankAccounts, expenseCategories, referralSources, consentFormTemplates,
+        loyaltySettings, webhooks,
         setAllBusinesses, setCurrentTenant, setCurrentBranch, setBranches, setSettings, setBookingSettings,
         setAllRates, setPaymentDefinitions, setBankAccounts, setExpenseCategories, setReferralSources, setConsentFormTemplates,
+        setLoyaltySettings, setWebhooks,
         clearCatalog
     }), [
         allBusinesses, currentTenant, currentBranch, branches, settings, bookingSettings, allRates,
         paymentDefinitions, bankAccounts, expenseCategories, referralSources, consentFormTemplates,
-        setSettings, clearCatalog
+        setSettings, clearCatalog, loyaltySettings, webhooks
     ]);
 
     return (

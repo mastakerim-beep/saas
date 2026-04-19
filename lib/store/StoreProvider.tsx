@@ -10,7 +10,8 @@ import {
     Product, Service, Package, MembershipPlan, CustomerMembership,
     PaymentDefinition, BankAccount, ExpenseCategory, ReferralSource, 
     ConsentFormTemplate, AuditLog, NotificationLog, CommissionRule,
-    PackageDefinition, Quote, MarketingRule, DynamicPricingRule, Room, Expense, CalendarBlock, AppointmentStatus, BookingSettings
+    PackageDefinition, Quote, MarketingRule, DynamicPricingRule, Room, Expense, CalendarBlock, AppointmentStatus, BookingSettings,
+    LoyaltySettings, Webhook
 } from './types';
 import { fetchData as fetchDataLogic } from './fetch-logic';
 import { syncDb } from './sync-db';
@@ -348,6 +349,8 @@ const StoreOrchestrator = ({ children }: { children: ReactNode }) => {
         walletTransactions: data.walletTransactions,
         bodyMaps: data.bodyMaps,
         usageNorms: data.usageNorms,
+        loyaltySettings: biz.loyaltySettings,
+        webhooks: biz.webhooks,
 
         login: auth.login,
         logout: auth.logout,
@@ -869,6 +872,23 @@ const StoreOrchestrator = ({ children }: { children: ReactNode }) => {
                 console.warn("Booking settings sync failed, reversing state.");
                 biz.setBookingSettings(biz.bookingSettings);
             }
+        },
+        updateLoyaltySettings: async (s: Partial<LoyaltySettings>) => {
+            if (!biz.loyaltySettings) return;
+            const updated = { ...biz.loyaltySettings, ...s };
+            biz.setLoyaltySettings(updated);
+            const ok = await syncDb('loyalty_settings', 'update', s, biz.loyaltySettings.id, activeBizId);
+            if (!ok) biz.setLoyaltySettings(biz.loyaltySettings);
+        },
+        addWebhook: async (w: any) => {
+            const id = crypto.randomUUID();
+            const nw = { ...w, id, businessId: activeBizId, createdAt: new Date().toISOString() };
+            biz.setWebhooks(prev => [...prev, nw]);
+            await syncDb('webhooks', 'insert', nw, id, activeBizId);
+        },
+        deleteWebhook: async (id: string) => {
+            biz.setWebhooks(prev => prev.filter(w => w.id !== id));
+            await syncDb('webhooks', 'delete', {}, id, activeBizId);
         },
         updateProduct: async (id: string, p: any) => {
             data.updateProduct(id, p);

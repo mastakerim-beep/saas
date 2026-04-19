@@ -498,6 +498,25 @@ export interface BookingSettings {
     updatedAt?: string;
 }
 
+export interface LoyaltySettings {
+    id: string;
+    businessId?: string;
+    isEnabled: boolean;
+    pointsPerCurrency: number; // e.g. 5 points for 100 TL
+    minPointsToSpend: number;
+    updatedAt?: string;
+}
+
+export interface Webhook {
+    id: string;
+    businessId?: string;
+    name: string;
+    url: string;
+    events: string[]; // e.g. ['appointment.created', 'appointment.cancelled']
+    isActive: boolean;
+    createdAt?: string;
+}
+
 export interface SystemAnnouncement {
     id: string;
     businessId?: string;
