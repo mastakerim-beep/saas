@@ -10,6 +10,7 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
+import ExportDropdown from '@/components/ui/ExportDropdown';
 
 export default function QuotesPage() {
     const { 
@@ -308,6 +309,29 @@ export default function QuotesPage() {
                             className="w-full bg-white border border-gray-100 rounded-2xl pl-14 pr-6 py-4 font-bold text-sm shadow-sm transition-all outline-none focus:ring-2 focus:ring-indigo-100" 
                         />
                     </div>
+                    <ExportDropdown 
+                        data={filteredQuotes}
+                        filename="Aura_Teklif_Listesi"
+                        title="Teklif Yönetimi Veri Raporu"
+                        headers={["Referans", "Müşteri", "Hizmet/Paket", "Tutar", "İndirim", "Durum"]}
+                        excelMapping={(q) => ({
+                            "Referans": `Q-${q.referenceCode || q.id.split('-')[0].toUpperCase()}`,
+                            "Müşteri": q.customerName,
+                            "Hizmet": q.serviceName,
+                            "Tutar": q.amount,
+                            "İndirim Oranı": `%${q.discountRate || 0}`,
+                            "Durum": q.status,
+                            "Kayıt Tarihi": q.createdAt?.split('T')[0] || '---'
+                        })}
+                        pdfMapping={(q) => [
+                            `Q-${q.referenceCode || q.id.split('-')[0].toUpperCase()}`,
+                            q.customerName,
+                            q.serviceName,
+                            `₺${q.amount.toLocaleString('tr-TR')}`,
+                            `%${q.discountRate || 0}`,
+                            q.status
+                        ]}
+                    />
                     <button 
                         onClick={() => setShowAddModal(true)}
                         className="flex items-center gap-2 bg-indigo-600 text-white px-8 py-4 rounded-2xl font-black uppercase text-xs tracking-widest shadow-lg shadow-indigo-600/20 hover:scale-105 active:scale-95 transition-all"
