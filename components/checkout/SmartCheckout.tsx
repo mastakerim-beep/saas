@@ -325,7 +325,7 @@ export default function SmartCheckout({ appointment, onClose }: SmartCheckoutPro
                         
                         {/* 0. Paket Kullanımı */}
                         {applicablePackages.length > 0 && (
-                            <div className="space-y-6 bg-emerald-50/30 p-10 rounded-[3rem] border border-emerald-100 shadow-sm relative overflow-hidden group">
+                            <div className="space-y-4 bg-emerald-50/30 p-6 rounded-[2rem] border border-emerald-100 shadow-sm relative overflow-hidden group">
                                 <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-100/50 rounded-full -translate-y-1/2 translate-x-1/2 group-hover:scale-110 transition-transform" />
                                 <div className="relative">
                                     <h3 className="text-[10px] font-black text-emerald-600 uppercase tracking-widest flex items-center gap-2 mb-6">
@@ -413,7 +413,7 @@ export default function SmartCheckout({ appointment, onClose }: SmartCheckoutPro
                         </div>
 
                         {/* 1. Ödeme Kanalları */}
-                        <div className="space-y-8 bg-white p-10 rounded-[3rem] border border-indigo-50 shadow-sm relative overflow-hidden group">
+                        <div className="space-y-6 bg-white p-6 rounded-[2rem] border border-indigo-50 shadow-sm relative overflow-hidden group">
                              <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-50/50 rounded-full -translate-y-1/2 translate-x-1/2 group-hover:scale-110 transition-transform" />
                              <div className="relative">
                                  <div className="flex justify-between items-center mb-6">
@@ -600,27 +600,27 @@ export default function SmartCheckout({ appointment, onClose }: SmartCheckoutPro
                             {soldProducts.map(p => {
                                 const isGift = giftedItems.has(p.productId);
                                 return (
-                                    <div key={p.productId} className={`p-8 rounded-[2.5rem] border transition-all duration-500 flex justify-between items-center ${isGift ? 'bg-indigo-50/50 border-indigo-100 opacity-80' : 'bg-white border-gray-100 shadow-sm'}`}>
-                                        <div className="flex items-center gap-6">
-                                            <div className={`w-14 h-14 rounded-2xl flex items-center justify-center transition-colors ${isGift ? 'bg-indigo-600 text-white' : 'bg-gray-50 text-gray-400'}`}><ShoppingBag size={24} /></div>
+                                    <div key={p.productId} className={`p-4 rounded-[1.5rem] border transition-all duration-500 flex justify-between items-center ${isGift ? 'bg-indigo-50/50 border-indigo-100 opacity-80' : 'bg-white border-gray-100 shadow-sm'}`}>
+                                        <div className="flex items-center gap-4">
+                                            <div className={`w-10 h-10 rounded-xl flex items-center justify-center transition-colors ${isGift ? 'bg-indigo-600 text-white' : 'bg-gray-50 text-gray-400'}`}><ShoppingBag size={18} /></div>
                                             <div>
-                                                <p className="font-black text-gray-900 text-xl uppercase tracking-tight">{p.name}</p>
-                                                <div className="flex items-center gap-3 mt-1">
-                                                    <p className="text-[10px] text-gray-400 font-black uppercase tracking-widest">{p.quantity} Adet x ₺{p.price}</p>
-                                                    {isGift && <span className="px-2 py-0.5 bg-indigo-600 text-white text-[8px] font-black rounded uppercase">İkram</span>}
+                                                <p className="font-black text-gray-900 text-sm uppercase tracking-tight">{p.name}</p>
+                                                <div className="flex items-center gap-2 mt-0.5">
+                                                    <p className="text-[8px] text-gray-400 font-black uppercase tracking-widest">{p.quantity} Adet x ₺{p.price}</p>
+                                                    {isGift && <span className="px-1.5 py-0.5 bg-indigo-600 text-white text-[7px] font-black rounded uppercase">İkram</span>}
                                                 </div>
                                             </div>
                                         </div>
-                                        <div className="flex items-center gap-6">
+                                        <div className="flex items-center gap-4">
                                             <div className="text-right">
-                                                {isGift && <p className="text-[10px] font-black text-gray-300 line-through">₺{p.price * p.quantity}</p>}
-                                                <p className={`font-black text-2xl italic tracking-tighter ${isGift ? 'text-indigo-600' : 'text-gray-900'}`}>₺{(isGift ? 0 : p.price * p.quantity).toLocaleString('tr-TR')}</p>
+                                                {isGift && <p className="text-[8px] font-black text-gray-300 line-through">₺{p.price * p.quantity}</p>}
+                                                <p className={`font-black text-lg italic tracking-tighter ${isGift ? 'text-indigo-600' : 'text-gray-900'}`}>₺{(isGift ? 0 : p.price * p.quantity).toLocaleString('tr-TR')}</p>
                                             </div>
-                                            <div className="flex gap-2">
-                                                <button onClick={() => handleGiftToggle('product', p.productId)} className={`p-4 rounded-2xl transition-all ${isGift ? 'bg-indigo-600 text-white shadow-lg' : 'bg-gray-50 text-indigo-300 hover:text-indigo-600 hover:bg-indigo-50'}`}>
-                                                    <HeartHandshake size={20} />
+                                            <div className="flex gap-1.5">
+                                                <button onClick={() => handleGiftToggle('product', p.productId)} className={`p-2.5 rounded-xl transition-all ${isGift ? 'bg-indigo-600 text-white shadow-lg' : 'bg-gray-50 text-indigo-300 hover:text-indigo-600 hover:bg-indigo-50'}`}>
+                                                    <HeartHandshake size={16} />
                                                 </button>
-                                                <button onClick={() => removeProduct(p.productId)} className="p-4 bg-gray-50 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-2xl transition-all"><Trash2 size={20} /></button>
+                                                <button onClick={() => removeProduct(p.productId)} className="p-2.5 bg-gray-50 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all"><Trash2 size={16} /></button>
                                             </div>
                                         </div>
                                     </div>
@@ -629,60 +629,53 @@ export default function SmartCheckout({ appointment, onClose }: SmartCheckoutPro
                         </div>
 
                         {/* 3. Önerilen Ürünler */}
-                        <div className="pt-8 border-t border-dashed border-gray-100">
-                             <div className="flex justify-between items-center mb-6">
+                        <div className="pt-6 border-t border-dashed border-gray-100">
+                             <div className="flex justify-between items-center mb-4">
                                  <h3 className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] flex items-center gap-2">
                                      <Sparkles className="w-4 h-4 text-amber-500 animate-pulse" /> ÖNERİLEN ÜRÜNLER
                                  </h3>
-                                 <p className="text-[9px] font-bold text-indigo-400 uppercase tracking-widest">Müşteri Segmentine Özel</p>
                              </div>
-                             <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 pb-4">
+                             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                                 {inventory.slice(0, 4).map(p => (
                                     <button 
                                         key={p.id} 
                                         onClick={() => addProduct(p.id)}
-                                        className="p-5 bg-white border border-gray-100 rounded-[2rem] hover:border-indigo-600 hover:shadow-2xl hover:shadow-indigo-500/10 transition-all text-center group relative overflow-hidden"
+                                        className="p-4 bg-white border border-gray-100 rounded-[1.5rem] hover:border-indigo-600 transition-all text-center group relative overflow-hidden"
                                     >
-                                        <div className="w-12 h-12 bg-indigo-50 rounded-2xl flex items-center justify-center mx-auto mb-4 group-hover:bg-indigo-600 group-hover:text-white transition-all transform group-hover:scale-110">
-                                            <ShoppingBag size={20} />
+                                        <div className="w-10 h-10 bg-indigo-50 rounded-xl flex items-center justify-center mx-auto mb-2 group-hover:bg-indigo-600 group-hover:text-white transition-all transform group-hover:scale-110">
+                                            <ShoppingBag size={18} />
                                         </div>
-                                        <p className="text-[10px] font-black text-gray-900 uppercase truncate mb-1">{p.name}</p>
-                                        <p className="text-[11px] font-black text-indigo-600 italic tracking-tighter tabular-nums">₺{p.price}</p>
-                                        <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                            <div className="w-6 h-6 bg-indigo-600 rounded-full flex items-center justify-center shadow-lg"><Plus size={14} className="text-white" /></div>
-                                        </div>
+                                        <p className="text-[9px] font-black text-gray-900 uppercase truncate mb-0.5">{p.name}</p>
+                                        <p className="text-[10px] font-black text-indigo-600 italic">₺{p.price}</p>
                                     </button>
                                 ))}
                              </div>
                         </div>
 
 
-                        {/* 5. Sadakat Puanı (En Alt) */}
-                        <div className="bg-white p-6 rounded-[2.5rem] border border-gray-100 shadow-sm relative overflow-hidden group">
-                            <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-50 rounded-full -translate-y-1/2 translate-x-1/2 group-hover:scale-110 transition-transform" />
-                            <div className="relative flex items-center justify-between">
-                                <div className="flex items-center gap-4">
-                                    <div className="w-12 h-12 bg-indigo-50 rounded-2xl flex items-center justify-center text-indigo-600"><Sparkles size={24} /></div>
-                                    <div>
-                                        <p className="text-[10px] font-black text-indigo-600 uppercase tracking-widest flex items-center gap-2">Sadakat Puanı</p>
-                                        <p className="text-xl font-black text-gray-900 tracking-tighter italic leading-none">{customer?.loyaltyPoints || 0} PUAN</p>
-                                    </div>
+                        {/* 5. Sadakat Puanı (Sayfa Sonu) */}
+                        <div className="bg-white p-5 rounded-[2rem] border border-gray-100 shadow-sm flex items-center justify-between group">
+                            <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 bg-indigo-50 rounded-xl flex items-center justify-center text-indigo-600"><Sparkles size={20} /></div>
+                                <div>
+                                    <p className="text-[9px] font-black text-indigo-600 uppercase tracking-widest">LOYALTY POINTS</p>
+                                    <p className="text-lg font-black text-gray-900 tracking-tighter italic">{customer?.loyaltyPoints || 0}</p>
                                 </div>
-                                <button 
-                                    onClick={() => {
-                                        const obtainable = Math.min(customer?.loyaltyPoints || 0, Math.floor(remaining));
-                                        if(obtainable > 0) setPointsUsed(prev => prev + obtainable);
-                                    }}
-                                    disabled={!customer?.loyaltyPoints || remaining <= 0}
-                                    className="px-6 py-3 bg-indigo-600 text-white rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-xl shadow-indigo-100 hover:scale-[1.02] active:scale-95 transition-all disabled:opacity-30"
-                                >
-                                    Puan Kullan (₺1 = 1 Puan)
-                                </button>
                             </div>
+                            <button 
+                                onClick={() => {
+                                    const obtainable = Math.min(customer?.loyaltyPoints || 0, Math.floor(remaining));
+                                    if(obtainable > 0) setPointsUsed(prev => prev + obtainable);
+                                }}
+                                disabled={!customer?.loyaltyPoints || remaining <= 0}
+                                className="px-5 py-2.5 bg-indigo-600 text-white rounded-xl font-black text-[9px] uppercase tracking-widest disabled:opacity-30"
+                            >
+                                Puan Kullan
+                            </button>
                         </div>
 
                         {/* 6. Memnuniyet Bahşişi */}
-                        <div className="bg-indigo-950 p-10 rounded-[3rem] shadow-2xl relative overflow-hidden group">
+                        <div className="bg-indigo-950 p-8 rounded-[2rem] shadow-2xl relative overflow-hidden group">
                             <div className="absolute inset-0 bg-gradient-to-br from-indigo-800 to-indigo-950 opacity-50" />
                             <div className="relative flex flex-col md:flex-row items-center justify-between gap-8">
                                 <div className="flex items-center gap-6">
