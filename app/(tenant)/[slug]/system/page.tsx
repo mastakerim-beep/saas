@@ -8,7 +8,7 @@ import {
     ChevronRight, ChevronUp, ChevronDown, Shield, Smartphone, Calendar, Star,
     ExternalLink, Info, AlertCircle, Save, Layers, Zap, Clock, Building2, Megaphone
 } from "lucide-react";
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import CatalogSettingsView from "@/components/system/CatalogSettingsView";
 import AnnouncementsSettingsView from "@/components/system/AnnouncementsSettingsView";
@@ -783,6 +783,14 @@ function BusinessSettingsView() {
     const [startHour, setStartHour] = useState(currentBusiness?.calendarStartHour || 8);
     const [endHour, setEndHour] = useState(currentBusiness?.calendarEndHour || 22);
     const [isSaving, setIsSaving] = useState(false);
+
+    // Sync state when currentBusiness data arrives or changes
+    useEffect(() => {
+        if (currentBusiness) {
+            setStartHour(currentBusiness.calendarStartHour || 8);
+            setEndHour(currentBusiness.calendarEndHour || 22);
+        }
+    }, [currentBusiness]);
 
     const handleSave = async () => {
         setIsSaving(true);

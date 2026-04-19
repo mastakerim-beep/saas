@@ -242,6 +242,7 @@ export const fetchData = async (
 
         const targetBusiness = businesses.find((b: any) => b.id === targetId);
         if (targetBusiness) {
+            setters.setCurrentTenant((prev: any) => JSON.stringify(prev) === JSON.stringify(targetBusiness) ? prev : targetBusiness);
             const newStart = targetBusiness.calendarStartHour || 9;
             const newEnd = targetBusiness.calendarEndHour || 21;
             setters.setSettings((prev: any) => (prev.startHour === newStart && prev.endHour === newEnd) ? prev : ({
