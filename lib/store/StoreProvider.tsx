@@ -16,6 +16,7 @@ import {
 import { fetchData as fetchDataLogic } from './fetch-logic';
 import { syncDb } from './sync-db';
 import { supabase } from '@/lib/supabase';
+import { triggerWebhooks } from '@/lib/utils/webhook-sender';
 
 const StoreContext = createContext<StoreState | undefined>(undefined);
 
@@ -434,6 +435,10 @@ const StoreOrchestrator = ({ children }: { children: ReactNode }) => {
             }
 
             await store.addLog('Randevu Oluşturuldu', a.customerName, '', `${a.service} (${a.communicationSource || 'Direkt'})`);
+            
+            // Trigger Automation Webhooks
+            triggerWebhooks('appointment.created', appt, biz.webhooks);
+            
             return true;
         },
         updateAppointment: async (id: string, updates: any) => {
@@ -458,6 +463,10 @@ const StoreOrchestrator = ({ children }: { children: ReactNode }) => {
                     data.setAllAppointments((prev: any) => [...prev, apt]);
                     return false;
                 }
+                
+                // Trigger Automation Webhooks
+                triggerWebhooks('appointment.cancelled', apt, biz.webhooks);
+                
                 await store.addLog('Randevu Silindi', apt.customerName);
                 return true;
             }
@@ -874,7 +883,13 @@ const StoreOrchestrator = ({ children }: { children: ReactNode }) => {
             }
         },
         updateLoyaltySettings: async (s: Partial<LoyaltySettings>) => {
-            if (!biz.loyaltySettings) return;
+            if (!biz.loyaltySettings) {
+                const id = crypto.randomUUID();
+                const nw = { id, businessId: activeBizId, isEnabled: true, pointsPerCurrency: 5, minPointsToSpend: 500, ...s };
+                biz.setLoyaltySettings(nw);
+                await syncDb('loyalty_settings', 'insert', nw, id, activeBizId);
+                return;
+            }
             const updated = { ...biz.loyaltySettings, ...s };
             biz.setLoyaltySettings(updated);
             const ok = await syncDb('loyalty_settings', 'update', s, biz.loyaltySettings.id, activeBizId);

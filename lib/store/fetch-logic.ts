@@ -20,7 +20,7 @@ export const fetchData = async (
         'packages', 'package_definitions', 'commission_rules', 'calendar_blocks', 'notification_logs', 'z_reports',
         'payment_definitions', 'bank_accounts', 'expense_categories', 'referral_sources', 'consent_form_templates', 'quotes',
         'system_announcements', 'tenant_modules', 'marketing_rules', 'dynamic_pricing_rules', 'customer_wallets', 'wallet_transactions',
-        'consultation_body_maps', 'inventory_usage_norms'
+        'consultation_body_maps', 'inventory_usage_norms', 'loyalty_settings', 'webhooks'
     ];
 
     const isSaaS = currentUser?.role === 'SaaS_Owner';
@@ -217,6 +217,8 @@ export const fetchData = async (
         setters.setWalletTransactions(dataMap.wallet_transactions || []);
         setters.setBodyMaps(dataMap.consultation_body_maps || []);
         setters.setUsageNorms(dataMap.inventory_usage_norms || []);
+        setters.setLoyaltySettings(dataMap.loyalty_settings?.[0] || null);
+        setters.setWebhooks(dataMap.webhooks || []);
         setters.setAllNotifs(dataMap.notification_logs || []);
         setters.setAllBlocks(dataMap.calendar_blocks || []);
         

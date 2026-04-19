@@ -26,6 +26,7 @@ export default function MarketingPage() {
     } = useStore();
 
     const [activeTab, setActiveTab] = useState<'automation' | 'loyalty' | 'integrations'>('automation');
+    const [isSavingLoyalty, setIsSavingLoyalty] = useState(false);
     
     // Forms
     const [showRuleForm, setShowRuleForm] = useState(false);
@@ -71,7 +72,9 @@ export default function MarketingPage() {
     };
 
     const handleUpdateLoyalty = async (val: Partial<LoyaltySettings>) => {
+        setIsSavingLoyalty(true);
         await updateLoyaltySettings(val);
+        setTimeout(() => setIsSavingLoyalty(false), 500);
     };
 
     return (
@@ -253,7 +256,14 @@ export default function MarketingPage() {
                                             </div>
                                             <div>
                                                 <h2 className="text-3xl font-black italic tracking-tighter uppercase text-gray-900">Loyalty (Sadakat) Motoru</h2>
-                                                <p className="text-[11px] font-black text-gray-400 uppercase tracking-widest">MÜŞTERİLERİNİZE HARCADIKÇA KAZANDIRIN</p>
+                                                <div className="flex items-center gap-2">
+                                                    <p className="text-[11px] font-black text-gray-400 uppercase tracking-widest">MÜŞTERİLERİNİZE HARCADIKÇA KAZANDIRIN</p>
+                                                    {isSavingLoyalty && (
+                                                        <span className="flex items-center gap-1 px-2 py-0.5 bg-indigo-50 text-indigo-600 rounded-md text-[8px] font-black animate-pulse">
+                                                            <RefreshCcw size={8} className="animate-spin" /> KAYDEDİLİYOR
+                                                        </span>
+                                                    )}
+                                                </div>
                                             </div>
                                         </div>
 
