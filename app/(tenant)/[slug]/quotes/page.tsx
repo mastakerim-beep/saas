@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import { useStore, Quote } from '@/lib/store';
 import { 
     Zap, Search, Plus, Filter, FileText, Download, 
@@ -15,7 +15,7 @@ export default function QuotesPage() {
     const { 
         quotes, customers, services, packageDefinitions, branches,
         addQuote, updateQuote, deleteQuote, currentBranch,
-        processCheckout 
+        processCheckout, addCustomer, addAppointment, addPackage 
     } = useStore();
     const [search, setSearch] = useState('');
     const [statusFilter, setStatusFilter] = useState('Hepsi');
@@ -30,7 +30,29 @@ export default function QuotesPage() {
     const [followUpDate, setFollowUpDate] = useState('');
     const [followUpTime, setFollowUpTime] = useState('');
     const [customerSearch, setCustomerSearch] = useState('');
+    const [isSearchingCustomer, setIsSearchingCustomer] = useState(false);
+    const [showQuickAdd, setShowQuickAdd] = useState(false);
+    const [quickName, setQuickName] = useState('');
+    const [quickPhone, setQuickPhone] = useState('');
     const [itemSearch, setItemSearch] = useState('');
+    const [isSearchingItem, setIsSearchingItem] = useState(false);
+    
+    // Refs for click-away
+    const customerSearchRef = useRef<HTMLDivElement>(null);
+    const itemSearchRef = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+        const handleClickOutside = (event: MouseEvent) => {
+            if (customerSearchRef.current && !customerSearchRef.current.contains(event.target as Node)) {
+                setIsSearchingCustomer(false);
+            }
+            if (itemSearchRef.current && !itemSearchRef.current.contains(event.target as Node)) {
+                setIsSearchingItem(false);
+            }
+        };
+        document.addEventListener("mousedown", handleClickOutside);
+        return () => document.removeEventListener("mousedown", handleClickOutside);
+    }, []);
 
     const filteredQuotes = useMemo(() => {
         return quotes.filter(q => {
@@ -182,29 +204,87 @@ export default function QuotesPage() {
         setDiscountRate(0);
         setNote('');
         setFollowUpDate('');
+        setCustomerSearch('');
+    };
+
+    const handleQuickAddCustomer = async () => {
+        if (!quickName) return;
+        const newCustomer = await addCustomer({
+            name: quickName,
+            phone: quickPhone,
+            segment: 'STANDARD'
+        });
+        if (newCustomer) {
+            setSelectedCustomerId(newCustomer.id);
+            setCustomerSearch(newCustomer.name);
+            setShowQuickAdd(false);
+            setQuickName('');
+            setQuickPhone('');
+        }
     };
 
     const handleApproveAndPay = async (quote: Quote) => {
         const ok = confirm(`${quote.customerName} için ₺${quote.amount.toLocaleString('tr-TR')} ödeme alınarak teklif onaylansın mı?`);
         if (!ok) return;
 
-        // 1. Process Checkout
-        const success = await processCheckout({
-            customerId: quote.customerId,
-            customerName: quote.customerName,
-            totalAmount: quote.amount,
-            service: quote.serviceName,
-            methods: [{ method: 'nakit', amount: quote.amount, currency: 'TRY', rate: 1, isDeposit: false }],
-            date: new Date().toISOString().split('T')[0],
-            note: `Tekliften Dönüştürüldü (#Q-${quote.id.split('-')[0].toUpperCase()})`
-        }, {
-            packageId: quote.packageDefinitionId // If it was a package quote
-        });
+        let appointmentId: string | undefined = undefined;
+        let packageId: string | undefined = undefined;
 
-        if (success) {
-            // 2. Update Quote Status
-            updateQuote(quote.id, { status: 'Onaylandı' });
-            alert("Teklif onaylandı ve satış başarıyla tamamlandı.");
+        try {
+            // 1. Determine if it's a Service or Package
+            if (quote.serviceId) {
+                // Hizmet Teklifi ise: Tamamlandı durumunda bir randevu kaydı oluştur
+                appointmentId = crypto.randomUUID();
+                await addAppointment({
+                    id: appointmentId,
+                    customerId: quote.customerId,
+                    customerName: quote.customerName,
+                    service: quote.serviceName,
+                    price: quote.amount,
+                    status: 'completed',
+                    date: new Date().toISOString().split('T')[0],
+                    time: new Date().toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' }),
+                    isPaid: true,
+                    branchId: quote.branchId || currentBranch?.id
+                });
+            } else if (quote.packageDefinitionId) {
+                // Paket Teklifi ise: Müşteriye yeni paket tanımla
+                packageId = crypto.randomUUID();
+                const pkgDef = packageDefinitions.find(p => p.id === quote.packageDefinitionId);
+                await addPackage({
+                    id: packageId,
+                    customerId: quote.customerId,
+                    name: quote.serviceName,
+                    serviceName: quote.serviceName,
+                    totalSessions: pkgDef?.totalSessions || 1,
+                    price: quote.amount,
+                    branchId: quote.branchId || currentBranch?.id
+                });
+            }
+
+            // 2. Process Checkout
+            const success = await processCheckout({
+                appointmentId: appointmentId,
+                customerId: quote.customerId,
+                customerName: quote.customerName,
+                totalAmount: quote.amount,
+                service: quote.serviceName,
+                methods: [{ method: 'nakit', amount: quote.amount, currency: 'TRY', rate: 1, isDeposit: false }],
+                date: new Date().toISOString().split('T')[0],
+                note: `Tekliften Dönüştürüldü (#Q-${quote.id.split('-')[0].toUpperCase()})`,
+                branchId: quote.branchId || currentBranch?.id
+            }, {
+                packageId: packageId // If it was a package purchase
+            });
+
+            if (success) {
+                // 3. Update Quote Status
+                updateQuote(quote.id, { status: 'Onaylandı' });
+                alert("Teklif onaylandı! Müşteri kaydı, satış ve (varsa) paket tanımı başarıyla yapıldı.");
+            }
+        } catch (error) {
+            console.error("Conversion Error:", error);
+            alert("İşlem sırasında bir hata oluştu. Lütfen tekrar deneyin.");
         }
     };
 
@@ -403,19 +483,96 @@ export default function QuotesPage() {
                             <div className="p-10 overflow-y-auto grid grid-cols-1 md:grid-cols-2 gap-10">
                                 {/* Left: Customer & Service */}
                                 <div className="space-y-8">
-                                    <section>
+                                    <section className="relative" ref={customerSearchRef}>
                                         <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-3 block">MÜŞTERİ SEÇİMİ</label>
                                         <div className="relative">
-                                            <Users className="w-5 h-5 absolute left-5 top-1/2 -translate-y-1/2 text-gray-300" />
-                                            <select 
-                                                value={selectedCustomerId}
-                                                onChange={e => setSelectedCustomerId(e.target.value)}
-                                                className="w-full bg-white border border-gray-100 rounded-2xl pl-14 pr-6 py-4 font-bold text-sm shadow-sm outline-none focus:ring-2 focus:ring-indigo-100 appearance-none"
-                                            >
-                                                <option value="">Müşteri Seçin...</option>
-                                                {customers.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                                            </select>
+                                            <Users className="w-5 h-5 absolute left-5 top-1/2 -translate-y-1/2 text-gray-300 pointer-events-none" />
+                                            <input 
+                                                type="text"
+                                                value={customerSearch}
+                                                onChange={e => {
+                                                    setCustomerSearch(e.target.value);
+                                                    setIsSearchingCustomer(true);
+                                                    if (!e.target.value) setSelectedCustomerId('');
+                                                }}
+                                                onFocus={() => setIsSearchingCustomer(true)}
+                                                placeholder={selectedCustomerId ? customers.find(c => c.id === selectedCustomerId)?.name : "Müşteri Ara veya Yeni Ekle..."}
+                                                className="w-full bg-white border border-gray-100 rounded-2xl pl-14 pr-6 py-4 font-bold text-sm shadow-sm outline-none focus:ring-2 focus:ring-indigo-100"
+                                            />
+                                            
+                                            <AnimatePresence>
+                                                {isSearchingCustomer && (
+                                                    <motion.div 
+                                                        initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 10 }}
+                                                        className="absolute top-full left-0 right-0 z-[110] bg-white border border-gray-100 rounded-2xl mt-2 shadow-2xl max-h-[300px] overflow-y-auto overflow-x-hidden no-scrollbar"
+                                                    >
+                                                        {customers.filter(c => 
+                                                            c.name.toLowerCase().includes(customerSearch.toLowerCase()) || 
+                                                            c.phone?.includes(customerSearch)
+                                                        ).map(c => (
+                                                            <button 
+                                                                key={c.id}
+                                                                onClick={() => {
+                                                                    setSelectedCustomerId(c.id);
+                                                                    setCustomerSearch(c.name);
+                                                                    setIsSearchingCustomer(false);
+                                                                }}
+                                                                className="w-full text-left px-6 py-4 hover:bg-indigo-50 transition-colors flex items-center justify-between group"
+                                                            >
+                                                                <div>
+                                                                    <p className="font-black text-xs uppercase tracking-tight text-gray-900">{c.name}</p>
+                                                                    <p className="text-[10px] font-bold text-gray-400">{c.phone}</p>
+                                                                </div>
+                                                                {selectedCustomerId === c.id && <Zap className="w-4 h-4 text-indigo-600" />}
+                                                            </button>
+                                                        ))}
+                                                        
+                                                        {customerSearch.length > 0 && (
+                                                            <button 
+                                                                onClick={() => setShowQuickAdd(true)}
+                                                                className="w-full px-6 py-5 bg-indigo-600 text-white font-black text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-indigo-700 transition-all sticky bottom-0"
+                                                            >
+                                                                <Plus className="w-4 h-4" />
+                                                                Yeni Müşteri Oluştur: "{customerSearch}"
+                                                            </button>
+                                                        )}
+                                                    </motion.div>
+                                                )}
+                                            </AnimatePresence>
                                         </div>
+
+                                        {/* Quick Add Overlay inside Section */}
+                                        <AnimatePresence>
+                                            {showQuickAdd && (
+                                                <motion.div 
+                                                    initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }}
+                                                    className="absolute inset-0 bg-white/95 backdrop-blur-md z-[120] rounded-2xl flex flex-col p-6 shadow-2xl border border-indigo-50"
+                                                >
+                                                    <div className="flex justify-between items-center mb-6">
+                                                        <p className="text-[10px] font-black text-indigo-600 uppercase tracking-widest">Hızlı Müşteri Kaydı</p>
+                                                        <button onClick={() => setShowQuickAdd(false)} className="text-gray-400"><X size={18} /></button>
+                                                    </div>
+                                                    <div className="space-y-4 flex-1">
+                                                        <input 
+                                                            autoFocus placeholder="Müşteri Ad Soyad" value={quickName || customerSearch}
+                                                            onChange={e => setQuickName(e.target.value)}
+                                                            className="w-full bg-gray-50 border border-gray-100 rounded-xl px-5 py-3 text-xs font-black outline-none focus:ring-2 focus:ring-indigo-100"
+                                                        />
+                                                        <input 
+                                                            placeholder="Telefon Numarası" value={quickPhone}
+                                                            onChange={e => setQuickPhone(e.target.value)}
+                                                            className="w-full bg-gray-50 border border-gray-100 rounded-xl px-5 py-3 text-xs font-black outline-none focus:ring-2 focus:ring-indigo-100"
+                                                        />
+                                                    </div>
+                                                    <button 
+                                                        onClick={handleQuickAddCustomer}
+                                                        className="w-full bg-indigo-600 text-white py-4 rounded-xl font-black text-[10px] uppercase tracking-widest shadow-lg shadow-indigo-100 mt-6"
+                                                    >
+                                                        Kaydet ve Seç
+                                                    </button>
+                                                </motion.div>
+                                            )}
+                                        </AnimatePresence>
                                     </section>
 
                                     <section>
@@ -426,21 +583,54 @@ export default function QuotesPage() {
                                         </div>
                                     </section>
 
-                                    <section>
+                                    <section className="relative" ref={itemSearchRef}>
                                         <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-3 block">{itemType === 'service' ? 'HİZMET' : 'PAKET ŞABLONU'}</label>
                                         <div className="relative">
-                                            <Tag className="w-5 h-5 absolute left-5 top-1/2 -translate-y-1/2 text-gray-300" />
-                                            <select 
-                                                value={selectedItemId}
-                                                onChange={e => setSelectedItemId(e.target.value)}
-                                                className="w-full bg-white border border-gray-100 rounded-2xl pl-14 pr-6 py-4 font-bold text-sm shadow-sm outline-none focus:ring-2 focus:ring-indigo-100 appearance-none"
-                                            >
-                                                <option value="">{itemType === 'service' ? 'Hizmet Seçin...' : 'Paket Seçin...'}</option>
-                                                {itemType === 'service' 
-                                                    ? services.map(s => <option key={s.id} value={s.id}>{s.name} - ₺{s.price}</option>)
-                                                    : packageDefinitions.map(p => <option key={p.id} value={p.id}>{p.name} - ₺{p.price}</option>)
+                                            <Tag className="w-5 h-5 absolute left-5 top-1/2 -translate-y-1/2 text-gray-300 pointer-events-none" />
+                                            <input 
+                                                type="text"
+                                                value={itemSearch}
+                                                onChange={e => {
+                                                    setItemSearch(e.target.value);
+                                                    setIsSearchingItem(true);
+                                                    if (!e.target.value) setSelectedItemId('');
+                                                }}
+                                                onFocus={() => setIsSearchingItem(true)}
+                                                placeholder={selectedItemId 
+                                                    ? (itemType === 'service' ? services : packageDefinitions).find(i => i.id === selectedItemId)?.name 
+                                                    : (itemType === 'service' ? 'Hizmet Ara...' : 'Paket Ara...')
                                                 }
-                                            </select>
+                                                className="w-full bg-white border border-gray-100 rounded-2xl pl-14 pr-6 py-4 font-bold text-sm shadow-sm outline-none focus:ring-2 focus:ring-indigo-100"
+                                            />
+                                            
+                                            <AnimatePresence>
+                                                {isSearchingItem && (
+                                                    <motion.div 
+                                                        initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 10 }}
+                                                        className="absolute top-full left-0 right-0 z-[110] bg-white border border-gray-100 rounded-2xl mt-2 shadow-2xl max-h-[300px] overflow-y-auto no-scrollbar"
+                                                    >
+                                                        {(itemType === 'service' ? services : packageDefinitions)
+                                                            .filter(i => i.name.toLowerCase().includes(itemSearch.toLowerCase()))
+                                                            .map(i => (
+                                                                <button 
+                                                                    key={i.id}
+                                                                    onClick={() => {
+                                                                        setSelectedItemId(i.id);
+                                                                        setItemSearch(i.name);
+                                                                        setIsSearchingItem(false);
+                                                                    }}
+                                                                    className="w-full text-left px-6 py-4 hover:bg-indigo-50 transition-colors flex items-center justify-between group"
+                                                                >
+                                                                    <div>
+                                                                        <p className="font-black text-xs uppercase tracking-tight text-gray-900">{i.name}</p>
+                                                                        <p className="text-[10px] font-bold text-indigo-600">₺{i.price?.toLocaleString('tr-TR')}</p>
+                                                                    </div>
+                                                                    {selectedItemId === i.id && <Zap className="w-4 h-4 text-indigo-600" />}
+                                                                </button>
+                                                            ))}
+                                                    </motion.div>
+                                                )}
+                                            </AnimatePresence>
                                         </div>
                                     </section>
                                 </div>
