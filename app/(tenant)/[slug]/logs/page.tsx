@@ -11,6 +11,7 @@ import { useState, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { format } from "date-fns";
 import { tr } from "date-fns/locale";
+import ExportDropdown from "@/components/ui/ExportDropdown";
 
 export default function KernelLogsPage() {
     const { allLogs } = useStore();
@@ -58,12 +59,29 @@ export default function KernelLogsPage() {
                     </div>
                     <p className="text-gray-500 font-medium tracking-tight">İşletme bünyesinde gerçekleşen tüm atomik hareketler ve sistem günlükleri.</p>
                 </div>
-
                 <div className="flex items-center gap-3">
-                    <button className="flex items-center gap-2 px-6 py-3 bg-white border border-gray-200 rounded-2xl text-[11px] font-black uppercase tracking-widest hover:border-gray-900 transition-all shadow-sm">
-                        <Download size={14} />
-                        Dışa Aktar (.CSV)
-                    </button>
+                    <ExportDropdown 
+                        data={filteredLogs}
+                        filename="Kernel_Logs"
+                        title="Sistem Hareket Kayitlari (Kernel Logs)"
+                        headers={["Tarih", "Aksiyon", "Müşteri/İlgili", "Eski Değer", "Yeni Değer", "Kullanıcı"]}
+                        excelMapping={(log) => ({
+                            "Tarih": format(new Date(log.date), 'dd.MM.yyyy HH:mm'),
+                            "Aksiyon": log.action,
+                            "Müşteri/Detay": log.customerName,
+                            "Eski Değer": log.oldValue || '-',
+                            "Yeni Değer": log.newValue || '-',
+                            "İşlemi Yapan": log.user
+                        })}
+                        pdfMapping={(log) => [
+                            format(new Date(log.date), 'dd.MM.yyyy HH:mm'),
+                            log.action,
+                            log.customerName,
+                            log.oldValue || '-',
+                            log.newValue || '-',
+                            log.user
+                        ]}
+                    />
                     <div className="h-12 w-[1px] bg-gray-100 hidden md:block mx-2" />
                     <div className="flex items-center gap-1.5 p-1.5 bg-gray-50 rounded-2xl border border-gray-200">
                         <div className="px-4 py-2 bg-emerald-500 rounded-xl text-[10px] font-black text-white uppercase tracking-widest shadow-lg shadow-emerald-500/20">

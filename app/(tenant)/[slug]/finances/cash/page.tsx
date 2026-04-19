@@ -9,6 +9,7 @@ import {
 } from "lucide-react";
 import { useState, useMemo, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import ExportDropdown from "@/components/ui/ExportDropdown";
 
 export default function CashManagementPage() {
     const { 
@@ -152,12 +153,30 @@ export default function CashManagementPage() {
                 </motion.div>
                 
                 <div className="flex gap-4">
-                    <button 
-                        onClick={() => window.print()}
-                        className="flex items-center gap-2 px-6 py-4 bg-white text-indigo-950 rounded-[1.5rem] text-[10px] font-black uppercase tracking-widest border border-indigo-50 hover:bg-indigo-50 transition-all shadow-xl shadow-indigo-100/20"
-                    >
-                        <Download size={14} /> Dışa Aktar
-                    </button>
+                    <ExportDropdown 
+                        data={transactions}
+                        filename={`Kasa_Raporu_${dateRange.start}_${dateRange.end}`}
+                        title={`Gunun Kasasi Finansal Raporu (${dateRange.start} - ${dateRange.end})`}
+                        headers={["Tarih", "Taraf", "Tip", "Detay", "Referans", "Yöntem", "Tutar"]}
+                        excelMapping={(t) => ({
+                            "Tarih": new Date(t.date).toLocaleDateString('tr-TR'),
+                            "İşlem Tarafı": t.party,
+                            "İşlem Tipi": t.type,
+                            "Detay": t.note || t.info,
+                            "Referans": t.refCode,
+                            "Ödeme Yöntemi": t.method,
+                            "Tutar": t.amount
+                        })}
+                        pdfMapping={(t) => [
+                            new Date(t.date).toLocaleDateString('tr-TR'),
+                            t.party,
+                            t.type,
+                            t.note || t.info,
+                            t.refCode,
+                            t.method,
+                            `₺${t.amount.toLocaleString('tr-TR')}`
+                        ]}
+                    />
                     <button className="flex items-center gap-2 px-8 py-4 bg-indigo-950 text-white rounded-[1.5rem] text-[10px] font-black uppercase tracking-widest hover:scale-[1.02] active:scale-95 transition-all shadow-2xl shadow-indigo-200">
                         <Plus size={16} /> Yeni İşlem
                     </button>

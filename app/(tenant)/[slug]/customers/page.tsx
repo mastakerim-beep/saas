@@ -7,12 +7,16 @@ import {
     MessageSquare, Search, X, Phone, Mail, Calendar, ChevronRight, ChevronLeft,
     Package as PackageIcon, Star, Banknote, CreditCard, Building2, Trash2,
     Zap, Activity, Heart, Shield, RefreshCw, BarChart3, TrendingUp, Sparkles, MapPin,
-    ArrowUpRight, Info, Plus, FileText, Gift, Settings, AlertCircle, Edit2, Globe, Languages, Users, ArrowDownRight, Printer
+    ArrowUpRight, Info, Plus, FileText, Gift, Settings, AlertCircle, Edit2, Globe, Languages, Users, ArrowDownRight, Printer,
+    Calendar as CalendarIcon
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import BookingModal from '@/components/calendar/BookingModal';
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
+import ExportDropdown from '@/components/ui/ExportDropdown';
+import { format } from 'date-fns';
+import { tr } from 'date-fns/locale';
 
 // ---- COMPONENTS ----
 
@@ -1246,6 +1250,10 @@ export default function CustomersPage() {
     const [showModal, setShowModal] = useState(false);
     const [search, setSearch] = useState('');
     const [activeStack, setActiveStack] = useState('Hepsi');
+    const [dateRange, setDateRange] = useState({ 
+        start: '', 
+        end: '' 
+    });
 
     const insights = useMemo(() => ({
         churn: getChurnRiskCustomers(),
@@ -1264,9 +1272,16 @@ export default function CustomersPage() {
              const today = new Date().toISOString().split('T')[0];
              list = list.filter(c => getCustomerAppointments(c.id).some(a => a.date === today));
         }
+
+        if (dateRange.start && dateRange.end) {
+            list = list.filter(c => {
+                const customerDate = c.createdAt?.split('T')[0];
+                return customerDate && customerDate >= dateRange.start && customerDate <= dateRange.end;
+            });
+        }
         
         return list;
-    }, [customers, search, activeStack, insights, getCustomerAppointments]);
+    }, [customers, search, activeStack, insights, getCustomerAppointments, dateRange]);
 
     if (selectedCustomer) return <CustomerDetail customer={selectedCustomer} onClose={() => setSelectedCustomer(null)} />;
 
@@ -1281,15 +1296,61 @@ export default function CustomersPage() {
                     <p className="text-[10px] font-black text-indigo-600 uppercase tracking-[0.3em] italic">Aura Intelligence CRM</p>
                 </div>
                 
-                <div className="relative w-full md:w-[400px]">
-                    <div className="absolute inset-0 bg-gray-50 rounded-[2rem] -z-10 bg-opacity-50 blur-xl" />
-                    <Search className="w-6 h-6 absolute left-6 top-5 text-gray-300" />
-                    <input 
-                        type="text" 
-                        value={search} 
-                        onChange={e => setSearch(e.target.value)} 
-                        placeholder="İsim veya telefon ara..."
-                        className="w-full bg-white border border-gray-100 rounded-[2.5rem] pl-16 pr-8 py-5 font-black text-sm tracking-tight shadow-xl shadow-indigo-600/5 transition-all outline-none focus:ring-2 focus:ring-indigo-100" 
+                <div className="flex flex-col md:flex-row items-center gap-4 w-full md:w-auto">
+                    <div className="relative w-full md:w-[300px]">
+                        <Search className="w-5 h-5 absolute left-5 top-1/2 -translate-y-1/2 text-gray-300" />
+                        <input 
+                            type="text" 
+                            value={search} 
+                            onChange={e => setSearch(e.target.value)} 
+                            placeholder="İsim veya telefon ara..."
+                            className="w-full bg-white border border-gray-100 rounded-[2rem] pl-14 pr-6 py-4 font-black text-sm tracking-tight shadow-sm transition-all focus:ring-2 focus:ring-indigo-100 outline-none" 
+                        />
+                    </div>
+
+                    <div className="flex items-center gap-2 bg-white border border-gray-100 rounded-[2rem] px-4 py-2 shadow-sm">
+                        <CalendarIcon size={16} className="text-gray-300" />
+                        <input 
+                            type="date" 
+                            value={dateRange.start}
+                            onChange={(e) => setDateRange(prev => ({...prev, start: e.target.value}))}
+                            className="bg-transparent text-[10px] font-black uppercase outline-none"
+                        />
+                        <div className="w-2 h-[1px] bg-gray-200" />
+                        <input 
+                            type="date" 
+                            value={dateRange.end}
+                            onChange={(e) => setDateRange(prev => ({...prev, end: e.target.value}))}
+                            className="bg-transparent text-[10px] font-black uppercase outline-none"
+                        />
+                        {(dateRange.start || dateRange.end) && (
+                            <button onClick={() => setDateRange({start: '', end: ''})} className="ml-2 text-rose-500"><X size={14}/></button>
+                        )}
+                    </div>
+
+                    <ExportDropdown 
+                        data={filtered}
+                        filename="Aura_Musteri_Listesi"
+                        title="Danışan Portalı Veri Raporu"
+                        headers={["ID", "İsim Soyad", "Telefon", "Segment", "Harcama", "Randevu", "Kayıt Tarihi"]}
+                        excelMapping={(c) => ({
+                            "Referans": c.referenceCode || c.id.substring(0,8),
+                            "Müşteri Adı": c.name,
+                            "Telefon": c.phone,
+                            "Segment": c.segment,
+                            "Toplam Harcama": getCustomerPayments(c.id).reduce((s, p) => s + (p.totalAmount || 0), 0),
+                            "Randevu Sayısı": getCustomerAppointments(c.id).length,
+                            "Kayıt Tarihi": c.createdAt?.split('T')[0] || '---'
+                        })}
+                        pdfMapping={(c) => [
+                            c.referenceCode || c.id.substring(0,5),
+                            c.name,
+                            c.phone,
+                            c.segment,
+                            `₺${getCustomerPayments(c.id).reduce((s, p) => s + (p.totalAmount || 0), 0).toLocaleString('tr-TR')}`,
+                            getCustomerAppointments(c.id).length,
+                            c.createdAt?.split('T')[0] || '---'
+                        ]}
                     />
                 </div>
 

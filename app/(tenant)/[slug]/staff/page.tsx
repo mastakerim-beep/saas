@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, PieChart, Pie } from 'recharts';
+import ExportDropdown from '@/components/ui/ExportDropdown';
 
 // ─── HELPERS ──────────────────────────────────────────────────────────────────
 const DAYS = ['Pazar', 'Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma', 'Cumartesi'];
@@ -763,17 +764,44 @@ export default function StaffPage() {
                             ))}
                         </div>
 
-                        <div className="flex items-center gap-2 bg-indigo-50 border border-indigo-100 rounded-2xl p-1">
-                            {[
-                                { id: 'revenue', label: 'Ciroya Göre' },
-                                { id: 'appointments', label: 'Randevuya Göre' },
-                                { id: 'commission', label: 'Prime Göre' },
-                            ].map(s => (
-                                <button key={s.id} onClick={() => setSortBy(s.id as any)}
-                                    className={`px-4 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all ${sortBy === s.id ? 'bg-indigo-600 text-white shadow-md' : 'text-indigo-400 hover:text-indigo-600'}`}>
-                                    {s.label}
-                                </button>
-                            ))}
+                        <div className="flex items-center gap-4">
+                            <div className="flex items-center gap-2 bg-indigo-50 border border-indigo-100 rounded-2xl p-1">
+                                {[
+                                    { id: 'revenue', label: 'Ciroya Göre' },
+                                    { id: 'appointments', label: 'Randevuya Göre' },
+                                    { id: 'commission', label: 'Prime Göre' },
+                                ].map(s => (
+                                    <button key={s.id} onClick={() => setSortBy(s.id as any)}
+                                        className={`px-4 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all ${sortBy === s.id ? 'bg-indigo-600 text-white shadow-md' : 'text-indigo-400 hover:text-indigo-600'}`}>
+                                        {s.label}
+                                    </button>
+                                ))}
+                            </div>
+
+                            <ExportDropdown 
+                                data={staffPerformance}
+                                filename={`Ekip_Performans_${perfFilter}`}
+                                title={`Ekip Performans Raporu (${perfFilter === 'today' ? 'Bugün' : perfFilter === 'month' ? 'Bu Ay' : 'Tüm Zamanlar'})`}
+                                headers={["Sıra", "Personel", "Randevu", "Ciro", "Prim", "Sadık Müşteri", "No-Show %"]}
+                                excelMapping={(s, idx) => ({
+                                    "Sıra": idx + 1,
+                                    "Personel Adı": s.name,
+                                    "Randevu Sayısı": s.serviceCount,
+                                    "Toplam Ciro": s.revenue,
+                                    "Kazanılan Prim": s.commission,
+                                    "Sadık Müşteri": s.loyalCustomers,
+                                    "No-Show Oranı": `%${s.noShowRate.toFixed(1)}`
+                                })}
+                                pdfMapping={(s, idx) => [
+                                    `#${idx + 1}`,
+                                    s.name,
+                                    s.serviceCount,
+                                    `₺${s.revenue.toLocaleString('tr-TR')}`,
+                                    `₺${s.commission.toLocaleString('tr-TR')}`,
+                                    s.loyalCustomers,
+                                    `%${s.noShowRate.toFixed(0)}`
+                                ]}
+                            />
                         </div>
                     </div>
 
