@@ -19,7 +19,7 @@ export default function SmartCheckout({ appointment, onClose }: SmartCheckoutPro
         customers, customerMemberships, membershipPlans, 
         processCheckout, inventory, getUpsellSuggestions, 
         paymentDefinitions, getTodayDate, currentBusiness,
-        packages, services, updateAppointment
+        packages, services, updateAppointment, bankAccounts
     } = useStore();
     const customer = customers.find(c => c.id === appointment.customerId);
     
@@ -375,6 +375,83 @@ export default function SmartCheckout({ appointment, onClose }: SmartCheckoutPro
                             </div>
                         )}
 
+                        {/* 0.5. Sadakat ve İndirim (Hızlı Erişim) */}
+                        <div className="grid grid-cols-2 gap-6 animate-[fadeIn_0.4s_ease]">
+                            <div className="bg-white p-8 rounded-[3rem] border border-gray-100 shadow-sm relative overflow-hidden group">
+                                <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-50 rounded-full -translate-y-1/2 translate-x-1/2 group-hover:scale-110 transition-transform" />
+                                <div className="relative">
+                                    <p className="text-[10px] font-black text-indigo-600 uppercase tracking-widest mb-4 flex items-center gap-2">
+                                        <Zap className="w-3.5 h-3.5" /> Sadakat Puanı
+                                    </p>
+                                    <div className="flex items-end gap-3 mb-6">
+                                        <p className="text-4xl font-black text-gray-900 tracking-tighter italic leading-none">{customer?.loyaltyPoints || 0}</p>
+                                        <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Birikmiş Puan</p>
+                                    </div>
+                                    <button 
+                                        onClick={() => {
+                                            const obtainable = Math.min(customer?.loyaltyPoints || 0, Math.floor(remaining));
+                                            if(obtainable > 0) setPointsUsed(prev => prev + obtainable);
+                                        }}
+                                        disabled={!customer?.loyaltyPoints || remaining <= 0}
+                                        className="w-full py-3 bg-indigo-600 text-white rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-xl shadow-indigo-100 hover:scale-[1.02] active:scale-95 transition-all disabled:opacity-30"
+                                    >
+                                        Puan Kullan (₺1 = 1 Puan)
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div className={`p-8 rounded-[3rem] border transition-all relative overflow-hidden group ${needsAuthForDiscount ? 'bg-amber-50 border-amber-200' : 'bg-white border-gray-100 shadow-sm'}`}>
+                                <div className={`absolute top-0 right-0 w-32 h-32 rounded-full -translate-y-1/2 translate-x-1/2 group-hover:scale-110 transition-transform ${needsAuthForDiscount ? 'bg-amber-100/50' : 'bg-purple-50'}`} />
+                                <div className="relative">
+                                    <div className="flex justify-between items-start mb-4">
+                                        <p className={`text-[10px] font-black uppercase tracking-widest flex items-center gap-2 ${needsAuthForDiscount ? 'text-amber-600' : 'text-purple-600'}`}>
+                                            <Percent className="w-3.5 h-3.5" /> İndirim Uygula
+                                        </p>
+                                        <p className="text-[10px] font-black text-gray-400">Limit: %{staffMaxDiscount}</p>
+                                    </div>
+                                    <div className="flex gap-2 mb-4">
+                                        {(['fixed', 'percentage'] as const).map(m => (
+                                            <button 
+                                                key={m} 
+                                                onClick={() => setDiscountMode(m)}
+                                                className={`flex-1 py-3 rounded-xl text-[9px] font-black uppercase transition-all ${discountMode === m ? (needsAuthForDiscount ? 'bg-amber-600 text-white shadow-lg' : 'bg-purple-600 text-white shadow-lg') : 'bg-gray-50 text-gray-400 border border-gray-100 hover:bg-white'}`}
+                                            >
+                                                {m === 'fixed' ? 'Tutar (TL)' : 'Oran (%)'}
+                                            </button>
+                                        ))}
+                                    </div>
+                                    <div className="relative">
+                                        <input 
+                                            type="number"
+                                            value={discountValue || ''}
+                                            onChange={e => {
+                                                setDiscountValue(Number(e.target.value));
+                                                setIsAuthorized(false); 
+                                            }}
+                                            placeholder={discountMode === 'fixed' ? '₺ Tutar Girin' : '% Oran Girin'}
+                                            className={`w-full bg-gray-50 border-2 rounded-2xl px-6 py-4 text-sm font-black outline-none transition-all placeholder:text-gray-300 ${needsAuthForDiscount ? 'border-amber-400 text-amber-600 focus:bg-white' : 'border-transparent focus:border-purple-600 text-purple-600'}`}
+                                        />
+                                        {discountMode === 'fixed' && discountValue > 0 && (
+                                            <p className="absolute right-4 top-1/2 -translate-y-1/2 text-[10px] font-black text-gray-400 italic">
+                                                ~ %{effectiveDiscountPercent.toFixed(1)}
+                                            </p>
+                                        )}
+                                    </div>
+                                    {needsAuthForDiscount && (
+                                        <button 
+                                            onClick={() => {
+                                                setAuthReason('excessive-discount');
+                                                setIsPinModalOpen(true);
+                                            }}
+                                            className="w-full mt-4 py-3 bg-amber-600 text-white rounded-2xl font-black text-[9px] uppercase tracking-widest shadow-xl shadow-amber-100 animate-pulse"
+                                        >
+                                            Yönetici PIN Onayı Gerekli
+                                        </button>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+
                         {/* 1. Ödeme Kanalları */}
                         <div className="space-y-8 bg-white p-10 rounded-[3rem] border border-indigo-50 shadow-sm relative overflow-hidden group">
                              <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-50/50 rounded-full -translate-y-1/2 translate-x-1/2 group-hover:scale-110 transition-transform" />
@@ -394,25 +471,45 @@ export default function SmartCheckout({ appointment, onClose }: SmartCheckoutPro
                                  <div className="grid grid-cols-1 gap-4">
                                     {methods.map((m, idx) => (
                                         <div key={idx} className="flex gap-4 items-center">
-                                            <div className="flex-1 bg-gray-50/50 p-6 rounded-[2rem] border border-gray-100 shadow-sm flex justify-between items-center group focus-within:border-indigo-600 transition-all">
-                                                <div className="flex items-center gap-4">
-                                                    <div className="w-12 h-12 bg-white rounded-xl flex items-center justify-center text-gray-400 group-hover:bg-indigo-600 group-hover:text-white transition-all shadow-sm">
-                                                        {m.method === 'kredi-karti' ? <CreditCard size={24} /> : <Banknote size={24} />}
+                                            <div className="flex-1 bg-gray-50/50 p-6 rounded-[2rem] border border-gray-100 shadow-sm flex flex-col gap-4 group focus-within:border-indigo-600 transition-all">
+                                                <div className="flex justify-between items-center w-full">
+                                                    <div className="flex items-center gap-4">
+                                                        <div className="w-12 h-12 bg-white rounded-xl flex items-center justify-center text-gray-400 group-hover:bg-indigo-600 group-hover:text-white transition-all shadow-sm">
+                                                            {m.method === 'kredi-karti' ? <CreditCard size={24} /> : m.method === 'havale' ? <Landmark size={24} /> : <Banknote size={24} />}
+                                                        </div>
+                                                        <span className="text-xs font-black uppercase tracking-widest text-gray-500 tracking-wider">
+                                                            {m.method === 'kredi-karti' ? 'KREDİ KARTI' : m.method === 'havale' ? 'HAVALE' : 'NAKİT'} ÖDEME
+                                                        </span>
                                                     </div>
-                                                    <span className="text-xs font-black uppercase tracking-widest text-gray-500 tracking-wider">
-                                                        {m.method === 'kredi-karti' ? 'KREDİ KARTI' : m.method === 'havale' ? 'HAVALE' : 'NAKİT'} ÖDEME
-                                                    </span>
+                                                    <div className="flex items-center gap-3">
+                                                        <span className="text-gray-300 font-black text-lg">₺</span>
+                                                        <input 
+                                                            type="number" value={m.amount || ''} 
+                                                            onChange={e => updateMethod(idx, 'amount', Number(e.target.value))}
+                                                            className="bg-transparent text-right font-black text-3xl italic tracking-tighter text-gray-900 w-32 outline-none"
+                                                        />
+                                                    </div>
                                                 </div>
-                                                <div className="flex items-center gap-3">
-                                                    <span className="text-gray-300 font-black text-lg">₺</span>
-                                                    <input 
-                                                        type="number" value={m.amount || ''} 
-                                                        onChange={e => updateMethod(idx, 'amount', Number(e.target.value))}
-                                                        className="bg-transparent text-right font-black text-3xl italic tracking-tighter text-gray-900 w-32 outline-none"
-                                                    />
-                                                </div>
+
+                                                {/* Bank / POS Selection for Card/Transfer */}
+                                                {(m.method === 'kredi-karti' || m.method === 'havale') && (
+                                                    <div className="pt-4 border-t border-dashed border-gray-200 flex items-center gap-4 animate-[fadeIn_0.3s_ease]">
+                                                        <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest min-w-max">Hangi POS/Banka?</p>
+                                                        <div className="flex-1 grid grid-cols-2 sm:grid-cols-3 gap-2">
+                                                            {bankAccounts.map(bank => (
+                                                                <button 
+                                                                    key={bank.id}
+                                                                    onClick={() => updateMethod(idx, 'toolId', bank.id)}
+                                                                    className={`px-3 py-2 rounded-xl text-[9px] font-black uppercase transition-all border ${m.toolId === bank.id ? 'bg-indigo-600 border-indigo-600 text-white shadow-md' : 'bg-white border-gray-100 text-gray-400 hover:border-indigo-200'}`}
+                                                                >
+                                                                    {bank.bankName}
+                                                                </button>
+                                                            ))}
+                                                        </div>
+                                                    </div>
+                                                )}
                                             </div>
-                                            <button onClick={() => removeMethod(idx)} className="p-6 bg-red-50 text-red-400 rounded-[2rem] hover:bg-red-500 hover:text-white transition-all"><Trash2 size={24} /></button>
+                                            <button onClick={() => removeMethod(idx)} className="p-6 bg-red-50 text-red-400 rounded-[2rem] hover:bg-red-500 hover:text-white transition-all h-full"><Trash2 size={24} /></button>
                                         </div>
                                     ))}
 
@@ -557,82 +654,6 @@ export default function SmartCheckout({ appointment, onClose }: SmartCheckoutPro
                              </div>
                         </div>
 
-                        {/* 4. Sadakat ve İndirim */}
-                        <div className="grid grid-cols-2 gap-6 pt-10 border-t border-gray-100">
-                            <div className="bg-white p-8 rounded-[3rem] border border-gray-100 shadow-sm relative overflow-hidden group">
-                                <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-50 rounded-full -translate-y-1/2 translate-x-1/2 group-hover:scale-110 transition-transform" />
-                                <div className="relative">
-                                    <p className="text-[10px] font-black text-indigo-600 uppercase tracking-widest mb-4 flex items-center gap-2">
-                                        <Zap className="w-3.5 h-3.5" /> Sadakat Puanı
-                                    </p>
-                                    <div className="flex items-end gap-3 mb-6">
-                                        <p className="text-4xl font-black text-gray-900 tracking-tighter italic leading-none">{customer?.loyaltyPoints || 0}</p>
-                                        <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Birikmiş Puan</p>
-                                    </div>
-                                    <button 
-                                        onClick={() => {
-                                            const obtainable = Math.min(customer?.loyaltyPoints || 0, Math.floor(remaining));
-                                            if(obtainable > 0) setPointsUsed(prev => prev + obtainable);
-                                        }}
-                                        disabled={!customer?.loyaltyPoints || remaining <= 0}
-                                        className="w-full py-3 bg-indigo-600 text-white rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-xl shadow-indigo-100 hover:scale-[1.02] active:scale-95 transition-all disabled:opacity-30"
-                                    >
-                                        Puan Kullan (₺1 = 1 Puan)
-                                    </button>
-                                </div>
-                            </div>
-
-                            <div className={`p-8 rounded-[3rem] border transition-all relative overflow-hidden group ${needsAuthForDiscount ? 'bg-amber-50 border-amber-200' : 'bg-white border-gray-100 shadow-sm'}`}>
-                                <div className={`absolute top-0 right-0 w-32 h-32 rounded-full -translate-y-1/2 translate-x-1/2 group-hover:scale-110 transition-transform ${needsAuthForDiscount ? 'bg-amber-100/50' : 'bg-purple-50'}`} />
-                                <div className="relative">
-                                    <div className="flex justify-between items-start mb-4">
-                                        <p className={`text-[10px] font-black uppercase tracking-widest flex items-center gap-2 ${needsAuthForDiscount ? 'text-amber-600' : 'text-purple-600'}`}>
-                                            <Percent className="w-3.5 h-3.5" /> İndirim Uygula
-                                        </p>
-                                        <p className="text-[10px] font-black text-gray-400">Limit: %{staffMaxDiscount}</p>
-                                    </div>
-                                    <div className="flex gap-2 mb-4">
-                                        {(['fixed', 'percentage'] as const).map(m => (
-                                            <button 
-                                                key={m} 
-                                                onClick={() => setDiscountMode(m)}
-                                                className={`flex-1 py-3 rounded-xl text-[9px] font-black uppercase transition-all ${discountMode === m ? (needsAuthForDiscount ? 'bg-amber-600 text-white shadow-lg' : 'bg-purple-600 text-white shadow-lg') : 'bg-gray-50 text-gray-400 border border-gray-100 hover:bg-white'}`}
-                                            >
-                                                {m === 'fixed' ? 'Tutar (TL)' : 'Oran (%)'}
-                                            </button>
-                                        ))}
-                                    </div>
-                                    <div className="relative">
-                                        <input 
-                                            type="number"
-                                            value={discountValue || ''}
-                                            onChange={e => {
-                                                setDiscountValue(Number(e.target.value));
-                                                setIsAuthorized(false); // Reset on change
-                                            }}
-                                            placeholder={discountMode === 'fixed' ? '₺ Tutar Girin' : '% Oran Girin'}
-                                            className={`w-full bg-gray-50 border-2 rounded-2xl px-6 py-4 text-sm font-black outline-none transition-all placeholder:text-gray-300 ${needsAuthForDiscount ? 'border-amber-400 text-amber-600 focus:bg-white' : 'border-transparent focus:border-purple-600 text-purple-600'}`}
-                                        />
-                                        {discountMode === 'fixed' && discountValue > 0 && (
-                                            <p className="absolute right-4 top-1/2 -translate-y-1/2 text-[10px] font-black text-gray-400 italic">
-                                                ~ %{effectiveDiscountPercent.toFixed(1)}
-                                            </p>
-                                        )}
-                                    </div>
-                                    {needsAuthForDiscount && (
-                                        <button 
-                                            onClick={() => {
-                                                setAuthReason('excessive-discount');
-                                                setIsPinModalOpen(true);
-                                            }}
-                                            className="w-full mt-4 py-3 bg-amber-600 text-white rounded-2xl font-black text-[9px] uppercase tracking-widest shadow-xl shadow-amber-100 animate-pulse"
-                                        >
-                                            Yönetici PIN Onayı Gerekli
-                                        </button>
-                                    )}
-                                </div>
-                            </div>
-                        </div>
 
                         {/* 5. Memnuniyet Bahşişi */}
                         <div className="bg-indigo-950 p-10 rounded-[3rem] shadow-2xl relative overflow-hidden group">
