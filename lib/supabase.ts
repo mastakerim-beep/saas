@@ -51,9 +51,13 @@ export type Database = {
       booking_settings: { Row: BookingSettingsRow; Insert: BookingSettingsInsert; Update: Partial<BookingSettingsInsert> };
       quotes: { Row: QuoteRow; Insert: QuoteInsert; Update: Partial<QuoteInsert> };
       z_reports: { Row: ZReportRow; Insert: ZReportInsert; Update: Partial<ZReportInsert> };
+      temp_migrations: { Row: TempMigrationRow; Insert: TempMigrationInsert; Update: Partial<TempMigrationInsert> };
     };
   };
 };
+
+export interface TempMigrationRow { id: string; business_id: string; branch_id: string | null; data_type: string; raw_data: any; status: 'pending' | 'validating' | 'error' | 'imported'; system_note: string | null; created_at: string; updated_at: string; }
+export interface TempMigrationInsert { business_id: string; branch_id?: string | null; data_type: string; raw_data: any; status?: 'pending' | 'validating' | 'error' | 'imported'; system_note?: string | null; }
 
 export interface SystemAnnouncementRow { id: string; business_id: string | null; title: string; content: string; type: string; is_active: boolean; expires_at: string | null; created_at: string; }
 export interface SystemAnnouncementInsert { business_id?: string | null; title: string; content: string; type?: string; is_active?: boolean; expires_at?: string | null; }
