@@ -151,7 +151,8 @@ const StoreOrchestrator = ({ children }: { children: ReactNode }) => {
             setReferralSources: biz.setReferralSources,
             setConsentFormTemplates: biz.setConsentFormTemplates,
             setSyncStatus: setSyncStatus,
-            setAllPayments: data.setAllPayments
+            setAllPayments: data.setAllPayments,
+            setAllInventoryCategories: data.setAllInventoryCategories
         };
 
         try {
@@ -394,6 +395,7 @@ const StoreOrchestrator = ({ children }: { children: ReactNode }) => {
         usageNorms: data.usageNorms,
         loyaltySettings: biz.loyaltySettings,
         webhooks: biz.webhooks,
+        inventoryCategories: data.inventoryCategories,
 
         login: auth.login,
         logout: auth.logout,
@@ -1267,6 +1269,10 @@ const StoreOrchestrator = ({ children }: { children: ReactNode }) => {
         },
         addUsageNorm: data.addUsageNorm,
         updateUsageNorm: data.updateUsageNorm,
+        
+        addInventoryCategory: data.addInventoryCategory,
+        updateInventoryCategory: data.updateInventoryCategory,
+        removeInventoryCategory: data.removeInventoryCategory,
         
         calculateDynamicPrice: (price: number, timeStr: string) => {
             const [h] = timeStr.split(':').map(Number);
