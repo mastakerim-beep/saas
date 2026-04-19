@@ -174,14 +174,14 @@ export default function CalendarItem({
                 badgeStyle: 'bg-red-600 text-white'
             };
             default: return { 
-                bg: 'bg-white', 
-                text: 'text-gray-900', 
-                ring: 'ring-1 ring-gray-200/50 shadow-md',
-                indicator: 'bg-indigo-600',
-                headerBg: 'bg-indigo-600',
+                bg: 'bg-gradient-to-br from-orange-50 via-white to-white', 
+                text: 'text-orange-950', 
+                ring: 'ring-2 ring-orange-200/40 shadow-xl shadow-orange-100/20',
+                indicator: 'bg-orange-500',
+                headerBg: 'bg-orange-500',
                 icon: null,
-                badge: null,
-                badgeStyle: ''
+                badge: 'TASLAK',
+                badgeStyle: 'bg-orange-500 text-white'
             };
         }
     };
@@ -209,11 +209,12 @@ export default function CalendarItem({
                 if (isAppt) onAction?.(appt); 
             }}
             className={`
-                relative mx-1 rounded-xl transition-all select-none group/item overflow-hidden
+                relative mx-1 rounded-2xl transition-all select-none group/item overflow-hidden
                 ${!isLocked ? 'cursor-grab active:cursor-grabbing' : ''}
-                ${isDragging ? 'opacity-30 scale-95 shadow-xl ring-2 ring-indigo-500/50' : 'opacity-100 hover:scale-[1.01] hover:shadow-xl hover:shadow-indigo-100/40'} 
-                ${isOver ? 'ring-2 ring-indigo-400 bg-indigo-50/50 scale-[1.02]' : ''}
+                ${isDragging ? 'opacity-30 scale-95 shadow-2xl ring-4 ring-indigo-500/50' : 'opacity-100 hover:scale-[1.02] hover:shadow-2xl hover:shadow-indigo-200/40'} 
+                ${isOver ? 'ring-4 ring-indigo-400 bg-indigo-50/80 scale-[1.03]' : ''}
                 ${info.bg} ${info.ring} ${info.text} flex flex-col justify-between
+                backdrop-blur-[24px] border border-white/20
             `}
         >
             <div className={`absolute left-0 top-0 bottom-0 w-1 ${info.indicator}`} />
@@ -267,7 +268,7 @@ export default function CalendarItem({
             </div>
 
             {/* Body Area: Main Content */}
-            <div className="flex-1 flex flex-col justify-center px-2 py-2 overflow-hidden">
+            <div className={`flex-1 flex flex-col justify-center px-3 py-2 overflow-hidden bg-white/40 backdrop-blur-sm`}>
                 <div className="flex items-center gap-1 flex-wrap justify-center">
                     <p className="font-extrabold text-[11px] leading-tight uppercase tracking-tight text-gray-900 drop-shadow-sm truncate max-w-full">
                         {isAppt ? appt.customerName : 'MEŞGUL'}
