@@ -847,7 +847,7 @@ function BusinessSettingsView() {
                     </button>
                 </div>
 
-                <div className="absolute -right-20 -bottom-20 w-64 h-64 bg-indigo-50 opacity-10 rounded-full" />
+                <div className="absolute -right-20 -bottom-20 w-64 h-64 bg-indigo-50 opacity-10 rounded-full pointer-events-none" />
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
@@ -873,7 +873,7 @@ function BusinessSettingsView() {
                             Şu an {currentBusiness?.name} işletmesi için global ayarları düzenliyorsunuz.
                         </p>
                     </div>
-                    <Calendar className="absolute -right-4 -bottom-4 w-24 h-24 opacity-10 rotate-12" />
+                    <Calendar className="absolute -right-4 -bottom-4 w-24 h-24 opacity-10 rotate-12 pointer-events-none" />
                 </div>
             </div>
         </div>
@@ -924,7 +924,7 @@ function ChannelsSettingsView({ business }: { business: any }) {
                         animate={{ opacity: 1, y: 0 }}
                         className="bg-white p-8 rounded-[3rem] border border-gray-100 shadow-sm relative overflow-hidden group hover:shadow-xl hover:shadow-indigo-500/5 transition-all duration-500"
                     >
-                        <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-50 opacity-0 group-hover:opacity-30 rounded-full -mr-16 -mt-16 transition-all duration-700" />
+                        <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-50 opacity-0 group-hover:opacity-30 rounded-full -mr-16 -mt-16 transition-all duration-700 pointer-events-none" />
                         
                         <div className="w-14 h-14 bg-gray-50 rounded-2xl flex items-center justify-center text-indigo-600 mb-6 group-hover:scale-110 group-hover:bg-indigo-600 group-hover:text-white transition-all duration-500">
                             <channel.icon size={28} />

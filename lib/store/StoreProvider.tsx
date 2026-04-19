@@ -7,11 +7,11 @@ import { BusinessProvider, useBusiness } from './BusinessContext';
 import { DataProvider, useData } from './DataContext';
 import { 
     StoreState, AppUser, Staff, Appointment, Payment, Customer, 
-    Product, Service, Package, MembershipPlan, CustomerMembership,
+    Product, Service, Package, MembershipPlan, CustomerMembership, Business,
     PaymentDefinition, BankAccount, ExpenseCategory, ReferralSource, 
     ConsentFormTemplate, AuditLog, NotificationLog, CommissionRule,
     PackageDefinition, Quote, MarketingRule, DynamicPricingRule, Room, Expense, CalendarBlock, AppointmentStatus, BookingSettings,
-    LoyaltySettings, Webhook
+    LoyaltySettings, Webhook, InventoryCategory
 } from './types';
 import { fetchData as fetchDataLogic } from './fetch-logic';
 import { syncDb } from './sync-db';
@@ -1342,7 +1342,29 @@ const StoreOrchestrator = ({ children }: { children: ReactNode }) => {
         },
         updateSettings: biz.setSettings,
         updateBusinessSettings: biz.setSettings,
-        updateBusiness: async () => true,
+        updateBusiness: async (updates: Partial<Business>) => {
+            const bizId = activeBizIdRef.current;
+            if (!bizId) return false;
+            
+            // Local state update
+            biz.setCurrentTenant((prev: Business | null) => prev ? { ...prev, ...updates } : null);
+            biz.setAllBusinesses((prev: Business[]) => prev.map(b => b.id === bizId ? { ...b, ...updates } : b));
+            
+            // Sync with DB
+            const success = await syncDb('businesses', 'update', updates, bizId, bizId);
+            
+            // Reactive Sync for Calendar Hours
+            if (updates.calendarStartHour !== undefined || updates.calendarEndHour !== undefined) {
+                biz.setSettings((prev: any) => ({
+                    ...prev,
+                    ...(updates.calendarStartHour !== undefined ? { startHour: Number(updates.calendarStartHour) } : {}),
+                    ...(updates.calendarEndHour !== undefined ? { endHour: Number(updates.calendarEndHour) } : {})
+                }));
+            }
+            
+            return !!success;
+        },
+
         transferProduct: async () => true,
         updateBusinessLicense: () => {},
         updateBusinessBranches: async () => {},
