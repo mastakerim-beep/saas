@@ -321,7 +321,7 @@ export default function SmartCheckout({ appointment, onClose }: SmartCheckoutPro
 
                 <div className="flex-1 flex flex-col lg:flex-row overflow-hidden">
                     {/* Left Panel */}
-                    <div className="flex-1 p-10 overflow-y-auto no-scrollbar space-y-10 border-r border-gray-50 bg-gray-50/20">
+                    <div className="flex-1 p-6 overflow-y-auto no-scrollbar space-y-6 border-r border-gray-50 bg-gray-50/20">
                         
                         {/* 0. Paket Kullanımı */}
                         {applicablePackages.length > 0 && (
@@ -331,7 +331,7 @@ export default function SmartCheckout({ appointment, onClose }: SmartCheckoutPro
                                     <h3 className="text-[10px] font-black text-emerald-600 uppercase tracking-widest flex items-center gap-2 mb-6">
                                         <Package className="w-4 h-4" /> AKTİF PAKETLER (SEANSLAR)
                                     </h3>
-                                    <div className="grid grid-cols-1 gap-3">
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                         {applicablePackages.map(pkg => {
                                             const isMatch = isMatchingPackage(pkg);
                                             const isSelected = selectedPackageId === pkg.id;
@@ -339,34 +339,22 @@ export default function SmartCheckout({ appointment, onClose }: SmartCheckoutPro
                                                 <button 
                                                     key={pkg.id}
                                                     onClick={() => setSelectedPackageId(isSelected ? null : pkg.id)}
-                                                    className={`flex items-center justify-between p-6 rounded-[2rem] border-2 transition-all ${isSelected ? 'bg-emerald-600 border-emerald-600 shadow-lg shadow-emerald-200' : 'bg-white border-white hover:border-emerald-200'}`}
+                                                    className={`flex items-center justify-between p-4 rounded-[1.5rem] border-2 transition-all ${isSelected ? 'bg-emerald-600 border-emerald-600 shadow-lg shadow-emerald-200' : 'bg-white border-white hover:border-emerald-200'}`}
                                                 >
-                                                    <div className="flex items-center gap-4">
-                                                        <div className={`w-12 h-12 rounded-2xl flex items-center justify-center transition-colors ${isSelected ? 'bg-white/20 text-white' : 'bg-emerald-50 text-emerald-600'}`}>
-                                                            <Zap size={20} />
+                                                    <div className="flex items-center gap-3">
+                                                        <div className={`w-10 h-10 rounded-xl flex items-center justify-center transition-colors ${isSelected ? 'bg-white/20 text-white' : 'bg-emerald-50 text-emerald-600'}`}>
+                                                            <Zap size={18} />
                                                         </div>
                                                         <div className="text-left">
-                                                            <div className="flex items-center gap-2 mb-0.5">
-                                                                <p className={`font-black uppercase text-xs italic ${isSelected ? 'text-white' : 'text-emerald-900'}`}>{pkg.name}</p>
-                                                                {isMatch 
-                                                                    ? <span className={`text-[7px] font-black px-1.5 py-0.5 rounded-md uppercase tracking-wider ${isSelected ? 'bg-white/20 text-white' : 'bg-emerald-500 text-white'}`}>Önerilen</span>
-                                                                    : <span className={`text-[7px] font-black px-1.5 py-0.5 rounded-md uppercase tracking-wider ${isSelected ? 'bg-white/20 text-white' : 'bg-gray-100 text-gray-400'}`}>Diğer Paket</span>
-                                                                }
+                                                            <div className="flex items-center gap-1.5 mb-0.5">
+                                                                <p className={`font-black uppercase text-[10px] italic ${isSelected ? 'text-white' : 'text-emerald-900'}`}>{pkg.name}</p>
                                                             </div>
-                                                            <p className={`text-[10px] font-bold uppercase tracking-widest ${isSelected ? 'text-emerald-100' : 'text-emerald-400'}`}>
-                                                                {pkg.serviceName || 'Genel Paket'}
+                                                            <p className={`text-[8px] font-bold uppercase tracking-widest ${isSelected ? 'text-emerald-100' : 'text-emerald-400'}`}>
+                                                                {pkg.totalSessions - (pkg.usedSessions || 0)} SEANS KALDI
                                                             </p>
                                                         </div>
                                                     </div>
-                                                    <div className="flex items-center gap-4">
-                                                        <div className="text-right">
-                                                            <p className={`text-[10px] font-black uppercase ${isSelected ? 'text-emerald-100' : 'text-gray-400'}`}>KALAN SEANS</p>
-                                                            <p className={`text-2xl font-black italic tracking-tighter ${isSelected ? 'text-white' : 'text-emerald-600'}`}>
-                                                                {pkg.totalSessions - (pkg.usedSessions || 0)}
-                                                            </p>
-                                                        </div>
-                                                        {isSelected && <CheckCircle2 className="text-white w-6 h-6" />}
-                                                    </div>
+                                                    {isSelected && <CheckCircle2 className="text-white w-5 h-5" />}
                                                 </button>
                                             );
                                         })}
@@ -375,52 +363,29 @@ export default function SmartCheckout({ appointment, onClose }: SmartCheckoutPro
                             </div>
                         )}
 
-                        {/* 0.5. Sadakat ve İndirim (Hızlı Erişim) */}
-                        <div className="grid grid-cols-2 gap-6 animate-[fadeIn_0.4s_ease]">
-                            <div className="bg-white p-8 rounded-[3rem] border border-gray-100 shadow-sm relative overflow-hidden group">
-                                <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-50 rounded-full -translate-y-1/2 translate-x-1/2 group-hover:scale-110 transition-transform" />
-                                <div className="relative">
-                                    <p className="text-[10px] font-black text-indigo-600 uppercase tracking-widest mb-4 flex items-center gap-2">
-                                        <Zap className="w-3.5 h-3.5" /> Sadakat Puanı
+                        {/* 0.5. İndirim Uygula (Üstte) */}
+                        <div className={`p-4 rounded-[1.5rem] border transition-all relative overflow-hidden group animate-[fadeIn_0.4s_ease] ${needsAuthForDiscount ? 'bg-amber-50 border-amber-200' : 'bg-white border-gray-100 shadow-sm'}`}>
+                            <div className={`absolute top-0 right-0 w-32 h-32 rounded-full -translate-y-1/2 translate-x-1/2 group-hover:scale-110 transition-transform ${needsAuthForDiscount ? 'bg-amber-100/50' : 'bg-purple-50'}`} />
+                            <div className="relative">
+                                <div className="flex justify-between items-start mb-2">
+                                    <p className={`text-[9px] font-black uppercase tracking-widest flex items-center gap-2 ${needsAuthForDiscount ? 'text-amber-600' : 'text-purple-600'}`}>
+                                        <Percent className="w-3 h-3" /> İndirim Uygula
                                     </p>
-                                    <div className="flex items-end gap-3 mb-6">
-                                        <p className="text-4xl font-black text-gray-900 tracking-tighter italic leading-none">{customer?.loyaltyPoints || 0}</p>
-                                        <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Birikmiş Puan</p>
-                                    </div>
-                                    <button 
-                                        onClick={() => {
-                                            const obtainable = Math.min(customer?.loyaltyPoints || 0, Math.floor(remaining));
-                                            if(obtainable > 0) setPointsUsed(prev => prev + obtainable);
-                                        }}
-                                        disabled={!customer?.loyaltyPoints || remaining <= 0}
-                                        className="w-full py-3 bg-indigo-600 text-white rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-xl shadow-indigo-100 hover:scale-[1.02] active:scale-95 transition-all disabled:opacity-30"
-                                    >
-                                        Puan Kullan (₺1 = 1 Puan)
-                                    </button>
+                                    <p className="text-[9px] font-black text-gray-400 italic">Limit: %{staffMaxDiscount}</p>
                                 </div>
-                            </div>
-
-                            <div className={`p-8 rounded-[3rem] border transition-all relative overflow-hidden group ${needsAuthForDiscount ? 'bg-amber-50 border-amber-200' : 'bg-white border-gray-100 shadow-sm'}`}>
-                                <div className={`absolute top-0 right-0 w-32 h-32 rounded-full -translate-y-1/2 translate-x-1/2 group-hover:scale-110 transition-transform ${needsAuthForDiscount ? 'bg-amber-100/50' : 'bg-purple-50'}`} />
-                                <div className="relative">
-                                    <div className="flex justify-between items-start mb-4">
-                                        <p className={`text-[10px] font-black uppercase tracking-widest flex items-center gap-2 ${needsAuthForDiscount ? 'text-amber-600' : 'text-purple-600'}`}>
-                                            <Percent className="w-3.5 h-3.5" /> İndirim Uygula
-                                        </p>
-                                        <p className="text-[10px] font-black text-gray-400">Limit: %{staffMaxDiscount}</p>
-                                    </div>
-                                    <div className="flex gap-2 mb-4">
+                                <div className="flex gap-3 items-center">
+                                    <div className="flex gap-1 p-1 bg-gray-50 rounded-lg">
                                         {(['fixed', 'percentage'] as const).map(m => (
                                             <button 
                                                 key={m} 
                                                 onClick={() => setDiscountMode(m)}
-                                                className={`flex-1 py-3 rounded-xl text-[9px] font-black uppercase transition-all ${discountMode === m ? (needsAuthForDiscount ? 'bg-amber-600 text-white shadow-lg' : 'bg-purple-600 text-white shadow-lg') : 'bg-gray-50 text-gray-400 border border-gray-100 hover:bg-white'}`}
+                                                className={`px-3 py-1.5 rounded-md text-[8px] font-black uppercase transition-all ${discountMode === m ? (needsAuthForDiscount ? 'bg-amber-600 text-white' : 'bg-purple-600 text-white') : 'text-gray-400 hover:bg-white'}`}
                                             >
-                                                {m === 'fixed' ? 'Tutar (TL)' : 'Oran (%)'}
+                                                {m === 'fixed' ? 'TL' : '%'}
                                             </button>
                                         ))}
                                     </div>
-                                    <div className="relative">
+                                    <div className="relative flex-1">
                                         <input 
                                             type="number"
                                             value={discountValue || ''}
@@ -428,14 +393,9 @@ export default function SmartCheckout({ appointment, onClose }: SmartCheckoutPro
                                                 setDiscountValue(Number(e.target.value));
                                                 setIsAuthorized(false); 
                                             }}
-                                            placeholder={discountMode === 'fixed' ? '₺ Tutar Girin' : '% Oran Girin'}
-                                            className={`w-full bg-gray-50 border-2 rounded-2xl px-6 py-4 text-sm font-black outline-none transition-all placeholder:text-gray-300 ${needsAuthForDiscount ? 'border-amber-400 text-amber-600 focus:bg-white' : 'border-transparent focus:border-purple-600 text-purple-600'}`}
+                                            placeholder={discountMode === 'fixed' ? 'Tutar' : 'Oran'}
+                                            className={`w-full bg-gray-50 border-2 rounded-lg px-3 py-1.5 text-xs font-black outline-none transition-all placeholder:text-gray-300 ${needsAuthForDiscount ? 'border-amber-400 text-amber-600 focus:bg-white' : 'border-transparent focus:border-purple-600 text-purple-600'}`}
                                         />
-                                        {discountMode === 'fixed' && discountValue > 0 && (
-                                            <p className="absolute right-4 top-1/2 -translate-y-1/2 text-[10px] font-black text-gray-400 italic">
-                                                ~ %{effectiveDiscountPercent.toFixed(1)}
-                                            </p>
-                                        )}
                                     </div>
                                     {needsAuthForDiscount && (
                                         <button 
@@ -443,9 +403,9 @@ export default function SmartCheckout({ appointment, onClose }: SmartCheckoutPro
                                                 setAuthReason('excessive-discount');
                                                 setIsPinModalOpen(true);
                                             }}
-                                            className="w-full mt-4 py-3 bg-amber-600 text-white rounded-2xl font-black text-[9px] uppercase tracking-widest shadow-xl shadow-amber-100 animate-pulse"
+                                            className="px-4 py-2 bg-amber-600 text-white rounded-lg font-black text-[8px] uppercase tracking-widest shadow-lg shadow-amber-100 animate-pulse"
                                         >
-                                            Yönetici PIN Onayı Gerekli
+                                            PIN
                                         </button>
                                     )}
                                 </div>
@@ -471,36 +431,35 @@ export default function SmartCheckout({ appointment, onClose }: SmartCheckoutPro
                                  <div className="grid grid-cols-1 gap-4">
                                     {methods.map((m, idx) => (
                                         <div key={idx} className="flex gap-4 items-center">
-                                            <div className="flex-1 bg-gray-50/50 p-6 rounded-[2rem] border border-gray-100 shadow-sm flex flex-col gap-4 group focus-within:border-indigo-600 transition-all">
+                                            <div className="flex-1 bg-gray-50/50 p-4 rounded-[1.5rem] border border-gray-100 shadow-sm flex flex-col gap-3 group focus-within:border-indigo-600 transition-all">
                                                 <div className="flex justify-between items-center w-full">
-                                                    <div className="flex items-center gap-4">
-                                                        <div className="w-12 h-12 bg-white rounded-xl flex items-center justify-center text-gray-400 group-hover:bg-indigo-600 group-hover:text-white transition-all shadow-sm">
-                                                            {m.method === 'kredi-karti' ? <CreditCard size={24} /> : m.method === 'havale' ? <Landmark size={24} /> : <Banknote size={24} />}
+                                                    <div className="flex items-center gap-3">
+                                                        <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center text-gray-400 group-hover:bg-indigo-600 group-hover:text-white transition-all shadow-sm">
+                                                            {m.method === 'kredi-karti' ? <CreditCard size={20} /> : m.method === 'havale' ? <Landmark size={20} /> : <Banknote size={20} />}
                                                         </div>
-                                                        <span className="text-xs font-black uppercase tracking-widest text-gray-500 tracking-wider">
-                                                            {m.method === 'kredi-karti' ? 'KREDİ KARTI' : m.method === 'havale' ? 'HAVALE' : 'NAKİT'} ÖDEME
+                                                        <span className="text-[10px] font-black uppercase tracking-widest text-gray-500 tracking-wider">
+                                                            {m.method === 'kredi-karti' ? 'KREDİ KARTI' : m.method === 'havale' ? 'HAVALE' : 'NAKİT'}
                                                         </span>
                                                     </div>
-                                                    <div className="flex items-center gap-3">
-                                                        <span className="text-gray-300 font-black text-lg">₺</span>
+                                                    <div className="flex items-center gap-2">
+                                                        <span className="text-gray-300 font-black text-sm">₺</span>
                                                         <input 
                                                             type="number" value={m.amount || ''} 
                                                             onChange={e => updateMethod(idx, 'amount', Number(e.target.value))}
-                                                            className="bg-transparent text-right font-black text-3xl italic tracking-tighter text-gray-900 w-32 outline-none"
+                                                            className="bg-transparent text-right font-black text-2xl italic tracking-tighter text-gray-900 w-24 outline-none"
                                                         />
                                                     </div>
                                                 </div>
 
-                                                {/* Bank / POS Selection for Card/Transfer */}
                                                 {(m.method === 'kredi-karti' || m.method === 'havale') && (
-                                                    <div className="pt-4 border-t border-dashed border-gray-200 flex items-center gap-4 animate-[fadeIn_0.3s_ease]">
-                                                        <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest min-w-max">Hangi POS/Banka?</p>
-                                                        <div className="flex-1 grid grid-cols-2 sm:grid-cols-3 gap-2">
+                                                    <div className="pt-3 border-t border-dashed border-gray-200 flex items-center gap-3">
+                                                        <p className="text-[8px] font-black text-gray-400 uppercase tracking-widest min-w-max">POS/BANKA:</p>
+                                                        <div className="flex-1 flex gap-2 overflow-x-auto no-scrollbar pb-1">
                                                             {bankAccounts.map(bank => (
                                                                 <button 
                                                                     key={bank.id}
                                                                     onClick={() => updateMethod(idx, 'toolId', bank.id)}
-                                                                    className={`px-3 py-2 rounded-xl text-[9px] font-black uppercase transition-all border ${m.toolId === bank.id ? 'bg-indigo-600 border-indigo-600 text-white shadow-md' : 'bg-white border-gray-100 text-gray-400 hover:border-indigo-200'}`}
+                                                                    className={`px-3 py-1.5 rounded-lg text-[8px] font-black uppercase transition-all border shrink-0 ${m.toolId === bank.id ? 'bg-indigo-600 border-indigo-600 text-white shadow-md' : 'bg-white border-gray-100 text-gray-400 hover:border-indigo-200'}`}
                                                                 >
                                                                     {bank.bankName}
                                                                 </button>
@@ -509,9 +468,52 @@ export default function SmartCheckout({ appointment, onClose }: SmartCheckoutPro
                                                     </div>
                                                 )}
                                             </div>
-                                            <button onClick={() => removeMethod(idx)} className="p-6 bg-red-50 text-red-400 rounded-[2rem] hover:bg-red-500 hover:text-white transition-all h-full"><Trash2 size={24} /></button>
+                                            <button onClick={() => removeMethod(idx)} className="p-4 bg-red-50 text-red-400 rounded-[1.5rem] hover:bg-red-500 hover:text-white transition-all h-full"><Trash2 size={20} /></button>
                                         </div>
                                     ))}
+
+                                    {remaining > 0 && (
+                                         <div className="mt-8 pt-8 border-t border-dashed border-gray-100 animate-[fadeIn_0.5s_ease]">
+                                             <div className="flex justify-between items-center mb-6">
+                                                 <div className="flex items-center gap-3">
+                                                     <div className="w-10 h-10 bg-red-50 rounded-xl flex items-center justify-center text-red-600"><AlertCircle size={20} /></div>
+                                                     <div>
+                                                         <p className="text-[10px] font-black text-red-600 uppercase tracking-widest">KALAN TUTAR (AÇIK HESAP)</p>
+                                                         <p className="text-2xl font-black text-red-900 italic tracking-tight">₺{remaining.toLocaleString('tr-TR')}</p>
+                                                     </div>
+                                                 </div>
+                                                 <div className="text-right">
+                                                    <p className="text-[9px] font-black text-gray-400 uppercase mb-1">Ödeme Sözü / Vade</p>
+                                                    <select 
+                                                        value={installments}
+                                                        onChange={e => setInstallments(Number(e.target.value))}
+                                                        className="bg-gray-50 border-none rounded-xl px-3 py-2 text-[10px] font-black text-gray-900 outline-none"
+                                                    >
+                                                        <option value={1}>TEK ÖDEME (VADE)</option>
+                                                        <option value={2}>2 TAKSİT</option>
+                                                        <option value={3}>3 TAKSİT</option>
+                                                        <option value={6}>6 TAKSİT</option>
+                                                    </select>
+                                                 </div>
+                                             </div>
+                                             
+                                             <div className="grid grid-cols-2 gap-4">
+                                                <button 
+                                                    onClick={() => addMethod('nakit', remaining)}
+                                                    className="py-4 bg-gray-900 text-white rounded-[1.5rem] font-black text-[10px] uppercase tracking-widest hover:bg-black transition-all shadow-xl shadow-gray-200"
+                                                >
+                                                    TAMAMINI TAHSİL ET
+                                                </button>
+                                                <button 
+                                                    disabled={true}
+                                                    className="py-4 bg-white border-2 border-indigo-600 text-indigo-600 rounded-[1.5rem] font-black text-[10px] uppercase tracking-widest opacity-50 cursor-not-allowed"
+                                                >
+                                                    AÇIK HESABA AKTARILDI
+                                                </button>
+                                             </div>
+                                             <p className="mt-4 text-[9px] font-bold text-gray-400 text-center uppercase tracking-widest italic">Kalan tutar müşterinin açık hesabına (veresiye) borç olarak işlenecektir.</p>
+                                         </div>
+                                     )}
 
                                     {remaining > 0 && methods.length === 0 && (
                                         <div className="grid grid-cols-3 gap-4">
@@ -528,37 +530,37 @@ export default function SmartCheckout({ appointment, onClose }: SmartCheckoutPro
                         </div>
 
                         {/* 2. Tahsilat Kalemleri */}
-                        <div className="space-y-6">
+                        <div className="space-y-4">
                             <h3 className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] flex items-center gap-3">
                                 <Package className="w-4 h-4 text-indigo-600" /> Tahsilat ve İkram Kalemleri
                             </h3>
                             
-                            <div className={`p-8 rounded-[2.5rem] border transition-all duration-500 flex flex-col gap-6 ${isServiceGift ? 'bg-indigo-50/50 border-indigo-100 opacity-80 shadow-inner' : 'bg-white border-gray-100 shadow-sm'}`}>
+                            <div className={`p-6 rounded-[2rem] border transition-all duration-500 flex flex-col gap-4 ${isServiceGift ? 'bg-indigo-50/50 border-indigo-100 opacity-80 shadow-inner' : 'bg-white border-gray-100 shadow-sm'}`}>
                                 <div className="flex justify-between items-center w-full">
-                                    <div className="flex items-center gap-6">
-                                        <div className={`w-14 h-14 rounded-2xl flex items-center justify-center transition-colors ${isServiceGift ? 'bg-indigo-600 text-white' : 'bg-gray-50 text-gray-400'}`}><Calendar size={24} /></div>
+                                    <div className="flex items-center gap-4">
+                                        <div className={`w-12 h-12 rounded-xl flex items-center justify-center transition-colors ${isServiceGift ? 'bg-indigo-600 text-white' : 'bg-gray-50 text-gray-400'}`}><Calendar size={20} /></div>
                                         <div>
-                                            <p className="font-black text-gray-900 text-xl uppercase tracking-tight">{overrideService}</p>
-                                            <div className="flex items-center gap-3 mt-1">
-                                                <p className="text-[10px] text-gray-400 font-black uppercase tracking-widest">Hizmet Bedeli</p>
-                                                {isServiceGift && <span className="px-2 py-0.5 bg-indigo-600 text-white text-[8px] font-black rounded uppercase">İkram</span>}
+                                            <p className="font-black text-gray-900 text-lg uppercase tracking-tight">{overrideService}</p>
+                                            <div className="flex items-center gap-2 mt-0.5">
+                                                <p className="text-[8px] text-gray-400 font-black uppercase tracking-widest">Hizmet Bedeli</p>
+                                                {isServiceGift && <span className="px-1.5 py-0.5 bg-indigo-600 text-white text-[7px] font-black rounded uppercase">İkram</span>}
                                             </div>
                                         </div>
                                     </div>
-                                    <div className="flex items-center gap-8">
+                                    <div className="flex items-center gap-6">
                                         <div className="text-right">
-                                            {isServiceGift && <p className="text-[10px] font-black text-gray-300 line-through">₺{overridePrice}</p>}
-                                            <p className={`font-black text-2xl italic tracking-tighter ${isServiceGift ? 'text-indigo-600' : 'text-gray-900'}`}>₺{servicePrice.toLocaleString('tr-TR')}</p>
+                                            {isServiceGift && <p className="text-[9px] font-black text-gray-300 line-through">₺{overridePrice}</p>}
+                                            <p className={`font-black text-xl italic tracking-tighter ${isServiceGift ? 'text-indigo-600' : 'text-gray-900'}`}>₺{servicePrice.toLocaleString('tr-TR')}</p>
                                         </div>
-                                        <div className="flex gap-2">
+                                        <div className="flex gap-1.5">
                                             <button 
                                                 onClick={() => setIsServiceEditorOpen(!isServiceEditorOpen)}
-                                                className={`p-4 rounded-2xl transition-all ${isServiceEditorOpen ? 'bg-indigo-100 text-indigo-600' : 'bg-gray-50 text-gray-300 hover:text-indigo-600 hover:bg-indigo-50'}`}
+                                                className={`p-3 rounded-xl transition-all ${isServiceEditorOpen ? 'bg-indigo-100 text-indigo-600' : 'bg-gray-50 text-gray-300 hover:text-indigo-600 hover:bg-indigo-50'}`}
                                             >
-                                                <Zap size={20} />
+                                                <Zap size={18} />
                                             </button>
-                                            <button onClick={() => handleGiftToggle('service')} className={`p-4 rounded-2xl transition-all ${isServiceGift ? 'bg-indigo-600 text-white shadow-lg' : 'bg-gray-50 text-gray-300 hover:text-indigo-600 hover:bg-indigo-50'}`}>
-                                                <HeartHandshake size={20} />
+                                            <button onClick={() => handleGiftToggle('service')} className={`p-3 rounded-xl transition-all ${isServiceGift ? 'bg-indigo-600 text-white shadow-lg' : 'bg-gray-50 text-gray-300 hover:text-indigo-600 hover:bg-indigo-50'}`}>
+                                                <HeartHandshake size={18} />
                                             </button>
                                         </div>
                                     </div>
@@ -655,7 +657,31 @@ export default function SmartCheckout({ appointment, onClose }: SmartCheckoutPro
                         </div>
 
 
-                        {/* 5. Memnuniyet Bahşişi */}
+                        {/* 5. Sadakat Puanı (En Alt) */}
+                        <div className="bg-white p-6 rounded-[2.5rem] border border-gray-100 shadow-sm relative overflow-hidden group">
+                            <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-50 rounded-full -translate-y-1/2 translate-x-1/2 group-hover:scale-110 transition-transform" />
+                            <div className="relative flex items-center justify-between">
+                                <div className="flex items-center gap-4">
+                                    <div className="w-12 h-12 bg-indigo-50 rounded-2xl flex items-center justify-center text-indigo-600"><Sparkles size={24} /></div>
+                                    <div>
+                                        <p className="text-[10px] font-black text-indigo-600 uppercase tracking-widest flex items-center gap-2">Sadakat Puanı</p>
+                                        <p className="text-xl font-black text-gray-900 tracking-tighter italic leading-none">{customer?.loyaltyPoints || 0} PUAN</p>
+                                    </div>
+                                </div>
+                                <button 
+                                    onClick={() => {
+                                        const obtainable = Math.min(customer?.loyaltyPoints || 0, Math.floor(remaining));
+                                        if(obtainable > 0) setPointsUsed(prev => prev + obtainable);
+                                    }}
+                                    disabled={!customer?.loyaltyPoints || remaining <= 0}
+                                    className="px-6 py-3 bg-indigo-600 text-white rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-xl shadow-indigo-100 hover:scale-[1.02] active:scale-95 transition-all disabled:opacity-30"
+                                >
+                                    Puan Kullan (₺1 = 1 Puan)
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* 6. Memnuniyet Bahşişi */}
                         <div className="bg-indigo-950 p-10 rounded-[3rem] shadow-2xl relative overflow-hidden group">
                             <div className="absolute inset-0 bg-gradient-to-br from-indigo-800 to-indigo-950 opacity-50" />
                             <div className="relative flex flex-col md:flex-row items-center justify-between gap-8">
