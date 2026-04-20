@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useStore, Appointment, Payment, Staff } from '@/lib/store';
 import { 
     X, Sparkles, TrendingUp, Users, DollarSign, Award, 
@@ -64,7 +64,7 @@ export default function EndOfDayAI({ isOpen, onClose }: EndOfDayProps) {
     const auditStatus = suspiciousAppts.length > 0 || forgottenAppts.length > 0 ? 'warning' : 'clear';
 
     const aiInsights = useMemo(() => {
-        if (totalRev === 0 && completedAppts.length === 0) return "Bugün henüz bir işlem gerçekleşmedi. Operasyonel hareketlilik bekleniyor.";
+        if (totalRev === 0 && completedAppts.length === 0) return ["Bugün henüz bir işlem gerçekleşmedi. Operasyonel hareketlilik bekleniyor."];
         
         const insights = [
             `Bugün toplam ₺${totalRev.toLocaleString('tr-TR')} ciro gerçekleşti.`,
@@ -72,15 +72,25 @@ export default function EndOfDayAI({ isOpen, onClose }: EndOfDayProps) {
         ];
 
         if (suspiciousAppts.length > 0) {
-            insights.push(`DİKKAT: ${suspiciousAppts.length} randevunun ödemesi henüz sisteme girilmemiş görünüyor. Sızıntı riski mevcut.`);
+            insights.push(`KRİTİK: Ödemesi sisteme girilmemiş ${suspiciousAppts.length} randevu tespit edildi. (Sızıntı Riski)`);
+            suspiciousAppts.forEach(a => {
+                insights.push(`- ${a.customerName} (₺${a.price.toLocaleString('tr-TR')})`);
+            });
         }
 
         if (forgottenAppts.length > 0) {
-            insights.push(`BİLGİ: ${forgottenAppts.length} randevu hala 'Bekliyor' veya 'Geldi' durumunda. Unutulmuş olabilirler.`);
+            insights.push(`UYARI: ${forgottenAppts.length} randevu hala 'Bekliyor' veya 'Geldi' durumunda. Unutulmuş olabilirler.`);
         }
 
         return insights;
     }, [totalRev, topStaff, suspiciousAppts, forgottenAppts, completedAppts]);
+
+    // Risk detaylarını otomatik aç: Eğer risk varsa detayları göster
+    useEffect(() => {
+        if (auditStatus === 'warning') {
+            setShowRiskDetails(true);
+        }
+    }, [auditStatus]);
 
     const isAuthorizedToClose = useMemo(() => {
         if (auditStatus === 'clear') return true;
@@ -169,45 +179,52 @@ export default function EndOfDayAI({ isOpen, onClose }: EndOfDayProps) {
                                     Yapay Zeka Denetimi
                                 </h3>
 
-                                <div className="space-y-5 relative z-10">
-                                    {Array.isArray(aiInsights) ? aiInsights.map((ins, i) => (
-                                        <div key={i} className="flex gap-4 group/item">
-                                            <div className={`w-2 h-2 rounded-full ${ins.includes('DİKKAT') ? 'bg-yellow-400 shadow-[0_0_10px_rgba(250,204,21,0.8)] animate-pulse' : 'bg-white/40'} mt-2.5 flex-shrink-0 group-hover/item:scale-150 transition-transform`} />
-                                            <p className="text-[15px] font-bold text-white/90 leading-relaxed tracking-tight">{ins}</p>
-                                        </div>
-                                    )) : <p className="text-[15px] font-bold text-white/90 leading-relaxed">{aiInsights}</p>}
+                                <div className="space-y-6 relative z-10">
+                                    {Array.isArray(aiInsights) ? aiInsights.map((ins, i) => {
+                                        const isCritical = ins.startsWith('KRİTİK') || ins.startsWith('-');
+                                        return (
+                                            <div key={i} className="flex gap-4 group/item">
+                                                <div className={`w-2 h-2 rounded-full ${ins.includes('KRİTİK') ? 'bg-yellow-400 shadow-[0_0_10px_rgba(250,204,21,0.8)] animate-pulse' : (ins.startsWith('-') ? 'bg-yellow-300 ml-4' : 'bg-white/40')} mt-2.5 flex-shrink-0 group-hover/item:scale-150 transition-transform`} />
+                                                <p className={`${isCritical ? 'text-yellow-200 text-sm italic' : 'text-white/90 text-[15px]'} font-bold leading-relaxed tracking-tight`}>{ins}</p>
+                                            </div>
+                                        );
+                                    }) : <p className="text-[15px] font-bold text-white/90 leading-relaxed">{aiInsights}</p>}
                                 </div>
 
-                                <div className="mt-10 pt-8 border-t border-white/20 flex items-center justify-between relative z-10">
+                                <div className="mt-10 pt-8 border-t border-white/20 flex items-center justify-between relative z-20">
                                     <div className="flex items-center gap-3">
                                         <div className={`p-2 rounded-full ${auditStatus === 'warning' ? 'bg-white/20' : 'bg-white/10'}`}>
                                             <ShieldCheck className={`w-6 h-6 ${auditStatus === 'warning' ? 'text-yellow-300' : 'text-emerald-400'}`} />
                                         </div>
                                         <div>
-                                            <span className="text-[10px] font-black uppercase tracking-[0.1em] text-white/60 block leading-none mb-1">Audit Status</span>
+                                            <span className="text-[10px] font-black uppercase tracking-[0.1em] text-white/60 block leading-none mb-1">Denetim Durumu</span>
                                             <span className="text-xs font-black uppercase text-white tracking-widest italic">
-                                                {auditStatus === 'warning' ? 'RİSK SAPTANDI' : 'TAM TUTARLILIK'}
+                                                {auditStatus === 'warning' ? 'RİSKLİ / EKSİK VERİ' : 'TAM TUTARLILIK'}
                                             </span>
                                         </div>
                                     </div>
                                     {(suspiciousAppts.length > 0 || forgottenAppts.length > 0) && (
                                         <button 
-                                            onClick={() => setShowRiskDetails(!showRiskDetails)}
-                                            className="text-[11px] font-black uppercase bg-white text-rose-600 px-6 py-3 rounded-2xl hover:bg-rose-50 transition-all shadow-xl shadow-black/10 active:scale-95"
+                                            type="button"
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                setShowRiskDetails(!showRiskDetails);
+                                            }}
+                                            className="relative z-30 text-[11px] font-black uppercase bg-white text-rose-600 px-6 py-3 rounded-2xl hover:bg-rose-50 transition-all shadow-xl shadow-black/10 active:scale-95 cursor-pointer"
                                         >
-                                            {showRiskDetails ? 'ÖZETİ GÖR' : 'DETAYLARI İNCELE'}
+                                            {showRiskDetails ? 'LİSTEYİ GİZLE' : 'TÜMÜNÜ İNCELE'}
                                         </button>
                                     )}
                                 </div>
                             </div>
                             
-                            <AnimatePresence>
+                            <AnimatePresence mode="wait">
                                 {showRiskDetails && (
                                     <motion.div 
-                                        initial={{ opacity: 0, scale: 0.95, y: -20 }}
-                                        animate={{ opacity: 1, scale: 1, y: 0 }}
-                                        exit={{ opacity: 0, scale: 0.95, y: -20 }}
-                                        className="bg-white/80 backdrop-blur-md border-2 border-rose-100 rounded-[3rem] p-10 space-y-8 shadow-2xl shadow-rose-200/20"
+                                        initial={{ opacity: 0, scale: 0.95, height: 0 }}
+                                        animate={{ opacity: 1, scale: 1, height: 'auto' }}
+                                        exit={{ opacity: 0, scale: 0.95, height: 0 }}
+                                        className="bg-white/90 backdrop-blur-md border-2 border-rose-100 rounded-[3rem] p-8 space-y-8 shadow-2xl shadow-rose-200/20 overflow-hidden"
                                     >
                                         {suspiciousAppts.length > 0 && (
                                             <div>
