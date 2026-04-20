@@ -3,7 +3,7 @@
 import React, { useState, useMemo } from 'react';
 import { 
     X, Search, Plus, Sparkles, ChevronRight, 
-    ShieldCheck, Loader2, Banknote, ChevronDown, Package, Clock
+    ShieldCheck, Loader2, Banknote, ChevronDown, Package, Clock, User
 } from 'lucide-react';
 import { useStore, Customer } from '@/lib/store';
 import BodyMap from '../crm/BodyMap';
@@ -19,10 +19,16 @@ interface BookingModalProps {
 export default function BookingModal({ initialData, onClose, date, mode: initialMode = 'add' }: BookingModalProps) {
     const { 
         customers, staffMembers, services, rooms, 
-        addAppointment, addBlock, packages, addBodyMap,
-        currentBusiness
+        addAppointment, updateAppointment, addBlock, packages, addBodyMap,
+        currentBusiness, appointments, blocks, settings, addLog,
+        currentUser
     } = useStore();
     
+    // Rescheduling states
+    const [selectedDate, setSelectedDate] = useState(date || initialData?.date);
+    const [selectedTime, setSelectedTime] = useState(initialData?.time || '09:00');
+    const [currentStaffId, setCurrentStaffId] = useState(initialData?.staffId || staffMembers[0]?.id || '');
+
     const [mode, setMode] = useState<'appt' | 'block'>(initialData?.reason ? 'block' : 'appt');
     const [search, setSearch] = useState('');
     const [selectedCustId, setSelectedCustId] = useState(initialData.customerId || '');
@@ -35,7 +41,6 @@ export default function BookingModal({ initialData, onClose, date, mode: initial
     // Current entry state
     const activeServices = useMemo(() => services.filter(s => s.isActive !== false), [services]);
     const [currentService, setCurrentService] = useState(activeServices.length > 0 ? (initialData.service || activeServices[0]?.name) : '');
-    const [currentStaffId, setCurrentStaffId] = useState(initialData.staffId || staffMembers[0]?.id || '');
     const [currentRoomId, setCurrentRoomId] = useState<string | null>(initialData.roomId || (rooms.length > 0 ? rooms[0]?.id : null));
     const [currentPackageId, setCurrentPackageId] = useState<string | null>(null);
     const [price, setPrice] = useState(services.find(s => s.name === (initialData.service || services[0]?.name))?.price || 0);
@@ -45,7 +50,62 @@ export default function BookingModal({ initialData, onClose, date, mode: initial
     const [overrideDuration, setOverrideDuration] = useState<number | null>(
         (initialData.duration && initialData.duration !== 15) ? initialData.duration : null
     );
-    const [referralSource, setReferralSource] = useState('Direkt');
+    const [referralSource, setReferralSource] = useState(initialData?.communicationSource || 'Direkt');
+
+    // Conflict Detection (Staff & Room)
+    const checkConflict = (staffId: string, roomId: string | null, dt: string, tm: string, dur: number, excludeId?: string) => {
+        const [h, m] = tm.split(':').map(Number);
+        const start = h * 60 + m;
+        const end = start + dur;
+
+        const hasAppt = appointments.some(a => {
+            if (a.id === excludeId) return false;
+            if (a.date !== dt) return false;
+            // Status check
+            if (['cancelled', 'excused'].includes(a.status)) return false;
+
+            const [ah, am] = a.time.split(':').map(Number);
+            const aStart = ah * 60 + am;
+            const aEnd = aStart + (a.duration || 60);
+            const isTimeOverlap = (start < aEnd && end > aStart);
+
+            if (!isTimeOverlap) return false;
+
+            // Check staff conflict
+            if (a.staffId === staffId) return true;
+            
+            // Check room conflict
+            if (roomId && a.roomId === roomId) return true;
+
+            return false;
+        });
+
+        const hasBlock = blocks.some(b => {
+            if (b.date !== dt) return false;
+            const [bh, bm] = b.time.split(':').map(Number);
+            const bStart = bh * 60 + bm;
+            const bEnd = bStart + (b.duration || 60);
+            const isTimeOverlap = (start < bEnd && end > bStart);
+
+            if (!isTimeOverlap) return false;
+            if (b.staffId === staffId) return true;
+            return false;
+        });
+
+        return hasAppt || hasBlock;
+    };
+
+    const slots = useMemo(() => {
+        const s = [];
+        const start = settings?.startHour || 9;
+        const end = settings?.endHour || 22;
+        for (let h = start; h < end; h++) {
+            for (let m = 0; m < 60; m += 15) {
+                s.push(`${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`);
+            }
+        }
+        return s;
+    }, [settings]);
 
     const toggleRegion = (id: string) => {
         setSelectedRegions(prev => prev.includes(id) ? prev.filter(r => r !== id) : [...prev, id]);
@@ -94,72 +154,121 @@ export default function BookingModal({ initialData, onClose, date, mode: initial
 
     const handleSave = async () => {
         if (isSaving) return;
+        
+        const duration = overrideDuration || services.find(s => s.name === currentService)?.duration || 60;
+        
+        // Final Conflict Check (Staff & Room)
+        if (checkConflict(currentStaffId, currentRoomId, selectedDate, selectedTime, duration, initialMode === 'edit' ? initialData?.id : undefined)) {
+            alert("⚠️ DİKKAT: Seçilen personel veya oda o saatte dolu. Lütfen farklı bir seçim yapın.");
+            return;
+        }
+
         setIsSaving(true);
 
         try {
             if (mode === 'appt') {
-                const finalBasket = basket.length > 0 ? basket : [{
-                    service: currentService,
-                    staffId: currentStaffId,
-                    staffName: staffMembers.find(s => s.id === currentStaffId)?.name || '',
-                    roomId: currentRoomId,
-                    packageId: currentPackageId,
-                    price: currentPackageId ? 0 : price,
-                    duration: overrideDuration || services.find(s => s.name === currentService)?.duration || 60,
-                    isPackageUsage: !!currentPackageId,
-                    note: note,
-                    regions: selectedRegions
-                }];
-
-                let allSuccess = true;
-                for (const item of finalBasket) {
-                    const success = await addAppointment({
-                        businessId: currentBusiness?.id,
-                        customerId: selectedCustId,
-                        customerName: customer?.name || '',
-                        service: item.service,
-                        staffId: item.staffId,
-                        staffName: item.staffName,
-                        roomId: item.roomId,
-                        date,
-                        time: initialData.time,
-                        duration: item.duration,
-                        status: 'pending',
-                        price: item.price,
-                        depositPaid: 0,
-                        isOnline: false,
-                        packageId: item.packageId || undefined,
-                        isPackageUsage: item.isPackageUsage,
-                        note: item.note,
+                if (initialMode === 'edit') {
+                    const updates = {
+                        service: currentService,
+                        staffId: currentStaffId,
+                        staffName: staffMembers.find(s => s.id === currentStaffId)?.name || '',
+                        roomId: currentRoomId,
+                        date: selectedDate,
+                        time: selectedTime,
+                        duration: duration,
+                        price: price,
+                        note: note,
                         communicationSource: referralSource,
-                        selectedRegions: item.regions
-                    });
-
-                    if (!success) {
-                        allSuccess = false;
-                        alert("🔴 KRİTİK HATA: Veritabanı senkronizasyonu başarısız oldu. Lütfen internet bağlantınızı ve yetkilerinizi kontrol edip tekrar deneyin. Veri kaybı yaşanmaması için sayfa yenilenmedi.");
-                        break;
+                        selectedRegions: selectedRegions,
+                        packageId: currentPackageId || undefined,
+                        isPackageUsage: !!currentPackageId
+                    };
+                    
+                    const success = await updateAppointment(initialData.id, updates);
+                    if (success) {
+                        // Audit Log
+                        const oldDate = initialData.date;
+                        const oldTime = initialData.time;
+                        const oldStaff = initialData.staffName;
+                        const newStaff = updates.staffName;
+                        
+                        let logMsg = `Randevu Güncellendi: ${initialData.customerName}`;
+                        if (oldDate !== selectedDate || oldTime !== selectedTime) {
+                            logMsg += ` | Zaman Değişimi: ${oldDate} ${oldTime} -> ${selectedDate} ${selectedTime}`;
+                        }
+                        if (oldStaff !== newStaff) {
+                            logMsg += ` | Personel Değişimi: ${oldStaff} -> ${newStaff}`;
+                        }
+                        
+                        await addLog(logMsg, initialData.id, `${oldDate} ${oldTime}`, `${selectedDate} ${selectedTime}`);
+                        onClose();
+                    } else {
+                        alert("🔴 Hata: Güncelleme kaydedilemedi.");
                     }
-                }
-                
-                if (allSuccess) {
-                    onClose();
+                } else {
+                    const finalBasket = basket.length > 0 ? basket : [{
+                        service: currentService,
+                        staffId: currentStaffId,
+                        staffName: staffMembers.find(s => s.id === currentStaffId)?.name || '',
+                        roomId: currentRoomId,
+                        packageId: currentPackageId,
+                        price: currentPackageId ? 0 : price,
+                        duration: duration,
+                        isPackageUsage: !!currentPackageId,
+                        note: note,
+                        regions: selectedRegions
+                    }];
+
+                    let allSuccess = true;
+                    for (const item of finalBasket) {
+                        const success = await addAppointment({
+                            businessId: currentBusiness?.id,
+                            customerId: selectedCustId,
+                            customerName: customer?.name || '',
+                            service: item.service,
+                            staffId: item.staffId,
+                            staffName: item.staffName,
+                            roomId: item.roomId,
+                            date: selectedDate,
+                            time: selectedTime,
+                            duration: item.duration,
+                            status: 'pending',
+                            price: item.price,
+                            depositPaid: 0,
+                            isOnline: false,
+                            packageId: item.packageId || undefined,
+                            isPackageUsage: item.isPackageUsage,
+                            note: item.note,
+                            communicationSource: referralSource,
+                            selectedRegions: item.regions
+                        });
+
+                        if (!success) {
+                            allSuccess = false;
+                            alert("🔴 KRİTİK HATA: Veritabanı senkronizasyonu başarısız oldu.");
+                            break;
+                        }
+                    }
+                    
+                    if (allSuccess) {
+                        onClose();
+                    }
                 }
             } else {
                 const res = await addBlock({
                     businessId: currentBusiness?.id,
                     staffId: currentStaffId,
-                    date,
-                    time: initialData.time,
+                    date: selectedDate,
+                    time: selectedTime,
                     duration: overrideDuration || 60,
                     reason: blockReason
                 });
                 if (res !== false) onClose();
-                else alert("🚫 Bloke işlemi kaydedilemedi. Personel meşgul veya bağlantı hatası olabilir.");
+                else alert("🚫 Bloke işlemi kaydedilemedi.");
             }
         } catch (error: any) {
             console.error("Booking save error:", error);
-            alert(`⚠️ SİSTEM HATASI: ${error.message || 'Bilinmeyen bir hata oluştu'}. Randevu kaydedilmiş olabilir, lütfen Takvimi yenileyip kontrol edin. Dublike kayıt yapmamak için dikkatli olun.`);
+            alert(`⚠️ SİSTEM HATASI: ${error.message}`);
         } finally {
             setIsSaving(false);
         }
@@ -256,14 +365,39 @@ export default function BookingModal({ initialData, onClose, date, mode: initial
                                         )}
 
                                         <div className="bg-indigo-50/30 p-10 rounded-[2.5rem] border border-indigo-100/50 shadow-inner space-y-10">
-                                            <div className="flex items-center justify-between px-2">
-                                                <div>
-                                                    <p className="text-[10px] font-black text-indigo-400 uppercase tracking-[0.2em] leading-none mb-2">Müşteri</p>
-                                                    <h3 className="text-2xl font-black text-gray-900 tracking-tight italic uppercase">{customer?.name}</h3>
+                                            <div className="flex items-center justify-between px-2 bg-white/50 p-6 rounded-3xl border border-indigo-100/50 shadow-sm mb-6">
+                                                <div className="flex items-center gap-4">
+                                                    <div className="w-12 h-12 rounded-2xl bg-indigo-600 text-white flex items-center justify-center shadow-lg shadow-indigo-100">
+                                                        <User className="w-6 h-6" />
+                                                    </div>
+                                                    <div>
+                                                        <p className="text-[10px] font-black text-indigo-400 uppercase tracking-[0.2em] leading-none mb-1.5">Müşteri</p>
+                                                        <h4 className="text-lg font-black text-gray-900 tracking-tight italic uppercase leading-none">{customer?.name}</h4>
+                                                    </div>
                                                 </div>
                                                 <div className="text-right">
-                                                    <p className="text-[10px] font-black text-primary uppercase tracking-widest mb-1">{date}</p>
-                                                    <p className="text-3xl font-black text-primary/80 tracking-tighter italic leading-none">{initialData.time}</p>
+                                                    <div className="flex flex-col gap-2">
+                                                        <input 
+                                                            type="date" 
+                                                            value={selectedDate} 
+                                                            onChange={e => setSelectedDate(e.target.value)}
+                                                            className="text-[11px] font-black text-primary uppercase tracking-widest bg-indigo-50/50 border border-indigo-100 rounded-xl px-4 py-1.5 outline-none focus:border-primary transition-all text-center"
+                                                        />
+                                                        <div className="relative">
+                                                            <select 
+                                                                value={selectedTime}
+                                                                onChange={e => setSelectedTime(e.target.value)}
+                                                                className="w-full text-2xl font-black text-primary/80 tracking-tighter italic leading-none bg-transparent outline-none appearance-none cursor-pointer pr-6 text-right"
+                                                            >
+                                                                {slots.map(s => {
+                                                                    const duration = overrideDuration || services.find(svc => svc.name === currentService)?.duration || 60;
+                                                                    const isFull = checkConflict(currentStaffId, currentRoomId, selectedDate, s, duration, initialMode === 'edit' ? initialData.id : undefined);
+                                                                    return <option key={s} value={s} className={isFull ? 'text-red-400 font-bold' : ''}>{s} {isFull ? ' (ÇAKIŞMA)' : ''}</option>
+                                                                })}
+                                                            </select>
+                                                            <ChevronDown size={14} className="absolute right-0 top-1/2 -translate-y-1/2 text-primary/40 pointer-events-none" />
+                                                        </div>
+                                                    </div>
                                                 </div>
                                             </div>
 
@@ -341,19 +475,28 @@ export default function BookingModal({ initialData, onClose, date, mode: initial
                                             <div className="space-y-4">
                                                 <p className="text-[10px] font-black text-indigo-400 uppercase tracking-widest ml-1">Oda Seçimi (Opsiyonel)</p>
                                                 <div className="flex flex-wrap gap-2.5">
-                                                    {rooms.map(room => (
-                                                        <button 
-                                                            key={room.id} 
-                                                            onClick={() => setCurrentRoomId(room.id === currentRoomId ? null : room.id)} 
-                                                            className={`px-6 py-3.5 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all duration-300 border-2 ${
-                                                                currentRoomId === room.id 
-                                                                ? 'bg-purple-600 border-purple-600 text-white shadow-xl shadow-purple-200 scale-105' 
-                                                                : 'bg-white border-gray-100 text-indigo-400 hover:border-purple-200 shadow-sm'
-                                                            }`}
-                                                        >
-                                                            {room.name}
-                                                        </button>
-                                                    ))}
+                                                    {rooms.map(room => {
+                                                        const duration = overrideDuration || services.find(svc => svc.name === currentService)?.duration || 60;
+                                                        const isRoomFull = checkConflict('', room.id, selectedDate, selectedTime, duration, initialMode === 'edit' ? initialData.id : undefined);
+                                                        
+                                                        return (
+                                                            <button 
+                                                                key={room.id} 
+                                                                onClick={() => !isRoomFull && setCurrentRoomId(room.id === currentRoomId ? null : room.id)} 
+                                                                className={`px-6 py-3.5 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all duration-300 border-2 relative ${
+                                                                    currentRoomId === room.id 
+                                                                    ? 'bg-purple-600 border-purple-600 text-white shadow-xl shadow-purple-200 scale-105' 
+                                                                    : isRoomFull 
+                                                                        ? 'bg-gray-100 border-gray-200 text-gray-300 cursor-not-allowed grayscale' 
+                                                                        : 'bg-white border-gray-100 text-indigo-400 hover:border-purple-200 shadow-sm'
+                                                                }`}
+                                                                title={isRoomFull ? 'Bu oda seçilen saatte dolu' : ''}
+                                                            >
+                                                                {room.name}
+                                                                {isRoomFull && <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[7px] px-1.5 py-0.5 rounded-full ring-2 ring-white">DOLU</span>}
+                                                            </button>
+                                                        );
+                                                    })}
                                                 </div>
                                             </div>
 
@@ -370,7 +513,7 @@ export default function BookingModal({ initialData, onClose, date, mode: initial
                                                     <p className="text-[9px] font-black text-indigo-400 uppercase tracking-widest mb-1.5 opacity-60">Yaklaşık Bitiş</p>
                                                     <p className="text-sm font-black text-primary uppercase tracking-tight italic">
                                                         {(() => {
-                                                            const start = initialData.time;
+                                                            const start = selectedTime;
                                                             const dur = overrideDuration || services.find(s => s.name === currentService)?.duration || 0;
                                                             const [h, m] = start.split(':').map(Number);
                                                             const endTotal = h * 60 + m + dur;
@@ -433,7 +576,7 @@ export default function BookingModal({ initialData, onClose, date, mode: initial
                         className="w-full py-6 bg-primary text-white rounded-[2.5rem] font-black text-sm uppercase tracking-[0.3em] shadow-2xl shadow-primary/30 transition-all hover:bg-indigo-700 active:scale-[0.98] disabled:opacity-50 flex items-center justify-center gap-4"
                     >
                         {isSaving ? <Loader2 className="w-6 h-6 animate-spin" /> : <ShieldCheck className="w-6 h-6" />}
-                        {isSaving ? 'Rezervasyon İşleniyor...' : 'Takvime İşle'}
+                        {isSaving ? 'İşlem Yapılıyor...' : (initialMode === 'edit' ? 'Değişiklikleri Kaydet' : 'Takvime İşle')}
                     </button>
                 </div>
             </div>
