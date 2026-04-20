@@ -1424,6 +1424,23 @@ const StoreOrchestrator = ({ children }: { children: ReactNode }) => {
                 }
             });
 
+            // 3. Perakende Hedef Denetimi
+            const totalRev = data.payments.filter(p => p.date === today).reduce((s, p) => s + (p.totalAmount || 0), 0);
+            const productRev = data.payments.filter(p => p.date === today).reduce((s, p) => {
+                const products = Array.isArray(p.soldProducts) ? p.soldProducts : [];
+                return s + products.reduce((sum, pr) => sum + ((pr.price || 0) * (pr.quantity || 1)), 0);
+            }, 0);
+            const retailTarget = (biz.currentTenant as any)?.retail_target || 20;
+            const retailPercentage = totalRev > 0 ? (productRev / totalRev) * 100 : 0;
+            
+            if (totalRev > 0 && retailPercentage < retailTarget) {
+                alerts.push({
+                    type: 'info',
+                    title: 'Satış Hedefi Düşük',
+                    desc: `Bugünkü perakende satış oranı (%${retailPercentage.toFixed(1)}), %${retailTarget} hedefinin altında.`,
+                });
+            }
+
             return alerts;
         },
         isLicenseExpired,

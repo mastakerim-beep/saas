@@ -63,6 +63,9 @@ export default function EndOfDayAI({ isOpen, onClose }: EndOfDayProps) {
 
     const auditStatus = suspiciousAppts.length > 0 || forgottenAppts.length > 0 ? 'warning' : 'clear';
 
+    // Dinamik Perakende Hedefi (Varsayılan %20)
+    const retailTarget = (currentBusiness as any)?.retail_target || 20;
+
     const tomorrow = useMemo(() => {
         const d = new Date(today);
         d.setDate(d.getDate() + 1);
@@ -90,7 +93,7 @@ export default function EndOfDayAI({ isOpen, onClose }: EndOfDayProps) {
         return s + productTotal;
     }, 0);
     const retailPercentage = totalRev > 0 ? (productRev / totalRev) * 100 : 0;
-    const isRetailTargetMet = retailPercentage >= 20;
+    const isRetailTargetMet = retailPercentage >= retailTarget;
 
     const aiInsights = useMemo(() => {
         if (totalRev === 0 && completedAppts.length === 0) return ["Bugün henüz bir işlem gerçekleşmedi. Operasyonel hareketlilik bekleniyor."];
@@ -102,9 +105,9 @@ export default function EndOfDayAI({ isOpen, onClose }: EndOfDayProps) {
 
         // Retail Performance
         if (!isRetailTargetMet && totalRev > 0) {
-            insights.push(`STRATEJİ: Ürün satışı oranı %${retailPercentage.toFixed(1)} ile %20 hedefinin altında kaldı. Yarın ekibe ürün bazlı bonus/hatırlatma yapılabilir.`);
+            insights.push(`STRATEJİ: Ürün satışı oranı %${retailPercentage.toFixed(1)} ile %${retailTarget} hedefinin altında kaldı. Yarın ekibe ürün bazlı bonus/hatırlatma yapılabilir.`);
         } else if (isRetailTargetMet) {
-            insights.push(`BAŞARI: Perakende satış hedefi (%20) aşıldı! Güncel oran: %${retailPercentage.toFixed(1)}.`);
+            insights.push(`BAŞARI: Perakende satış hedefi (%${retailTarget}) aşıldı! Güncel oran: %${retailPercentage.toFixed(1)}.`);
         }
 
         // Tomorrow's Outlook
