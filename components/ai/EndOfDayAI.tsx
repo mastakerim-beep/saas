@@ -17,7 +17,7 @@ interface EndOfDayProps {
 export default function EndOfDayAI({ isOpen, onClose }: EndOfDayProps) {
     const { 
         appointments, payments, staffMembers, addLog, getTodayDate, 
-        currentBusiness, addZReport, currentUser 
+        currentBusiness, addZReport, currentUser, rooms 
     } = useStore();
     
     const [isClosing, setIsClosing] = useState(false);
@@ -63,6 +63,35 @@ export default function EndOfDayAI({ isOpen, onClose }: EndOfDayProps) {
 
     const auditStatus = suspiciousAppts.length > 0 || forgottenAppts.length > 0 ? 'warning' : 'clear';
 
+    const tomorrow = useMemo(() => {
+        const d = new Date(today);
+        d.setDate(d.getDate() + 1);
+        return d.toLocaleDateString('sv-SE');
+    }, [today]);
+
+    const tomorrowAppts = useMemo(() => appointments.filter(a => a.date === tomorrow), [appointments, tomorrow]);
+    const tomorrowPotentialRev = tomorrowAppts.reduce((s, a) => s + (a.price || 0), 0);
+    
+    // Room Audit Logic
+    const roomUsage = useMemo(() => {
+        const usage: Record<string, number> = {};
+        completedAppts.forEach(a => {
+            if (a.roomId) {
+                usage[a.roomId] = (usage[a.roomId] || 0) + 1;
+            }
+        });
+        return usage;
+    }, [completedAppts]);
+
+    // Retail Target Analysis (Benchmark: 20%)
+    const productRev = todayPayments.reduce((s, p) => {
+        const products = Array.isArray(p.soldProducts) ? p.soldProducts : [];
+        const productTotal = products.reduce((sum, pr) => sum + ((pr.price || 0) * (pr.quantity || 1)), 0);
+        return s + productTotal;
+    }, 0);
+    const retailPercentage = totalRev > 0 ? (productRev / totalRev) * 100 : 0;
+    const isRetailTargetMet = retailPercentage >= 20;
+
     const aiInsights = useMemo(() => {
         if (totalRev === 0 && completedAppts.length === 0) return ["Bugün henüz bir işlem gerçekleşmedi. Operasyonel hareketlilik bekleniyor."];
         
@@ -70,6 +99,26 @@ export default function EndOfDayAI({ isOpen, onClose }: EndOfDayProps) {
             `Bugün toplam ₺${totalRev.toLocaleString('tr-TR')} ciro gerçekleşti.`,
             `${topStaff[0]} bugün en yüksek performansı sergileyen ekip üyesi oldu.`
         ];
+
+        // Retail Performance
+        if (!isRetailTargetMet && totalRev > 0) {
+            insights.push(`STRATEJİ: Ürün satışı oranı %${retailPercentage.toFixed(1)} ile %20 hedefinin altında kaldı. Yarın ekibe ürün bazlı bonus/hatırlatma yapılabilir.`);
+        } else if (isRetailTargetMet) {
+            insights.push(`BAŞARI: Perakende satış hedefi (%20) aşıldı! Güncel oran: %${retailPercentage.toFixed(1)}.`);
+        }
+
+        // Tomorrow's Outlook
+        if (tomorrowAppts.length > 0) {
+            insights.push(`YARINA BAKIŞ: Yarın için ${tomorrowAppts.length} randevu mevcut. Beklenen garanti ciro: ₺${tomorrowPotentialRev.toLocaleString('tr-TR')}.`);
+        } else {
+            insights.push(`YARINA BAKIŞ: Yarın için henüz randevu girişi yok. Sabah saatleri için kampanya planlanabilir.`);
+        }
+
+        // Room Leakage prep mention
+        const idleRooms = (rooms || []).length - Object.keys(roomUsage).length;
+        if (idleRooms > 0) {
+            insights.push(`ODA DENETİMİ: Bugün ${idleRooms} oda hiç kullanılmadı. Doluluk verimliliği artırılabilir.`);
+        }
 
         if (suspiciousAppts.length > 0) {
             insights.push(`KRİTİK: Ödemesi sisteme girilmemiş ${suspiciousAppts.length} randevu tespit edildi. (Sızıntı Riski)`);
@@ -83,14 +132,14 @@ export default function EndOfDayAI({ isOpen, onClose }: EndOfDayProps) {
         }
 
         return insights;
-    }, [totalRev, topStaff, suspiciousAppts, forgottenAppts, completedAppts]);
+    }, [totalRev, topStaff, suspiciousAppts, forgottenAppts, completedAppts, tomorrowAppts, tomorrowPotentialRev, retailPercentage, isRetailTargetMet, roomUsage, currentBusiness]);
 
     // Risk detaylarını otomatik aç: Eğer risk varsa detayları göster
     useEffect(() => {
-        if (auditStatus === 'warning') {
+        if (auditStatus === 'warning' || !isRetailTargetMet) {
             setShowRiskDetails(true);
         }
-    }, [auditStatus]);
+    }, [auditStatus, isRetailTargetMet]);
 
     const isAuthorizedToClose = useMemo(() => {
         if (auditStatus === 'clear') return true;
