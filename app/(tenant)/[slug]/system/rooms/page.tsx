@@ -17,11 +17,13 @@ export default function RoomManagement() {
     const [name, setName] = useState('');
     const [category, setCategory] = useState('Masaj');
     const [color, setColor] = useState('#6366f1');
+    const [capacity, setCapacity] = useState(1);
 
     const handleAdd = () => {
         if (!name) return;
-        addRoom({ name, category, color, status: 'active' });
+        addRoom({ name, category, color, status: 'active', capacity: Number(capacity) });
         setName('');
+        setCapacity(1);
         setIsAdding(false);
     };
 
@@ -61,7 +63,7 @@ export default function RoomManagement() {
                         className="overflow-hidden"
                     >
                         <div className="bg-white p-8 rounded-[2.5rem] border border-gray-100 shadow-2xl space-y-8">
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                            <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
                                 <div className="space-y-3">
                                     <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Oda İsmi</label>
                                     <input 
@@ -79,6 +81,15 @@ export default function RoomManagement() {
                                     >
                                         {categories.map(c => <option key={c} value={c}>{c}</option>)}
                                     </select>
+                                </div>
+                                <div className="space-y-3">
+                                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Kapasite (Kişi)</label>
+                                    <input 
+                                        type="number"
+                                        min={1} max={10}
+                                        value={capacity} onChange={e => setCapacity(Number(e.target.value))}
+                                        className="w-full bg-gray-50 border-2 border-gray-50 focus:border-primary/20 focus:bg-white rounded-2xl px-5 py-4 text-sm font-black text-gray-900 outline-none transition-all"
+                                    />
                                 </div>
                                 <div className="space-y-3">
                                     <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Renk Seçimi</label>
@@ -129,11 +140,16 @@ export default function RoomManagement() {
                         </div>
 
                         <div className="mt-6 pt-6 border-t border-gray-50 flex items-center justify-between">
-                            <div className="flex items-center gap-2">
-                                <div className={`w-2 h-2 rounded-full ${room.status === 'active' ? 'bg-emerald-500' : 'bg-gray-300'}`} />
-                                <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">
-                                    {room.status === 'active' ? 'Aktif' : 'Pasif'}
-                                </span>
+                            <div className="flex flex-col gap-1">
+                                <div className="flex items-center gap-2">
+                                    <div className={`w-2 h-2 rounded-full ${room.status === 'active' ? 'bg-emerald-500' : 'bg-gray-300'}`} />
+                                    <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">
+                                        {room.status === 'active' ? 'Aktif' : 'Pasif'}
+                                    </span>
+                                </div>
+                                <div className="text-[9px] font-black text-indigo-400 uppercase tracking-widest">
+                                    KAPASİTE: {room.capacity || 1} KİŞİ
+                                </div>
                             </div>
                             <button 
                                 onClick={() => updateRoom(room.id, { status: room.status === 'active' ? 'passive' : 'active' })}
