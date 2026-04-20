@@ -114,8 +114,9 @@ export default function SystemSettingsPage() {
             else addConsentFormTemplate(data);
         } else if (activeTab === 'rooms') {
             const finalCategory = showNewRoomCategory ? newRoomCategoryName : (data.category as string);
-            if (editingItem) updateRoom(editingItem.id, { ...data, category: finalCategory } as any);
-            else addRoom({ ...data, category: finalCategory, status: 'active' } as any);
+            const capacity = Number(data.capacity || 1);
+            if (editingItem) updateRoom(editingItem.id, { ...data, category: finalCategory, capacity } as any);
+            else addRoom({ ...data, category: finalCategory, status: 'active', capacity } as any);
         }
 
         setIsEditModalOpen(false);
@@ -484,9 +485,15 @@ export default function SystemSettingsPage() {
                                                     </div>
                                                 )}
                                             </div>
-                                            <div>
-                                                <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Tema Rengi</label>
-                                                <input type="color" name="color" defaultValue={editingItem?.color || '#0071E3'} className="w-full h-12 bg-gray-50 border-none rounded-2xl cursor-pointer" />
+                                            <div className="grid grid-cols-2 gap-4">
+                                                <div>
+                                                    <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Tema Rengi</label>
+                                                    <input type="color" name="color" defaultValue={editingItem?.color || '#0071E3'} className="w-full h-12 bg-gray-50 border-none rounded-2xl cursor-pointer" />
+                                                </div>
+                                                <div>
+                                                    <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Kapasite (Kişi)</label>
+                                                    <input type="number" name="capacity" defaultValue={editingItem?.capacity || 1} min={1} max={10} className="w-full px-4 py-3 bg-gray-50 border-none rounded-2xl focus:ring-2 focus:ring-blue-100 outline-none transition-all" />
+                                                </div>
                                             </div>
                                         </>
                                     )}
@@ -655,8 +662,12 @@ function RoomsSettingsView({ query }: { query: string }) {
                             <div className="text-xl font-black text-gray-900 uppercase tracking-tight">{room.name}</div>
                         </div>
                         <div>
-                            <label className="block text-[10px] font-black text-gray-300 uppercase tracking-[0.2em] mb-1.5">KATEGORİ</label>
-                            <div className="text-sm font-bold text-indigo-600 uppercase tracking-widest">{room.category || 'Genel'}</div>
+                            <label className="block text-[10px] font-black text-gray-300 uppercase tracking-[0.2em] mb-1.5">KATEGORİ & KAPASİTE</label>
+                            <div className="flex items-center gap-2">
+                                <span className="text-sm font-bold text-indigo-600 uppercase tracking-widest">{room.category || 'Genel'}</span>
+                                <span className="w-1 h-1 rounded-full bg-gray-300" />
+                                <span className="text-xs font-black text-gray-400 uppercase tracking-widest">{room.capacity || 1} Kişilik</span>
+                            </div>
                         </div>
                         <div className="flex items-center justify-between pt-6 border-t border-gray-50">
                              <span className="text-[10px] font-black text-gray-300 uppercase tracking-widest">AKTİF DURUM</span>

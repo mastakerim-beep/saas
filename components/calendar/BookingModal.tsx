@@ -34,6 +34,10 @@ export default function BookingModal({ initialData, onClose, date, mode: initial
     const [selectedCustId, setSelectedCustId] = useState(initialData.customerId || '');
     const [selectedStep, setSelectedStep] = useState<'customer' | 'details'>(initialData.customerId ? 'details' : 'customer');
     const [selectedRegions, setSelectedRegions] = useState<string[]>([]);
+    const [secondStaffId, setSecondStaffId] = useState<string>('');
+    const [isGroupMode, setIsGroupMode] = useState(false);
+    const [groupCount, setGroupCount] = useState(2);
+    const [currentGroupId] = useState(initialData.groupId || crypto.randomUUID());
     
     // Basket for multi-booking
     const [basket, setBasket] = useState<any[]>([]);
@@ -52,47 +56,68 @@ export default function BookingModal({ initialData, onClose, date, mode: initial
     );
     const [referralSource, setReferralSource] = useState(initialData?.communicationSource || 'Direkt');
 
-    // Conflict Detection (Staff & Room)
+    // Conflict Detection (Staff & Room with Capacity)
     const checkConflict = (staffId: string, roomId: string | null, dt: string, tm: string, dur: number, excludeId?: string) => {
+        if (!staffId && !roomId) return false;
+        
         const [h, m] = tm.split(':').map(Number);
         const start = h * 60 + m;
         const end = start + dur;
 
-        const hasAppt = appointments.some(a => {
-            if (a.id === excludeId) return false;
-            if (a.date !== dt) return false;
-            // Status check
-            if (['cancelled', 'excused'].includes(a.status)) return false;
+        const isTimeOverlap = (aStart: number, aEnd: number) => (start < aEnd && end > aStart);
 
-            const [ah, am] = a.time.split(':').map(Number);
-            const aStart = ah * 60 + am;
-            const aEnd = aStart + (a.duration || 60);
-            const isTimeOverlap = (start < aEnd && end > aStart);
+        // 1. Staff Check
+        if (staffId) {
+            const hasAppt = appointments.some(a => {
+                if (a.id === excludeId) return false;
+                if (a.date !== dt) return false;
+                if (['cancelled', 'excused'].includes(a.status)) return false;
 
-            if (!isTimeOverlap) return false;
+                const [ah, am] = a.time.split(':').map(Number);
+                const aStart = ah * 60 + am;
+                const aEnd = aStart + (a.duration || 60);
 
-            // Check staff conflict
-            if (a.staffId === staffId) return true;
-            
-            // Check room conflict
-            if (roomId && a.roomId === roomId) return true;
+                if (!isTimeOverlap(aStart, aEnd)) return false;
 
-            return false;
-        });
+                // Primary or Additional Staff check
+                const isPrimary = a.staffId === staffId;
+                const isAdditional = Array.isArray(a.additionalStaff) && a.additionalStaff.some((s: any) => s.id === staffId);
+                return isPrimary || isAdditional;
+            });
 
-        const hasBlock = blocks.some(b => {
-            if (b.date !== dt) return false;
-            const [bh, bm] = b.time.split(':').map(Number);
-            const bStart = bh * 60 + bm;
-            const bEnd = bStart + (b.duration || 60);
-            const isTimeOverlap = (start < bEnd && end > bStart);
+            if (hasAppt) return true;
 
-            if (!isTimeOverlap) return false;
-            if (b.staffId === staffId) return true;
-            return false;
-        });
+            const hasBlock = blocks.some(b => {
+                if (b.date !== dt || b.staffId !== staffId) return false;
+                const [bh, bm] = b.time.split(':').map(Number);
+                const bStart = bh * 60 + bm;
+                const bEnd = bStart + (b.duration || 60);
+                return isTimeOverlap(bStart, bEnd);
+            });
 
-        return hasAppt || hasBlock;
+            if (hasBlock) return true;
+        }
+
+        // 2. Room Check (Capacity Aware)
+        if (roomId) {
+            const room = rooms.find(r => r.id === roomId);
+            const capacity = room?.capacity || 1;
+
+            const occupants = appointments.filter(a => {
+                if (a.id === excludeId) return false;
+                if (a.date !== dt || a.roomId !== roomId) return false;
+                if (['cancelled', 'excused'].includes(a.status)) return false;
+
+                const [ah, am] = a.time.split(':').map(Number);
+                const aStart = ah * 60 + am;
+                const aEnd = aStart + (a.duration || 60);
+                return isTimeOverlap(aStart, aEnd);
+            }).length;
+
+            if (occupants >= capacity) return true;
+        }
+
+        return false;
     };
 
     const slots = useMemo(() => {
@@ -216,38 +241,48 @@ export default function BookingModal({ initialData, onClose, date, mode: initial
                         duration: duration,
                         isPackageUsage: !!currentPackageId,
                         note: note,
-                        regions: selectedRegions
+                        regions: selectedRegions,
+                        additionalStaff: secondStaffId ? [{ id: secondStaffId, name: staffMembers.find(s => s.id === secondStaffId)?.name || '' }] : []
                     }];
 
                     let allSuccess = true;
-                    for (const item of finalBasket) {
-                        const success = await addAppointment({
-                            businessId: currentBusiness?.id,
-                            customerId: selectedCustId,
-                            customerName: customer?.name || '',
-                            service: item.service,
-                            staffId: item.staffId,
-                            staffName: item.staffName,
-                            roomId: item.roomId,
-                            date: selectedDate,
-                            time: selectedTime,
-                            duration: item.duration,
-                            status: 'pending',
-                            price: item.price,
-                            depositPaid: 0,
-                            isOnline: false,
-                            packageId: item.packageId || undefined,
-                            isPackageUsage: item.isPackageUsage,
-                            note: item.note,
-                            communicationSource: referralSource,
-                            selectedRegions: item.regions
-                        });
+                    // Group Booking Logic: Repeat for group count if enabled
+                    const repeats = isGroupMode ? groupCount : 1;
+                    const gid = isGroupMode ? currentGroupId : undefined;
 
-                        if (!success) {
-                            allSuccess = false;
-                            alert("🔴 KRİTİK HATA: Veritabanı senkronizasyonu başarısız oldu.");
-                            break;
+                    for (let r = 0; r < repeats; r++) {
+                        for (const item of finalBasket) {
+                            const success = await addAppointment({
+                                businessId: currentBusiness?.id,
+                                customerId: selectedCustId,
+                                customerName: r === 0 ? (customer?.name || '') : `${customer?.name || ''} (+${r})`,
+                                service: item.service,
+                                staffId: item.staffId,
+                                staffName: item.staffName,
+                                roomId: item.roomId,
+                                date: selectedDate,
+                                time: selectedTime,
+                                duration: item.duration,
+                                status: 'pending',
+                                price: item.price,
+                                depositPaid: 0,
+                                isOnline: false,
+                                packageId: item.packageId || undefined,
+                                isPackageUsage: item.isPackageUsage,
+                                note: item.note,
+                                communicationSource: referralSource,
+                                selectedRegions: item.regions,
+                                additionalStaff: item.additionalStaff || [],
+                                groupId: gid
+                            });
+
+                            if (!success) {
+                                allSuccess = false;
+                                alert("🔴 KRİTİK HATA: Veritabanı senkronizasyonu başarısız oldu.");
+                                break;
+                            }
                         }
+                        if (!allSuccess) break;
                     }
                     
                     if (allSuccess) {
@@ -281,13 +316,19 @@ export default function BookingModal({ initialData, onClose, date, mode: initial
                 <div className="p-8 border-b border-indigo-50 bg-gradient-to-br from-white to-indigo-50/20 flex justify-between items-center flex-shrink-0">
                     <div className="flex bg-indigo-50/50 p-1.5 rounded-2xl border border-indigo-100/50 shadow-inner">
                         <button 
-                            onClick={() => setMode('appt')} 
-                            className={`px-10 py-3 rounded-xl text-[10px] font-black uppercase tracking-[0.2em] transition-all duration-300 ${mode === 'appt' ? 'bg-primary text-white shadow-xl shadow-primary/20 scale-105' : 'text-indigo-400 hover:text-primary hover:bg-white'}`}
+                            onClick={() => { setMode('appt'); setIsGroupMode(false); }} 
+                            className={`px-10 py-3 rounded-xl text-[10px] font-black uppercase tracking-[0.2em] transition-all duration-300 ${mode === 'appt' && !isGroupMode ? 'bg-primary text-white shadow-xl shadow-primary/20 scale-105' : 'text-indigo-400 hover:text-primary hover:bg-white'}`}
                         >
                             Randevu
                         </button>
                         <button 
-                            onClick={() => setMode('block')} 
+                            onClick={() => { setMode('appt'); setIsGroupMode(true); }} 
+                            className={`px-10 py-3 rounded-xl text-[10px] font-black uppercase tracking-[0.2em] transition-all duration-300 ${mode === 'appt' && isGroupMode ? 'bg-indigo-600 text-white shadow-xl shadow-indigo-300 scale-105' : 'text-indigo-400 hover:text-primary hover:bg-white'}`}
+                        >
+                            Grup/Çift
+                        </button>
+                        <button 
+                            onClick={() => { setMode('block'); setIsGroupMode(false); }} 
                             className={`px-10 py-3 rounded-xl text-[10px] font-black uppercase tracking-[0.2em] transition-all duration-300 ${mode === 'block' ? 'bg-primary text-white shadow-xl shadow-primary/20 scale-105' : 'text-indigo-400 hover:text-primary hover:bg-white'}`}
                         >
                             Bloke Et
@@ -452,14 +493,36 @@ export default function BookingModal({ initialData, onClose, date, mode: initial
                                                         <Banknote className="w-4 h-4 absolute right-6 top-1/2 -translate-y-1/2 text-emerald-400 pointer-events-none" />
                                                     </div>
                                                 </div>
-                                                <div className="space-y-2">
-                                                    <label className="text-[9px] font-black text-gray-400 uppercase tracking-widest ml-1">Uzman / Terapist</label>
+                                                <div className="space-y-4 pt-4 border-t border-gray-50">
+                                                    <label className="text-[9px] font-black text-gray-400 uppercase tracking-widest ml-1 flex items-center justify-between">
+                                                        <span>Uzman / Terapist (1)</span>
+                                                        {services.find(s => s.name === currentService)?.requiredStaffCount === 2 && (
+                                                            <span className="text-purple-600 animate-pulse">ÇİFT TERAPİST GEREKLİ</span>
+                                                        )}
+                                                    </label>
                                                     <div className="relative group">
                                                         <select value={currentStaffId} onChange={e => setCurrentStaffId(e.target.value)} className="w-full bg-white border border-gray-100 rounded-2xl px-6 py-5 text-sm font-black text-gray-900 outline-none focus:border-primary transition-all appearance-none shadow-sm group-hover:shadow-md">
                                                             {staffMembers.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
                                                         </select>
                                                         <ChevronDown className="w-4 h-4 absolute right-6 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
                                                     </div>
+
+                                                    {(services.find(s => s.name === currentService)?.requiredStaffCount === 2) && (
+                                                        <div className="animate-in fade-in slide-in-from-top-2 duration-300">
+                                                            <label className="text-[9px] font-black text-purple-600 uppercase tracking-widest ml-1">Uzman / Terapist (2)</label>
+                                                            <div className="relative group mt-2">
+                                                                <select 
+                                                                    value={secondStaffId} 
+                                                                    onChange={e => setSecondStaffId(e.target.value)} 
+                                                                    className="w-full bg-purple-50/50 border border-purple-100 rounded-2xl px-6 py-5 text-sm font-black text-purple-900 outline-none focus:border-purple-300 transition-all appearance-none shadow-sm group-hover:shadow-md"
+                                                                >
+                                                                    <option value="">Seçiniz...</option>
+                                                                    {staffMembers.filter(s => s.id !== currentStaffId).map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                                                                </select>
+                                                                <ChevronDown className="w-4 h-4 absolute right-6 top-1/2 -translate-y-1/2 text-purple-400 pointer-events-none" />
+                                                            </div>
+                                                        </div>
+                                                    )}
                                                 </div>
                                                 <div className="space-y-2">
                                                     <label className="text-[9px] font-black text-indigo-400 uppercase tracking-widest ml-1 italic">Müşteri Tavsiye Kaynağı</label>

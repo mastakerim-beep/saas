@@ -378,7 +378,10 @@ export default function CalendarPage() {
                                                 <div className="absolute inset-0 pointer-events-none">
                                                     {(() => {
                                                         const colItems = (viewMode === 'staff' 
-                                                            ? [...appointments.filter(a => a.staffId === target.id), ...blocks.filter(b => b.staffId === target.id && b.date === selectedDate)]
+                                                            ? [
+                                                                ...appointments.filter(a => a.staffId === target.id || (Array.isArray(a.additionalStaff) && a.additionalStaff.some((s: any) => s.id === target.id))), 
+                                                                ...blocks.filter(b => b.staffId === target.id && b.date === selectedDate)
+                                                              ]
                                                             : [...appointments.filter(a => a.roomId === target.id), ...blocks.filter(b => b.roomId === target.id && b.date === selectedDate)]
                                                         ).filter(item => item.date === selectedDate);
 

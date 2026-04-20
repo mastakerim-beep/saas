@@ -167,6 +167,7 @@ export interface Service {
     isPublic: boolean;
     isActive: boolean;
     imageUrl: any;
+    requiredStaffCount: number;
     createdAt?: string;
 }
 
@@ -189,6 +190,7 @@ export interface Room {
     category: string;
     color: string;
     status: string;
+    capacity: number;
     createdAt?: string;
 }
 
@@ -347,6 +349,8 @@ export interface Appointment {
     communicationSource: any;
     selectedRegions: string[];
     bodyMapData: any;
+    additionalStaff: any[];
+    groupId?: string;
     apptRef?: string;
     note?: any;
     createdAt?: string;

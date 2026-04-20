@@ -1,0 +1,25 @@
+-- Aura Spa ERP - MULTI-STAFF & GROUP BOOKING INFRASTRUCTURE
+-- Adds support for 4-hand massage and linked group appointments.
+
+DO $$ 
+BEGIN 
+    -- 1. APPOINTMENTS TABLE UPDATES
+    IF NOT EXISTS (SELECT 1 FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME='appointments' AND COLUMN_NAME='additional_staff') THEN
+        ALTER TABLE public.appointments ADD COLUMN additional_staff JSONB DEFAULT '[]';
+    END IF;
+
+    IF NOT EXISTS (SELECT 1 FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME='appointments' AND COLUMN_NAME='group_id') THEN
+        ALTER TABLE public.appointments ADD COLUMN group_id UUID;
+    END IF;
+
+    -- 2. ROOMS TABLE UPDATES
+    IF NOT EXISTS (SELECT 1 FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME='rooms' AND COLUMN_NAME='capacity') THEN
+        ALTER TABLE public.rooms ADD COLUMN capacity INT DEFAULT 1;
+    END IF;
+
+    -- 3. SERVICES TABLE UPDATES
+    IF NOT EXISTS (SELECT 1 FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME='services' AND COLUMN_NAME='required_staff_count') THEN
+        ALTER TABLE public.services ADD COLUMN required_staff_count INT DEFAULT 1;
+    END IF;
+
+END $$;

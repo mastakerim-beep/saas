@@ -5,7 +5,7 @@ import { useStore, Service, PackageDefinition } from '@/lib/store';
 import { 
     Plus, Clock, Package as PackageIcon, ShoppingBag, 
     Trash2, Edit3, Search, Zap, Activity, Layers, Filter, ChevronRight,
-    Sparkles, Star, X
+    Sparkles, Star, X, Users
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import PinGate from '@/components/security/PinGate';
@@ -51,7 +51,7 @@ export default function CatalogSettingsView({ query }: { query: string }) {
 
     const currentGroups = activeTab === 'hizmetler' ? serviceGroups : activeTab === 'paketler' ? packageGroups : productGroups;
 
-    const [form, setForm] = useState<any>({ name: '', duration: 60, price: 0, category: 'Masaj Terapileri', totalSessions: 1 });
+    const [form, setForm] = useState<any>({ name: '', duration: 60, price: 0, category: 'Masaj Terapileri', totalSessions: 1, requiredStaffCount: 1 });
 
     const openPanel = (item: any = null) => {
         setShowNewCatInput(false);
@@ -64,6 +64,7 @@ export default function CatalogSettingsView({ query }: { query: string }) {
                 price: item.price || 0,
                 category: activeTab === 'paketler' ? (item.groupName || 'Genel') : (item.category || 'Genel'),
                 totalSessions: item.totalSessions || 1,
+                requiredStaffCount: item.requiredStaffCount || 1,
                 consumables: Array.isArray(item.consumables) ? item.consumables : []
             });
             setEditingItem(item);
@@ -74,6 +75,7 @@ export default function CatalogSettingsView({ query }: { query: string }) {
                 price: 0, 
                 category: currentGroups[0] || 'Genel', 
                 totalSessions: 1,
+                requiredStaffCount: 1,
                 consumables: []
             });
             setEditingItem(null);
@@ -93,6 +95,7 @@ export default function CatalogSettingsView({ query }: { query: string }) {
         if (activeTab === 'hizmetler') {
             payload.duration = Number(form.duration);
             payload.category = finalCategory || 'Genel';
+            payload.requiredStaffCount = Number(form.requiredStaffCount || 1);
             payload.consumables = form.consumables || [];
             
             if (editingItem) await updateService(editingItem.id, payload);
@@ -343,6 +346,28 @@ export default function CatalogSettingsView({ query }: { query: string }) {
                                             type="number"
                                         />
                                     </div>
+
+                                    {activeTab === 'hizmetler' && (
+                                        <div className="p-8 border-2 border-purple-100 rounded-[2.5rem] bg-purple-50/10 space-y-4">
+                                            <div className="flex items-center justify-between">
+                                                <div className="flex items-center gap-3">
+                                                    <div className="w-8 h-8 bg-purple-600 rounded-lg flex items-center justify-center text-white">
+                                                        <Users size={16} />
+                                                    </div>
+                                                    <span className="text-[10px] font-black text-purple-900 uppercase tracking-widest">Çalışma Modu (Personel)</span>
+                                                </div>
+                                                <select 
+                                                    value={form.requiredStaffCount}
+                                                    onChange={e => setForm({...form, requiredStaffCount: Number(e.target.value)})}
+                                                    className="bg-white border border-purple-100 rounded-xl px-4 py-2 text-[10px] font-black text-purple-600 outline-none"
+                                                >
+                                                    <option value={1}>Normal (Tek Terapist)</option>
+                                                    <option value={2}>4-El (Çift Terapist)</option>
+                                                </select>
+                                            </div>
+                                            <p className="text-[9px] font-bold text-purple-400 italic">4-El seçilirse takvimde randevu oluştururken sistem otomatik olarak 2. terapisti soracaktır.</p>
+                                        </div>
+                                    )}
  
                                     <div className="bg-gradient-to-br from-indigo-700 to-indigo-600 rounded-[2.5rem] p-8 text-white shadow-2xl shadow-indigo-200 relative overflow-hidden">
                                         <div className="relative z-10">
