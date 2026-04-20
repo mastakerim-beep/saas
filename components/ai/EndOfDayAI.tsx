@@ -17,7 +17,7 @@ interface EndOfDayProps {
 export default function EndOfDayAI({ isOpen, onClose }: EndOfDayProps) {
     const { 
         appointments, payments, staffMembers, addLog, getTodayDate, 
-        currentBusiness, addZReport 
+        currentBusiness, addZReport, currentUser 
     } = useStore();
     
     const [isClosing, setIsClosing] = useState(false);
@@ -82,7 +82,14 @@ export default function EndOfDayAI({ isOpen, onClose }: EndOfDayProps) {
         return insights;
     }, [totalRev, topStaff, suspiciousAppts, forgottenAppts, completedAppts]);
 
+    const isAuthorizedToClose = useMemo(() => {
+        if (auditStatus === 'clear') return true;
+        const managerRoles = ['manager', 'Manager', 'Business_Owner', 'SaaS_Owner'];
+        return managerRoles.includes(currentUser?.role || '');
+    }, [auditStatus, currentUser]);
+
     const handleConfirmClosure = async () => {
+        if (!isAuthorizedToClose) return;
         setIsClosing(true);
         
         const reportData = {
@@ -99,7 +106,7 @@ export default function EndOfDayAI({ isOpen, onClose }: EndOfDayProps) {
         const success = await addZReport(reportData);
         
         if (success) {
-            await addLog('Günü Kapatma', 'Sistem', '', `Rapor Mühürlendi. Ciro: ₺${totalRev}`);
+            await addLog('Günü Kapatma', 'Sistem', '', `Rapor mühürlendi ve yöneticiye iletildi. Ciro: ₺${totalRev}`);
             setIsClosing(false);
             setIsDone(true);
         } else {
@@ -266,16 +273,20 @@ export default function EndOfDayAI({ isOpen, onClose }: EndOfDayProps) {
                             {suspiciousAppts.length > 0 && (
                                 <div className="flex items-center gap-3 p-4 bg-rose-50 text-rose-600 rounded-2xl mb-4 text-[10px] font-black uppercase italic animate-pulse">
                                     <AlertTriangle size={16} />
-                                    <span>Dikkat: Bazı randevuların ödemesi eksik! Yine de kapatmak istiyor musunuz?</span>
+                                    <span>
+                                        {isAuthorizedToClose 
+                                            ? "Dikkat: Ödemesi eksik randevular var! Yönetici olarak yine de kapatmak istiyor musunuz?" 
+                                            : "Dikkat: Ödemesi eksik randevular var! Kapatmak için yönetici onayı gereklidir."}
+                                    </span>
                                 </div>
                             )}
                             <button 
                                 onClick={handleConfirmClosure}
-                                disabled={isClosing}
-                                className={`w-full py-6 rounded-[2rem] font-black text-sm shadow-2xl flex items-center justify-center gap-4 transition-all ${isClosing ? 'bg-gray-200 text-gray-400' : (auditStatus === 'warning' ? 'bg-rose-600 shadow-rose-200' : 'bg-primary shadow-primary/25')} text-white hover:scale-[1.02] active:scale-95`}
+                                disabled={isClosing || !isAuthorizedToClose}
+                                className={`w-full py-6 rounded-[2rem] font-black text-sm shadow-2xl flex items-center justify-center gap-4 transition-all ${isClosing || !isAuthorizedToClose ? 'bg-gray-200 text-gray-400 cursor-not-allowed' : (auditStatus === 'warning' ? 'bg-rose-600 shadow-rose-200' : 'bg-primary shadow-primary/25')} text-white hover:scale-[1.02] active:scale-95`}
                             >
                                 {isClosing ? <Sparkles className="w-6 h-6 animate-spin" /> : <CheckCircle2 className="w-6 h-6" />}
-                                {isClosing ? 'AI VERİLERİ MÜHÜRLÜYOR...' : (auditStatus === 'warning' ? 'BİLİNÇLİ OLARAK KAPAT VE MÜHÜRLE' : 'GÜNÜ KAPAT VE TÜM VERİLERİ ONAYLA')}
+                                {isClosing ? 'AI VERİLERİ MÜHÜRLÜYOR...' : (auditStatus === 'warning' ? 'RİSKLERİ KABUL ET VE MÜHÜRLE' : 'GÜNÜ KAPAT VE TÜM VERİLERİ ONAYLA')}
                             </button>
                         </div>
                     ) : (
@@ -283,7 +294,7 @@ export default function EndOfDayAI({ isOpen, onClose }: EndOfDayProps) {
                             <CheckCircle2 className="w-8 h-8" />
                             <div className="text-center">
                                 <p className="font-black text-lg text-white">GÜN BAŞARIYLA KAPATILDI</p>
-                                <p className="text-[10px] font-black uppercase opacity-70">Z-Raporu kaydedildi ve sistem mühürlendi.</p>
+                                <p className="text-[10px] font-black uppercase opacity-70">Z-Raporu mühürlendi ve işletme sahibine raporlandı.</p>
                             </div>
                         </div>
                     )}
