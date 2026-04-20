@@ -6,21 +6,26 @@ import {
     Users, TrendingUp, DollarSign, Package, AlertCircle, 
     Star, Award, Calendar, ChevronRight, Activity, ShieldCheck, Clock,
     Sparkles, Zap, ArrowUpRight, MessageSquare, TrendingDown, Moon,
-    ArrowRight, Wallet, Target, Info, Plus, Edit2
+    ArrowRight, Wallet, Target, Info, Plus, Edit2, CheckCircle2
 } from "lucide-react";
 import { 
     AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, 
 } from 'recharts';
 import { motion, AnimatePresence } from 'framer-motion';
 import EndOfDayAI from "@/components/ai/EndOfDayAI";
+import QuickSaleFlow from "@/components/checkout/QuickSaleFlow";
 
 export default function Dashboard() {
     const { 
         appointments, payments, staffMembers, customers, debts, aiInsights, 
-        currentUser, currentBusiness, updateBusiness, can, rates, allLogs 
+        currentUser, currentBusiness, updateBusiness, can, rates, allLogs,
+        addLog
     } = useStore();
     const [isEndOfDayOpen, setIsEndOfDayOpen] = useState(false);
     const [isTargetModalOpen, setIsTargetModalOpen] = useState(false);
+    const [isQuickSaleOpen, setIsQuickSaleOpen] = useState(false);
+    const [isEfficiencyOpen, setIsEfficiencyOpen] = useState(false);
+    const [isAutomationConfirmed, setIsAutomationConfirmed] = useState(false);
     const [newTarget, setNewTarget] = useState({ daily: 0, monthly: 0 });
     const [mounted, setMounted] = useState(false);
     const [currency, setCurrency] = useState<'TRY' | 'USD' | 'EUR'>('TRY');
@@ -152,7 +157,7 @@ export default function Dashboard() {
                             <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
                             <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
                         </span>
-                        İşletmeniz şu an %{capacity} kapasiteyle çalışıyor. <span className="text-primary hover:underline cursor-pointer">Verimliliği gör</span>
+                        İşletmeniz şu an %{capacity} kapasiteyle çalışıyor. <span onClick={() => setIsEfficiencyOpen(true)} className="text-primary hover:underline cursor-pointer">Verimliliği gör</span>
                     </p>
                 </div>
                 
@@ -178,7 +183,10 @@ export default function Dashboard() {
                         <Moon className="w-4 h-4 text-gray-400 group-hover:text-primary" />
                         <span className="text-[11px] font-black uppercase tracking-widest text-gray-600">Gün Sonu</span>
                     </button>
-                    <button className="h-12 px-6 bg-primary text-white rounded-2xl shadow-xl shadow-primary/20 flex items-center justify-center gap-3 hover:scale-105 active:scale-95 transition-all">
+                    <button 
+                        onClick={() => setIsQuickSaleOpen(true)}
+                        className="h-12 px-6 bg-primary text-white rounded-2xl shadow-xl shadow-primary/20 flex items-center justify-center gap-3 hover:scale-105 active:scale-95 transition-all"
+                    >
                         <Plus className="w-4 h-4 text-white" />
                         <span className="text-[11px] font-black uppercase tracking-widest">Hızlı Satış</span>
                     </button>
@@ -291,8 +299,17 @@ export default function Dashboard() {
                             </div>
                             <h5 className="text-xl font-black mb-3 leading-tight">Yarın yoğun geçecek!</h5>
                             <p className="text-indigo-100 text-xs font-semibold leading-relaxed mb-8">Sabah saatlerindeki 3 boşluk için sadık müşterilerinize otomatik indirim SMS'i gönderelim mi?</p>
-                            <button className="w-full py-4 bg-white text-indigo-900 rounded-2xl font-black text-[11px] uppercase tracking-widest hover:bg-gray-100 transition-all flex items-center justify-center gap-2 btn-premium">
-                                Otomasyonu Onayla <ChevronRight className="w-3.5 h-3.5" />
+                            <button 
+                                onClick={async () => {
+                                    setIsAutomationConfirmed(true);
+                                    await addLog("AI Otomasyon Onaylandı", "Sistem", "Boşluklar için kampanya başlatıldı", "Aura AI");
+                                    setTimeout(() => setIsAutomationConfirmed(false), 3000);
+                                }}
+                                disabled={isAutomationConfirmed}
+                                className={`w-full py-4 ${isAutomationConfirmed ? 'bg-emerald-500' : 'bg-white'} ${isAutomationConfirmed ? 'text-white' : 'text-indigo-900'} rounded-2xl font-black text-[11px] uppercase tracking-widest hover:bg-gray-100 transition-all flex items-center justify-center gap-2 btn-premium`}
+                            >
+                                {isAutomationConfirmed ? <CheckCircle2 className="w-3.5 h-3.5" /> : null}
+                                {isAutomationConfirmed ? "Kampanya Onaylandı" : "Otomasyonu Onayla"} {!isAutomationConfirmed && <ChevronRight className="w-3.5 h-3.5" />}
                             </button>
                         </div>
                    </motion.div>
@@ -379,7 +396,41 @@ export default function Dashboard() {
             </AnimatePresence>
 
             {/* Modal */}
+            {/* Efficiency Modal */}
+            <AnimatePresence>
+                {isEfficiencyOpen && (
+                    <div className="fixed inset-0 z-[300] flex items-center justify-center p-6">
+                        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setIsEfficiencyOpen(false)} className="absolute inset-0 bg-black/60 backdrop-blur-md" />
+                        <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }} className="bg-white rounded-[3rem] p-12 max-w-2xl w-full relative z-10 shadow-2xl">
+                            <h3 className="text-3xl font-black text-gray-900 tracking-tighter italic uppercase mb-8">Operasyonel Verimlilik</h3>
+                            <div className="grid grid-cols-2 gap-8">
+                                <div className="space-y-2">
+                                    <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Kapasite Kullanımı</p>
+                                    <div className="text-4xl font-black text-primary">%{capacity}</div>
+                                    <p className="text-xs text-gray-500 font-bold">Aktif {staffMembers.filter(s => s.status === 'active').length} uzman baz alındı.</p>
+                                </div>
+                                <div className="space-y-2">
+                                    <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Hizmet/Ürün Dengesi</p>
+                                    <div className="text-4xl font-black text-indigo-600">70/30</div>
+                                    <p className="text-xs text-gray-500 font-bold">Cironun %30'u ürün satışından geliyor.</p>
+                                </div>
+                            </div>
+                            <div className="mt-10 pt-10 border-t border-gray-100">
+                                <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-4">AI Önerisi</h4>
+                                <p className="text-sm font-bold text-gray-700 leading-relaxed italic">"Öğleden sonraki boşluklar için 'Happy Hour' kampanyası %12 verim artışı sağlayabilir."</p>
+                            </div>
+                            <button onClick={() => setIsEfficiencyOpen(false)} className="w-full mt-10 py-4 bg-gray-900 text-white rounded-2xl font-black text-[11px] uppercase tracking-widest">Kapat</button>
+                        </motion.div>
+                    </div>
+                )}
+            </AnimatePresence>
+
             <EndOfDayAI isOpen={isEndOfDayOpen} onClose={() => setIsEndOfDayOpen(false)} />
+            
+            {/* Quick Sale Flow */}
+            {isQuickSaleOpen && (
+                <QuickSaleFlow onClose={() => setIsQuickSaleOpen(false)} />
+            )}
         </motion.div>
     );
 }

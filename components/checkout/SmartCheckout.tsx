@@ -10,39 +10,48 @@ import {
 import { motion, AnimatePresence } from "framer-motion";
 
 interface SmartCheckoutProps {
-    appointment: Appointment;
+    appointment?: Appointment; // Opsiyonel (Hızlı Satış için)
     onClose: () => void;
+    initialCustomerId?: string;
+    initialService?: { name: string, price: number };
 }
 
-export default function SmartCheckout({ appointment, onClose }: SmartCheckoutProps) {
+export default function SmartCheckout({ appointment, onClose, initialCustomerId, initialService }: SmartCheckoutProps) {
     const { 
         customers, customerMemberships, membershipPlans, 
         processCheckout, inventory, getUpsellSuggestions, 
         paymentDefinitions, getTodayDate, currentBusiness,
-        packages, services, updateAppointment, bankAccounts
+        packages, services, updateAppointment, bankAccounts,
+        currentBranch
     } = useStore();
-    const customer = customers.find(c => c.id === appointment.customerId);
     
-    // TÜM paketleri göster (seans kalan) - eşleşenler üstte, diğerleri altta
-    // NOT: Servis ismi eşleşmese de müşterinin paketi checkoutt'ta görünmeli
+    // Resolve target data
+    const targetCustomerId = appointment?.customerId || initialCustomerId;
+    const customer = customers.find(c => c.id === targetCustomerId);
+    const targetBranchId = appointment?.branchId || currentBranch?.id || "";
+    
+    const initialServiceName = appointment?.service || initialService?.name || "Hızlı Satış";
+    const initialServicePrice = appointment?.price || initialService?.price || 0;
+    
+    // TÜM paketleri göster (seans kalan)
     const allCustomerPackages = packages.filter(p => 
-        p.customerId === appointment.customerId && 
+        p.customerId === targetCustomerId && 
         (p.totalSessions - (p.usedSessions || 0)) > 0
     );
     const isMatchingPackage = (p: typeof allCustomerPackages[0]) => 
-        p.id === appointment.packageId ||
-        p.name.toLowerCase().includes(appointment.service.toLowerCase()) || 
-        (p.serviceName && p.serviceName.toLowerCase().includes(appointment.service.toLowerCase()));
+        p.id === appointment?.packageId ||
+        p.name.toLowerCase().includes(initialServiceName.toLowerCase()) || 
+        (p.serviceName && p.serviceName.toLowerCase().includes(initialServiceName.toLowerCase()));
     const applicablePackages = [
         ...allCustomerPackages.filter(p => isMatchingPackage(p)),      // Önerilen (üstte)
         ...allCustomerPackages.filter(p => !isMatchingPackage(p))       // Diğerleri (altta)
     ];
 
-    const activeMembership = customerMemberships.find(m => m.customerId === appointment.customerId && m.status === 'active' && m.remainingSessions > 0);
+    const activeMembership = customerMemberships.find(m => m.customerId === targetCustomerId && m.status === 'active' && m.remainingSessions > 0);
     const membershipPlan = activeMembership ? membershipPlans.find(p => p.id === activeMembership.planId) : null;
     
     // UI State
-    const [selectedPackageId, setSelectedPackageId] = useState<string | null>(appointment.packageId || null);
+    const [selectedPackageId, setSelectedPackageId] = useState<string | null>(appointment?.packageId || null);
     const [methods, setMethods] = useState<Omit<PaymentMethod, 'id'>[]>([]);
     const [soldProducts, setSoldProducts] = useState<{ productId: string, name: string, price: number, quantity: number }[]>([]);
     const [note, setNote] = useState("");
@@ -75,8 +84,8 @@ export default function SmartCheckout({ appointment, onClose }: SmartCheckoutPro
     const [installmentDates, setInstallmentDates] = useState<string[]>([]);
     
     // Service Override State
-    const [overrideService, setOverrideService] = useState(appointment.service);
-    const [overridePrice, setOverridePrice] = useState(appointment.price);
+    const [overrideService, setOverrideService] = useState(initialServiceName);
+    const [overridePrice, setOverridePrice] = useState(initialServicePrice);
     const [isServiceEditorOpen, setIsServiceEditorOpen] = useState(false);
 
     useEffect(() => {
@@ -91,10 +100,10 @@ export default function SmartCheckout({ appointment, onClose }: SmartCheckoutPro
 
     // Auto-add deposit if exists
     useEffect(() => {
-        if (appointment.depositPaid > 0) {
+        if (appointment?.depositPaid && appointment.depositPaid > 0) {
             setMethods([{ method: 'nakit', amount: appointment.depositPaid, currency: 'TRY', rate: 1, isDeposit: true }]);
         }
-    }, [appointment.depositPaid]);
+    }, [appointment?.depositPaid]);
 
     const isPackageUsed = !!selectedPackageId;
     const isServiceGifted = isServiceGift;
@@ -122,10 +131,10 @@ export default function SmartCheckout({ appointment, onClose }: SmartCheckoutPro
 
             const ok = await processCheckout(
                 {
-                    appointmentId: appointment.id,
-                    branchId: appointment.branchId,
-                    customerId: appointment.customerId,
-                    customerName: appointment.customerName,
+                    appointmentId: appointment?.id,
+                    branchId: targetBranchId,
+                    customerId: targetCustomerId,
+                    customerName: customer?.name || "Guest",
                     service: overrideService,
                     methods: methods.map(m => ({ ...m, id: crypto.randomUUID() })),
                     totalAmount: totalPaid,
@@ -154,7 +163,7 @@ export default function SmartCheckout({ appointment, onClose }: SmartCheckoutPro
             );
             
             // Sync appointment if service was changed
-            if (ok && (overrideService !== appointment.service || overridePrice !== appointment.price)) {
+            if (ok && appointment && (overrideService !== appointment.service || overridePrice !== appointment.price)) {
                 await updateAppointment(appointment.id, {
                     service: overrideService,
                     price: overridePrice
