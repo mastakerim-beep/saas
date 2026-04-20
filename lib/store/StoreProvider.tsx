@@ -234,10 +234,12 @@ const StoreOrchestrator = ({ children }: { children: ReactNode }) => {
         // Debounced Realtime Trigger
         const triggerFetch = () => {
             if (realtimeTimeoutRef.current) clearTimeout(realtimeTimeoutRef.current);
-            realtimeTimeoutRef.current = setTimeout(() => {
-                fetchData(undefined, undefined, true); // Force fetch on realtime
+            realtimeTimeoutRef.current = setTimeout(async () => {
+                await fetchData(undefined, undefined, true); // Force fetch on realtime
             }, 1000); // 1s Stability Delay
         };
+
+        // Realtime Subscriptions
 
         // Realtime Subscriptions
         let channel: any;
@@ -287,6 +289,17 @@ const StoreOrchestrator = ({ children }: { children: ReactNode }) => {
         // Check permissions array for others
         return user.permissions?.includes(permission) || false;
     }, [auth.currentUser]);
+
+    const addZReport = async (reportData: any) => {
+        const ok = await syncDb('z_reports', 'insert', {
+            ...reportData,
+            businessId: activeBizIdRef.current,
+            branchId: biz.currentBranch?.id,
+            closedBy: auth.currentUser?.name
+        });
+        if (ok) await fetchData();
+        return ok;
+    };
 
     const store: StoreState = {
         currentUser: auth.currentUser,
@@ -1535,12 +1548,13 @@ const StoreOrchestrator = ({ children }: { children: ReactNode }) => {
         getCustomerAppointments: (cid: string) => data.appointments.filter((a: Appointment) => a.customerId === cid),
         getCustomerAppointmentsByBranch: (cid: string, bid: string) => data.appointments.filter((a: Appointment) => a.customerId === cid && a.branchId === bid),
         getCustomerPayments: (cid: string) => data.payments.filter((p: Payment) => p.customerId === cid),
-        getTodayDate: () => new Date().toISOString().split('T')[0],
+        getTodayDate: () => new Date().toLocaleDateString('sv-SE'),
         downloadZReportPDF: (report: any) => {
             const { generateZReportPDF } = require('@/lib/utils/pdf-generator');
             const business = biz.allBusinesses.find(b => b.id === report.businessId) || biz.currentTenant;
             generateZReportPDF(report, business);
         },
+        addZReport,
         broadcastAnnouncement: async (title: string, content: string, type: any) => {
             const id = crypto.randomUUID();
             const announcement = { id, title, content, type, businessId: activeBizId || null, isActive: true, createdAt: new Date().toISOString() };
