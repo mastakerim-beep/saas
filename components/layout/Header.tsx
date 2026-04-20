@@ -202,36 +202,65 @@ export default function Header() {
 
                     <AnimatePresence>
                         {showProfileMenu && (
-                            <motion.div 
-                                initial={{ opacity: 0, y: 20, scale: 0.95 }}
-                                animate={{ opacity: 1, y: 0, scale: 1 }}
-                                exit={{ opacity: 0, y: 20, scale: 0.95 }}
-                                className="absolute top-16 right-0 w-72 bg-white border border-gray-100 rounded-[2.5rem] shadow-2xl p-4 z-[200] overflow-hidden"
-                            >
-                                <div className="p-6 bg-gradient-to-br from-indigo-600 to-purple-700 rounded-[2rem] text-white mb-3 shadow-lg shadow-indigo-100">
-                                    <p className="text-[10px] font-black opacity-60 uppercase tracking-[0.2em] mb-1">Yönetici Paneli</p>
-                                    <p className="font-black text-lg tracking-tight mb-1">{currentUser.name}</p>
-                                    <div className="inline-block px-3 py-1 bg-white/20 rounded-full text-[9px] font-black uppercase tracking-widest">{currentUser.role.replace('_', ' ')}</div>
-                                </div>
-                                <div className="space-y-1">
-                                    <button className="w-full flex items-center gap-4 p-4 text-xs font-black text-gray-700 hover:bg-gray-50 rounded-3xl transition-all">
-                                        <UserCircle className="w-5 h-5 text-gray-400" /> Profil Ayarları
-                                    </button>
-                                    <button className="w-full flex items-center gap-4 p-4 text-xs font-black text-gray-700 hover:bg-gray-50 rounded-3xl transition-all">
-                                        <ShieldCheck className="w-5 h-5 text-gray-400" /> Şifre Değiştir
-                                    </button>
-                                    <button className="w-full flex items-center gap-4 p-4 text-xs font-black text-gray-700 hover:bg-gray-50 rounded-3xl transition-all">
-                                        <Building2 className="w-5 h-5 text-gray-400" /> İşletme Bilgileri
-                                    </button>
-                                    <div className="h-px bg-gray-100 my-2 mx-2" />
-                                    <button 
-                                        onClick={logout}
-                                        className="w-full flex items-center gap-4 p-4 text-xs font-black text-red-500 hover:bg-red-50 rounded-3xl transition-all"
-                                    >
-                                        <LogOut className="w-5 h-5" /> Güvenli Çıkış
-                                    </button>
-                                </div>
-                            </motion.div>
+                            <>
+                                <div 
+                                    className="fixed inset-0 z-[190] bg-transparent" 
+                                    onClick={() => setShowProfileMenu(false)} 
+                                />
+                                <motion.div 
+                                    initial={{ opacity: 0, y: 20, scale: 0.95 }}
+                                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                                    exit={{ opacity: 0, y: 20, scale: 0.95 }}
+                                    onMouseLeave={() => setShowProfileMenu(false)}
+                                    className="absolute top-16 right-0 w-80 bg-white border border-gray-100 rounded-[2.5rem] shadow-2xl p-4 z-[200] overflow-hidden"
+                                >
+                                    <div className="p-6 bg-gradient-to-br from-indigo-600 to-purple-700 rounded-[2rem] text-white mb-3 shadow-lg shadow-indigo-100 relative overflow-hidden">
+                                        <div className="relative z-10">
+                                            <p className="text-[10px] font-black opacity-60 uppercase tracking-[0.2em] mb-1">YÖNETİCİ PANELİ</p>
+                                            <p className="font-black text-xl tracking-tight mb-2 leading-none">{currentUser.name}</p>
+                                            <div className="flex flex-col gap-1.5 pt-2 border-t border-white/10 mt-2">
+                                                <div className="flex items-center gap-2 text-[10px] font-black opacity-80 uppercase">
+                                                    <Building2 size={12} className="opacity-50" /> {currentBusiness?.name}
+                                                </div>
+                                                <div className="flex items-center gap-2 text-[10px] font-black opacity-80 uppercase">
+                                                    <MapPin size={12} className="opacity-50" /> {currentBranch?.name}
+                                                </div>
+                                            </div>
+                                            <div className="mt-4 inline-block px-3 py-1 bg-white/20 rounded-full text-[9px] font-black uppercase tracking-widest leading-none">
+                                                {currentUser.role.replace('_', ' ')}
+                                            </div>
+                                        </div>
+                                        <div className="absolute -right-6 -bottom-6 w-24 h-24 bg-white/10 rounded-full blur-2xl" />
+                                    </div>
+                                    <div className="space-y-1">
+                                        <button 
+                                            onClick={() => { router.push(`/${slug}/system?tab=business`); setShowProfileMenu(false); }}
+                                            className="w-full flex items-center gap-4 p-4 text-xs font-black text-gray-700 hover:bg-gray-50 rounded-3xl transition-all group"
+                                        >
+                                            <UserCircle className="w-5 h-5 text-gray-400 group-hover:text-indigo-600 transition-colors" /> Profil Ayarları
+                                        </button>
+                                        <button 
+                                            onClick={() => { router.push(`/${slug}/system?tab=security`); setShowProfileMenu(false); }}
+                                            className="w-full flex items-center gap-4 p-4 text-xs font-black text-gray-700 hover:bg-gray-50 rounded-3xl transition-all group"
+                                        >
+                                            <ShieldCheck className="w-5 h-5 text-gray-400 group-hover:text-indigo-600 transition-colors" /> Şifre Değiştir
+                                        </button>
+                                        <button 
+                                            onClick={() => { router.push(`/${slug}/system?tab=business`); setShowProfileMenu(false); }}
+                                            className="w-full flex items-center gap-4 p-4 text-xs font-black text-gray-700 hover:bg-gray-50 rounded-3xl transition-all group"
+                                        >
+                                            <Building2 className="w-5 h-5 text-gray-400 group-hover:text-indigo-600 transition-colors" /> İşletme Bilgileri
+                                        </button>
+                                        <div className="h-px bg-gray-100 my-2 mx-2" />
+                                        <button 
+                                            onClick={logout}
+                                            className="w-full flex items-center gap-4 p-4 text-xs font-black text-red-500 hover:bg-red-50 rounded-3xl transition-all"
+                                        >
+                                            <LogOut className="w-5 h-5" /> Güvenli Çıkış
+                                        </button>
+                                    </div>
+                                </motion.div>
+                            </>
                         )}
                     </AnimatePresence>
                 </div>

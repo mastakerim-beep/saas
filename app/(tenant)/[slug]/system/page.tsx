@@ -9,6 +9,7 @@ import {
     ExternalLink, Info, AlertCircle, Save, Layers, Zap, Clock, Building2, Megaphone, Database
 } from "lucide-react";
 import { useState, useMemo, useEffect } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import CatalogSettingsView from "@/components/system/CatalogSettingsView";
 import AnnouncementsSettingsView from "@/components/system/AnnouncementsSettingsView";
@@ -46,8 +47,20 @@ export default function SystemSettingsPage() {
         currentBusiness, updateBusiness
     } = useStore();
 
-    const [activeTab, setActiveTab] = useState<SettingsTab>('catalog');
+    const router = useRouter();
+    const searchParams = useSearchParams();
+    const initialTab = (searchParams.get('tab') as SettingsTab) || 'catalog';
+
+    const [activeTab, setActiveTab] = useState<SettingsTab>(initialTab);
     const [searchQuery, setSearchQuery] = useState("");
+
+    // Sync activeTab when searchParams change (Deep linking)
+    useEffect(() => {
+        const tab = searchParams.get('tab') as SettingsTab;
+        if (tab && tab !== activeTab) {
+            setActiveTab(tab);
+        }
+    }, [searchParams]);
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
     const [editingItem, setEditingItem] = useState<any>(null);
     const [showNewRoomCategory, setShowNewRoomCategory] = useState(false);
