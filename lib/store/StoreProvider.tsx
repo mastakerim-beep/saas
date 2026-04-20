@@ -1319,7 +1319,7 @@ const StoreOrchestrator = ({ children }: { children: ReactNode }) => {
                 id,
                 businessId: activeBizId,
                 branchId: biz.currentBranch?.id,
-                aiSummary: aiText,
+                aiSummary: reportData.aiSummary + "\n\n" + aiText,
                 closedBy: auth.currentUser?.name || 'Sistem',
                 createdAt: new Date().toISOString()
             };

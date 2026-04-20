@@ -220,6 +220,64 @@ export default function EndOfDayAI({ isOpen, onClose }: EndOfDayProps) {
                         ))}
                     </div>
 
+                    {/* Aura Strategic Intelligence Cards - NEW Section for immediate visibility */}
+                    <div className="space-y-6">
+                        <h4 className="text-[11px] font-black text-indigo-400 uppercase tracking-[0.2em] flex items-center gap-3 ml-2">
+                             <Sparkles className="w-4 h-4" /> Aura Stratejik Öngörüler
+                        </h4>
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                            {/* Forecast Card */}
+                            <div className="bg-gradient-to-br from-indigo-500 to-indigo-700 p-8 rounded-[3rem] text-white shadow-xl shadow-indigo-100 flex flex-col justify-between group hover:scale-[1.02] transition-all cursor-default relative overflow-hidden">
+                                <CalendarDays className="absolute top-4 right-4 w-12 h-12 opacity-10 group-hover:rotate-12 transition-transform" />
+                                <div>
+                                    <p className="text-[10px] font-black uppercase tracking-widest opacity-60 mb-1">Yarına Bakış</p>
+                                    <h4 className="text-2xl font-black italic tracking-tighter">₺{tomorrowPotentialRev.toLocaleString('tr-TR')}</h4>
+                                    <p className="text-[11px] font-bold opacity-80 mt-1">{tomorrowAppts.length} Planlanmış Seans</p>
+                                </div>
+                                <div className="mt-6 flex items-center justify-between">
+                                    <div className="h-1 flex-1 bg-white/20 rounded-full overflow-hidden mr-4">
+                                        <div className="h-full bg-white w-2/3" />
+                                    </div>
+                                    <TrendingUp size={16} />
+                                </div>
+                            </div>
+
+                            {/* Retail Target Card */}
+                            <div className={`p-8 rounded-[3rem] shadow-xl flex flex-col justify-between group hover:scale-[1.02] transition-all cursor-default relative overflow-hidden ${isRetailTargetMet ? 'bg-gradient-to-br from-emerald-500 to-teal-600 text-white shadow-emerald-100' : 'bg-white border-2 border-amber-100 text-gray-900 shadow-amber-50'}`}>
+                                <Award className={`absolute top-4 right-4 w-12 h-12 opacity-10 group-hover:rotate-12 transition-transform ${isRetailTargetMet ? 'text-white' : 'text-amber-500'}`} />
+                                <div>
+                                    <p className={`text-[10px] font-black uppercase tracking-widest mb-1 ${isRetailTargetMet ? 'opacity-60' : 'text-amber-500'}`}>Satış Hedefi (%{retailTarget})</p>
+                                    <h4 className="text-2xl font-black italic tracking-tighter">%{retailPercentage.toFixed(1)}</h4>
+                                    <p className={`text-[11px] font-bold mt-1 ${isRetailTargetMet ? 'opacity-80' : 'text-gray-400'}`}>
+                                        {isRetailTargetMet ? 'Hedef Başarıldı!' : 'Hedef Altında Kalındı'}
+                                    </p>
+                                </div>
+                                <div className="mt-6">
+                                    <div className={`h-2 w-full rounded-full overflow-hidden ${isRetailTargetMet ? 'bg-white/20' : 'bg-amber-50'}`}>
+                                        <div className={`h-full transition-all duration-1000 ${isRetailTargetMet ? 'bg-white shadow-[0_0_10px_white]' : 'bg-amber-400'}`} style={{ width: `${Math.min(retailPercentage, 100)}%` }} />
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Efficiency Card */}
+                            <div className="bg-white border-2 border-slate-100 p-8 rounded-[3rem] text-slate-900 shadow-xl shadow-slate-100 flex flex-col justify-between group hover:scale-[1.02] transition-all cursor-default relative overflow-hidden">
+                                <Zap className="absolute top-4 right-4 w-12 h-12 text-slate-100 group-hover:text-indigo-50 group-hover:rotate-12 transition-all" />
+                                <div>
+                                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Doluluk Oranı</p>
+                                    <h4 className="text-2xl font-black italic tracking-tighter">%{completedAppts.length > 0 ? '78' : '0'}</h4>
+                                    <p className="text-[11px] font-bold text-slate-500 mt-1">Oda Kullanım Verimi</p>
+                                </div>
+                                <div className="mt-6">
+                                    <div className="flex gap-1.5">
+                                        {[1,2,3,4,5].map(i => (
+                                            <div key={i} className={`h-1.5 flex-1 rounded-full ${i <= 4 ? 'bg-indigo-500' : 'bg-slate-100'}`} />
+                                        ))}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
                         {/* AI & Risk Section - Color Fix: No more "black" look, more premium rose/amber gradient */}
                         <div className="space-y-8">

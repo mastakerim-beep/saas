@@ -7,7 +7,7 @@ import {
     LayoutDashboard, Calendar, Users, Briefcase, 
     Receipt, Wallet, Package, Bot, UserCog, LucideIcon,
     Crown, Zap, Sparkles, TrendingUp, ShieldCheck, LayoutGrid,
-    Globe, Compass, CreditCard, FileText, ChevronRight, Info, Terminal, Settings as SettingsIcon, LogOut
+    Globe, Compass, CreditCard, FileText, ChevronRight, Info, Terminal, Settings as SettingsIcon, LogOut, FileCode
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useState, useEffect, memo, useMemo } from 'react';
@@ -211,6 +211,7 @@ export default function Sidebar() {
                         {isHovered && <p className="px-4 text-[10px] font-black text-indigo-400 uppercase tracking-widest mb-4 opacity-50 overflow-hidden whitespace-nowrap">Finans</p>}
                         <div className="space-y-1">
                             {can('view_cash') && <SidebarItem isHovered={isHovered} pathname={pathname} href={getTenantLink('executive')} icon={Globe} label="Executive" badge="VIP" colorClass="text-primary" />}
+                            {can('view_historical_finance') && <SidebarItem isHovered={isHovered} pathname={pathname} href={getTenantLink('executive/reports')} icon={FileCode} label="Z-Raporu Arşivi" colorClass="text-indigo-500" />}
                             {can('view_cash') && <SidebarItem isHovered={isHovered} pathname={pathname} href={getTenantLink('finances/cash')} icon={Wallet} label="Günün Kasası" colorClass="text-indigo-500" />}
                             {can('view_historical_finance') && <SidebarItem isHovered={isHovered} pathname={pathname} href={getTenantLink('finances')} icon={TrendingUp} label="Ciro Analizi" colorClass="text-indigo-500" />}
                             {can('manage_expenses') && <SidebarItem isHovered={isHovered} pathname={pathname} href={getTenantLink('expenses')} icon={Receipt} label="Giderler" colorClass="text-indigo-500" />}
