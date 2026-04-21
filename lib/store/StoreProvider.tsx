@@ -421,17 +421,7 @@ const StoreOrchestrator = ({ children }: { children: ReactNode }) => {
                 const estimatedValue = (product?.lastPurchasePrice || product?.price || 0) * amount;
 
                 // 1. GÖNDEREN ŞUBE (A) İÇİN KAYITLAR
-                if (transferType === 'free') {
-                    // Bedelsiz ise: A şubesi için Gider (Expense)
-                    await store.addExpense({
-                        desc: `Stok Transfer Zararı (Bedelsiz): ${product?.name} (${amount} adet)`,
-                        amount: estimatedValue,
-                        category: 'Stok Transferi',
-                        branch_id: fromBranchId,
-                        date: new Date().toISOString().split('T')[0],
-                        note: `Hedef: ${biz.branches.find(b => b.id === toBranchId)?.name || toBranchId}`
-                    });
-                } else {
+                if (transferType !== 'free') {
                     // Bedelli ise: A şubesi için Gelir (Internal Payment)
                     const paymentId = crypto.randomUUID();
                     const internalPayment = {
@@ -451,7 +441,7 @@ const StoreOrchestrator = ({ children }: { children: ReactNode }) => {
                 // 2. ALICI ŞUBE (B) İÇİN KAYITLAR
                 if (transferType !== 'free' && pricePerUnit > 0) {
                     await store.addExpense({
-                        desc: `Şubeler Arası Transfer Alımı: ${product?.name} (${amount} adet)`,
+                        desc: `Stok Alımı (Branch Transfer): ${product?.name} (${amount} adet)`,
                         amount: pricePerUnit * amount,
                         category: 'Stok Transferi',
                         branch_id: toBranchId,
