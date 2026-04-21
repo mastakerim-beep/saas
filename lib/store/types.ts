@@ -173,7 +173,7 @@ export interface StoreState {
     isInitialized: boolean;
     fetchPublicData: (slug: string) => Promise<void>;
     closeDay: (data: Omit<ZReport, 'id' | 'businessId' | 'branchId' | 'closedBy' | 'createdAt'>) => Promise<boolean>;
-    addCustomer: (c: any) => Promise<Customer>;
+    addCustomer: (c: any) => Customer;
     updateCustomer: (id: string, updates: Partial<Customer>) => Promise<void>;
     addPackage: (p: any) => Promise<void>;
     addMembershipPlan: (p: any) => Promise<void>;
