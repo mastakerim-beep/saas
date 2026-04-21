@@ -6,6 +6,7 @@ import {
     ShieldCheck, Loader2, Banknote, ChevronDown, Package, Clock, User
 } from 'lucide-react';
 import { useStore, Customer } from '@/lib/store';
+import { motion, AnimatePresence } from 'framer-motion';
 import BodyMap from '../crm/BodyMap';
 
 interface BookingModalProps {
@@ -43,11 +44,11 @@ export default function BookingModal({ initialData, onClose, date, mode: initial
     const [basket, setBasket] = useState<any[]>([]);
     
     // Current entry state
-    const activeServices = useMemo(() => services.filter(s => s.isActive !== false), [services]);
+    const activeServices = useMemo(() => services.filter((s: any) => s.isActive !== false), [services]);
     const [currentService, setCurrentService] = useState(activeServices.length > 0 ? (initialData.service || activeServices[0]?.name) : '');
     const [currentRoomId, setCurrentRoomId] = useState<string | null>(initialData.roomId || (rooms.length > 0 ? rooms[0]?.id : null));
     const [currentPackageId, setCurrentPackageId] = useState<string | null>(null);
-    const [price, setPrice] = useState(services.find(s => s.name === (initialData.service || services[0]?.name))?.price || 0);
+    const [price, setPrice] = useState(services.find((s: any) => s.name === (initialData.service || services[0]?.name))?.price || 0);
     const [isSaving, setIsSaving] = useState(false);
     const [blockReason, setBlockReason] = useState('Toplantı');
     const [note, setNote] = useState('');
@@ -55,6 +56,7 @@ export default function BookingModal({ initialData, onClose, date, mode: initial
         (initialData.duration && initialData.duration !== 15) ? initialData.duration : null
     );
     const [referralSource, setReferralSource] = useState(initialData?.communicationSource || 'Direkt');
+    const [error, setError] = useState<string | null>(null);
 
     // Conflict Detection (Staff & Room with Capacity)
     const checkConflict = (staffId: string, roomId: string | null, dt: string, tm: string, dur: number, excludeId?: string) => {
@@ -87,7 +89,7 @@ export default function BookingModal({ initialData, onClose, date, mode: initial
 
             if (hasAppt) return true;
 
-            const hasBlock = blocks.some(b => {
+            const hasBlock = blocks.some((b: any) => {
                 if (b.date !== dt || b.staffId !== staffId) return false;
                 const [bh, bm] = b.time.split(':').map(Number);
                 const bStart = bh * 60 + bm;
@@ -103,7 +105,7 @@ export default function BookingModal({ initialData, onClose, date, mode: initial
             const room = rooms.find(r => r.id === roomId);
             const capacity = room?.capacity || 1;
 
-            const occupants = appointments.filter(a => {
+            const occupants = appointments.filter((a: any) => {
                 if (a.id === excludeId) return false;
                 if (a.date !== dt || a.roomId !== roomId) return false;
                 if (['cancelled', 'excused'].includes(a.status)) return false;
@@ -136,16 +138,16 @@ export default function BookingModal({ initialData, onClose, date, mode: initial
         setSelectedRegions(prev => prev.includes(id) ? prev.filter(r => r !== id) : [...prev, id]);
     };
 
-    const filtered = customers.filter(c => 
+    const filtered = customers.filter((c: any) => 
         c.name.toLowerCase().includes(search.toLowerCase()) || 
         c.phone.includes(search)
     );
     
-    const customer = customers.find(c => c.id === selectedCustId);
+    const customer = customers.find((c: any) => c.id === selectedCustId);
 
     const customerPackages = useMemo(() => {
         if (!selectedCustId) return [];
-        return packages.filter(p => 
+        return packages.filter((p: any) => 
             p.customerId === selectedCustId && 
             p.usedSessions < p.totalSessions && 
             new Date(p.expiry) >= new Date()
@@ -184,9 +186,11 @@ export default function BookingModal({ initialData, onClose, date, mode: initial
         
         // Final Conflict Check (Staff & Room)
         if (checkConflict(currentStaffId, currentRoomId, selectedDate, selectedTime, duration, initialMode === 'edit' ? initialData?.id : undefined)) {
-            alert("⚠️ DİKKAT: Seçilen personel veya oda o saatte dolu. Lütfen farklı bir seçim yapın.");
+            setError("❌ Seçilen personel veya oda o saatte dolu. Lütfen farklı bir seçim yapın.");
             return;
         }
+
+        setError(null);
 
         setIsSaving(true);
 
@@ -203,8 +207,6 @@ export default function BookingModal({ initialData, onClose, date, mode: initial
                         duration: duration,
                         price: price,
                         note: note,
-                        communicationSource: referralSource,
-                        selectedRegions: selectedRegions,
                         packageId: currentPackageId || undefined,
                         isPackageUsage: !!currentPackageId
                     };
@@ -242,7 +244,7 @@ export default function BookingModal({ initialData, onClose, date, mode: initial
                         isPackageUsage: !!currentPackageId,
                         note: note,
                         regions: selectedRegions,
-                        additionalStaff: secondStaffId ? [{ id: secondStaffId, name: staffMembers.find(s => s.id === secondStaffId)?.name || '' }] : []
+                        additionalStaff: secondStaffId ? [{ id: secondStaffId, name: staffMembers.find((s: any) => s.id === secondStaffId)?.name || '' }] : []
                     }];
 
                     let allSuccess = true;
@@ -299,11 +301,11 @@ export default function BookingModal({ initialData, onClose, date, mode: initial
                     reason: blockReason
                 });
                 if (res !== false) onClose();
-                else alert("🚫 Bloke işlemi kaydedilemedi.");
+                else setError("🚫 Bloke işlemi kaydedilemedi.");
             }
         } catch (error: any) {
             console.error("Booking save error:", error);
-            alert(`⚠️ SİSTEM HATASI: ${error.message}`);
+            setError(`⚠️ SİSTEM HATASI: ${error.message}`);
         } finally {
             setIsSaving(false);
         }
@@ -341,6 +343,26 @@ export default function BookingModal({ initialData, onClose, date, mode: initial
 
                 <div className="flex-1 overflow-y-auto no-scrollbar bg-white p-10">
                     <div className="max-w-4xl mx-auto">
+                        <AnimatePresence>
+                            {error && (
+                                <motion.div 
+                                    initial={{ height: 0, opacity: 0, marginBottom: 0 }}
+                                    animate={{ height: 'auto', opacity: 1, marginBottom: 24 }}
+                                    exit={{ height: 0, opacity: 0, marginBottom: 0 }}
+                                    className="bg-red-50 border border-red-100 rounded-2xl p-5 flex items-center justify-between group overflow-hidden"
+                                >
+                                    <div className="flex items-center gap-4">
+                                        <div className="w-10 h-10 rounded-xl bg-red-500 text-white flex items-center justify-center shadow-lg shadow-red-200">
+                                            <X size={20} />
+                                        </div>
+                                        <p className="text-sm font-black text-red-900 uppercase italic">{error}</p>
+                                    </div>
+                                    <button onClick={() => setError(null)} className="p-2 hover:bg-red-100 rounded-xl transition-all">
+                                        <X size={16} className="text-red-400" />
+                                    </button>
+                                </motion.div>
+                            )}
+                        </AnimatePresence>
                         {mode === 'appt' ? (
                             selectedStep === 'customer' ? (
                                 <div className="space-y-6">

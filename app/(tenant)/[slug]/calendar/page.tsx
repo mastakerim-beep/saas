@@ -131,7 +131,7 @@ export default function CalendarPage() {
     const dayOfWeek = new Date(selectedDate + 'T00:00:00').getDay();
     const staffToDisplay = useMemo(() => {
         return staffMembers
-            .filter(s => {
+            .filter((s: Staff) => {
                 // Şube seçilmişse: Sadece o şubeye ait olanlar VEYA hiç şubesi atanmamış olanlar görünsün.
                 if (currentBranch?.id && s.branchId && s.branchId !== currentBranch.id) return false;
                 
@@ -148,8 +148,11 @@ export default function CalendarPage() {
     }, [staffMembers, appointments, selectedDate, currentBranch]);
 
     const roomsToDisplay = useMemo(() => {
-        return (rooms || []).filter(r => r.status !== 'passive');
-    }, [rooms]);
+        return (rooms || []).filter((r: Room) => {
+            if (currentBranch?.id && r.branchId && r.branchId !== currentBranch.id) return false;
+            return r.status !== 'passive';
+        });
+    }, [rooms, currentBranch]);
 
     // ---- HANDLERS ----
     const handleDragStart = (event: any) => {
@@ -344,7 +347,7 @@ export default function CalendarPage() {
 
                                 {/* Columns Grid */}
                                 <div className="flex flex-1 min-w-full">
-                                    {(viewMode === 'staff' ? staffToDisplay : roomsToDisplay).map(target => (
+                                    {(viewMode === 'staff' ? staffToDisplay : roomsToDisplay).map((target: any) => (
                                         <div key={target.id} className="min-w-[280px] flex-1 flex flex-col relative group/col border-r border-gray-100/30">
                                             {/* Slots Grid */}
                                             <div className="relative flex-1">
@@ -666,9 +669,9 @@ export default function CalendarPage() {
                                                     setActionAppt(actionMenuAppt);
                                                     closeActionMenu();
                                                 }}
-                                                className="flex items-center justify-center gap-2 py-4 px-4 bg-gray-50/50 hover:bg-white hover:border-gray-200 border border-transparent rounded-2xl transition-all text-[11px] font-black text-gray-500 uppercase tracking-widest"
+                                                className="flex items-center justify-center gap-2 py-4 px-4 bg-indigo-50 hover:bg-white hover:border-indigo-200 border border-indigo-100 rounded-2xl transition-all text-[11px] font-black text-indigo-600 uppercase tracking-widest shadow-sm"
                                             >
-                                                <ExternalLink size={14} /> Detaylar
+                                                <ExternalLink size={14} /> Detaylar / Düzenle
                                             </button>
                                             {confirmDeleteId === actionMenuAppt.id ? (
                                                 <div className="flex items-center gap-2">
