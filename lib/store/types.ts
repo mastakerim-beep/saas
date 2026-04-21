@@ -51,7 +51,11 @@ export type NotificationLog = DB.NotificationLog;
 export type AiInsight = DB.AiInsight;
 export type Room = DB.Room;
 export type CommissionRule = DB.CommissionRule;
-export type Expense = DB.Expense;
+export type Expense = DB.Expense & {
+    payout_status?: 'BEKLEMEDE' | 'ODENDI';
+    related_staff_id?: string;
+    related_appointment_id?: string;
+};
 export type CustomerMedia = DB.CustomerMedia;
 export type ZReport = DB.ZReport & { aiSummary?: string; notes?: string; closedBy?: string; };
 export type Quote = DB.Quote;

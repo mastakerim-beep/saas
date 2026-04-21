@@ -665,6 +665,51 @@ const StoreOrchestrator = ({ children }: { children: ReactNode }) => {
                 const payYear = new Date().getFullYear();
                 const paymentRef = `ODM-${payYear}-${Math.floor(Math.random()*9000)+1000}`;
                 const paymentRecord = { ...paymentData, id: paymentId, referenceCode: paymentRef, tipAmount: tipAmount || 0, soldProducts: soldProducts || [], createdAt: new Date().toISOString() };
+                
+                // 1. Loyalty Points Logic
+                if (paymentData.customerId) {
+                    const customer = dataRef.current.customers.find(c => c.id === paymentData.customerId);
+                    if (customer) {
+                        let newPoints = (customer.loyaltyPoints || 0) + (earnedPoints || 0) - (pointsUsed || 0);
+                        dataRef.current.setAllCustomers((prev: any[]) => prev.map(c => c.id === customer.id ? { ...c, loyaltyPoints: newPoints } : c));
+                        await syncDb('customers', 'update', { loyalty_points: newPoints }, customer.id, bizId);
+                    }
+                }
+
+                // 2. Retail Stock Deduction
+                if (soldProducts && soldProducts.length > 0) {
+                    for (const sp of soldProducts) {
+                        const product = dataRef.current.inventory.find(i => i.id === sp.id || i.name === sp.name);
+                        if (product) {
+                            const newStock = Math.max(0, (product.stock || 0) - (sp.quantity || 1));
+                            dataRef.current.updateProduct(product.id, { stock: newStock });
+                            await syncDb('inventory', 'update', { stock: newStock }, product.id, bizId);
+                        }
+                    }
+                }
+
+                // 3. Automated Commission & Expense
+                const apptId = paymentData.appointmentId;
+                if (apptId) {
+                    const appt = dataRef.current.appointments.find(a => a.id === apptId);
+                    const staffsToPay = [paymentData.staffId || appt?.staffId, ...(appt?.additionalStaff?.map((s:any) => s.id) || [])].filter(Boolean);
+                    
+                    for (const sid of staffsToPay) {
+                        const amount = (paymentData.totalAmount || 0) / staffsToPay.length;
+                        const comm = stableMethods.calculateCommission(sid, appt?.service || 'Genel', amount);
+                        const expId = crypto.randomUUID();
+                        const exp = {
+                            id: expId, businessId: bizId, branchId: bizRef.current.currentBranch?.id,
+                            category: 'PERSONEL_PRIMI', amount: comm, date: new Date().toISOString().split('T')[0],
+                            description: `${paymentData.customerName || 'Müşteri'} - ${appt?.service || 'Hizmet'} Primi`,
+                            payout_status: 'BEKLEMEDE', related_staff_id: sid, related_appointment_id: apptId,
+                            createdAt: new Date().toISOString()
+                        };
+                        dataRef.current.setAllExpenses((prev: any[]) => [exp, ...prev]);
+                        await syncDb('expenses', 'insert', exp, expId, bizId);
+                    }
+                }
+
                 dataRef.current.setAllPayments((prev: any[]) => [paymentRecord, ...prev]);
                 await syncDb('payments', 'insert', paymentRecord, paymentId, bizId);
                 
@@ -677,30 +722,15 @@ const StoreOrchestrator = ({ children }: { children: ReactNode }) => {
                             const newUsed = Math.min(pkg.totalSessions, (pkg.usedSessions || 0) + 1);
                             dataRef.current.setAllPackages((prev: any[]) => prev.map(p => p.id === packageId ? { ...p, usedSessions: newUsed } : p));
                             await syncDb('packages', 'update', { used_sessions: newUsed }, packageId, bizId);
-                            stableMethods.addLog('Paket Seansı Kullanıldı', paymentData.customerName, `Kalan: ${pkg.totalSessions - newUsed}`, pkg.name);
                         }
                     }
                     dataRef.current.updateAppointment(paymentData.appointmentId, updates);
                     await syncDb('appointments', 'update', updates, paymentData.appointmentId, bizId);
-                    
-                    // Stock deduction logic (Today's fix)
-                    const appt = dataRef.current.appointments.find(a => a.id === paymentData.appointmentId);
-                    const service = dataRef.current.services.find(s => s.name === appt?.service);
-                    if (service) {
-                        const recipes = dataRef.current.usageNorms.filter(n => n.serviceId === service.id);
-                        for (const r of recipes) {
-                            const product = dataRef.current.inventory.find(p => p.id === r.productId);
-                            if (product) {
-                                const newStock = Math.max(0, (product.stock || 0) - (r.amountPerService || 0));
-                                dataRef.current.updateProduct(product.id, { stock: newStock });
-                                await syncDb('inventory', 'update', { stock: newStock }, product.id, bizId);
-                            }
-                        }
-                    }
                 }
                 setSyncStatus('idle');
                 return true;
             } catch (err) {
+                console.error("Checkout Error:", err);
                 setSyncStatus('error');
                 return false;
             }
@@ -960,11 +990,36 @@ const StoreOrchestrator = ({ children }: { children: ReactNode }) => {
         runImperialAudit: () => {
             const alerts: any[] = [];
             const today = new Date().toISOString().split('T')[0];
+            const customers = dataRef.current.customers;
+            const appts = dataRef.current.appointments;
+            
+            // 1. Ghost Room Audit
             dataRef.current.rooms.forEach(room => {
-                if (room.status === 'occupied' && !dataRef.current.appointments.some(a => a.date === today && a.roomId === room.id && a.status === 'in-service')) {
-                    alerts.push({ type: 'critical', title: 'Hayalet Oda', desc: `${room.name} odası dolu ama randevu yok!`, targetId: room.id });
+                if (room.status === 'occupied' && !appts.some(a => a.date === today && a.roomId === room.id && a.status === 'in-service')) {
+                    alerts.push({ type: 'critical', title: 'Hayalet Oda', desc: `${room.name} dolu ama aktif randevu yok!`, targetId: room.id });
                 }
             });
+
+            // 2. Revenue Leakage Audit (Paid/Unpaid verification)
+            appts.forEach(a => {
+                if (a.status === 'completed' && !a.isPaid && a.price > 0) {
+                    alerts.push({ type: 'critical', title: 'Tahsilat Kaçağı', desc: `${a.customerName} - ${a.service} tamamlandı ama ödeme ALINMADI!`, targetId: a.id });
+                }
+            });
+
+            // 3. Birthday Audit
+            const bdayToday = stableMethods.getBirthdaysToday();
+            bdayToday.forEach((c: Customer) => {
+                alerts.push({ type: 'info', title: 'Bugün Doğum Günü', desc: `${c.name} için özel bir kampanya sunulabilir.`, targetId: c.id });
+            });
+
+            // 4. Low Stock Audit
+            dataRef.current.inventory.forEach(p => {
+                if ((p.stock || 0) < (p.lowStockThreshold || 5)) {
+                    alerts.push({ type: 'warning', title: 'Kritik Stok', desc: `${p.name} azalıyor! (Mevcut: ${p.stock})`, targetId: p.id });
+                }
+            });
+
             return alerts;
         },
         isLicenseExpired,
@@ -992,6 +1047,64 @@ const StoreOrchestrator = ({ children }: { children: ReactNode }) => {
             const { generateZReportPDF } = require('@/lib/utils/pdf-generator');
             generateZReportPDF(report, bizRef.current.currentTenant);
         },
+        // --- RESTORED & NEW METHODS ---
+        transferProduct: async (transfer: any) => {
+            const bizId = activeBizIdRef.current;
+            if (!bizId) return false;
+            const { productId, fromBranchId, toBranchId, quantity, transferType, pricePerUnit } = transfer;
+            
+            // Adjust stocks
+            const inventory = dataRef.current.inventory;
+            const fromProduct = inventory.find(p => p.id === productId && p.branchId === fromBranchId);
+            const toProduct = inventory.find(p => p.id === productId && p.branchId === toBranchId);
+            
+            if (fromProduct) {
+                const newFromStock = Math.max(0, (fromProduct.stock || 0) - quantity);
+                dataRef.current.updateProduct(fromProduct.id, { stock: newFromStock });
+                await syncDb('inventory', 'update', { stock: newFromStock }, fromProduct.id, bizId);
+            }
+            
+            if (toProduct) {
+                const newToStock = (toProduct.stock || 0) + quantity;
+                dataRef.current.updateProduct(toProduct.id, { stock: newToStock });
+                await syncDb('inventory', 'update', { stock: newToStock }, toProduct.id, bizId);
+            }
+            
+            // Log transfer
+            const tid = crypto.randomUUID();
+            await syncDb('inventory_transfers', 'insert', { ...transfer, id: tid, businessId: bizId, createdAt: new Date().toISOString() }, tid, bizId);
+            
+            // Handle financial impact (Income/Expense linkage)
+            if (transferType === 'cost' || transferType === 'profit') {
+                const amount = quantity * (pricePerUnit || 0);
+                const expId = crypto.randomUUID();
+                await syncDb('expenses', 'insert', {
+                    id: expId, businessId: bizId, branchId: toBranchId,
+                    category: 'URUN_TRANSFERI', amount: amount, date: new Date().toISOString().split('T')[0],
+                    description: `${fromProduct?.name || 'Ürün'} Transfer Maliyeti`, payout_status: 'ODENDI', createdAt: new Date().toISOString()
+                }, expId, bizId);
+            }
+
+            return true;
+        },
+        getBirthdaysToday: () => {
+            const today = new Date().toISOString().split('T')[0].substring(5); // MM-DD
+            return dataRef.current.customers.filter((c: Customer) => c.birthdate?.includes(today));
+        },
+        predictInventory: () => {
+            return dataRef.current.inventory.map(p => {
+                const daysLeft = Math.floor((p.stock || 0) / 0.5); // Fallback: 0.5 units/day
+                const runoutDate = new Date();
+                runoutDate.setDate(runoutDate.getDate() + daysLeft);
+                return { productId: p.id, productName: p.name, daysLeft, runoutDate: runoutDate.toISOString() };
+            });
+        },
+        getCustomerSummary: (cid: string) => ({
+            customer: dataRef.current.customers.find(c => c.id === cid),
+            appointments: dataRef.current.appointments.filter(a => a.customerId === cid),
+            packages: dataRef.current.packages.filter(p => p.customerId === cid),
+            payments: dataRef.current.payments.filter(p => p.customerId === cid)
+        }),
         clearCatalog: biz.clearCatalog
     }), [
         fetchData, markAsModified, biz.clearCatalog
