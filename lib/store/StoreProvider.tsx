@@ -319,6 +319,36 @@ const StoreOrchestrator = ({ children }: { children: ReactNode }) => {
         return user.permissions?.includes(permission) || false;
     }, [auth.currentUser]);
 
+    const getCustomerAppointments = React.useCallback((cid: string) => {
+        return data.appointments.filter(a => a.customerId === cid);
+    }, [data.appointments]);
+
+    const getCustomerPayments = React.useCallback((cid: string) => {
+        return data.payments.filter(p => p.customerId === cid);
+    }, [data.payments]);
+
+    const getChurnRiskCustomers = React.useCallback(() => {
+        return data.customers.filter(c => c.isChurnRisk);
+    }, [data.customers]);
+
+    const getUpsellPotentialCustomers = React.useCallback(() => {
+        // Customers with packages that are > 80% used
+        const results: any[] = [];
+        data.packages.forEach(pkg => {
+            const usage = (pkg.usedSessions || 0) / pkg.totalSessions;
+            if (usage > 0.8 && usage < 1.0) {
+                const customer = data.customers.find(c => c.id === pkg.customerId);
+                if (customer) results.push({ customer, package: pkg });
+            }
+        });
+        return results;
+    }, [data.packages, data.customers]);
+
+    const getBirthdaysToday = React.useCallback(() => {
+        const today = new Date().toISOString().split('T')[0].substring(5); // MM-DD
+        return data.customers.filter((c: Customer) => c.birthdate?.includes(today));
+    }, [data.customers]);
+
     const calculateCommission = React.useCallback((staffId: string, serviceName: string, amount: number) => {
         const rules = data.commissionRules.filter(r => r.staffId === staffId);
         const specificRule = rules.find(r => r.serviceName === serviceName);
@@ -1127,10 +1157,6 @@ const StoreOrchestrator = ({ children }: { children: ReactNode }) => {
 
             return true;
         },
-        getBirthdaysToday: () => {
-            const today = new Date().toISOString().split('T')[0].substring(5); // MM-DD
-            return dataRef.current.customers.filter((c: Customer) => c.birthdate?.includes(today));
-        },
         predictInventory: () => {
             return dataRef.current.inventory.map(p => {
                 const daysLeft = Math.floor((p.stock || 0) / 0.5); // Fallback: 0.5 units/day
@@ -1152,9 +1178,15 @@ const StoreOrchestrator = ({ children }: { children: ReactNode }) => {
         calculateCommission,
         determineChurnRisk,
         getTodayDate,
-        getTodayPayments
+        getTodayPayments,
+        getCustomerAppointments,
+        getCustomerPayments,
+        getChurnRiskCustomers,
+        getUpsellPotentialCustomers,
+        getBirthdaysToday
     }), [
-        fetchData, markAsModified, biz.clearCatalog, can, addLog, addZReport, calculateCommission, determineChurnRisk, getTodayDate, getTodayPayments
+        fetchData, markAsModified, biz.clearCatalog, can, addLog, addZReport, calculateCommission, determineChurnRisk, getTodayDate, getTodayPayments, 
+        getCustomerAppointments, getCustomerPayments, getChurnRiskCustomers, getUpsellPotentialCustomers, getBirthdaysToday
     ]);
 
     const shieldedAppointments = useMemo(() => data.appointments.filter(a => !recentlyModified.has(a.id)), [data.appointments, recentlyModified]);
