@@ -179,7 +179,9 @@ const StoreOrchestrator = ({ children }: { children: ReactNode }) => {
             setConsentFormTemplates: biz.setConsentFormTemplates,
             setSyncStatus: setSyncStatus,
             setAllPayments: data.setAllPayments,
-            setAllInventoryCategories: data.setAllInventoryCategories
+            setAllInventoryCategories: data.setAllInventoryCategories,
+            setLoyaltySettings: biz.setLoyaltySettings,
+            setWebhooks: biz.setWebhooks
         };
 
         try {
@@ -336,6 +338,13 @@ const StoreOrchestrator = ({ children }: { children: ReactNode }) => {
         data.setAllLogs((prev: any[]) => [log, ...prev]);
         await syncDb('audit_logs', 'insert', log, id, activeBizIdRef.current);
     }, [data.setAllLogs]);
+
+    const getTodayDate = React.useCallback(() => new Date().toISOString().split('T')[0], []);
+    
+    const getTodayPayments = React.useCallback(() => {
+        const today = getTodayDate();
+        return data.payments.filter((p: any) => p.date === today);
+    }, [data.payments, getTodayDate]);
 
     const addZReport = async (reportData: any) => {
         const ok = await syncDb('z_reports', 'insert', {
@@ -1141,9 +1150,11 @@ const StoreOrchestrator = ({ children }: { children: ReactNode }) => {
         addLog,
         addZReport,
         calculateCommission,
-        determineChurnRisk
+        determineChurnRisk,
+        getTodayDate,
+        getTodayPayments
     }), [
-        fetchData, markAsModified, biz.clearCatalog, can, addLog, addZReport, calculateCommission, determineChurnRisk
+        fetchData, markAsModified, biz.clearCatalog, can, addLog, addZReport, calculateCommission, determineChurnRisk, getTodayDate, getTodayPayments
     ]);
 
     const shieldedAppointments = useMemo(() => data.appointments.filter(a => !recentlyModified.has(a.id)), [data.appointments, recentlyModified]);
