@@ -15,6 +15,7 @@ export type Package = DB.Package;
 export type PackageDefinition = DB.PackageDefinition;
 export interface Appointment extends DB.Appointment {
     syncStatus?: 'idle' | 'syncing' | 'error';
+    isSealed?: boolean;
 }
 export interface CalendarBlock extends DB.CalendarBlock {
     roomId?: string | null;

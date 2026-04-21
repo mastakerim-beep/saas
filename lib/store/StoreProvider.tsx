@@ -415,9 +415,13 @@ const StoreOrchestrator = ({ children }: { children: ReactNode }) => {
             return true;
         },
         deleteAppointment: async (id: string) => {
-            markAsModified(id);
             const apt = dataRef.current.appointments.find(a => a.id === id);
             if (!apt) return false;
+            if (apt.isSealed) {
+                console.error("❌ Mühürlü randevu silinemez!");
+                return false;
+            }
+            markAsModified(id);
             const okLocal = await dataRef.current.deleteAppointment(id);
             if (okLocal) {
                 const okRemote = await syncDb('appointments', 'delete', {}, id, activeBizIdRef.current);
@@ -433,6 +437,10 @@ const StoreOrchestrator = ({ children }: { children: ReactNode }) => {
         },
         updateAppointment: async (id: string, updates: any) => {
             const prevState = dataRef.current.appointments.find(a => a.id === id);
+            if (prevState?.isSealed && !updates.isSealed) {
+                console.error("❌ Mühürlü randevu güncellenemez!");
+                return false;
+            }
             dataRef.current.updateAppointment(id, updates);
             const ok = await syncDb('appointments', 'update', updates, id, activeBizIdRef.current);
             if (!ok && prevState) {
@@ -1002,8 +1010,11 @@ const StoreOrchestrator = ({ children }: { children: ReactNode }) => {
 
             // 2. Revenue Leakage Audit (Paid/Unpaid verification)
             appts.forEach(a => {
-                if (a.status === 'completed' && !a.isPaid && a.price > 0) {
+                if (a.status === 'completed' && !a.isPaid && a.price > 0 && !a.isSealed) {
                     alerts.push({ type: 'critical', title: 'Tahsilat Kaçağı', desc: `${a.customerName} - ${a.service} tamamlandı ama ödeme ALINMADI!`, targetId: a.id });
+                }
+                if (a.isSealed) {
+                    // isSealed items are protected but we don't alert on them unless there's an inconsistency
                 }
             });
 
