@@ -364,7 +364,8 @@ const StoreOrchestrator = ({ children }: { children: ReactNode }) => {
 
     const addLog = React.useCallback(async (type: string, target: string, source: string = 'Sistem', detail?: string) => {
         const id = crypto.randomUUID();
-        const log = { id, type, target, source, detail, businessId: activeBizIdRef.current, createdAt: new Date().toISOString() };
+        // action field added for backward compatibility with the NOT NULL constraint if it persists
+        const log = { id, type, target, source, detail, action: type, businessId: activeBizIdRef.current, createdAt: new Date().toISOString() };
         data.setAllLogs((prev: any[]) => [log, ...prev]);
         await syncDb('audit_logs', 'insert', log, id, activeBizIdRef.current);
     }, [data.setAllLogs]);
@@ -483,13 +484,17 @@ const StoreOrchestrator = ({ children }: { children: ReactNode }) => {
             markAsModified(id);
             const okLocal = await dataRef.current.deleteAppointment(id);
             if (okLocal) {
+                // Ensure we delete by both ID and business_id for maximum safety and RLS compliance
                 const okRemote = await syncDb('appointments', 'delete', {}, id, activeBizIdRef.current);
                 if (!okRemote) {
+                    console.error("❌ Veritabanı silme işlemi başarısız. Geri alınıyor...");
                     dataRef.current.setAllAppointments((prev: any) => [...prev, apt]);
                     return false;
                 }
+                
+                // Logging and Webhooks aftermath
                 triggerWebhooks('appointment.cancelled', apt, bizRef.current.webhooks);
-                stableMethods.addLog('Randevu Silindi', apt.customerName);
+                await stableMethods.addLog('Randevu Silindi', apt.customerName, 'İşlem Başarılı', `${apt.service} randevusu silindi.`);
                 return true;
             }
             return false;
