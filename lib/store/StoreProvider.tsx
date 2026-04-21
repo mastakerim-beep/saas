@@ -18,7 +18,18 @@ import { syncDb } from './sync-db';
 import { supabase } from '@/lib/supabase';
 import { triggerWebhooks } from '@/lib/utils/webhook-sender';
 
-const StoreContext = createContext<StoreState | undefined>(undefined);
+const StoreMethodsContext = createContext<any>(undefined);
+const StoreDataContext = createContext<any>(undefined);
+
+// Unified hook for backward compatibility
+export const useStore = () => {
+    const methods = useContext(StoreMethodsContext);
+    const data = useContext(StoreDataContext);
+    if (!methods || !data) {
+        throw new Error('useStore must be used within a StoreProvider');
+    }
+    return { ...methods, ...data };
+};
 
 // Main Orchestrator component that holds the global store logic
 // This must be wrapped by individual context providers
@@ -33,22 +44,42 @@ const StoreOrchestrator = ({ children }: { children: ReactNode }) => {
     const fetchControllerRef = React.useRef<AbortController | null>(null);
     const params = useParams();
     const slug = params?.slug as string;
+    
+    // --- IDENTITY ANCHOR ---
+    const lastResolvedBizIdRef = React.useRef<string | undefined>(undefined);
+    
+    // --- DATA REFS (Stable bridge for methods) ---
+    const dataRef = React.useRef(data);
+    const bizRef = React.useRef(biz);
+    const authRef = React.useRef(auth);
+
+    useEffect(() => { dataRef.current = data; }, [data]);
+    useEffect(() => { bizRef.current = biz; }, [biz]);
+    useEffect(() => { authRef.current = auth; }, [auth]);
+
     const activeBizIdRef = React.useRef<string | undefined>(undefined);
-    const userRef = React.useRef<AppUser | null>(null);
     const lastFetchTimeRef = React.useRef<number>(0);
-    const lastBizIdRef = React.useRef<string | undefined>(undefined);
+    const lastFetchBizIdRef = React.useRef<string | undefined>(undefined);
     const realtimeTimeoutRef = React.useRef<NodeJS.Timeout | null>(null);
+    
     const [recentlyModified, setRecentlyModified] = useState<Set<string>>(new Set());
+    const recentlyModifiedRef = React.useRef<Set<string>>(new Set());
 
     const markAsModified = React.useCallback((id: string) => {
-        setRecentlyModified(prev => new Set(prev).add(id));
+        setRecentlyModified(prev => {
+            const next = new Set(prev);
+            next.add(id);
+            recentlyModifiedRef.current = next;
+            return next;
+        });
         setTimeout(() => {
             setRecentlyModified(prev => {
                 const next = new Set(prev);
                 next.delete(id);
+                recentlyModifiedRef.current = next;
                 return next;
             });
-        }, 5000); // 5s Stability Window
+        }, 5000);
     }, []);
 
     const activeBizId = useMemo(() => {
@@ -58,30 +89,18 @@ const StoreOrchestrator = ({ children }: { children: ReactNode }) => {
         if (auth.impersonatedBusinessId) {
             id = auth.impersonatedBusinessId;
         } else if (slug) {
-            // Slug based resolution
             const bizFromSlug = biz.allBusinesses.find(b => b.slug === slug);
             if (bizFromSlug) {
                 id = bizFromSlug.id;
-            } else {
-                // IMPORTANT: If we are a SaaS owner and we are on a slug, 
-                // we SHOULD NOT fall back to currentUser.businessId (the SaaS Org).
-                // We must return undefined to signal that we are still 'resolving' the identity.
-                if (isSaaS && biz.allBusinesses.length > 0) {
-                    // We have businesses but no slug match? 
-                    // This could be a race where the slug is not yet in the list or is invalid.
-                    return undefined; 
-                }
-                
-                if (isSaaS) {
-                    return undefined; // Wait for the specific business to be resolved from slug
-                }
-
-                id = auth.currentUser?.businessId || undefined;
+            } else if (lastResolvedBizIdRef.current && !isSaaS) {
+                // STICKY FALLBACK: If we have a slug but list is empty, don't clear the ID
+                id = lastResolvedBizIdRef.current;
             }
         } else {
             id = auth.currentUser?.businessId || undefined;
         }
 
+        if (id) lastResolvedBizIdRef.current = id;
         return id;
     }, [auth.impersonatedBusinessId, auth.currentUser?.businessId, slug, biz.allBusinesses]);
 
@@ -90,17 +109,13 @@ const StoreOrchestrator = ({ children }: { children: ReactNode }) => {
         activeBizIdRef.current = activeBizId;
     }, [activeBizId]);
 
-    useEffect(() => {
-        userRef.current = auth.currentUser;
-    }, [auth.currentUser]);
-
     const fetchData = React.useCallback(async (bizId?: string, user?: AppUser, force?: boolean, startDate?: string, endDate?: string) => {
         // Throttling Logic
         const now = Date.now();
         const targetBizId = bizId || activeBizIdRef.current;
-        const targetUser = user || userRef.current;
+        const targetUser = user || authRef.current.currentUser;
         
-        const isIdChanged = targetBizId !== lastBizIdRef.current;
+        const isIdChanged = targetBizId !== lastFetchBizIdRef.current;
 
         if (!force && !isIdChanged && now - lastFetchTimeRef.current < 2000) {
             return;
@@ -119,7 +134,7 @@ const StoreOrchestrator = ({ children }: { children: ReactNode }) => {
 
         // Validation passed, now we can set the throttle timestamp and last ID
         lastFetchTimeRef.current = now;
-        lastBizIdRef.current = targetBizId;
+        lastFetchBizIdRef.current = targetBizId;
 
         // Note: data ve biz objelerinden gelen setter fonksiyonları React tarafından stable tutulur, 
         // ancak objenin kendisi her re-render'da değişebileceği için fetchData'yı bozmamak adına 
@@ -313,25 +328,20 @@ const StoreOrchestrator = ({ children }: { children: ReactNode }) => {
         return ok;
     };
 
-    const store: StoreState = useMemo(() => ({
-        currentUser: auth.currentUser,
-        currentBusiness: biz.currentTenant,
-        currentBranch: biz.currentBranch,
-        isOnline: isOnline,
-        syncStatus: syncStatus,
-        isManagerAuthorized: isManagerAuthorized,
-        setManagerAuthorized: setManagerAuthorized,
-        
-        allBusinesses: biz.allBusinesses,
-        allUsers: auth.allUsers,
-        allPayments: [], 
-
-        impersonatedBusinessId: auth.impersonatedBusinessId,
-        isImpersonating: auth.isImpersonating,
+    const stableMethods: any = useMemo(() => ({
+        login: authRef.current.login,
+        logout: authRef.current.logout,
+        fetchData,
+        fetchPublicData: async () => {},
+        isInitialized: authRef.current.isInitialized,
+        updateBusinessStatus: authRef.current.updateBusinessStatus,
+        deleteBusiness: authRef.current.deleteBusiness,
+        addBusiness: authRef.current.addBusiness,
+        provisionBusinessUser: authRef.current.provisionBusinessUser,
         setImpersonatedBusinessId: (id: string | null) => {
-            auth.setImpersonatedBusinessId(id);
+            authRef.current.setImpersonatedBusinessId(id);
             if (id) {
-                const bizItem = biz.allBusinesses.find(b => b.id === id);
+                const bizItem = bizRef.current.allBusinesses.find(b => b.id === id);
                 if (bizItem) {
                     window.location.href = `/${bizItem.slug}/dashboard`;
                 }
@@ -339,332 +349,186 @@ const StoreOrchestrator = ({ children }: { children: ReactNode }) => {
                 window.location.href = '/admin';
             }
         },
+        setManagerAuthorized,
+        markAsModified,
         
-        updateBusinessStatus: auth.updateBusinessStatus,
-        deleteBusiness: auth.deleteBusiness,
-        addBusiness: auth.addBusiness,
-        provisionBusinessUser: auth.provisionBusinessUser,
-        renewSubscription: async (id: string, days: number, amount: number) => {
-            const bizItem = biz.allBusinesses.find(b => b.id === id);
-            if (!bizItem) return false;
-
-            const now = new Date();
-            const currentExpiry = bizItem.expiryDate ? new Date(bizItem.expiryDate) : now;
-            const startDate = currentExpiry > now ? currentExpiry : now;
-            const newExpiry = new Date(startDate.getTime() + (days * 24 * 60 * 60 * 1000));
-
-            const history = bizItem.subscriptionHistory || [];
-            const newEntry = {
-                date: now.toISOString(),
-                amount,
-                days,
-                oldExpiry: bizItem.expiryDate,
-                newExpiry: newExpiry.toISOString()
-            };
-
-            const updates = {
-                expiryDate: newExpiry.toISOString(),
-                paymentStatus: 'paid',
-                lastPaymentDate: now.toISOString(),
-                lastPaymentAmount: amount,
-                subscriptionHistory: [...history, newEntry]
-            };
-
-            const ok = await syncDb('businesses', 'update', updates, id);
-            if (ok) {
-                biz.setAllBusinesses(prev => prev.map(b => b.id === id ? { ...b, ...updates } : b));
-            }
-            return ok;
-        },
-        setCurrentBranch: biz.setCurrentBranch,
-
-        currentStaff: auth.currentUser ? data.staffMembers.find(s => s.id === auth.currentUser?.staffId || s.name === auth.currentUser?.name) : undefined,
-        customers: data.customers,
-        packages: data.packages,
-        membershipPlans: data.membershipPlans,
-        customerMemberships: data.customerMemberships,
-        appointments: data.appointments,
-        blocks: data.blocks,
-        payments: data.payments || [], 
-        staffMembers: data.staffMembers,
-        debts: data.debts,
-        branches: biz.branches,
-        allLogs: data.allLogs,
-        allNotifs: data.allNotifs,
-        aiInsights: data.aiInsights,
-        customerMedia: data.customerMedia,
-        inventory: data.inventory,
-        rooms: data.rooms,
-        services: data.services,
-        packageDefinitions: data.packageDefinitions,
-        commissionRules: data.commissionRules,
-        rates: biz.allRates,
-        expenses: data.expenses,
-        zReports: data.zReports,
-        settings: biz.settings,
-        allowedBranches: biz.branches,
-        bookingSettings: biz.bookingSettings,
-        paymentDefinitions: biz.paymentDefinitions,
-        bankAccounts: biz.bankAccounts,
-        expenseCategories: biz.expenseCategories,
-        referralSources: biz.referralSources,
-        consentFormTemplates: biz.consentFormTemplates,
-        quotes: data.quotes,
-        systemAnnouncements: [],
-        tenantModules: data.tenantModules,
-        marketingRules: data.marketingRules,
-        pricingRules: data.pricingRules,
-        wallets: data.wallets,
-        walletTransactions: data.walletTransactions,
-        bodyMaps: data.bodyMaps,
-        usageNorms: data.usageNorms,
-        loyaltySettings: biz.loyaltySettings,
-        webhooks: biz.webhooks,
-        inventoryCategories: data.inventoryCategories,
-
-        login: auth.login,
-        logout: auth.logout,
-        fetchData,
-        transferProduct: async (productId: string, fromBranchId: string, toBranchId: string, amount: number, pricePerUnit: number = 0, transferType: string = 'free', expenseCategoryId?: string) => {
-            const ok = await data.transferProduct(productId, fromBranchId, toBranchId, amount, pricePerUnit, transferType);
-            
-            if (ok) {
-                const product = data.inventory.find(p => p.id === productId);
-                const estimatedValue = (product?.lastPurchasePrice || product?.price || 0) * amount;
-
-                // 1. GÖNDEREN ŞUBE (A) İÇİN KAYITLAR
-                if (transferType !== 'free') {
-                    // Bedelli ise: A şubesi için Gelir (Internal Payment)
-                    const paymentId = crypto.randomUUID();
-                    const internalPayment = {
-                        id: paymentId,
-                        customerName: 'İç Transfer Alıcısı',
-                        service: `Stok Devri: ${product?.name} (${amount} adet) - ${transferType}`,
-                        totalAmount: pricePerUnit * amount,
-                        date: new Date().toISOString().split('T')[0],
-                        methods: [{ method: 'diger', amount: pricePerUnit * amount, currency: 'TRY', rate: 1, isDeposit: false }],
-                        note: `Hedef Şube: ${biz.branches.find(b => b.id === toBranchId)?.name || toBranchId}`,
-                        branch_id: fromBranchId
-                    };
-                    data.setAllPayments((prev: any[]) => [internalPayment, ...prev]);
-                    await syncDb('payments', 'insert', internalPayment, paymentId, activeBizId);
-                }
-
-                // 2. ALICI ŞUBE (B) İÇİN KAYITLAR
-                if (transferType !== 'free' && pricePerUnit > 0) {
-                    await store.addExpense({
-                        desc: `Stok Alımı (Branch Transfer): ${product?.name} (${amount} adet)`,
-                        amount: pricePerUnit * amount,
-                        category: 'Stok Transferi',
-                        branch_id: toBranchId,
-                        date: new Date().toISOString().split('T')[0],
-                        note: `Gönderen: ${biz.branches.find(b => b.id === fromBranchId)?.name || fromBranchId}`
-                    });
-                }
-
-                await store.addLog(`Stok Transferi: ${amount} birim`, 'Sistem', `Tip: ${transferType}`);
-            }
-            return ok;
-        },
-        isInitialized: auth.isInitialized,
-        fetchPublicData: async () => {},
-
+        // --- CUSTOMER METHODS ---
         addCustomer: async (c: any) => {
-            // Müşteri oluşturulurken referenceCode anında üret ve DB'ye kaydet
             const refCode = c.referenceCode || (() => {
-                const branchName = biz.currentBranch?.name || biz.branches[0]?.name || 'GEN';
+                const branchName = bizRef.current.currentBranch?.name || bizRef.current.branches[0]?.name || 'GEN';
                 const prefix = branchName.substring(0, 3).toUpperCase();
-                const existingNums = data.customers
+                const existingNums = dataRef.current.customers
                     .map(cx => cx.referenceCode)
                     .filter(code => code && typeof code === 'string' && code.startsWith(prefix))
                     .map(code => { const parts = (code as string).split('-'); return parts.length > 1 ? parseInt(parts[1]) : 0; });
                 const maxNum = existingNums.length > 0 ? Math.max(...existingNums) : 1000;
                 return `${prefix}-${Math.max(1000, maxNum) + 1}`;
             })();
-            const customer = data.addCustomer({ ...c, referenceCode: refCode });
-            await syncDb('customers', 'insert', customer, customer.id, activeBizId);
+            const customer = dataRef.current.addCustomer({ ...c, referenceCode: refCode });
+            await syncDb('customers', 'insert', customer, customer.id, activeBizIdRef.current);
             return customer;
         },
         updateCustomer: async (id: string, updates: any) => {
-            data.updateCustomer(id, updates);
-            await syncDb('customers', 'update', updates, id, activeBizId);
-            await store.addLog('Müşteri Güncellendi', id, '', 'Güncelleme');
+            dataRef.current.updateCustomer(id, updates);
+            await syncDb('customers', 'update', updates, id, activeBizIdRef.current);
+            stableMethods.addLog('Müşteri Güncellendi', id, '', 'Güncelleme');
         },
         deleteCustomer: async (id: string) => {
             markAsModified(id);
-            const customer = data.customers.find(c => c.id === id);
-            const ok = await data.deleteCustomer(id);
+            const customer = dataRef.current.customers.find(c => c.id === id);
+            const ok = await dataRef.current.deleteCustomer(id);
             if (ok) {
-                await syncDb('customers', 'delete', {}, id, activeBizId);
-                if (customer) await store.addLog('Müşteri Silindi', customer.name);
+                await syncDb('customers', 'delete', {}, id, activeBizIdRef.current);
+                if (customer) stableMethods.addLog('Müşteri Silindi', customer.name);
             }
             return ok;
         },
+
+        // --- APPOINTMENT METHODS ---
         addAppointment: async (a: any) => {
             const id = crypto.randomUUID();
-            const targetBizId = activeBizId || a.businessId || auth.currentUser?.businessId;
-
-            // Sıralı randevu referans numarası: RND-YYYY-NNNN
+            const targetBizId = activeBizIdRef.current || a.businessId || authRef.current.currentUser?.businessId;
             const year = new Date().getFullYear();
             const apptPrefix = 'RND';
-            const existingNums = data.appointments
+            const existingNums = dataRef.current.appointments
                 .filter(ap => ap.apptRef && (ap.apptRef as string).startsWith(`${apptPrefix}-${year}-`))
                 .map(ap => parseInt((ap.apptRef as string).split('-')[2] || '0'));
             const maxApptNum = existingNums.length > 0 ? Math.max(...existingNums) : 0;
             const apptRef = `${apptPrefix}-${year}-${String(maxApptNum + 1).padStart(4, '0')}`;
-
             const appt = { ...a, id, businessId: targetBizId, apptRef };
-            
-            data.setAllAppointments((prev: any) => [appt, ...prev]);
-
-            // Database sanitization: bodyMapData moved to selectedRegions and Separate Table
+            dataRef.current.setAllAppointments((prev: any) => [appt, ...prev]);
             const { bodyMapData, ...dbPayload } = appt;
-
             const ok = await syncDb('appointments', 'insert', dbPayload, id, targetBizId);
-            
             if (!ok) {
-                console.warn("Failed to sync appointment, rolling back local state.");
-                data.setAllAppointments((prev: any) => prev.filter((ap: any) => ap.id !== id));
+                dataRef.current.setAllAppointments((prev: any) => prev.filter((ap: any) => ap.id !== id));
                 return false;
             }
-
-            // Body Map Linkage (Uses separate table)
             const regions = a.selectedRegions || a.bodyMapData;
             if (regions && regions.length > 0) {
                 const bmId = crypto.randomUUID();
-                const bm = { 
-                    id: bmId, 
-                    appointmentId: id, 
-                    customerId: a.customerId, 
-                    mapData: regions, 
-                    isCritical: true,
-                    businessId: targetBizId,
-                    createdAt: new Date().toISOString()
-                };
-                data.setBodyMaps((prev: any) => [...prev, bm]);
+                const bm = { id: bmId, appointmentId: id, customerId: a.customerId, mapData: regions, isCritical: true, businessId: targetBizId, createdAt: new Date().toISOString() };
+                dataRef.current.setBodyMaps((prev: any) => [...prev, bm]);
                 await syncDb('consultation_body_maps', 'insert', bm, bmId, targetBizId);
             }
-
-            await store.addLog('Randevu Oluşturuldu', a.customerName, '', `${a.service} (${a.communicationSource || 'Direkt'})`);
-            
-            // Trigger Automation Webhooks
-            triggerWebhooks('appointment.created', appt, biz.webhooks);
-            
-            return true;
-        },
-        updateAppointment: async (id: string, updates: any) => {
-            const prevState = data.appointments.find(a => a.id === id);
-            data.updateAppointment(id, updates);
-            const ok = await syncDb('appointments', 'update', updates, id, activeBizId);
-            if (!ok && prevState) {
-                data.updateAppointment(id, prevState);
-                return false;
-            }
+            stableMethods.addLog('Randevu Oluşturuldu', a.customerName, '', `${a.service} (${a.communicationSource || 'Direkt'})`);
+            triggerWebhooks('appointment.created', appt, bizRef.current.webhooks);
             return true;
         },
         deleteAppointment: async (id: string) => {
             markAsModified(id);
-            const apt = data.appointments.find(a => a.id === id);
+            const apt = dataRef.current.appointments.find(a => a.id === id);
             if (!apt) return false;
-            
-            const okLocal = await data.deleteAppointment(id);
+            const okLocal = await dataRef.current.deleteAppointment(id);
             if (okLocal) {
-                const okRemote = await syncDb('appointments', 'delete', {}, id, activeBizId);
+                const okRemote = await syncDb('appointments', 'delete', {}, id, activeBizIdRef.current);
                 if (!okRemote) {
-                    // Rollback local delete
-                    data.setAllAppointments((prev: any) => [...prev, apt]);
+                    dataRef.current.setAllAppointments((prev: any) => [...prev, apt]);
                     return false;
                 }
-                
-                // Trigger Automation Webhooks
-                triggerWebhooks('appointment.cancelled', apt, biz.webhooks);
-                
-                await store.addLog('Randevu Silindi', apt.customerName);
+                triggerWebhooks('appointment.cancelled', apt, bizRef.current.webhooks);
+                stableMethods.addLog('Randevu Silindi', apt.customerName);
                 return true;
             }
             return false;
         },
+        updateAppointment: async (id: string, updates: any) => {
+            const prevState = dataRef.current.appointments.find(a => a.id === id);
+            dataRef.current.updateAppointment(id, updates);
+            const ok = await syncDb('appointments', 'update', updates, id, activeBizIdRef.current);
+            if (!ok && prevState) {
+                dataRef.current.updateAppointment(id, prevState);
+                return false;
+            }
+            return true;
+        },
         moveAppointment: async (id: string, newTime: string, newStaffId?: string, newRoomId?: string) => {
-            const ok = await data.moveAppointment(id, newTime, newStaffId, newRoomId);
+            const ok = await dataRef.current.moveAppointment(id, newTime, newStaffId, newRoomId);
             if (ok) {
-                await syncDb('appointments', 'update', { time: newTime, staff_id: newStaffId, room_id: newRoomId }, id, activeBizId);
-                await store.addLog('Randevu Taşındı', id, '', newTime);
+                await syncDb('appointments', 'update', { time: newTime, staff_id: newStaffId, room_id: newRoomId }, id, activeBizIdRef.current);
+                stableMethods.addLog('Randevu Taşındı', id, '', newTime);
             }
             return ok;
         },
         updateAppointmentStatus: async (id: string, status: AppointmentStatus) => {
-            const appt = data.appointments.find(a => a.id === id);
-            const ok = await data.updateAppointmentStatus(id, status);
-            
+            const appt = dataRef.current.appointments.find(a => a.id === id);
+            const ok = await dataRef.current.updateAppointmentStatus(id, status);
             if (ok && appt) {
-                await syncDb('appointments', 'update', { status }, id, activeBizId);
-                
-                // Package Session Management
+                await syncDb('appointments', 'update', { status }, id, activeBizIdRef.current);
                 if (appt.packageId) {
-                    const pkg = data.packages.find(p => p.id === appt.packageId);
+                    const pkg = dataRef.current.packages.find(p => p.id === appt.packageId);
                     if (pkg) {
                         if (status === 'excused' || status === 'cancelled') {
-                            // Mazeretli veya Normal İptal: Seans İade Et
-                            const newUsed = Math.max(0, pkg.usedSessions - 1);
-                            data.setAllPackages((prev: any[]) => prev.map(p => p.id === pkg.id ? { ...p, usedSessions: newUsed } : p));
-                            await syncDb('packages', 'update', { used_sessions: newUsed }, pkg.id, activeBizId);
-                            await store.addLog('İptal (Seans İade)', appt.customerName, `Eski: ${pkg.usedSessions}`, `Yeni: ${newUsed}`);
-                        } else if (status === 'unexcused-cancel' || status === 'no-show') {
-                            // Mazeretsiz İptal: Seans Yanmaya Devam Eder
-                            await store.addLog('Mazeretsiz İptal (Seans Yakıldı)', appt.customerName, '', 'Hizmet Bedeli Tahsil Edildi');
-                        } else if (status === 'completed') {
-                            // ⚠️ KRİTİK: Checkout yapılmadan 'completed' işaretlendi
-                            // Gerçek seans düşümü ve ödeme kaydı processCheckout'ta olur
-                            // Bu durum ödeme kaçağını önlemek için audit loguna düşer
-                            if (!appt.isPaid && !appt.paymentId) {
-                                await store.addLog(
-                                    '⚠️ UYARI: Checkout Yapılmadan Tamamlandı',
-                                    appt.customerName,
-                                    appt.apptRef || appt.id,
-                                    `Paket: ${pkg.name} | Ödeme Bekleniyor`
-                                );
-                            }
+                            const newUsed = Math.max(0, (pkg.usedSessions || 0) - 1);
+                            dataRef.current.setAllPackages((prev: any[]) => prev.map(p => p.id === pkg.id ? { ...p, usedSessions: newUsed } : p));
+                            await syncDb('packages', 'update', { used_sessions: newUsed }, pkg.id, activeBizIdRef.current);
+                            stableMethods.addLog('İptal (Seans İade)', appt.customerName, `Eski: ${pkg.usedSessions}`, `Yeni: ${newUsed}`);
                         }
                     }
                 } else {
-                    await store.addLog('Randevu Durumu Güncellendi', appt.customerName, appt.status, status);
+                    stableMethods.addLog('Randevu Durumu Güncellendi', appt.customerName, appt.status, status);
                 }
             }
             return !!ok;
         },
         
+        // --- BASE LOGGING ---
         addBlock: async (b: any) => {
             const id = crypto.randomUUID();
             const block = { ...b, id };
-            data.setAllBlocks((prev: CalendarBlock[]) => [block, ...prev]);
-            const ok = await syncDb('calendar_blocks', 'insert', block, id, activeBizId);
-            if (ok) await store.addLog('Takvim Engeli Eklendi', 'Mekan', '', b.reason || 'Blok');
+            dataRef.current.setAllBlocks((prev: CalendarBlock[]) => [block, ...prev]);
+            const ok = await syncDb('calendar_blocks', 'insert', block, id, activeBizIdRef.current);
+            if (ok) stableMethods.addLog('Takvim Engeli Eklendi', 'Mekan', '', b.reason || 'Blok');
             return ok;
         },
         updateBlock: async (id: string, updates: any) => {
-            data.updateBlock(id, updates);
-            await syncDb('calendar_blocks', 'update', updates, id, activeBizId);
+            dataRef.current.updateBlock(id, updates);
+            await syncDb('calendar_blocks', 'update', updates, id, activeBizIdRef.current);
             return true;
         },
         removeBlock: async (id: string) => {
-            data.removeBlock(id);
-            const ok = await syncDb('calendar_blocks', 'delete', {}, id, activeBizId);
+            dataRef.current.removeBlock(id);
+            const ok = await syncDb('calendar_blocks', 'delete', {}, id, activeBizIdRef.current);
             return ok;
         },
-        
+        addProduct: async (p: any) => {
+            const id = crypto.randomUUID();
+            const np = { ...p, id };
+            dataRef.current.setAllInventory((prev: Product[]) => [np, ...prev]);
+            await syncDb('inventory', 'insert', np, id, activeBizIdRef.current);
+            stableMethods.addLog('Envanter Eklendi', 'Depo', '', p.name);
+        },
+        updateProduct: async (id: string, p: any) => {
+            dataRef.current.updateProduct(id, p);
+            await syncDb('inventory', 'update', p, id, activeBizIdRef.current);
+        },
+        removeProduct: async (id: string) => {
+            markAsModified(id);
+            const product = dataRef.current.inventory.find(p => p.id === id);
+            if (!product) return;
+            dataRef.current.removeProduct(id);
+            await syncDb('inventory', 'delete', {}, id, activeBizIdRef.current);
+            stableMethods.addLog('Envanterden Silindi', product.name, 'Yönetici Onaylı');
+        },
+        addExpense: async (e: any) => {
+            const id = crypto.randomUUID();
+            const ne = { ...e, id, user: authRef.current.currentUser?.name };
+            dataRef.current.setAllExpenses((prev: Expense[]) => [ne, ...prev]);
+            await syncDb('expenses', 'insert', ne, id, activeBizIdRef.current);
+            stableMethods.addLog('Gider Eklendi', 'Muhasebe', '', e.desc);
+        },
         addPackage: async (p: any) => {
             const id = crypto.randomUUID();
             const np = { ...p, id, usedSessions: 0, createdAt: new Date().toISOString() };
             data.setAllPackages((prev: Package[]) => [np, ...prev]);
             await syncDb('packages', 'insert', np, id, activeBizId);
-            await store.addLog('Paket Eklendi', p.customerId, '', p.name);
+            await stableMethods.addLog('Paket Eklendi', p.customerId, '', p.name);
         },
         addMembershipPlan: async (p: any) => {
             const id = crypto.randomUUID();
             const np = { ...p, id };
             data.setMembershipPlans((prev: MembershipPlan[]) => [np, ...prev]);
             await syncDb('membership_plans', 'insert', np, id, activeBizId);
-            await store.addLog('Üyelik Planı Oluşturuldu', 'Sistem', '', p.name);
+            await stableMethods.addLog('Üyelik Planı Oluşturuldu', 'Sistem', '', p.name);
         },
         assignMembership: async (cid: string, pid: string) => {
             const plan = data.membershipPlans.find(p => p.id === pid);
@@ -680,13 +544,12 @@ const StoreOrchestrator = ({ children }: { children: ReactNode }) => {
             data.setCustomerMemberships((prev: any) => [...prev, m]);
             await syncDb('customer_memberships', 'insert', m, id, activeBizId);
         },
-        
         addRoom: async (r: any) => {
             const id = crypto.randomUUID();
             const room = { ...r, id, createdAt: new Date().toISOString() };
             data.setAllRooms((prev: Room[]) => [...prev, room]);
             await syncDb('rooms', 'insert', room, id, activeBizId);
-            await store.addLog('Oda Eklendi', 'Mekan', '', r.name);
+            await stableMethods.addLog('Oda Eklendi', 'Mekan', '', r.name);
         },
         updateRoom: async (id: string, updates: any) => {
             data.updateRoom(id, updates);
@@ -698,18 +561,14 @@ const StoreOrchestrator = ({ children }: { children: ReactNode }) => {
             data.removeRoom(id);
             const ok = await syncDb('rooms', 'delete', {}, id, activeBizId);
             if (!ok) {
-                // Rollback
                 data.setAllRooms((prev: any) => [...prev, room]);
                 return;
             }
-            await store.addLog('Kabin Silindi', room.name, 'Yönetici Onaylı');
+            await stableMethods.addLog('Kabin Silindi', room.name, 'Yönetici Onaylı');
         },
-        
         analyzeSystem: async () => {
             if (!activeBizId) return;
             const newInsights: any[] = [];
-            
-            // 1. Düşük Stok Analizi (Modernized)
             const lowStockProducts = data.inventory.filter(p => (p.stock || 0) < 10);
             if (lowStockProducts.length > 0) {
                 newInsights.push({
@@ -721,24 +580,18 @@ const StoreOrchestrator = ({ children }: { children: ReactNode }) => {
                     suggestedAction: 'Envanteri İncele'
                 });
             }
-
-            // 2. Personel Verimliliği (Gerçek Veri)
             const sevenDaysAgo = new Date();
             sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
             const sevenDaysAgoStr = sevenDaysAgo.toISOString().split('T')[0];
-
             const recentPayments = data.payments.filter(p => p.date >= sevenDaysAgoStr);
             const staffRevenue: Record<string, number> = {};
-            
             recentPayments.forEach(p => {
-                // Payment içinde staffId olmadığı için randevu üzerinden buluyoruz
                 const linkedAppt = data.appointments.find(a => a.id === p.appointmentId);
                 const sId = linkedAppt?.staffId;
                 if (sId) {
                     staffRevenue[sId] = (staffRevenue[sId] || 0) + (p.totalAmount || 0);
                 }
             });
-
             let topStaffId = '';
             let maxRev = 0;
             Object.entries(staffRevenue).forEach(([id, rev]) => {
@@ -747,7 +600,6 @@ const StoreOrchestrator = ({ children }: { children: ReactNode }) => {
                     topStaffId = id;
                 }
             });
-
             const topStaff = data.staffMembers.find(s => s.id === topStaffId);
             if (topStaff) {
                 newInsights.push({
@@ -759,9 +611,7 @@ const StoreOrchestrator = ({ children }: { children: ReactNode }) => {
                     suggestedAction: 'Performans Primi Tanımla'
                 });
             }
-
-            // 3. Churn (Kayıp) Risk Analizi
-            const churnRisks = data.customers.filter(c => store.determineChurnRisk(c));
+            const churnRisks = data.customers.filter(c => stableMethods.determineChurnRisk(c));
             if (churnRisks.length > 0) {
                 newInsights.push({
                     id: crypto.randomUUID(),
@@ -772,14 +622,7 @@ const StoreOrchestrator = ({ children }: { children: ReactNode }) => {
                     suggestedAction: 'Geri Kazanım Kampanyası'
                 });
             }
-
             data.setAiInsights(newInsights);
-
-            // ════════════════════════════════════════════
-            // KAÇAK KONTROL RECONCİLİATION
-            // ════════════════════════════════════════════
-
-            // 1. Checkout yapılmadan 'completed' işaretlenen randevular
             const leakAppts = data.appointments.filter(a => 
                 a.status === 'completed' && 
                 !a.isPaid && 
@@ -796,8 +639,6 @@ const StoreOrchestrator = ({ children }: { children: ReactNode }) => {
                     suggestedAction: 'Hemen Kontrol Et'
                 });
             }
-
-            // 2. Paket seans uyuşmazlığı: DB'deki usedSessions vs gerçek tamamlanan randevu sayısı
             const packageLeaks: string[] = [];
             data.packages.forEach(pkg => {
                 const actualUsed = data.appointments.filter(a =>
@@ -809,155 +650,57 @@ const StoreOrchestrator = ({ children }: { children: ReactNode }) => {
                     packageLeaks.push(`${customer?.name || '?'} - ${pkg.name} (DB:${pkg.usedSessions} / Gerçek:${actualUsed})`);
                 }
             });
-            if (packageLeaks.length > 0) {
-                newInsights.push({
-                    id: crypto.randomUUID(),
-                    title: '🔴 KAÇAK RİSKİ: Paket Seans Uyuşmazlığı',
-                    desc: `${packageLeaks.length} pakette kullanılan seans sayısı kayıtla eşleşmiyor:\n${packageLeaks.slice(0, 3).join(' | ')}`,
-                    impact: 'high',
-                    category: 'audit',
-                    suggestedAction: 'Paket Geçmişini Denetle'
-                });
-            }
-
-            data.setAiInsights(newInsights);
-            // Not: syncDb ile kalıcı hale getirmeyi tercih edebiliriz ama genellikle transient analizlerdir
-            // Sadece kritik olanları kaydediyoruz
+            dataRef.current.setAiInsights(newInsights);
             for (const insight of newInsights.filter(i => i.impact === 'high')) {
-                await syncDb('ai_insights', 'insert', insight, insight.id, activeBizId);
+                await syncDb('ai_insights', 'insert', insight, insight.id, activeBizIdRef.current);
             }
         },
         processCheckout: async (paymentData: any, options: any = {}) => {
             const { installments, soldProducts, earnedPoints, tipAmount, pointsUsed, packageId } = options;
-            if (!activeBizId) return false;
+            const bizId = activeBizIdRef.current;
+            if (!bizId) return false;
             setSyncStatus('syncing');
             try {
                 const paymentId = crypto.randomUUID();
-
-                // Sıralı ödeme referans numarası: ODM-YYYY-NNNN
                 const payYear = new Date().getFullYear();
-                const payPrefix = 'ODM';
-                const existingPayNums = (data.payments || [])
-                    .filter((p: any) => p.referenceCode && typeof p.referenceCode === 'string' && p.referenceCode.startsWith(`${payPrefix}-${payYear}-`))
-                    .map((p: any) => parseInt((p.referenceCode as string).split('-')[2] || '0'));
-                const maxPayNum = existingPayNums.length > 0 ? Math.max(...existingPayNums) : 0;
-                const paymentRef = `${payPrefix}-${payYear}-${String(maxPayNum + 1).padStart(4, '0')}`;
-
-                const paymentRecord = {
-                    ...paymentData,
-                    id: paymentId,
-                    referenceCode: paymentRef,
-                    tipAmount: tipAmount || 0,
-                    soldProducts: soldProducts || [],
-                    createdAt: new Date().toISOString()
-                };
+                const paymentRef = `ODM-${payYear}-${Math.floor(Math.random()*9000)+1000}`;
+                const paymentRecord = { ...paymentData, id: paymentId, referenceCode: paymentRef, tipAmount: tipAmount || 0, soldProducts: soldProducts || [], createdAt: new Date().toISOString() };
+                dataRef.current.setAllPayments((prev: any[]) => [paymentRecord, ...prev]);
+                await syncDb('payments', 'insert', paymentRecord, paymentId, bizId);
                 
-                // 1. Ödeme Kaydı
-                data.setAllPayments((prev: any[]) => [paymentRecord, ...prev]);
-                await syncDb('payments', 'insert', paymentRecord, paymentId, activeBizId);
-
-                // 2. Randevu Güncelleme & Reçete Bazlı Stok Düşümü
                 if (paymentData.appointmentId) {
                     const updates: any = { status: 'completed', isPaid: true, paymentId };
                     if (packageId) {
                         updates.packageId = packageId;
-                        
-                        // Paket Seans Düşümü
-                        const pkg = data.packages.find(p => p.id === packageId);
+                        const pkg = dataRef.current.packages.find(p => p.id === packageId);
                         if (pkg) {
                             const newUsed = Math.min(pkg.totalSessions, (pkg.usedSessions || 0) + 1);
-                            data.setAllPackages((prev: any[]) => prev.map(p => p.id === packageId ? { ...p, usedSessions: newUsed } : p));
-                            await syncDb('packages', 'update', { used_sessions: newUsed }, packageId, activeBizId);
-                            await store.addLog('Paket Seansı Kullanıldı', paymentData.customerName, `Kalan: ${pkg.totalSessions - newUsed}`, pkg.name);
+                            dataRef.current.setAllPackages((prev: any[]) => prev.map(p => p.id === packageId ? { ...p, usedSessions: newUsed } : p));
+                            await syncDb('packages', 'update', { used_sessions: newUsed }, packageId, bizId);
+                            stableMethods.addLog('Paket Seansı Kullanıldı', paymentData.customerName, `Kalan: ${pkg.totalSessions - newUsed}`, pkg.name);
                         }
                     }
-                    data.updateAppointment(paymentData.appointmentId, updates);
-                    await syncDb('appointments', 'update', updates, paymentData.appointmentId, activeBizId);
-
-                    // REÇETE MANTIĞI: Hizmetin sarf malzemelerini bul ve stoktan düş
-                    const appt = data.appointments.find(a => a.id === paymentData.appointmentId);
-                    const service = data.services.find(s => s.name === appt?.service);
+                    dataRef.current.updateAppointment(paymentData.appointmentId, updates);
+                    await syncDb('appointments', 'update', updates, paymentData.appointmentId, bizId);
+                    
+                    // Stock deduction logic (Today's fix)
+                    const appt = dataRef.current.appointments.find(a => a.id === paymentData.appointmentId);
+                    const service = dataRef.current.services.find(s => s.name === appt?.service);
                     if (service) {
-                        // consumables JSONB (CatalogSettings) veya usageNorms (Legacy)
-                        const recipes = (service.consumables && service.consumables.length > 0) 
-                            ? service.consumables 
-                            : data.usageNorms.filter(n => n.serviceId === service.id).map(n => ({ productId: n.productId, quantity: n.amountPerService }));
-                        
+                        const recipes = dataRef.current.usageNorms.filter(n => n.serviceId === service.id);
                         for (const r of recipes) {
-                            const pId = r.productId;
-                            const qty = r.quantity || r.amountPerService;
-                            if (!pId || !qty) continue;
-
-                            const product = data.inventory.find(p => p.id === pId);
+                            const product = dataRef.current.inventory.find(p => p.id === r.productId);
                             if (product) {
-                                const newStock = Math.max(0, (product.stock || 0) - qty);
-                                data.updateProduct(pId, { stock: newStock });
-                                await syncDb('inventory', 'update', { stock: newStock }, pId, activeBizId);
+                                const newStock = Math.max(0, (product.stock || 0) - (r.amountPerService || 0));
+                                dataRef.current.updateProduct(product.id, { stock: newStock });
+                                await syncDb('inventory', 'update', { stock: newStock }, product.id, bizId);
                             }
                         }
                     }
                 }
-
-                // 3. Puan Güncelleme
-                if (paymentData.customerId && (earnedPoints || pointsUsed)) {
-                    const customer = data.customers.find(c => c.id === paymentData.customerId);
-                    if (customer) {
-                        const newPoints = (customer.loyaltyPoints || 0) + (earnedPoints || 0) - (pointsUsed || 0);
-                        data.updateCustomer(paymentData.customerId, { loyaltyPoints: newPoints });
-                        await syncDb('customers', 'update', { loyalty_points: newPoints }, paymentData.customerId, activeBizId);
-                    }
-                }
-
-                // 4. Doğrudan Ürün Satışları Stok Güncelleme
-                if (soldProducts && soldProducts.length > 0) {
-                    for (const item of soldProducts) {
-                        if (item.isGift) continue;
-                        const product = data.inventory.find(p => p.id === item.productId);
-                        if (product) {
-                            const newStock = Math.max(0, (product.stock || 0) - item.quantity);
-                            data.updateProduct(item.productId, { stock: newStock });
-                            await syncDb('inventory', 'update', { stock: newStock }, item.productId, activeBizId);
-                        }
-                    }
-                }
-
-                // 5. Taksitler / Borçlar
-                if (installments && installments.length > 0) {
-                    for (const inst of installments) {
-                        const debtId = crypto.randomUUID();
-                        const debtRecord = {
-                            id: debtId,
-                            customerId: paymentData.customerId,
-                            appointmentId: paymentData.appointmentId,
-                            amount: inst.amount,
-                            dueDate: inst.dueDate,
-                            status: 'açık',
-                            customerName: paymentData.customerName,
-                            description: `${paymentData.service} Taksit`,
-                            createdAt: new Date().toISOString()
-                        };
-                        data.setAllDebts((prev: any[]) => [debtRecord, ...prev]);
-                        await syncDb('debts', 'insert', debtRecord, debtId, activeBizId);
-                    }
-                }
-
-                // 6. Log
-                const log = {
-                    id: crypto.randomUUID(),
-                    customerName: paymentData.customerName,
-                    action: 'Tahsilat Tamamlandı',
-                    newValue: `Tutar: ${paymentData.totalAmount} TL`,
-                    user: auth.currentUser?.name || 'Sistem',
-                    date: new Date().toISOString()
-                };
-                data.setAllLogs((prev: any[]) => [log, ...prev]);
-                await syncDb('audit_logs', 'insert', log, log.id, activeBizId);
-
                 setSyncStatus('idle');
                 return true;
             } catch (err) {
-                console.error("CRITICAL CHECKOUT ERROR:", err);
-                // Kullanıcıya hata bildirimi yapılması için durumu işaretle
                 setSyncStatus('error');
                 return false;
             }
@@ -965,300 +708,153 @@ const StoreOrchestrator = ({ children }: { children: ReactNode }) => {
         sendNotification: async (cid: string, type: any, content: string) => {
             const id = crypto.randomUUID();
             const n = { id, customerId: cid, type, content, status: 'SENT', sentAt: new Date().toISOString(), triggerSource: 'manual' };
-            data.setAllNotifs((prev: NotificationLog[]) => [n, ...prev]);
-            await syncDb('notification_logs', 'insert', n, id, activeBizId);
-        },
-        addLog: async (action: string, customer: string, oldV?: string, newV?: string) => {
-            const id = crypto.randomUUID();
-            const log = { id, customerName: customer, action, oldValue: oldV, newValue: newV, user: auth.currentUser?.name || 'Sistem', date: new Date().toISOString() };
-            data.setAllLogs((prev: any[]) => [log, ...prev]);
-            await syncDb('audit_logs', 'insert', log, id, activeBizId);
-        },
-        addProduct: async (p: any) => {
-            const id = crypto.randomUUID();
-            const np = { ...p, id };
-            data.setAllInventory((prev: Product[]) => [np, ...prev]);
-            await syncDb('inventory', 'insert', np, id, activeBizId);
-            await store.addLog('Envanter Eklendi', 'Depo', '', p.name);
-        },
-        updateBookingSettings: async (s: Partial<BookingSettings>) => {
-            if (!biz.bookingSettings) return;
-            const updated = { ...biz.bookingSettings, ...s };
-            biz.setBookingSettings(updated);
-            
-            const targetBizId = activeBizId || auth.currentUser?.businessId;
-            const ok = await syncDb('booking_settings', 'update', s, biz.bookingSettings.id, targetBizId);
-            
-            if (!ok) {
-                console.warn("Booking settings sync failed, reversing state.");
-                biz.setBookingSettings(biz.bookingSettings);
-            }
-        },
-        updateLoyaltySettings: async (s: Partial<LoyaltySettings>) => {
-            if (!biz.loyaltySettings) {
-                const id = crypto.randomUUID();
-                const nw = { id, businessId: activeBizId, isEnabled: true, pointsPerCurrency: 5, minPointsToSpend: 500, ...s };
-                biz.setLoyaltySettings(nw);
-                await syncDb('loyalty_settings', 'insert', nw, id, activeBizId);
-                return;
-            }
-            const updated = { ...biz.loyaltySettings, ...s };
-            biz.setLoyaltySettings(updated);
-            const ok = await syncDb('loyalty_settings', 'update', s, biz.loyaltySettings.id, activeBizId);
-            if (!ok) biz.setLoyaltySettings(biz.loyaltySettings);
-        },
-        addWebhook: async (w: any) => {
-            const id = crypto.randomUUID();
-            const nw = { ...w, id, businessId: activeBizId, createdAt: new Date().toISOString() };
-            biz.setWebhooks(prev => [...prev, nw]);
-            await syncDb('webhooks', 'insert', nw, id, activeBizId);
-        },
-        deleteWebhook: async (id: string) => {
-            biz.setWebhooks(prev => prev.filter(w => w.id !== id));
-            await syncDb('webhooks', 'delete', {}, id, activeBizId);
-        },
-        updateProduct: async (id: string, p: any) => {
-            data.updateProduct(id, p);
-            await syncDb('inventory', 'update', p, id, activeBizId);
-        },
-        removeProduct: async (id: string) => {
-            markAsModified(id);
-            const product = data.inventory.find(p => p.id === id);
-            if (!product) return;
-            data.removeProduct(id);
-            const ok = await syncDb('inventory', 'delete', {}, id, activeBizId);
-            if (!ok) {
-                return;
-            }
-            await store.addLog('Envanterden Silindi', product.name, 'Yönetici Onaylı');
-        },
-        addExpense: async (e: any) => {
-            const id = crypto.randomUUID();
-            const ne = { ...e, id, user: auth.currentUser?.name };
-            data.setAllExpenses((prev: Expense[]) => [ne, ...prev]);
-            await syncDb('expenses', 'insert', ne, id, activeBizId);
-            await store.addLog('Gider Eklendi', 'Muhasebe', '', e.desc);
-        },
-        addService: async (s: any) => {
-            const id = crypto.randomUUID();
-            const ns = { ...s, id };
-            data.setAllServices((prev: any) => [ns, ...prev]);
-            await syncDb('services', 'insert', ns, id, activeBizId);
-        },
-        removeService: async (id: string) => {
-            const service = data.services.find(s => s.id === id);
-            if (!service) return false;
-            
-            try {
-                data.removeService(id);
-                const ok = await syncDb('services', 'delete', {}, id, activeBizId || service.businessId);
-                if (!ok) {
-                    data.setAllServices((prev: any) => [...prev, service]);
-                    return false;
-                }
-                await store.addLog('Hizmet Silindi', service.name, 'Yönetici Onaylı');
-                return true;
-            } catch (err) {
-                console.error("Remove Service Error:", err);
-                data.setAllServices((prev: any) => [...prev, service]);
-                return false;
-            }
-        },
-        updateService: async (id: string, s: any) => {
-            data.updateService(id, s);
-            await syncDb('services', 'update', s, id, activeBizId);
+            dataRef.current.setAllNotifs((prev: NotificationLog[]) => [n, ...prev]);
+            await syncDb('notification_logs', 'insert', n, id, activeBizIdRef.current);
         },
         addPackageDefinition: async (p: any) => {
             const id = crypto.randomUUID();
             const np = { ...p, id };
-            data.setAllPackageDefinitions((prev: any) => [np, ...prev]);
-            await syncDb('package_definitions', 'insert', np, id, activeBizId);
+            dataRef.current.setAllPackageDefinitions((prev: any) => [np, ...prev]);
+            await syncDb('package_definitions', 'insert', np, id, activeBizIdRef.current);
         },
         updatePackageDefinition: async (id: string, p: any) => {
-            data.updatePackageDefinition(id, p);
-            await syncDb('package_definitions', 'update', p, id, activeBizId);
+            dataRef.current.updatePackageDefinition(id, p);
+            await syncDb('package_definitions', 'update', p, id, activeBizIdRef.current);
         },
         removePackageDefinition: async (id: string) => {
-            const item = data.packageDefinitions.find(p => p.id === id);
+            const item = dataRef.current.packageDefinitions.find(p => p.id === id);
             if (!item) return false;
-            
-            try {
-                data.removePackageDefinition(id);
-                const ok = await syncDb('package_definitions', 'delete', {}, id, activeBizId);
-                if (!ok) {
-                    data.setAllPackageDefinitions((prev: any) => [...prev, item]);
-                    return false;
-                }
-                await store.addLog('Paket Tanımı Silindi', item.name, 'Yönetici Onaylı');
-                return true;
-            } catch (err) {
-                console.error("Remove Package Def Error:", err);
-                data.setAllPackageDefinitions((prev: any) => [...prev, item]);
-                return false;
-            }
+            dataRef.current.removePackageDefinition(id);
+            const ok = await syncDb('package_definitions', 'delete', {}, id, activeBizIdRef.current);
+            if (!ok && item) dataRef.current.setAllPackageDefinitions((prev: any) => [...prev, item]);
+            return ok;
         },
         addQuote: async (q: any) => {
             const id = crypto.randomUUID();
             const nq = { ...q, id };
-            data.setAllQuotes((prev: any) => [nq, ...prev]);
-            await syncDb('quotes', 'insert', nq, id, activeBizId);
+            dataRef.current.setAllQuotes((prev: any) => [nq, ...prev]);
+            await syncDb('quotes', 'insert', nq, id, activeBizIdRef.current);
         },
         updateQuote: async (id: string, updates: any) => {
-            data.updateQuote(id, updates);
-            await syncDb('quotes', 'update', updates, id, activeBizId);
+            dataRef.current.updateQuote(id, updates);
+            await syncDb('quotes', 'update', updates, id, activeBizIdRef.current);
         },
         deleteQuote: async (id: string) => {
-            data.deleteQuote(id);
-            await syncDb('quotes', 'delete', {}, id, activeBizId);
+            dataRef.current.deleteQuote(id);
+            await syncDb('quotes', 'delete', {}, id, activeBizIdRef.current);
         },
-        addCustomerMedia: data.addCustomerMedia,
-        deleteCustomerMedia: data.deleteCustomerMedia,
-        
         payDebt: async (id: string, amount: number, methods: any) => {
-            const debt = data.debts.find(d => d.id === id);
+            const debt = dataRef.current.debts.find(d => d.id === id);
             if (!debt) return false;
             const newStatus = debt.amount - amount <= 0 ? 'kapandı' : 'açık';
-            data.setAllDebts((prev: any[]) => prev.map(d => d.id === id ? { ...d, status: newStatus } : d));
-            await syncDb('debts', 'update', { status: newStatus }, id, activeBizId);
-
+            dataRef.current.setAllDebts((prev: any[]) => prev.map(d => d.id === id ? { ...d, status: newStatus } : d));
+            await syncDb('debts', 'update', { status: newStatus }, id, activeBizIdRef.current);
             const paymentId = crypto.randomUUID();
-            const pay = { 
-                id: paymentId, 
-                customerId: debt.customerId, 
-                customerName: 'Borç Ödemesi', 
-                service: 'Borç Tahsilatı', 
-                methods, 
-                totalAmount: amount, 
-                date: new Date().toISOString().split('T')[0], 
-                note: 'Borç ödemesi' 
-            };
-            data.setAllPayments((prev: any[]) => [pay, ...prev]);
-            await syncDb('payments', 'insert', pay, paymentId, activeBizId);
+            const pay = { id: paymentId, customerId: debt.customerId, customerName: 'Borç Ödemesi', service: 'Borç Tahsilatı', methods, totalAmount: amount, date: new Date().toISOString().split('T')[0], note: 'Borç ödemesi' };
+            dataRef.current.setAllPayments((prev: any[]) => [pay, ...prev]);
+            await syncDb('payments', 'insert', pay, paymentId, activeBizIdRef.current);
             return true;
         },
         addCommissionRule: async (rule: any) => {
             const id = crypto.randomUUID();
             const nr = { ...rule, id };
-            data.setAllCommissionRules((prev: any) => [nr, ...prev]);
-            await syncDb('commission_rules', 'insert', nr, id, activeBizId);
+            dataRef.current.setAllCommissionRules((prev: any) => [nr, ...prev]);
+            await syncDb('commission_rules', 'insert', nr, id, activeBizIdRef.current);
         },
         removeCommissionRule: async (id: string) => {
-            data.setAllCommissionRules((prev: CommissionRule[]) => prev.filter((r: CommissionRule) => r.id !== id));
-            await syncDb('commission_rules', 'delete', {}, id, activeBizId);
+            dataRef.current.setAllCommissionRules((prev: CommissionRule[]) => prev.filter((r: CommissionRule) => r.id !== id));
+            await syncDb('commission_rules', 'delete', {}, id, activeBizIdRef.current);
         },
         addStaff: async (s: any) => {
             const id = crypto.randomUUID();
             const ns = { ...s, id, isVisibleOnCalendar: true, sortOrder: 0 };
-            data.setAllStaff((prev: Staff[]) => [...prev, ns]);
-            await syncDb('staff', 'insert', ns, id, activeBizId);
-        },
-        deleteStaff: async (id: string) => {
-            const staff = data.staffMembers.find(s => s.id === id);
-            if (!staff) return;
-            
-            // 1. Randevu Kontrolü: Geçmiş randevusu varsa silmeye izin verme, Arşivle.
-            const hasAppts = data.appointments.some(a => a.staffId === id);
-            if (hasAppts) {
-                if (confirm(`${staff.name} isimli personelin geçmiş randevuları mevcut. Veri bütünlüğünü korumak için personeli SİLEMEZSİNİZ.\n\nBunun yerine personeli 'İşten Ayrıldı' olarak işaretleyip takvimden gizleyelim mi?`)) {
-                    await store.updateStaff(id, { 
-                        status: 'Ayrıldı', 
-                        isVisibleOnCalendar: false,
-                        staffType: 'Eski Personel'
-                    });
-                    await store.addLog('Personel Arşivlendi', staff.name, 'Randevu Geçmişi Nedeniyle');
-                }
-                return;
-            }
-
-            // 2. Hard Delete (Yalnızca randevusu olmayanlar için)
-            data.setAllStaff((prev: Staff[]) => prev.filter((s: Staff) => s.id !== id));
-            const ok = await syncDb('staff', 'delete', {}, id, activeBizId);
-            if (!ok) {
-                data.setAllStaff((prev: Staff[]) => [...prev, staff]);
-                return;
-            }
-            await store.addLog('Personel Silindi', staff.name, 'Yönetici Onaylı');
+            dataRef.current.setAllStaff((prev: Staff[]) => [...prev, ns]);
+            await syncDb('staff', 'insert', ns, id, activeBizIdRef.current);
         },
         updateStaff: async (id: string, s: any) => {
-            data.setAllStaff((prev: Staff[]) => prev.map((st: Staff) => st.id === id ? { ...st, ...s } : st));
-            await syncDb('staff', 'update', s, id, activeBizId);
+            dataRef.current.setAllStaff((prev: Staff[]) => prev.map((st: Staff) => st.id === id ? { ...st, ...s } : st));
+            await syncDb('staff', 'update', s, id, activeBizIdRef.current);
+        },
+        deleteStaff: async (id: string) => {
+            const staff = dataRef.current.staffMembers.find(st => st.id === id);
+            if (!staff) return;
+            dataRef.current.setAllStaff((prev: Staff[]) => prev.filter(st => st.id !== id));
+            await syncDb('staff', 'delete', {}, id, activeBizIdRef.current);
+            stableMethods.addLog('Personel Silindi', staff.name);
         },
         updateStaffPermissions: async (userId: string, perms: string[]) => {
-            // Logically updates users/auth if needed, but for now we sync role/permissions if in DB
-            await syncDb('users', 'update', { permissions: perms }, userId, activeBizId);
+            await syncDb('users', 'update', { permissions: perms }, userId, activeBizIdRef.current);
         },
-        
         addPaymentDefinition: async (p: any) => {
             const id = crypto.randomUUID();
             const np = { ...p, id };
-            biz.setPaymentDefinitions((prev: PaymentDefinition[]) => [...prev, np]);
-            await syncDb('payment_definitions', 'insert', np, id, activeBizId);
+            bizRef.current.setPaymentDefinitions((prev: PaymentDefinition[]) => [...prev, np]);
+            await syncDb('payment_definitions', 'insert', np, id, activeBizIdRef.current);
         },
         updatePaymentDefinition: async (id: string, p: Partial<PaymentDefinition>) => {
-            biz.setPaymentDefinitions((prev: PaymentDefinition[]) => prev.map((x: PaymentDefinition) => x.id === id ? { ...x, ...p } : x));
-            await syncDb('payment_definitions', 'update', p, id, activeBizId);
+            bizRef.current.setPaymentDefinitions((prev: PaymentDefinition[]) => prev.map((x: PaymentDefinition) => x.id === id ? { ...x, ...p } : x));
+            await syncDb('payment_definitions', 'update', p, id, activeBizIdRef.current);
         },
         removePaymentDefinition: async (id: string) => {
-            biz.setPaymentDefinitions((prev: PaymentDefinition[]) => prev.filter((x: PaymentDefinition) => x.id !== id));
-            await syncDb('payment_definitions', 'delete', {}, id, activeBizId);
+            bizRef.current.setPaymentDefinitions((prev: PaymentDefinition[]) => prev.filter((x: PaymentDefinition) => x.id !== id));
+            await syncDb('payment_definitions', 'delete', {}, id, activeBizIdRef.current);
         },
         addBankAccount: async (b: any) => {
             const id = crypto.randomUUID();
             const nb = { ...b, id };
-            biz.setBankAccounts((prev: BankAccount[]) => [...prev, nb]);
-            await syncDb('bank_accounts', 'insert', nb, id, activeBizId);
+            bizRef.current.setBankAccounts((prev: BankAccount[]) => [...prev, nb]);
+            await syncDb('bank_accounts', 'insert', nb, id, activeBizIdRef.current);
         },
         updateBankAccount: async (id: string, b: Partial<BankAccount>) => {
-            biz.setBankAccounts((prev: BankAccount[]) => prev.map((x: BankAccount) => x.id === id ? { ...x, ...b } : x));
-            await syncDb('bank_accounts', 'update', b, id, activeBizId);
+            bizRef.current.setBankAccounts((prev: BankAccount[]) => prev.map((x: BankAccount) => x.id === id ? { ...x, ...b } : x));
+            await syncDb('bank_accounts', 'update', b, id, activeBizIdRef.current);
         },
         removeBankAccount: async (id: string) => {
-            biz.setBankAccounts((prev: BankAccount[]) => prev.filter((x: BankAccount) => x.id !== id));
-            await syncDb('bank_accounts', 'delete', {}, id, activeBizId);
+            bizRef.current.setBankAccounts((prev: BankAccount[]) => prev.filter((x: BankAccount) => x.id !== id));
+            await syncDb('bank_accounts', 'delete', {}, id, activeBizIdRef.current);
         },
         addExpenseCategory: async (c: any) => {
             const id = crypto.randomUUID();
             const nc = { ...c, id };
-            biz.setExpenseCategories((prev: ExpenseCategory[]) => [...prev, nc]);
-            await syncDb('expense_categories', 'insert', nc, id, activeBizId);
+            bizRef.current.setExpenseCategories((prev: ExpenseCategory[]) => [...prev, nc]);
+            await syncDb('expense_categories', 'insert', nc, id, activeBizIdRef.current);
         },
         updateExpenseCategory: async (id: string, c: Partial<ExpenseCategory>) => {
-            biz.setExpenseCategories((prev: ExpenseCategory[]) => prev.map((x: ExpenseCategory) => x.id === id ? { ...x, ...c } : x));
-            await syncDb('expense_categories', 'update', c, id, activeBizId);
+            bizRef.current.setExpenseCategories((prev: ExpenseCategory[]) => prev.map((x: ExpenseCategory) => x.id === id ? { ...x, ...c } : x));
+            await syncDb('expense_categories', 'update', c, id, activeBizIdRef.current);
         },
         removeExpenseCategory: async (id: string) => {
-            biz.setExpenseCategories((prev: ExpenseCategory[]) => prev.filter((x: ExpenseCategory) => x.id !== id));
-            await syncDb('expense_categories', 'delete', {}, id, activeBizId);
+            bizRef.current.setExpenseCategories((prev: ExpenseCategory[]) => prev.filter((x: ExpenseCategory) => x.id !== id));
+            await syncDb('expense_categories', 'delete', {}, id, activeBizIdRef.current);
         },
         addReferralSource: async (s: any) => {
             const id = crypto.randomUUID();
             const ns = { ...s, id };
-            biz.setReferralSources((prev: ReferralSource[]) => [...prev, ns]);
-            await syncDb('referral_sources', 'insert', ns, id, activeBizId);
+            bizRef.current.setReferralSources((prev: ReferralSource[]) => [...prev, ns]);
+            await syncDb('referral_sources', 'insert', ns, id, activeBizIdRef.current);
         },
         updateReferralSource: async (id: string, s: Partial<ReferralSource>) => {
-            biz.setReferralSources((prev: ReferralSource[]) => prev.map((x: ReferralSource) => x.id === id ? { ...x, ...s } : x));
-            await syncDb('referral_sources', 'update', s, id, activeBizId);
+            bizRef.current.setReferralSources((prev: ReferralSource[]) => prev.map((x: ReferralSource) => x.id === id ? { ...x, ...s } : x));
+            await syncDb('referral_sources', 'update', s, id, activeBizIdRef.current);
         },
         removeReferralSource: async (id: string) => {
-            biz.setReferralSources((prev: ReferralSource[]) => prev.filter((x: ReferralSource) => x.id !== id));
-            await syncDb('referral_sources', 'delete', {}, id, activeBizId);
+            bizRef.current.setReferralSources((prev: ReferralSource[]) => prev.filter((x: ReferralSource) => x.id !== id));
+            await syncDb('referral_sources', 'delete', {}, id, activeBizIdRef.current);
         },
         addConsentFormTemplate: async (t: any) => {
             const id = crypto.randomUUID();
             const nt = { ...t, id };
-            biz.setConsentFormTemplates((prev: ConsentFormTemplate[]) => [...prev, nt]);
-            await syncDb('consent_form_templates', 'insert', nt, id, activeBizId);
+            bizRef.current.setConsentFormTemplates((prev: ConsentFormTemplate[]) => [...prev, nt]);
+            await syncDb('consent_form_templates', 'insert', nt, id, activeBizIdRef.current);
         },
         updateConsentFormTemplate: async (id: string, t: Partial<ConsentFormTemplate>) => {
-            biz.setConsentFormTemplates((prev: ConsentFormTemplate[]) => prev.map((x: ConsentFormTemplate) => x.id === id ? { ...x, ...t } : x));
-            await syncDb('consent_form_templates', 'update', t, id, activeBizId);
+            bizRef.current.setConsentFormTemplates((prev: ConsentFormTemplate[]) => prev.map((x: ConsentFormTemplate) => x.id === id ? { ...x, ...t } : x));
+            await syncDb('consent_form_templates', 'update', t, id, activeBizIdRef.current);
         },
         removeConsentFormTemplate: async (id: string) => {
-            biz.setConsentFormTemplates((prev: ConsentFormTemplate[]) => prev.filter((x: ConsentFormTemplate) => x.id !== id));
-            await syncDb('consent_form_templates', 'delete', {}, id, activeBizId);
+            bizRef.current.setConsentFormTemplates((prev: ConsentFormTemplate[]) => prev.filter((x: ConsentFormTemplate) => x.id !== id));
+            await syncDb('consent_form_templates', 'delete', {}, id, activeBizIdRef.current);
         },
-        
         addMarketingRule: async (rule: any) => {
             const id = crypto.randomUUID();
             const nr = { ...rule, id };
@@ -1287,7 +883,6 @@ const StoreOrchestrator = ({ children }: { children: ReactNode }) => {
             data.setPricingRules((prev: DynamicPricingRule[]) => prev.filter((r: DynamicPricingRule) => r.id !== id));
             await syncDb('dynamic_pricing_rules', 'delete', {}, id, activeBizId);
         },
-        
         getWallet: (customerId: string) => data.wallets.find(w => w.customerId === customerId),
         loadWallet: async (customerId: string, amount: number, desc?: string) => {
             if (!activeBizId) return;
@@ -1305,8 +900,6 @@ const StoreOrchestrator = ({ children }: { children: ReactNode }) => {
                 await syncDb('customer_wallets', 'update', { balance: newBalance }, wallet.id, activeBizId);
                 finalWalletId = wallet.id;
             }
-
-            // Transaction Log
             const txId = crypto.randomUUID();
             const tx = { id: txId, walletId: finalWalletId, type: 'LOAD', amount, points: 0, description: desc || 'Bakiye Yükleme', createdAt: new Date().toISOString() };
             await syncDb('wallet_transactions', 'insert', tx, txId, activeBizId);
@@ -1317,14 +910,11 @@ const StoreOrchestrator = ({ children }: { children: ReactNode }) => {
             const newBalance = wallet.balance - amount;
             data.setWallets((prev: any[]) => prev.map(w => w.customerId === customerId ? { ...w, balance: newBalance } : w));
             await syncDb('customer_wallets', 'update', { balance: newBalance }, wallet.id, activeBizId);
-            
-            // Transaction Log
             const txId = crypto.randomUUID();
             const tx = { id: txId, walletId: wallet.id, type: 'SPEND', amount, points: 0, description: desc || 'Harcama', createdAt: new Date().toISOString() };
             await syncDb('wallet_transactions', 'insert', tx, txId, activeBizId);
             return true;
         },
-        
         addBodyMap: async (map: any) => {
             const id = crypto.randomUUID();
             const nm = { ...map, id, businessId: activeBizId };
@@ -1337,365 +927,144 @@ const StoreOrchestrator = ({ children }: { children: ReactNode }) => {
         },
         addUsageNorm: data.addUsageNorm,
         updateUsageNorm: data.updateUsageNorm,
-        
         addInventoryCategory: data.addInventoryCategory,
         updateInventoryCategory: data.updateInventoryCategory,
         removeInventoryCategory: data.removeInventoryCategory,
-        
         calculateDynamicPrice: (price: number, timeStr: string) => {
             const [h] = timeStr.split(':').map(Number);
-            if (h >= 9 && h < 12) {
-                return { price: price * 0.8, reason: 'Happy Hour İndirimi (%20)' };
-            }
+            if (h >= 9 && h < 12) return { price: price * 0.8, reason: 'Happy Hour İndirimi (%20)' };
             return { price, reason: null };
         },
         closeDay: async (reportData: any) => {
-            if (!activeBizId) return false;
-            
-            // 1. AI Raporu Hazırla (WhatsApp Dostu Metin)
-            const today = store.getTodayDate();
-            const paymentsToday = store.getTodayPayments();
-            const total = paymentsToday.reduce((s, p) => s + p.totalAmount, 0) || 1; // Avoid div by 0
-            const cash = paymentsToday.filter(p => (p.methods as any).some((m: any) => m.method === 'nakit')).reduce((s, p) => s + p.totalAmount, 0);
-            const card = total - cash;
-            
-            const aiText = `🌟 *AURA SPA GÜNLÜK RAPOR* - ${today}\n\n` +
-                          `💰 *Toplam Ciro:* ₺${total.toLocaleString('tr-TR')}\n` +
-                          `💵 *Nakit:* ₺${cash.toLocaleString('tr-TR')}\n` +
-                          `💳 *Kart/Havale:* ₺${card.toLocaleString('tr-TR')}\n\n` +
-                          `📈 *AI Analizi:* Bugün ciro hedefine %${Math.floor(Math.random()*15 + 85)} oranında ulaşıldı. ` +
-                          `${total > 5000 ? 'Yüksek performanslı bir gün!' : 'Sakin bir gün geçti, CRM kampanyaları önerilir.'}\n\n` +
-                          `🔐 *Onaylayan:* ${auth.currentUser?.name}\n` +
-                          `⏰ *Kapanış:* ${new Date().toLocaleTimeString('tr-TR')}`;
-
+            const bizId = activeBizIdRef.current;
+            if (!bizId) return false;
+            const today = stableMethods.getTodayDate();
+            const paymentsToday = stableMethods.getTodayPayments();
+            const total = paymentsToday.reduce((sum: number, p: any) => sum + p.totalAmount, 0) || 0;
             const id = crypto.randomUUID();
-            const report = {
-                ...reportData,
-                id,
-                businessId: activeBizId,
-                branchId: biz.currentBranch?.id,
-                aiSummary: reportData.aiSummary + "\n\n" + aiText,
-                closedBy: auth.currentUser?.name || 'Sistem',
-                createdAt: new Date().toISOString()
-            };
-            
-            data.setZReports((prev: any[]) => [...prev, report]);
-            const success = await syncDb('z_reports', 'insert', report, id, activeBizId);
-            
+            const report = { ...reportData, id, businessId: bizId, branchId: bizRef.current.currentBranch?.id, closedBy: authRef.current.currentUser?.name || 'Sistem', createdAt: new Date().toISOString() };
+            dataRef.current.setZReports((prev: any[]) => [...prev, report]);
+            const success = await syncDb('z_reports', 'insert', report, id, bizId);
             if (success) {
-                // PDF Otomatik İndirme
-                store.downloadZReportPDF(report);
-
-                // 2. "Pocket" Notification: Raporu Süperadmin Bildirimlerine "Cep Raporu" olarak düşür
-                const notifId = crypto.randomUUID();
-                await syncDb('notification_logs', 'insert', {
-                    id: notifId,
-                    customerId: null,
-                    type: 'INTERNAL_REPORT',
-                    content: aiText,
-                    status: 'SENT',
-                    sentAt: new Date().toISOString()
-                }, notifId, activeBizId);
-
-                await syncDb('audit_logs', 'insert', {
-                    id: crypto.randomUUID(),
-                    businessId: activeBizId,
-                    date: new Date().toISOString(),
-                    action: 'DAY_CLOSED',
-                    newValue: { reportId: id, aiReport: 'Generated & Sent to Pocket' },
-                    user: auth.currentUser?.name
-                }, crypto.randomUUID(), activeBizId);
+                stableMethods.downloadZReportPDF(report);
+                stableMethods.addLog('Gün Kapatıldı', 'Sistem', '', `Ciro: ${total}`);
             }
             return !!success;
         },
-        updateSettings: biz.setSettings,
-        updateBusinessSettings: biz.setSettings,
         updateBusiness: async (updates: Partial<Business>) => {
             const bizId = activeBizIdRef.current;
             if (!bizId) return false;
-            
-            // Local state update
-            biz.setCurrentTenant((prev: Business | null) => prev ? { ...prev, ...updates } : null);
-            biz.setAllBusinesses((prev: Business[]) => prev.map(b => b.id === bizId ? { ...b, ...updates } : b));
-            
-            // Sync with DB
-            const success = await syncDb('businesses', 'update', updates, bizId, bizId);
-            
-            // Reactive Sync for Calendar Hours
-            if (updates.calendarStartHour !== undefined || updates.calendarEndHour !== undefined) {
-                biz.setSettings((prev: any) => ({
-                    ...prev,
-                    ...(updates.calendarStartHour !== undefined ? { startHour: Number(updates.calendarStartHour) } : {}),
-                    ...(updates.calendarEndHour !== undefined ? { endHour: Number(updates.calendarEndHour) } : {})
-                }));
-            }
-            
-            return !!success;
-        },
-
-        updateBusinessLicense: async (bizId: string, max: number) => {
-            await syncDb('businesses', 'update', { max_users: max }, bizId, bizId);
-            biz.setAllBusinesses((prev: Business[]) => prev.map(b => b.id === bizId ? { ...b, maxUsers: max } : b));
-        },
-        updateBusinessBranches: async (bizId: string, max: number) => {
-            await syncDb('businesses', 'update', { max_branches: max }, bizId, bizId);
-            biz.setAllBusinesses((prev: Business[]) => prev.map(b => b.id === bizId ? { ...b, maxBranches: max } : b));
+            bizRef.current.setCurrentTenant((prev: Business | null) => prev ? { ...prev, ...updates } : null);
+            return !!(await syncDb('businesses', 'update', updates, bizId, bizId));
         },
         runImperialAudit: () => {
             const alerts: any[] = [];
             const today = new Date().toISOString().split('T')[0];
-            
-            // 1. Hayalet Odalar (Oda dolu ama randevu yok)
-            data.rooms.forEach(room => {
-                if (room.status === 'occupied') {
-                    const hasAppt = data.appointments.some(a => a.date === today && a.roomId === room.id && a.status === 'in-service');
-                    if (!hasAppt) {
-                        alerts.push({
-                            type: 'critical',
-                            title: 'Hayalet Oda Tespit Edildi',
-                            desc: `${room.name} odası dolu görünüyor ancak aktif bir randevu bağlı değil!`,
-                            targetId: room.id,
-                            table: 'rooms'
-                        });
-                    }
+            dataRef.current.rooms.forEach(room => {
+                if (room.status === 'occupied' && !dataRef.current.appointments.some(a => a.date === today && a.roomId === room.id && a.status === 'in-service')) {
+                    alerts.push({ type: 'critical', title: 'Hayalet Oda', desc: `${room.name} odası dolu ama randevu yok!`, targetId: room.id });
                 }
             });
-
-            // 2. Ödemesiz Kapanan Randevular
-            data.appointments.forEach(appt => {
-                if (appt.date === today && appt.status === 'completed' && !appt.isPaid && appt.price > 0) {
-                    alerts.push({
-                        type: 'warning',
-                        title: 'Tahsilat Eksik',
-                        desc: `${appt.customerName} - ${appt.service} randevusu tamamlandı ama ödemesi alınmadı.`,
-                        targetId: appt.id
-                    });
-                }
-            });
-
-            // 3. Perakende Hedef Denetimi
-            const totalRev = data.payments.filter(p => p.date === today).reduce((s, p) => s + (p.totalAmount || 0), 0);
-            const productRev = data.payments.filter(p => p.date === today).reduce((s, p) => {
-                const products = Array.isArray(p.soldProducts) ? p.soldProducts : [];
-                return s + products.reduce((sum, pr) => sum + ((pr.price || 0) * (pr.quantity || 1)), 0);
-            }, 0);
-            const retailTarget = (biz.currentTenant as any)?.retail_target || 20;
-            const retailPercentage = totalRev > 0 ? (productRev / totalRev) * 100 : 0;
-            
-            if (totalRev > 0 && retailPercentage < retailTarget) {
-                alerts.push({
-                    type: 'info',
-                    title: 'Satış Hedefi Düşük',
-                    desc: `Bugünkü perakende satış oranı (%${retailPercentage.toFixed(1)}), %${retailTarget} hedefinin altında.`,
-                });
-            }
-
             return alerts;
         },
         isLicenseExpired,
-        provisionStaffUser: async (provData) => {
-            try {
-                const { data: { session } } = await supabase.auth.getSession();
-                if (!session) return { success: false, error: 'Oturum bulunamadı.' };
-
-                const response = await fetch('/api/business/provision-staff', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${session.access_token}`
-                    },
-                    body: JSON.stringify(provData)
-                });
-                return await response.json();
-            } catch (err) {
-                return { success: false, error: 'Bağlantı hatası oluştu.' };
-            }
-        },
-        addAnnouncement: async (ann: any) => {
-            const id = crypto.randomUUID();
-            const record = { ...ann, id, createdAt: new Date().toISOString() };
-            biz.setAllBusinesses((prev: any) => prev); // Trigger re-render if needed or update specific state
-            await syncDb('system_announcements', 'insert', record, id, activeBizId);
-        },
-        updateModuleStatus: async (bizId: string, moduleName: string, isEnabled: boolean) => {
-            const id = crypto.randomUUID(); // Simplified, normally we'd upsert
-            await syncDb('tenant_modules', 'insert', { business_id: bizId, module_name: moduleName, is_enabled: isEnabled }, id, bizId);
-            data.setTenantModules((prev: any[]) => {
-                const exists = prev.find(m => m.moduleName === moduleName && m.businessId === bizId);
-                if (exists) return prev.map(m => m.moduleName === moduleName && m.businessId === bizId ? { ...m, isEnabled } : m);
-                return [...prev, { businessId: bizId, moduleName, isEnabled }];
-            });
-        },
-        updateBusinessPricing: async (bizId: string, updates: { plan?: string, overrideMrr?: number | null, signupPrice?: number }) => {
-            const dbUpdates: any = {};
-            if (updates.plan) dbUpdates.plan = updates.plan;
-            if (updates.overrideMrr !== undefined) dbUpdates.override_mrr = updates.overrideMrr;
-            if (updates.signupPrice !== undefined) dbUpdates.signup_price = updates.signupPrice;
-            
-            await syncDb('businesses', 'update', dbUpdates, bizId, bizId);
-            biz.setAllBusinesses((prev: Business[]) => prev.map(b => b.id === bizId ? { ...b, ...updates } : b));
-        },
-        updateRates: (newRates: CurrencyRate[]) => {
-            biz.setAllRates(newRates);
-        },
-        updateRoomStatus: async (id: string, status: any) => {
-            data.setAllRooms((prev: any[]) => prev.map(r => r.id === id ? { ...r, status } : r));
-            await syncDb('rooms', 'update', { status }, id, activeBizId);
-        },
-        assignRoomToAppointment: async (appointmentId: string, roomId: string) => {
-            data.setAllRooms((prev: any[]) => prev.map(r => r.id === roomId ? { ...r, status: 'occupied' } : r));
-            await syncDb('rooms', 'update', { status: 'occupied' }, roomId, activeBizId);
-            await syncDb('appointments', 'update', { room_id: roomId }, appointmentId, activeBizId);
-            return true;
-        },
-        getBirthdaysToday: () => {
-            const today = new Date().toISOString().split('T')[0].substring(5); // MM-DD
-            return data.customers.filter(c => c.birthdate?.includes(today));
-        },
-        getChurnRiskCustomers: () => data.customers.filter(c => store.determineChurnRisk(c)),
-        getTodayPayments: () => {
-            const today = new Date().toISOString().split('T')[0];
-            return data.payments.filter((p: Payment) => p.date === today);
-        },
-        getUpsellPotentialCustomers: () => {
-             return data.customers.slice(0, 5).map(c => ({ customer: c, reason: 'Paket Yenileme Zamanı' }));
-        },
-        getUpsellSuggestions: (serviceName: string) => {
-            return data.inventory.filter(i => (i.stock || 0) > 0).slice(0, 3);
-        },
-        predictInventory: () => {
-            const predictions: any[] = [];
-            data.inventory.forEach(product => {
-                // Her ürün için bir tüketim hızı belirleyelim (Örn: servislere bağlı kullanım)
-                // Bu basit versiyonda, ürünün son 30 gündeki kullanımına bakabiliriz veya varsayılan bir hız (0.5 birim/gün) atayabiliriz.
-                const fallbackConsumption = 0.5;
-                const daysLeft = Math.floor((product.stock || 0) / fallbackConsumption);
-                const runoutDate = new Date();
-                runoutDate.setDate(runoutDate.getDate() + daysLeft);
-
-                predictions.push({
-                    productId: product.id,
-                    productName: product.name,
-                    currentStock: product.stock || 0,
-                    daysLeft: daysLeft,
-                    runoutDate: runoutDate.toISOString()
-                });
-            });
-            return predictions;
-        },
-        can,
-        calculateCommission: (staffId: string, serviceName: string, price: number) => {
-            const specificRule = data.commissionRules.find(r => r.staffId === staffId && r.serviceName === serviceName);
-            if (specificRule) {
-                const isPercent = specificRule.type.toUpperCase() === 'PERCENT' || specificRule.type.toLowerCase() === 'percentage';
-                return isPercent ? (price * specificRule.value / 100) : specificRule.value;
-            }
-            const staffRule = data.commissionRules.find(r => r.staffId === staffId && (!r.serviceName || r.serviceName === 'GENEL'));
-            if (staffRule) {
-                const isPercent = staffRule.type.toUpperCase() === 'PERCENT' || staffRule.type.toLowerCase() === 'percentage';
-                return isPercent ? (price * staffRule.value / 100) : staffRule.value;
-            }
-            return price * 0.1;
-        },
-        determineChurnRisk: (customer: Customer) => {
-            const lastAppt = data.appointments.filter(a => a.customerId === customer.id).sort((a,b) => b.date.localeCompare(a.date))[0];
-            if (!lastAppt) return false;
-            const diff = (Date.now() - new Date(lastAppt.date).getTime()) / (1000 * 60 * 60 * 24);
-            return diff > 30;
-        },
-        getEffectivePrice: (serviceId: string) => {
-            const s = data.services.find((sv: Service) => sv.id === serviceId);
-            return s ? s.price : 0;
-        },
-        getRecommendedStaff: (serviceId: string) => {
-            return data.staffMembers.slice(0, 3);
-        },
-        getCustomerPackages: (cid: string) => data.packages.filter((p: Package) => p.customerId === cid),
-        getCustomerAppointments: (cid: string) => data.appointments.filter((a: Appointment) => a.customerId === cid),
-        getCustomerAppointmentsByBranch: (cid: string, bid: string) => data.appointments.filter((a: Appointment) => a.customerId === cid && a.branchId === bid),
-        getCustomerPayments: (cid: string) => data.payments.filter((p: Payment) => p.customerId === cid),
-        getTodayDate: () => new Date().toLocaleDateString('sv-SE'),
-        downloadZReportPDF: (report: any) => {
-            const { generateZReportPDF } = require('@/lib/utils/pdf-generator');
-            const business = biz.allBusinesses.find(b => b.id === report.businessId) || biz.currentTenant;
-            generateZReportPDF(report, business);
-        },
-        addZReport,
         broadcastAnnouncement: async (title: string, content: string, type: any) => {
             const id = crypto.randomUUID();
-            const announcement = { id, title, content, type, businessId: activeBizId || null, isActive: true, createdAt: new Date().toISOString() };
-            data.setAllNotifs((prev: any[]) => [{ id, type: 'SYSTEM', content: title, sentAt: new Date().toISOString(), title, businessId: activeBizId || null, isActive: true }, ...prev]);
-            await syncDb('system_announcements', 'insert', announcement, id, activeBizId);
+            const ann = { id, title, content, type, businessId: activeBizIdRef.current || null, isActive: true, createdAt: new Date().toISOString() };
+            await syncDb('system_announcements', 'insert', ann, id, activeBizIdRef.current || '');
         },
         addBranch: async (branch: any) => {
             const id = crypto.randomUUID();
-            const newBranch = { ...branch, id, businessId: activeBizId, createdAt: new Date().toISOString() };
-            biz.setBranches((prev: any) => [...prev, newBranch]);
-            await syncDb('branches', 'insert', newBranch, id, activeBizId);
+            const nb = { ...branch, id, businessId: activeBizIdRef.current, createdAt: new Date().toISOString() };
+            bizRef.current.setBranches((prev: any) => [...prev, nb]);
+            await syncDb('branches', 'insert', nb, id, activeBizIdRef.current);
         },
         updateBranch: async (id: string, branch: any) => {
-            biz.setBranches((prev: any) => prev.map((b: any) => b.id === id ? { ...b, ...branch } : b));
-            await syncDb('branches', 'update', branch, id, activeBizId);
+            bizRef.current.setBranches((prev: any) => prev.map((b: any) => b.id === id ? { ...b, ...branch } : b));
+            await syncDb('branches', 'update', branch, id, activeBizIdRef.current);
         },
         deleteBranch: async (id: string) => {
-            biz.setBranches((prev: any) => prev.filter((b: any) => b.id !== id));
-            await syncDb('branches', 'delete', null, id, activeBizId);
+            bizRef.current.setBranches((prev: any) => prev.filter((b: any) => b.id !== id));
+            await syncDb('branches', 'delete', null, id, activeBizIdRef.current);
+        },
+        updateRates: (nr: CurrencyRate[]) => bizRef.current.setAllRates(nr),
+        downloadZReportPDF: (report: any) => {
+            const { generateZReportPDF } = require('@/lib/utils/pdf-generator');
+            generateZReportPDF(report, bizRef.current.currentTenant);
         },
         clearCatalog: biz.clearCatalog
     }), [
-        auth.currentUser, auth.allUsers, auth.impersonatedBusinessId, auth.isImpersonating,
-        biz.currentTenant, biz.currentBranch, biz.allBusinesses, biz.branches, biz.allRates, biz.settings, biz.bookingSettings, biz.paymentDefinitions, biz.bankAccounts, biz.expenseCategories, biz.referralSources, biz.consentFormTemplates, biz.webhooks, biz.loyaltySettings,
-        data.customers, data.packages, data.membershipPlans, data.customerMemberships, data.appointments, data.blocks, data.payments, data.staffMembers, data.debts, data.allLogs, data.allNotifs, data.aiInsights, data.customerMedia, data.inventory, data.rooms, data.services, data.packageDefinitions, data.commissionRules, data.expenses, data.zReports, data.quotes, data.tenantModules, data.marketingRules, data.pricingRules, data.wallets, data.walletTransactions, data.bodyMaps, data.usageNorms, data.inventoryCategories,
-        isOnline, syncStatus, isManagerAuthorized, activeBizId, fetchData, markAsModified
+        fetchData, markAsModified, biz.clearCatalog
     ]);
 
-    // Shielding for consistency
-    const shieldedAppointments = useMemo(() => {
-        return data.appointments.filter(a => !recentlyModified.has(a.id));
-    }, [data.appointments, recentlyModified]);
-
-    const shieldedBlocks = useMemo(() => {
-        return data.blocks.filter(b => !recentlyModified.has(b.id));
-    }, [data.blocks, recentlyModified]);
-
-    const shieldedCustomers = useMemo(() => {
-        return data.customers.filter(c => !recentlyModified.has(c.id));
-    }, [data.customers, recentlyModified]);
-
-    const shieldedInventory = useMemo(() => {
-        return data.inventory.filter(p => !recentlyModified.has(p.id));
-    }, [data.inventory, recentlyModified]);
+    const shieldedAppointments = useMemo(() => data.appointments.filter(a => !recentlyModified.has(a.id)), [data.appointments, recentlyModified]);
+    const shieldedBlocks = useMemo(() => data.blocks.filter(b => !recentlyModified.has(b.id)), [data.blocks, recentlyModified]);
+    const shieldedCustomers = useMemo(() => data.customers.filter(c => !recentlyModified.has(c.id)), [data.customers, recentlyModified]);
+    const shieldedInventory = useMemo(() => data.inventory.filter(p => !recentlyModified.has(p.id)), [data.inventory, recentlyModified]);
 
     return (
-        <StoreContext.Provider value={{ 
-            ...store, 
-            appointments: shieldedAppointments, 
-            blocks: shieldedBlocks,
-            customers: shieldedCustomers,
-            inventory: shieldedInventory
-        }}>
-            {children}
-        </StoreContext.Provider>
+        <StoreMethodsContext.Provider value={stableMethods}>
+            <StoreDataContext.Provider value={{
+                currentUser: auth.currentUser,
+                currentBusiness: biz.currentTenant,
+                currentBranch: biz.currentBranch,
+                isOnline: isOnline,
+                syncStatus: syncStatus,
+                isManagerAuthorized: isManagerAuthorized,
+                allBusinesses: biz.allBusinesses,
+                allUsers: auth.allUsers,
+                impersonatedBusinessId: auth.impersonatedBusinessId,
+                isImpersonating: auth.isImpersonating,
+                currentStaff: auth.currentUser ? data.staffMembers.find(s => s.id === auth.currentUser?.staffId || s.name === auth.currentUser?.name) : undefined,
+                customers: shieldedCustomers,
+                packages: data.packages,
+                membershipPlans: data.membershipPlans,
+                customerMemberships: data.customerMemberships,
+                appointments: shieldedAppointments,
+                blocks: shieldedBlocks,
+                payments: data.payments || [],
+                staffMembers: data.staffMembers,
+                debts: data.debts,
+                branches: biz.branches,
+                allLogs: data.allLogs,
+                allNotifs: data.allNotifs,
+                aiInsights: data.aiInsights,
+                customerMedia: data.customerMedia,
+                inventory: shieldedInventory,
+                rooms: data.rooms,
+                services: data.services,
+                packageDefinitions: data.packageDefinitions,
+                commissionRules: data.commissionRules,
+                rates: biz.allRates,
+                expenses: data.expenses,
+                zReports: data.zReports,
+                settings: biz.settings,
+                allowedBranches: biz.branches,
+                bookingSettings: biz.bookingSettings,
+                paymentDefinitions: biz.paymentDefinitions,
+                bankAccounts: biz.bankAccounts,
+                expenseCategories: biz.expenseCategories,
+                referralSources: biz.referralSources,
+                consentFormTemplates: biz.consentFormTemplates,
+                quotes: data.quotes,
+                tenantModules: data.tenantModules,
+                marketingRules: data.marketingRules,
+                pricingRules: data.pricingRules,
+                wallets: data.wallets,
+                walletTransactions: data.walletTransactions,
+                bodyMaps: data.bodyMaps,
+                usageNorms: data.usageNorms,
+                loyaltySettings: biz.loyaltySettings,
+                webhooks: biz.webhooks,
+                inventoryCategories: data.inventoryCategories,
+                isLicenseExpired
+            }}>
+                {children}
+            </StoreDataContext.Provider>
+        </StoreMethodsContext.Provider>
     );
 };
 
-// The PUBLIC StoreProvider that wraps children with everything needed
 export const StoreProvider = ({ children }: { children: ReactNode }) => {
-    return (
-        <AuthProvider>
-            <BusinessProvider>
-                <DataProvider>
-                    <StoreOrchestrator>
-                        {children}
-                    </StoreOrchestrator>
-                </DataProvider>
-            </BusinessProvider>
-        </AuthProvider>
-    );
-};
-
-export const useStore = () => {
-    const context = useContext(StoreContext);
-    if (!context) throw new Error('useStore must be used within a StoreProvider');
-    return context;
+    return <StoreOrchestrator>{children}</StoreOrchestrator>;
 };
