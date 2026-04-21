@@ -317,6 +317,26 @@ const StoreOrchestrator = ({ children }: { children: ReactNode }) => {
         return user.permissions?.includes(permission) || false;
     }, [auth.currentUser]);
 
+    const calculateCommission = React.useCallback((staffId: string, serviceName: string, amount: number) => {
+        const rules = data.commissionRules.filter(r => r.staffId === staffId);
+        const specificRule = rules.find(r => r.serviceName === serviceName);
+        const generalRule = rules.find(r => r.serviceName === 'Tümü');
+        const rule = specificRule || generalRule;
+        if (!rule) return 0;
+        return rule.type === 'percentage' ? (amount * rule.value) / 100 : rule.value;
+    }, [data.commissionRules]);
+
+    const determineChurnRisk = React.useCallback((customer: Customer) => {
+        return customer.isChurnRisk || false;
+    }, []);
+
+    const addLog = React.useCallback(async (type: string, target: string, source: string = 'Sistem', detail?: string) => {
+        const id = crypto.randomUUID();
+        const log = { id, type, target, source, detail, businessId: activeBizIdRef.current, createdAt: new Date().toISOString() };
+        data.setAllLogs((prev: any[]) => [log, ...prev]);
+        await syncDb('audit_logs', 'insert', log, id, activeBizIdRef.current);
+    }, [data.setAllLogs]);
+
     const addZReport = async (reportData: any) => {
         const ok = await syncDb('z_reports', 'insert', {
             ...reportData,
@@ -1116,9 +1136,14 @@ const StoreOrchestrator = ({ children }: { children: ReactNode }) => {
             packages: dataRef.current.packages.filter(p => p.customerId === cid),
             payments: dataRef.current.payments.filter(p => p.customerId === cid)
         }),
-        clearCatalog: biz.clearCatalog
+        clearCatalog: biz.clearCatalog,
+        can,
+        addLog,
+        addZReport,
+        calculateCommission,
+        determineChurnRisk
     }), [
-        fetchData, markAsModified, biz.clearCatalog
+        fetchData, markAsModified, biz.clearCatalog, can, addLog, addZReport, calculateCommission, determineChurnRisk
     ]);
 
     const shieldedAppointments = useMemo(() => data.appointments.filter(a => !recentlyModified.has(a.id)), [data.appointments, recentlyModified]);
@@ -1141,14 +1166,21 @@ const StoreOrchestrator = ({ children }: { children: ReactNode }) => {
                 isImpersonating: auth.isImpersonating,
                 currentStaff: auth.currentUser ? data.staffMembers.find(s => s.id === auth.currentUser?.staffId || s.name === auth.currentUser?.name) : undefined,
                 customers: shieldedCustomers,
+                allCustomers: shieldedCustomers,
                 packages: data.packages,
+                allPackages: data.packages,
                 membershipPlans: data.membershipPlans,
                 customerMemberships: data.customerMemberships,
                 appointments: shieldedAppointments,
+                allAppointments: shieldedAppointments,
                 blocks: shieldedBlocks,
+                allBlocks: shieldedBlocks,
                 payments: data.payments || [],
+                allPayments: data.payments || [],
                 staffMembers: data.staffMembers,
+                allStaff: data.staffMembers,
                 debts: data.debts,
+                allDebts: data.debts,
                 branches: biz.branches,
                 allLogs: data.allLogs,
                 allNotifs: data.allNotifs,
