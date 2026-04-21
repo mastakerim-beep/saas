@@ -113,6 +113,7 @@ export interface DataContextType {
     addInventoryCategory: (c: any) => Promise<void>;
     updateInventoryCategory: (id: string, updates: Partial<InventoryCategory>) => Promise<void>;
     removeInventoryCategory: (id: string, deleteProducts: boolean) => Promise<void>;
+    transferProduct: (productId: string, fromBranchId: string, toBranchId: string, amount: number, pricePerUnit?: number, transferType?: string) => Promise<boolean>;
 }
 
 const DataContext = createContext<DataContextType | null>(null);
@@ -353,6 +354,42 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
         syncDb('inventory_categories', 'delete', {}, id);
     }, [inventoryCategories]);
 
+    const transferProduct = useCallback(async (productId: string, fromBranchId: string, toBranchId: string, amount: number, pricePerUnit: number = 0, transferType: string = 'free') => {
+        const sourceProduct = inventory.find(p => p.id === productId);
+        if (!sourceProduct || (sourceProduct.stock || 0) < amount) return false;
+
+        // 1. Düşüş (Kaynak şube)
+        const newSourceStock = sourceProduct.stock - amount;
+        setAllInventory(prev => prev.map(p => p.id === productId ? { ...p, stock: newSourceStock } : p));
+        await syncDb('inventory', 'update', { stock: newSourceStock }, productId);
+
+        // 2. Artış (Hedef şube)
+        const targetProduct = inventory.find(p => p.name === sourceProduct.name && p.branchId === toBranchId);
+        if (targetProduct) {
+            const newTargetStock = (targetProduct.stock || 0) + amount;
+            setAllInventory(prev => prev.map(p => p.id === targetProduct.id ? { ...p, stock: newTargetStock } : p));
+            await syncDb('inventory', 'update', { stock: newTargetStock }, targetProduct.id);
+        } else {
+            const newId = crypto.randomUUID();
+            const newProd = { ...sourceProduct, id: newId, branchId: toBranchId, stock: amount, createdAt: new Date().toISOString() };
+            setAllInventory(prev => [...prev, newProd]);
+            await syncDb('inventory', 'insert', newProd, newId);
+        }
+
+        // 3. Geçmiş kaydı
+        await syncDb('inventory_transfers', 'insert', {
+            product_id: productId,
+            from_branch_id: fromBranchId,
+            to_branch_id: toBranchId,
+            quantity: amount,
+            price_per_unit: pricePerUnit,
+            transfer_type: transferType,
+            created_at: new Date().toISOString()
+        });
+
+        return true;
+    }, [inventory]);
+
     const contextValue: DataContextType = useMemo(() => ({
         appointments, blocks, customers, debts, inventory, rooms, services, packages,
         membershipPlans, customerMemberships, staffMembers, allLogs, allNotifs, aiInsights, expenses,
@@ -372,13 +409,14 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
         removePackageDefinition, addQuote, updateQuote, deleteQuote, addBodyMap, updateBodyMap,
         addUsageNorm, updateUsageNorm, updateRoom, removeRoom, addRoom,
         addInventoryCategory, updateInventoryCategory, removeInventoryCategory,
+        transferProduct,
         inventoryCategories
     }), [
         appointments, blocks, customers, debts, inventory, rooms, services, packages,
         membershipPlans, customerMemberships, staffMembers, allLogs, allNotifs, aiInsights, expenses,
         zReports, quotes, tenantModules, marketingRules, pricingRules, wallets,
         allPayments, walletTransactions, bodyMaps, usageNorms, customerMedia,
-        packageDefinitions, commissionRules, inventoryCategories
+        packageDefinitions, commissionRules, inventoryCategories, transferProduct
     ]);
 
     return <DataContext.Provider value={contextValue}>{children}</DataContext.Provider>;

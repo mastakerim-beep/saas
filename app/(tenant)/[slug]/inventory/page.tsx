@@ -5,7 +5,7 @@ import { useStore } from "@/lib/store";
 import { 
     Package, Sparkles, Trash2, Receipt, 
     AlertTriangle, TrendingUp, Calendar, Info, 
-    Settings2, ChevronRight, X, Plus, Beaker
+    Settings2, ChevronRight, X, Plus, Beaker, ArrowRightLeft
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import ExportDropdown from "@/components/ui/ExportDropdown";
@@ -16,7 +16,7 @@ export default function InventoryPage() {
     inventory, addProduct, predictInventory, 
     usageNorms, services, addUsageNorm, updateUsageNorm,
     inventoryCategories, addInventoryCategory, removeInventoryCategory,
-    updateProduct, removeProduct
+    updateProduct, removeProduct, branches, transferProduct, currentBranch
   } = useStore();
   const [aiInput, setAiInput] = useState('');
   const [selectedProduct, setSelectedProduct] = useState<any>(null);
@@ -27,6 +27,15 @@ export default function InventoryPage() {
   const [isEditingProduct, setIsEditingProduct] = useState(false);
   const [editProductData, setEditProductData] = useState<any>(null);
   const [showOnlyCritical, setShowOnlyCritical] = useState(false);
+  const [isTransferModalOpen, setIsTransferModalOpen] = useState(false);
+  const [transferData, setTransferData] = useState({ 
+    productId: '', 
+    fromBranchId: '', 
+    toBranchId: '', 
+    amount: 1,
+    pricePerUnit: 0,
+    transferType: 'free' as 'free' | 'cost' | 'profit'
+  });
 
   const handleAiInput = (e: React.FormEvent) => {
     e.preventDefault();
@@ -106,6 +115,21 @@ export default function InventoryPage() {
         updateProduct(editProductData.id, editProductData);
         setIsEditingProduct(false);
         setEditProductData(null);
+    }
+  };
+  
+  const handleTransfer = async () => {
+    if (!transferData.productId || !transferData.toBranchId) return;
+    const success = await transferProduct(
+      transferData.productId, 
+      transferData.fromBranchId, 
+      transferData.toBranchId, 
+      transferData.amount,
+      transferData.pricePerUnit,
+      transferData.transferType
+    );
+    if (success) {
+      setIsTransferModalOpen(false);
     }
   };
 
@@ -314,6 +338,23 @@ export default function InventoryPage() {
                   </td>
                   <td className="px-10 py-8 text-right">
                     <div className="flex justify-end gap-3 opacity-0 group-hover:opacity-100 transition-opacity">
+                       <button 
+                         onClick={() => {
+                            setTransferData({ 
+                              productId: item.id, 
+                              fromBranchId: item.branchId || currentBranch?.id || '', 
+                              toBranchId: '', 
+                              amount: 1,
+                              pricePerUnit: 0,
+                              transferType: 'free'
+                            });
+                            setIsTransferModalOpen(true);
+                         }}
+                         title="Transfer Et"
+                         className="p-3 bg-white border border-gray-100 rounded-2xl text-gray-400 hover:text-indigo-600 hover:border-indigo-100 shadow-sm transition-all"
+                      >
+                        <ArrowRightLeft className="w-5 h-5" />
+                      </button>
                       <button 
                          onClick={() => {
                             setSelectedProduct(item);
@@ -538,6 +579,110 @@ export default function InventoryPage() {
           </div>
         )}
       </AnimatePresence>
+
+      {/* Transfer Modal */}
+      <AnimatePresence>
+        {isTransferModalOpen && (
+          <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-6 text-left">
+            <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} className="bg-white rounded-[3.5rem] w-full max-w-xl overflow-hidden shadow-2xl">
+              <div className="p-10 border-b border-gray-50 flex justify-between items-center bg-[#FBFCFF]">
+                <h3 className="text-2xl font-black italic tracking-tighter uppercase italic text-gray-900">Ürün Transfer Et</h3>
+                <button onClick={() => setIsTransferModalOpen(false)} className="p-3 hover:bg-gray-100 rounded-2xl text-gray-400 transition-all"><X className="w-6 h-6" /></button>
+              </div>
+              <div className="p-10 space-y-6">
+                <div className="bg-amber-50 border border-amber-100 p-6 rounded-3xl flex gap-4">
+                    <Info className="text-amber-600 flex-shrink-0" />
+                    <p className="text-[10px] font-black text-amber-700 uppercase leading-relaxed tracking-widest italic">
+                        Şubeler arası transferlerde stok anında düşer ve hedef şubeye eklenir. Bu işlem mali raporlara "Şubeler Arası Mahsuplaşma" olarak yansır.
+                    </p>
+                </div>
+                <div>
+                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 block">HEDEF ŞUBE</label>
+                    <select 
+                      value={transferData.toBranchId} 
+                      onChange={e => setTransferData({...transferData, toBranchId: e.target.value})}
+                      className="w-full bg-gray-50 border border-gray-100 rounded-2xl px-6 py-4 font-black outline-none focus:border-indigo-600"
+                    >
+                        <option value="">Hedef Şube Seçiniz...</option>
+                        {branches.filter(b => b.id !== transferData.fromBranchId).map(b => (
+                            <option key={b.id} value={b.id}>{b.name}</option>
+                        ))}
+                    </select>
+                </div>
+                <div>
+                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-4 block">TRANSFER TİPİ</label>
+                    <div className="grid grid-cols-3 gap-3">
+                        {[
+                            { id: 'free', label: 'BEDELSİZ', icon: Sparkles },
+                            { id: 'cost', label: 'MALİYETİNE', icon: Receipt },
+                            { id: 'profit', label: 'KARLI', icon: TrendingUp }
+                        ].map(type => (
+                            <button
+                                key={type.id}
+                                onClick={() => {
+                                    const prod = inventory.find(p => p.id === transferData.productId);
+                                    const basePrice = prod?.price || 0;
+                                    setTransferData({
+                                        ...transferData, 
+                                        transferType: type.id as any,
+                                        pricePerUnit: type.id === 'free' ? 0 : (type.id === 'cost' ? basePrice : basePrice * 1.2)
+                                    });
+                                }}
+                                className={`p-4 rounded-2xl border-2 transition-all flex flex-col items-center gap-2 ${
+                                    transferData.transferType === type.id 
+                                    ? 'bg-indigo-600 border-indigo-600 text-white shadow-lg' 
+                                    : 'bg-white border-gray-100 text-gray-400 hover:bg-gray-50'
+                                }`}
+                            >
+                                <type.icon size={16} />
+                                <span className="text-[8px] font-black tracking-widest">{type.label}</span>
+                            </button>
+                        ))}
+                    </div>
+                </div>
+
+                {transferData.transferType !== 'free' && (
+                    <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }}>
+                        <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 block font-black">BİRİM TRANSFER FİYATI (₺)</label>
+                        <input 
+                            type="number" 
+                            value={transferData.pricePerUnit} 
+                            onChange={e => setTransferData({...transferData, pricePerUnit: Number(e.target.value)})}
+                            className="w-full bg-gray-50 border border-gray-100 rounded-2xl px-6 py-4 font-black outline-none focus:border-indigo-600"
+                        />
+                        <p className="text-[9px] font-bold text-indigo-600 uppercase mt-2 tracking-widest italic">
+                            TOPLAM TRANSFER BEDELİ: ₺{(transferData.pricePerUnit * transferData.amount).toLocaleString('tr-TR')}
+                        </p>
+                    </motion.div>
+                )}
+
+                <div>
+                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 block">MİKTAR</label>
+                    <input 
+                      type="number" 
+                      value={transferData.amount} 
+                      onChange={e => setTransferData({...transferData, amount: Number(e.target.value)})}
+                      className="w-full bg-gray-50 border border-gray-100 rounded-2xl px-6 py-4 font-black outline-none focus:border-indigo-600"
+                      min={1}
+                      max={inventory.find(p => p.id === transferData.productId)?.stock || 1}
+                    />
+                    <p className="text-[9px] font-bold text-gray-400 uppercase mt-2 tracking-widest italic">Mevcut Stok: {inventory.find(p => p.id === transferData.productId)?.stock || 0} Birim</p>
+                </div>
+              </div>
+              <div className="p-10 bg-gray-50 border-t border-gray-100 flex gap-4">
+                <button onClick={() => setIsTransferModalOpen(false)} className="flex-1 py-4 bg-white text-gray-400 rounded-2xl text-[10px] font-black uppercase tracking-widest border border-gray-100">İptal</button>
+                <button 
+                  onClick={handleTransfer}
+                  disabled={!transferData.toBranchId || transferData.amount <= 0}
+                  className="flex-1 py-4 bg-indigo-600 disabled:bg-gray-300 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-lg shadow-indigo-600/20"
+                >
+                    Transferi Tamamla
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
-  )
+  );
 }

@@ -173,7 +173,7 @@ export interface StoreState {
     isInitialized: boolean;
     fetchPublicData: (slug: string) => Promise<void>;
     closeDay: (data: Omit<ZReport, 'id' | 'businessId' | 'branchId' | 'closedBy' | 'createdAt'>) => Promise<boolean>;
-    addCustomer: (c: any) => Customer;
+    addCustomer: (c: any) => Promise<Customer>;
     updateCustomer: (id: string, updates: Partial<Customer>) => Promise<void>;
     addPackage: (p: any) => Promise<void>;
     addMembershipPlan: (p: any) => Promise<void>;
@@ -212,7 +212,7 @@ export interface StoreState {
     sendNotification: (customerId: string, type: NotificationLog['type'], content: string) => void;
     addLog: (action: string, customer: string, oldValue?: string, newValue?: string) => Promise<void>;
     addProduct: (p: any) => Promise<void>;
-    transferProduct: (productId: string, fromBranchId: string, toBranchId: string, amount: number) => Promise<boolean>;
+    transferProduct: (productId: string, fromBranchId: string, toBranchId: string, amount: number, pricePerUnit?: number, transferType?: string) => Promise<boolean>;
     addExpense: (e: any) => Promise<void>;
     addService: (s: any) => Promise<void>;
     updateService: (id: string, s: Partial<Service>) => void;

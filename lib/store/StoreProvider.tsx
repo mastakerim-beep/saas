@@ -413,6 +413,57 @@ const StoreOrchestrator = ({ children }: { children: ReactNode }) => {
         login: auth.login,
         logout: auth.logout,
         fetchData,
+        transferProduct: async (productId: string, fromBranchId: string, toBranchId: string, amount: number, pricePerUnit: number = 0, transferType: string = 'free', expenseCategoryId?: string) => {
+            const ok = await data.transferProduct(productId, fromBranchId, toBranchId, amount, pricePerUnit, transferType);
+            
+            if (ok) {
+                const product = data.inventory.find(p => p.id === productId);
+                const estimatedValue = (product?.lastPurchasePrice || product?.price || 0) * amount;
+
+                // 1. GÖNDEREN ŞUBE (A) İÇİN KAYITLAR
+                if (transferType === 'free') {
+                    // Bedelsiz ise: A şubesi için Gider (Expense)
+                    await store.addExpense({
+                        desc: `Stok Transfer Zararı (Bedelsiz): ${product?.name} (${amount} adet)`,
+                        amount: estimatedValue,
+                        category: 'Stok Transferi',
+                        branch_id: fromBranchId,
+                        date: new Date().toISOString().split('T')[0],
+                        note: `Hedef: ${biz.branches.find(b => b.id === toBranchId)?.name || toBranchId}`
+                    });
+                } else {
+                    // Bedelli ise: A şubesi için Gelir (Internal Payment)
+                    const paymentId = crypto.randomUUID();
+                    const internalPayment = {
+                        id: paymentId,
+                        customerName: 'İç Transfer Alıcısı',
+                        service: `Stok Devri: ${product?.name} (${amount} adet) - ${transferType}`,
+                        totalAmount: pricePerUnit * amount,
+                        date: new Date().toISOString().split('T')[0],
+                        methods: [{ method: 'diger', amount: pricePerUnit * amount, currency: 'TRY', rate: 1, isDeposit: false }],
+                        note: `Hedef Şube: ${biz.branches.find(b => b.id === toBranchId)?.name || toBranchId}`,
+                        branch_id: fromBranchId
+                    };
+                    data.setAllPayments((prev: any[]) => [internalPayment, ...prev]);
+                    await syncDb('payments', 'insert', internalPayment, paymentId, activeBizId);
+                }
+
+                // 2. ALICI ŞUBE (B) İÇİN KAYITLAR
+                if (transferType !== 'free' && pricePerUnit > 0) {
+                    await store.addExpense({
+                        desc: `Şubeler Arası Transfer Alımı: ${product?.name} (${amount} adet)`,
+                        amount: pricePerUnit * amount,
+                        category: 'Stok Transferi',
+                        branch_id: toBranchId,
+                        date: new Date().toISOString().split('T')[0],
+                        note: `Gönderen: ${biz.branches.find(b => b.id === fromBranchId)?.name || fromBranchId}`
+                    });
+                }
+
+                await store.addLog(`Stok Transferi: ${amount} birim`, 'Sistem', `Tip: ${transferType}`);
+            }
+            return ok;
+        },
         isInitialized: auth.isInitialized,
         fetchPublicData: async () => {},
 
@@ -1378,12 +1429,6 @@ const StoreOrchestrator = ({ children }: { children: ReactNode }) => {
             return !!success;
         },
 
-        transferProduct: async (productId: string, fromBranchId: string, toBranchId: string, amount: number) => {
-            // Log the transfer
-            await store.addLog(`Stok Transferi: ${amount} birim`, 'Sistem', `ŞubeID: ${fromBranchId}`, `ŞubeID: ${toBranchId}`);
-            // In a real scenario, we'd adjust stock in two branches, but here we just return success as a placeholder for the flow.
-            return true;
-        },
         updateBusinessLicense: async (bizId: string, max: number) => {
             await syncDb('businesses', 'update', { max_users: max }, bizId, bizId);
             biz.setAllBusinesses((prev: Business[]) => prev.map(b => b.id === bizId ? { ...b, maxUsers: max } : b));
