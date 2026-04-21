@@ -38,6 +38,18 @@ const StoreOrchestrator = ({ children }: { children: ReactNode }) => {
     const lastFetchTimeRef = React.useRef<number>(0);
     const lastBizIdRef = React.useRef<string | undefined>(undefined);
     const realtimeTimeoutRef = React.useRef<NodeJS.Timeout | null>(null);
+    const [recentlyModified, setRecentlyModified] = useState<Set<string>>(new Set());
+
+    const markAsModified = React.useCallback((id: string) => {
+        setRecentlyModified(prev => new Set(prev).add(id));
+        setTimeout(() => {
+            setRecentlyModified(prev => {
+                const next = new Set(prev);
+                next.delete(id);
+                return next;
+            });
+        }, 5000); // 5s Stability Window
+    }, []);
 
     const activeBizId = useMemo(() => {
         let id: string | undefined = undefined;
@@ -301,7 +313,7 @@ const StoreOrchestrator = ({ children }: { children: ReactNode }) => {
         return ok;
     };
 
-    const store: StoreState = {
+    const store: StoreState = useMemo(() => ({
         currentUser: auth.currentUser,
         currentBusiness: biz.currentTenant,
         currentBranch: biz.currentBranch,
@@ -479,6 +491,7 @@ const StoreOrchestrator = ({ children }: { children: ReactNode }) => {
             await store.addLog('Müşteri Güncellendi', id, '', 'Güncelleme');
         },
         deleteCustomer: async (id: string) => {
+            markAsModified(id);
             const customer = data.customers.find(c => c.id === id);
             const ok = await data.deleteCustomer(id);
             if (ok) {
@@ -550,6 +563,7 @@ const StoreOrchestrator = ({ children }: { children: ReactNode }) => {
             return true;
         },
         deleteAppointment: async (id: string) => {
+            markAsModified(id);
             const apt = data.appointments.find(a => a.id === id);
             if (!apt) return false;
             
@@ -1008,15 +1022,15 @@ const StoreOrchestrator = ({ children }: { children: ReactNode }) => {
             await syncDb('inventory', 'update', p, id, activeBizId);
         },
         removeProduct: async (id: string) => {
-            const item = data.inventory.find(p => p.id === id);
-            if (!item) return;
+            markAsModified(id);
+            const product = data.inventory.find(p => p.id === id);
+            if (!product) return;
             data.removeProduct(id);
             const ok = await syncDb('inventory', 'delete', {}, id, activeBizId);
             if (!ok) {
-                data.setAllInventory((prev: any) => [item, ...prev]);
                 return;
             }
-            await store.addLog('Envanterden Silindi', item.name, 'Yönetici Onaylı');
+            await store.addLog('Envanterden Silindi', product.name, 'Yönetici Onaylı');
         },
         addExpense: async (e: any) => {
             const id = crypto.randomUUID();
@@ -1628,10 +1642,38 @@ const StoreOrchestrator = ({ children }: { children: ReactNode }) => {
             await syncDb('branches', 'delete', null, id, activeBizId);
         },
         clearCatalog: biz.clearCatalog
-    };
+    }), [
+        auth.currentUser, auth.allUsers, auth.impersonatedBusinessId, auth.isImpersonating,
+        biz.currentTenant, biz.currentBranch, biz.allBusinesses, biz.branches, biz.allRates, biz.settings, biz.bookingSettings, biz.paymentDefinitions, biz.bankAccounts, biz.expenseCategories, biz.referralSources, biz.consentFormTemplates, biz.webhooks, biz.loyaltySettings,
+        data.customers, data.packages, data.membershipPlans, data.customerMemberships, data.appointments, data.blocks, data.payments, data.staffMembers, data.debts, data.allLogs, data.allNotifs, data.aiInsights, data.customerMedia, data.inventory, data.rooms, data.services, data.packageDefinitions, data.commissionRules, data.expenses, data.zReports, data.quotes, data.tenantModules, data.marketingRules, data.pricingRules, data.wallets, data.walletTransactions, data.bodyMaps, data.usageNorms, data.inventoryCategories,
+        isOnline, syncStatus, isManagerAuthorized, activeBizId, fetchData, markAsModified
+    ]);
+
+    // Shielding for consistency
+    const shieldedAppointments = useMemo(() => {
+        return data.appointments.filter(a => !recentlyModified.has(a.id));
+    }, [data.appointments, recentlyModified]);
+
+    const shieldedBlocks = useMemo(() => {
+        return data.blocks.filter(b => !recentlyModified.has(b.id));
+    }, [data.blocks, recentlyModified]);
+
+    const shieldedCustomers = useMemo(() => {
+        return data.customers.filter(c => !recentlyModified.has(c.id));
+    }, [data.customers, recentlyModified]);
+
+    const shieldedInventory = useMemo(() => {
+        return data.inventory.filter(p => !recentlyModified.has(p.id));
+    }, [data.inventory, recentlyModified]);
 
     return (
-        <StoreContext.Provider value={store}>
+        <StoreContext.Provider value={{ 
+            ...store, 
+            appointments: shieldedAppointments, 
+            blocks: shieldedBlocks,
+            customers: shieldedCustomers,
+            inventory: shieldedInventory
+        }}>
             {children}
         </StoreContext.Provider>
     );

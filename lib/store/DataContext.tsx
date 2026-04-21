@@ -355,40 +355,64 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
     }, [inventoryCategories]);
 
     const transferProduct = useCallback(async (productId: string, fromBranchId: string, toBranchId: string, amount: number, pricePerUnit: number = 0, transferType: string = 'free') => {
-        const sourceProduct = inventory.find(p => p.id === productId);
-        if (!sourceProduct || (sourceProduct.stock || 0) < amount) return false;
+        // Envanter bağımlılığını kaldırmak için doğrudan state setter'ı içinden kontrol edebiliriz ya da 
+        // find işlemini dışarıdan gelen güncel referansla (inventoryRef olsa iyi olurdu ama mevcut yapıda setter yeterli) yapabiliriz.
+        // Mevcut yapıda inventory bağımlılığı re-render döngüsüne sokuyor.
+        
+        // Önemli: inventory bağımlılığını [] yaparak fonksiyonu re-render'lardan kurtarıyoruz.
+        // İçerideki logic'i ise state'in en güncel halini görecek şekilde (prev => ...) kurguluyoruz.
+        
+        return new Promise<boolean>(async (resolve) => {
+            setAllInventory(prev => {
+                const sourceProduct = prev.find(p => p.id === productId);
+                if (!sourceProduct || (sourceProduct.stock || 0) < amount) {
+                    resolve(false);
+                    return prev;
+                }
 
-        // 1. Düşüş (Kaynak şube)
-        const newSourceStock = sourceProduct.stock - amount;
-        setAllInventory(prev => prev.map(p => p.id === productId ? { ...p, stock: newSourceStock } : p));
-        await syncDb('inventory', 'update', { stock: newSourceStock }, productId);
+                // 1. Düşüş (Kaynak şube)
+                const newSourceStock = sourceProduct.stock - amount;
+                
+                // 2. Artış (Hedef şube)
+                const targetProduct = prev.find(p => p.name === sourceProduct.name && p.branchId === toBranchId);
+                
+                const updatedList = prev.map(p => {
+                    if (p.id === productId) return { ...p, stock: newSourceStock };
+                    if (targetProduct && p.id === targetProduct.id) return { ...p, stock: (targetProduct.stock || 0) + amount };
+                    return p;
+                });
 
-        // 2. Artış (Hedef şube)
-        const targetProduct = inventory.find(p => p.name === sourceProduct.name && p.branchId === toBranchId);
-        if (targetProduct) {
-            const newTargetStock = (targetProduct.stock || 0) + amount;
-            setAllInventory(prev => prev.map(p => p.id === targetProduct.id ? { ...p, stock: newTargetStock } : p));
-            await syncDb('inventory', 'update', { stock: newTargetStock }, targetProduct.id);
-        } else {
-            const newId = crypto.randomUUID();
-            const newProd = { ...sourceProduct, id: newId, branchId: toBranchId, stock: amount, createdAt: new Date().toISOString() };
-            setAllInventory(prev => [...prev, newProd]);
-            await syncDb('inventory', 'insert', newProd, newId);
-        }
+                if (!targetProduct) {
+                    const newId = crypto.randomUUID();
+                    updatedList.push({ ...sourceProduct, id: newId, branchId: toBranchId, stock: amount, createdAt: new Date().toISOString() });
+                }
 
-        // 3. Geçmiş kaydı
-        await syncDb('inventory_transfers', 'insert', {
-            product_id: productId,
-            from_branch_id: fromBranchId,
-            to_branch_id: toBranchId,
-            quantity: amount,
-            price_per_unit: pricePerUnit,
-            transfer_type: transferType,
-            created_at: new Date().toISOString()
+                // Async işlemler (SyncDB) dışarıda yapılacak
+                (async () => {
+                    await syncDb('inventory', 'update', { stock: newSourceStock }, productId);
+                    if (targetProduct) {
+                        await syncDb('inventory', 'update', { stock: (targetProduct.stock || 0) + amount }, targetProduct.id);
+                    } else {
+                        const newProd = updatedList[updatedList.length - 1];
+                        await syncDb('inventory', 'insert', newProd, newProd.id);
+                    }
+
+                    await syncDb('inventory_transfers', 'insert', {
+                        product_id: productId,
+                        from_branch_id: fromBranchId,
+                        to_branch_id: toBranchId,
+                        quantity: amount,
+                        price_per_unit: pricePerUnit,
+                        transfer_type: transferType,
+                        created_at: new Date().toISOString()
+                    });
+                })();
+
+                resolve(true);
+                return updatedList;
+            });
         });
-
-        return true;
-    }, [inventory]);
+    }, []);
 
     const contextValue: DataContextType = useMemo(() => ({
         appointments, blocks, customers, debts, inventory, rooms, services, packages,
