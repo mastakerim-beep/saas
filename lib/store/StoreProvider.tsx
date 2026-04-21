@@ -1190,5 +1190,13 @@ const StoreOrchestrator = ({ children }: { children: ReactNode }) => {
 };
 
 export const StoreProvider = ({ children }: { children: ReactNode }) => {
-    return <StoreOrchestrator>{children}</StoreOrchestrator>;
+    return (
+        <AuthProvider>
+            <BusinessProvider>
+                <DataProvider>
+                    <StoreOrchestrator>{children}</StoreOrchestrator>
+                </DataProvider>
+            </BusinessProvider>
+        </AuthProvider>
+    );
 };
