@@ -82,6 +82,15 @@ const StoreOrchestrator = ({ children }: { children: ReactNode }) => {
         }, 5000);
     }, []);
 
+    const unmarkAsModified = React.useCallback((id: string) => {
+        setRecentlyModified(prev => {
+            const next = new Set(prev);
+            next.delete(id);
+            recentlyModifiedRef.current = next;
+            return next;
+        });
+    }, []);
+
     const activeBizId = useMemo(() => {
         let id: string | undefined = undefined;
         const isSaaS = auth.currentUser?.role === 'SaaS_Owner';
@@ -489,6 +498,8 @@ const StoreOrchestrator = ({ children }: { children: ReactNode }) => {
                 if (!okRemote) {
                     console.error("❌ Veritabanı silme işlemi başarısız. Geri alınıyor...");
                     dataRef.current.setAllAppointments((prev: any) => [...prev, apt]);
+                    unmarkAsModified(id);
+                    alert("⚠️ Randevu silinemedi! Bu kayıt mühürlü olabilir veya veri sahipliği (RLS) kısıtına takılmış olabilirsiniz. Lütfen sayfayı yenileyip tekrar deneyin.");
                     return false;
                 }
                 
