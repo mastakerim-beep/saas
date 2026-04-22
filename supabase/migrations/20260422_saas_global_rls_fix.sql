@@ -1,18 +1,24 @@
 -- ============================================================
--- 027 - SaaS Owner Global RLS Yetkilendirmesi (SaaS Supreme Authority)
--- Sürüm: 1.1
--- Açıklama: SaaS_Owner rolü için business_id kısıtlamasını bypass eder.
+-- 027 - SaaS & Business Owner Global RLS Yetkilendirmesi
+-- Sürüm: 1.2 (Final)
+-- Açıklama: 
+-- 1. SaaS_Owner rolü için tüm işletmelerde tam yetki sağlar.
+-- 2. Business_Owner rolü için sadece kendi business_id verilerinde tam yetki sağlar.
 -- ============================================================
 
--- 1. SaaS_Owner KONTROL FONKSİYONU GÜNCELLEMESİ
--- Daha hızlı ve kesin bir rol kontrolü için
+-- 1. YARDIMCI FONKSİYONLAR
 CREATE OR REPLACE FUNCTION is_saas_owner()
 RETURNS BOOLEAN AS $$
   SELECT (auth.jwt() -> 'user_metadata' ->> 'role') = 'SaaS_Owner';
 $$ LANGUAGE SQL STABLE;
 
+CREATE OR REPLACE FUNCTION get_my_business_id()
+RETURNS uuid AS $$
+  SELECT (auth.jwt() -> 'user_metadata' ->> 'business_id')::uuid;
+$$ LANGUAGE SQL STABLE;
+
 -- 2. KRİTİK TABLOLARDAKİ RLS POLİTİKALARINI GÜNCELLE
--- Not: USING ve WITH CHECK bloklarına 'is_saas_owner()' istisnası ekleniyor.
+-- Not: Her tablo için 'all' yetkisi tanımlanıyor.
 
 -- APPOINTMENTS
 DROP POLICY IF EXISTS "appointments_all" ON appointments;
@@ -33,14 +39,12 @@ CREATE POLICY "payments_all" ON payments FOR ALL
   WITH CHECK (business_id = get_my_business_id() OR is_saas_owner());
 
 -- STAFF
-ALTER TABLE staff ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "staff_all" ON staff;
 CREATE POLICY "staff_all" ON staff FOR ALL
   USING (business_id = get_my_business_id() OR is_saas_owner())
   WITH CHECK (business_id = get_my_business_id() OR is_saas_owner());
 
 -- INVENTORY
-ALTER TABLE inventory ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "inventory_all" ON inventory;
 CREATE POLICY "inventory_all" ON inventory FOR ALL
   USING (business_id = get_my_business_id() OR is_saas_owner())
@@ -52,12 +56,22 @@ CREATE POLICY "audit_logs_all" ON audit_logs FOR ALL
   USING (business_id = get_my_business_id() OR is_saas_owner())
   WITH CHECK (business_id = get_my_business_id() OR is_saas_owner());
 
--- REVENUE/Z_REPORTS
-ALTER TABLE z_reports ENABLE ROW LEVEL SECURITY;
+-- Z_REPORTS
 DROP POLICY IF EXISTS "z_reports_all" ON z_reports;
 CREATE POLICY "z_reports_all" ON z_reports FOR ALL
   USING (business_id = get_my_business_id() OR is_saas_owner())
   WITH CHECK (business_id = get_my_business_id() OR is_saas_owner());
 
--- COMMENTS
-COMMENT ON POLICY "appointments_all" ON appointments IS 'İşletme sahipleri kendi verilerini, SaaS sahipleri tüm verileri yönetebilir.';
+-- AI_INSIGHTS
+DROP POLICY IF EXISTS "ai_insights_all" ON ai_insights;
+CREATE POLICY "ai_insights_all" ON ai_insights FOR ALL
+  USING (business_id = get_my_business_id() OR is_saas_owner())
+  WITH CHECK (business_id = get_my_business_id() OR is_saas_owner());
+
+-- APP_USERS
+DROP POLICY IF EXISTS "app_users_all" ON app_users;
+CREATE POLICY "app_users_all" ON app_users FOR ALL
+  USING (business_id = get_my_business_id() OR is_saas_owner())
+  WITH CHECK (business_id = get_my_business_id() OR is_saas_owner());
+
+COMMENT ON POLICY "appointments_all" ON appointments IS 'İşletme sahipleri kendi verilerini (Business_Owner), SaaS sahipleri (kerim@mail.com) tüm sistemi yönetebilir.';
