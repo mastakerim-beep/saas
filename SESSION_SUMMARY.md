@@ -44,3 +44,23 @@ Bu oturumda sistemin müşteri yüzü (B2C) ve resepsiyon güvenliği baştan so
 - **Müşteri Rehberi UX:** Sağ tarafta açılan Rehber panelinde, yeni müşteri (+) kaydedilir edilmez akıllı arama barının yeni adla otomatik dolması ve o kişinin anında Drag-and-Drop için açık kalması sağlandı.
 
 **Not:** Bir sonraki olası oturumlarda, yukarıda bitirdiğimiz `kiosk` modülüne donanımsal bir QR Scanner bağlama mantığı veya Personel Primlerinin yeni yapısı gibi konulara girilebilir. Projedeki tüm kodlar GitHub'a `push` edilmiştir.
+
+---
+
+# Aura Spa ERP - Kernel Log & Stabilizasyon Günlüğü (22 Nisan 2026)
+
+Bu oturumda Kernel Log modülü rehabilite edildi ve sistem genelindeki çalışma zamanı hataları minimize edildi.
+
+## 🛠️ Kernel Log Restorasyonu
+- **Null Safety:** Sistem tarafından otomatik tetiklenen loglarda `user` bilgisinin boş gelmesi sonucu oluşan çökme hatası (charAt of null) giderildi.
+- **Fallback Tasarımı:** Kullanıcı tanımlı olmayan işlemlerde artık "Sistem" ismi ve elit "S" avatarı kullanılıyor.
+- **Data Integrity:** Filtreleme, arama ve PDF/Excel dışa aktarma fonksiyonları güvenli erişim (`log.user || 'Sistem'`) ile güçlendirildi.
+
+## 🧭 Navigasyon & UX
+- **Sidebar Audit:** Kernel Log linkinin DOM yapısı ve tenant-slug rütbeli rotalaması (`/[slug]/logs`) doğrulandı.
+- **Live Sync:** Log ekranındaki "Live Sync" göstergesi ve atomik stat değerleri (Toplam Log, Kritik İşlem vb.) stabilize edildi.
+
+## 🔄 Versiyon Kontrol
+- **Git Push:** `fix: Kernel Log crash on null user and avatar fallback` mesajıyla tüm değişiklikler ana repoya aktarıldı.
+
+**Not:** Sistem şu an hem operasyonel hem de denetim (audit) açısından tam kapasite çalışmaktadır.
