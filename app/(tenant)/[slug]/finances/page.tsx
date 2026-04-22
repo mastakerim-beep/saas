@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { useStore } from "@/lib/store";
 import { 
   AlertTriangle, TrendingUp, Wallet, ShieldAlert, Receipt, 
@@ -14,28 +14,34 @@ import {
 export default function FinancesPage() {
   const { appointments, payments, debts, calculateCommission, expenses, staffMembers } = useStore();
 
-  const totalExpected = appointments.reduce((s, a) => s + (a.status === 'completed' || a.status === 'pending' ? a.price : 0), 0);
-  const totalCollected = payments.reduce((s, p) => s + (p.totalAmount || 0), 0);
-  const totalActiveDebt = debts.filter(d => d.status === 'açık').reduce((s, d) => s + d.amount, 0);
+  const [isMounted, setIsMounted] = useState(false);
   
-  const staffCommData = staffMembers.map(st => {
-    const staffAppointments = appointments.filter(a => a.staffName === st.name && a.status === 'completed');
-    const totalSales = staffAppointments.reduce((s, a) => s + a.price, 0);
-    const totalComm = staffAppointments.reduce((s, a) => s + calculateCommission(st.id, a.service, a.price, a.packageId), 0);
-    return { name: st.name, sales: totalSales, commission: totalComm };
-  }).filter(s => s.sales > 0);
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
 
-  const totalCommissions = staffCommData.reduce((s, d) => s + d.commission, 0);
-  const totalOtherExpenses = expenses.reduce((s, e) => s + e.amount, 0);
+  const totalExpected = appointments.reduce((s: number, a: any) => s + (a.status === 'completed' || a.status === 'pending' ? a.price : 0), 0);
+  const totalCollected = payments.reduce((s: number, p: any) => s + (p.totalAmount || 0), 0);
+  const totalActiveDebt = debts.filter((d: any) => d.status === 'açık').reduce((s: number, d: any) => s + d.amount, 0);
+  
+  const staffCommData = staffMembers.map((st: any) => {
+    const staffAppointments = appointments.filter((a: any) => a.staffName === st.name && a.status === 'completed');
+    const totalSales = staffAppointments.reduce((s: number, a: any) => s + a.price, 0);
+    const totalComm = staffAppointments.reduce((s: number, a: any) => s + calculateCommission(st.id, a.service, a.price, a.packageId), 0);
+    return { name: st.name, sales: totalSales, commission: totalComm };
+  }).filter((s: any) => s.sales > 0);
+
+  const totalCommissions = staffCommData.reduce((s: number, d: any) => s + d.commission, 0);
+  const totalOtherExpenses = expenses.reduce((s: number, e: any) => s + e.amount, 0);
   const totalExpenses = totalCommissions + totalOtherExpenses;
   const netProfit = totalCollected - totalExpenses;
 
   const suspiciousActivities: any[] = [];
-  appointments.filter(a => 
+  appointments.filter((a: any) => 
       a.status === 'completed' && a.price > 0 && 
-      !payments.some(p => p.appointmentId === a.id) &&
-      !debts.some(d => d.appointmentId === a.id)
-  ).forEach(a => {
+      !payments.some((p: any) => p.appointmentId === a.id) &&
+      !debts.some((d: any) => d.appointmentId === a.id)
+  ).forEach((a: any) => {
       suspiciousActivities.push({
           type: 'Kayıtsız İşlem',
           desc: `${a.customerName} için ${a.service} randevusu tahsilat girişi yapılmadan kapatıldı.`,
@@ -51,8 +57,8 @@ export default function FinancesPage() {
         const d = new Date();
         d.setDate(d.getDate() - i);
         const dateStr = d.toISOString().split('T')[0];
-        const dailyCiro = payments.filter(p => p.date === dateStr).reduce((s, p) => s + (p.totalAmount || 0), 0);
-        const dailyExpense = expenses.filter(e => e.date === dateStr).reduce((s, e) => s + (e.amount || 0), 0);
+        const dailyCiro = payments.filter((p: any) => p.date === dateStr).reduce((s: number, p: any) => s + (p.totalAmount || 0), 0);
+        const dailyExpense = expenses.filter((e: any) => e.date === dateStr).reduce((s: number, e: any) => s + (e.amount || 0), 0);
         result.push({ name: days[d.getDay()], ciro: dailyCiro, kar: Math.max(0, dailyCiro - dailyExpense) });
     }
     return result;
@@ -103,26 +109,30 @@ export default function FinancesPage() {
              </div>
 
              <div className="h-[350px] w-full">
-                <ResponsiveContainer width="100%" height="100%">
-                    <AreaChart data={chartData}>
-                        <defs>
-                            <linearGradient id="colorCiro" x1="0" y1="0" x2="0" y2="1">
-                                <stop offset="5%" stopColor="#6366f1" stopOpacity={0.4}/>
-                                <stop offset="95%" stopColor="#6366f1" stopOpacity={0}/>
-                            </linearGradient>
-                            <linearGradient id="colorKar" x1="0" y1="0" x2="0" y2="1">
-                                <stop offset="5%" stopColor="#a855f7" stopOpacity={0.4}/>
-                                <stop offset="95%" stopColor="#a855f7" stopOpacity={0}/>
-                            </linearGradient>
-                        </defs>
-                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                        <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fontSize: 10, fontWeight: '900', fill: '#6366f1'}} dy={10} />
-                        <YAxis hide />
-                        <Tooltip contentStyle={{borderRadius: '24px', border: 'none', boxShadow: '0 20px 50px rgba(0,0,0,0.1)', fontWeight: '900', background: 'white'}} />
-                        <Area type="monotone" dataKey="ciro" stroke="#6366f1" strokeWidth={6} fillOpacity={1} fill="url(#colorCiro)" />
-                        <Area type="monotone" dataKey="kar" stroke="#a855f7" strokeWidth={6} fillOpacity={1} fill="url(#colorKar)" />
-                    </AreaChart>
-                </ResponsiveContainer>
+                {isMounted ? (
+                    <ResponsiveContainer width="100%" height="100%">
+                        <AreaChart data={chartData}>
+                            <defs>
+                                <linearGradient id="colorCiro" x1="0" y1="0" x2="0" y2="1">
+                                    <stop offset="5%" stopColor="#6366f1" stopOpacity={0.4}/>
+                                    <stop offset="95%" stopColor="#6366f1" stopOpacity={0}/>
+                                </linearGradient>
+                                <linearGradient id="colorKar" x1="0" y1="0" x2="0" y2="1">
+                                    <stop offset="5%" stopColor="#a855f7" stopOpacity={0.4}/>
+                                    <stop offset="95%" stopColor="#a855f7" stopOpacity={0}/>
+                                </linearGradient>
+                            </defs>
+                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                            <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fontSize: 10, fontWeight: '900', fill: '#6366f1'}} dy={10} />
+                            <YAxis hide />
+                            <Tooltip contentStyle={{borderRadius: '24px', border: 'none', boxShadow: '0 20px 50px rgba(0,0,0,0.1)', fontWeight: '900', background: 'white'}} />
+                            <Area type="monotone" dataKey="ciro" stroke="#6366f1" strokeWidth={6} fillOpacity={1} fill="url(#colorCiro)" />
+                            <Area type="monotone" dataKey="kar" stroke="#a855f7" strokeWidth={6} fillOpacity={1} fill="url(#colorKar)" />
+                        </AreaChart>
+                    </ResponsiveContainer>
+                ) : (
+                    <div className="w-full h-full bg-gray-50 animate-pulse rounded-[2rem]" />
+                )}
              </div>
           </div>
 
@@ -169,7 +179,7 @@ export default function FinancesPage() {
                       </tr>
                   </thead>
                   <tbody className="divide-y divide-indigo-50 dark:divide-indigo-500/10 font-sans">
-                      {staffCommData.map((st, i) => (
+                      {staffCommData.map((st: any, i: number) => (
                           <tr key={i} className="group hover:bg-indigo-50/20 dark:hover:bg-indigo-900/10 transition-colors">
                               <td className="py-8">
                                   <div className="flex gap-4 items-center">

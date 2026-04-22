@@ -7,7 +7,8 @@ import Sidebar from "@/components/layout/Sidebar";
 import Header from "@/components/layout/Header";
 import LicenseGuard from "@/components/layout/LicenseGuard";
 import { Inter } from "next/font/google";
-import { Megaphone } from "lucide-react";
+import { Megaphone, Sparkles } from "lucide-react";
+import { motion } from "framer-motion";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -78,8 +79,8 @@ export default function ClientWrapper({ children }: { children: React.ReactNode 
     const isSuperAdminPath = pathname.startsWith("/admin");
     const isSaaSOwner = currentUser?.role === 'SaaS_Owner';
 
-    const impersonatedBiz = useMemo(() => allBusinesses.find(b => b.id === impersonatedBusinessId), [allBusinesses, impersonatedBusinessId]);
-    const userBiz = useMemo(() => allBusinesses.find(b => b.id === currentUser?.businessId), [allBusinesses, currentUser]);
+    const impersonatedBiz = useMemo(() => allBusinesses.find((b: any) => b.id === impersonatedBusinessId), [allBusinesses, impersonatedBusinessId]);
+    const userBiz = useMemo(() => allBusinesses.find((b: any) => b.id === currentUser?.businessId), [allBusinesses, currentUser]);
 
     // 1. Initial Mount Check
     useEffect(() => {
@@ -114,7 +115,7 @@ export default function ClientWrapper({ children }: { children: React.ReactNode 
                 } else if (userBiz) {
                     const tenantPath = `/${userBiz.slug}`;
                     const currentSlugInPath = pathname.split('/')[1];
-                    const isAnyBizSlugMatch = allBusinesses.some(b => b.slug === currentSlugInPath);
+                    const isAnyBizSlugMatch = allBusinesses.some((b: any) => b.slug === currentSlugInPath);
 
                     if (isRootPath || isLoginPath) {
                         router.push(`${tenantPath}/dashboard`);
@@ -131,14 +132,19 @@ export default function ClientWrapper({ children }: { children: React.ReactNode 
             }
         }, 100);
 
-        // EXTRA PROTECT: 3 Saniyelik 'Safety Timeout'
-        // Veriler veya doğrulamalar ne kadar gecikirse geciksin, 3 saniye sonra ekranı açar.
+        // 3. STORE SYNC: Unlock UI as soon as store is ready
+        if (isInitialized && isChecking) {
+             const t = setTimeout(() => setIsChecking(false), 300);
+             return () => clearTimeout(t);
+        }
+
+        // EXTRA PROTECT: 'Safety Timeout' fallback
         const safetyTimer = setTimeout(() => {
             if (isChecking) {
-                console.warn("SAFETY TIMEOUT: Forced UI unlock after 3 seconds.");
+                console.warn("SAFETY TIMEOUT: Forced UI unlock.");
                 setIsChecking(false);
             }
-        }, 3000);
+        }, 3500); 
 
         return () => {
             clearTimeout(timer);
@@ -161,8 +167,27 @@ export default function ClientWrapper({ children }: { children: React.ReactNode 
     // If still checking, show loader
     if (isChecking && !isLoginPath) {
         return (
-            <div className={`${inter.className} flex h-screen w-full items-center justify-center bg-[#050505] text-white font-black animate-pulse uppercase tracking-[0.3em] text-xs`}>
-                Siber Güvenlik Katmanı Doğrulanıyor...
+            <div className={`${inter.className} flex flex-col h-screen w-full items-center justify-center bg-[#050505] text-white overflow-hidden`}>
+                <motion.div 
+                    initial={{ opacity: 0, scale: 0.8 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    className="relative flex flex-col items-center"
+                >
+                    <div className="w-24 h-24 rounded-3xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center mb-8 shadow-2xl shadow-indigo-500/20 animate-pulse">
+                        <Sparkles className="w-12 h-12 text-white" />
+                    </div>
+                    <div className="flex flex-col items-center gap-2">
+                        <span className="text-[10px] font-black uppercase tracking-[0.4em] animate-pulse">Siber Güvenlik Katmanı</span>
+                        <div className="flex items-center gap-1">
+                             <div className="w-1 h-1 bg-indigo-500 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+                             <div className="w-1 h-1 bg-indigo-500 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+                             <div className="w-1 h-1 bg-indigo-500 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+                        </div>
+                    </div>
+                </motion.div>
+                
+                {/* Background Glow */}
+                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-indigo-500/10 blur-[120px] rounded-full pointer-events-none" />
             </div>
         );
     }

@@ -98,6 +98,7 @@ const StoreOrchestrator = ({ children }: { children: ReactNode }) => {
         if (auth.impersonatedBusinessId) {
             id = auth.impersonatedBusinessId;
         } else if (slug) {
+            // Priority 1: Match from existing businesses (hydrated or fetched)
             const bizFromSlug = biz.allBusinesses.find(b => b.slug === slug);
             if (bizFromSlug) {
                 id = bizFromSlug.id;
@@ -105,13 +106,13 @@ const StoreOrchestrator = ({ children }: { children: ReactNode }) => {
                 // STICKY FALLBACK: If we have a slug but list is empty, don't clear the ID
                 id = lastResolvedBizIdRef.current;
             }
-        } else {
-            id = auth.currentUser?.businessId || undefined;
+        } else if (auth.currentUser?.businessId) {
+            id = auth.currentUser.businessId;
         }
 
         if (id) lastResolvedBizIdRef.current = id;
         return id;
-    }, [auth.impersonatedBusinessId, auth.currentUser?.businessId, slug, biz.allBusinesses]);
+    }, [auth.impersonatedBusinessId, auth.currentUser?.businessId, auth.currentUser?.role, slug, biz.allBusinesses]);
 
     // Update ref in effect for consistency
     useEffect(() => {
@@ -126,7 +127,8 @@ const StoreOrchestrator = ({ children }: { children: ReactNode }) => {
         
         const isIdChanged = targetBizId !== lastFetchBizIdRef.current;
 
-        if (!force && !isIdChanged && now - lastFetchTimeRef.current < 2000) {
+        const isInitialLoadMatching = isIdChanged && !lastFetchBizIdRef.current;
+        if (!force && !isIdChanged && now - lastFetchTimeRef.current < 2000 && !isInitialLoadMatching) {
             return;
         }
 

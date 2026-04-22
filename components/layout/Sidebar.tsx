@@ -23,7 +23,25 @@ interface SidebarItemProps {
 }
 
 const SidebarItem = memo(({ href, icon: Icon, label, badge, colorClass, isHovered, pathname }: SidebarItemProps) => {
-    const isActive = pathname === href || pathname.startsWith(`${href}/`);
+    const isActive = useMemo(() => {
+        // High-precision matching: 
+        // 1. Exact match is always true
+        if (pathname === href) return true;
+        
+        // 2. Trailing slash normalization
+        const normalizedPath = pathname.endsWith('/') ? pathname.slice(0, -1) : pathname;
+        const normalizedHref = href.endsWith('/') ? href.slice(0, -1) : href;
+        if (normalizedPath === normalizedHref) return true;
+
+        // 3. Sub-path matching only for specific parent items, otherwise return false
+        // This prevents "Finances" from being active when on "Finances/Cash" if they are both in sidebar
+        const subPathsToIgnorePrefixMatch = ['/finances', '/executive'];
+        const isIgnored = subPathsToIgnorePrefixMatch.some(p => normalizedHref.endsWith(p));
+        
+        if (isIgnored) return false;
+
+        return pathname.startsWith(`${href}/`);
+    }, [pathname, href]);
     return (
         <Link href={href} className="relative block group/item">
             <div className={`

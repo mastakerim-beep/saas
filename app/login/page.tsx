@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useStore } from '@/lib/store';
 import { supabase } from '@/lib/supabase';
 import { useRouter } from 'next/navigation';
@@ -17,7 +17,26 @@ export default function LoginPage() {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [isLoading, setIsLoading] = useState(false);
+    const [isCheckingAuth, setIsCheckingAuth] = useState(true);
     const [error, setError] = useState<string | null>(null);
+
+    const { currentUser, isInitialized } = useStore();
+
+    // Prevent staying on login if already authenticated
+    useEffect(() => {
+        if (isInitialized) {
+            setIsCheckingAuth(false);
+            if (currentUser) {
+                if (currentUser.role === 'SaaS_Owner') {
+                    router.push('/admin');
+                } else if (currentUser.businessId) {
+                    // We don't have the slug here easily without a fetch, 
+                    // but StoreProvider will handle the redirect if we go to /
+                    router.push('/dashboard'); 
+                }
+            }
+        }
+    }, [currentUser, isInitialized, router]);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -27,27 +46,24 @@ export default function LoginPage() {
         try {
             const user = await login(email, password);
             if (user) {
+                // The useEffect will handle the redirect once store updates
+                // but we can also trigger it here for speed
                 if (user.role === 'SaaS_Owner') {
                     router.push('/admin');
-                    return;
-                }
-
-                if (user.businessId) {
-                    // Fetch slug directly for immediate redirect
-                    const { data: business } = await supabase
+                } else {
+                    // Try to resolve slug for a cleaner redirect
+                    const { data: biz } = await supabase
                         .from('businesses')
                         .select('slug')
                         .eq('id', user.businessId)
                         .single();
-
-                    if (business?.slug) {
-                        router.push(`/${business.slug}/dashboard`);
-                        return;
+                        
+                    if (biz?.slug) {
+                        router.push(`/${biz.slug}/dashboard`);
+                    } else {
+                        router.push('/dashboard');
                     }
                 }
-                
-                // Fallback
-                router.push('/');
             } else {
                 setError('Geçersiz e-posta veya şifre. Lütfen tekrar deneyin.');
                 setIsLoading(false);
@@ -58,6 +74,14 @@ export default function LoginPage() {
             setIsLoading(false);
         }
     };
+
+    if (isCheckingAuth) {
+        return (
+            <div className="min-h-screen flex items-center justify-center bg-gray-50">
+                <Loader2 className="w-10 h-10 animate-spin text-primary opacity-20" />
+            </div>
+        );
+    }
 
     return (
         <div className="min-h-screen bg-gray-50 flex items-center justify-center p-6 relative overflow-hidden font-sans selection:bg-primary/30">
