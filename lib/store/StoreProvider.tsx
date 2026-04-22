@@ -28,7 +28,7 @@ export const useStore = () => {
     if (!methods || !data) {
         throw new Error('useStore must be used within a StoreProvider');
     }
-    return { ...methods, ...data };
+    return { ...data, ...methods };
 };
 
 // Main Orchestrator component that holds the global store logic
@@ -1027,11 +1027,40 @@ const StoreOrchestrator = ({ children }: { children: ReactNode }) => {
             data.setBodyMaps((prev: any[]) => prev.map(m => m.id === id ? { ...m, ...updates } : m));
             await syncDb('consultation_body_maps', 'update', updates, id, activeBizId);
         },
-        addUsageNorm: data.addUsageNorm,
-        updateUsageNorm: data.updateUsageNorm,
-        addInventoryCategory: data.addInventoryCategory,
-        updateInventoryCategory: data.updateInventoryCategory,
-        removeInventoryCategory: data.removeInventoryCategory,
+        addUsageNorm: async (norm: any) => {
+            const id = crypto.randomUUID();
+            const nn = { ...norm, id, businessId: activeBizId };
+            data.setUsageNorms((prev: any) => [...prev, nn]);
+            await syncDb('inventory_usage_norms', 'insert', nn, id, activeBizId);
+        },
+        updateUsageNorm: async (id: string, updates: any) => {
+            data.setUsageNorms((prev: any[]) => prev.map(n => n.id === id ? { ...n, ...updates } : n));
+            await syncDb('inventory_usage_norms', 'update', updates, id, activeBizId);
+        },
+        addInventoryCategory: async (c: any) => {
+            const id = crypto.randomUUID();
+            const nc = { ...c, id, businessId: activeBizId };
+            data.setAllInventoryCategories((prev: any) => [...prev, nc]);
+            await syncDb('inventory_categories', 'insert', nc, id, activeBizId);
+        },
+        updateInventoryCategory: async (id: string, updates: any) => {
+            data.setAllInventoryCategories((prev: any[]) => prev.map(c => c.id === id ? { ...c, ...updates } : c));
+            await syncDb('inventory_categories', 'update', updates, id, activeBizId);
+        },
+        removeInventoryCategory: async (id: string) => {
+            data.setAllInventoryCategories((prev: any[]) => prev.filter(c => c.id !== id));
+            await syncDb('inventory_categories', 'delete', {}, id, activeBizId);
+        },
+        addCustomerMedia: async (m: any) => {
+            const id = crypto.randomUUID();
+            const nm = { ...m, id, businessId: activeBizId, createdAt: new Date().toISOString() };
+            data.setAllCustomerMedia((prev: any) => [nm, ...prev]);
+            await syncDb('customer_media', 'insert', nm, id, activeBizId);
+        },
+        deleteCustomerMedia: async (id: string) => {
+            data.setAllCustomerMedia((prev: any[]) => prev.filter(m => m.id !== id));
+            await syncDb('customer_media', 'delete', {}, id, activeBizId);
+        },
         calculateDynamicPrice: (price: number, timeStr: string) => {
             const [h] = timeStr.split(':').map(Number);
             if (h >= 9 && h < 12) return { price: price * 0.8, reason: 'Happy Hour İndirimi (%20)' };
