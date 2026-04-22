@@ -25,7 +25,7 @@ export default function KernelLogsPage() {
             .filter(log => {
                 const matchesSearch = log.customerName?.toLowerCase().includes(search.toLowerCase()) || 
                                      log.action.toLowerCase().includes(search.toLowerCase()) ||
-                                     log.user.toLowerCase().includes(search.toLowerCase());
+                                     (log.user || "").toLowerCase().includes(search.toLowerCase());
                 
                 if (filter === "Tümü") return matchesSearch;
                 if (filter === "Randevu") return matchesSearch && log.action.includes("Randevu");
@@ -71,7 +71,7 @@ export default function KernelLogsPage() {
                             "Müşteri/Detay": log.customerName,
                             "Eski Değer": log.oldValue || '-',
                             "Yeni Değer": log.newValue || '-',
-                            "İşlemi Yapan": log.user
+                            "İşlemi Yapan": log.user || 'Sistem'
                         })}
                         pdfMapping={(log) => [
                             format(new Date(log.date), 'dd.MM.yyyy HH:mm'),
@@ -79,7 +79,7 @@ export default function KernelLogsPage() {
                             log.customerName,
                             log.oldValue || '-',
                             log.newValue || '-',
-                            log.user
+                            log.user || 'Sistem'
                         ]}
                     />
                     <div className="h-12 w-[1px] bg-gray-100 hidden md:block mx-2" />
@@ -182,10 +182,10 @@ export default function KernelLogsPage() {
                                 <div className="flex items-center justify-end gap-3">
                                     <div className="text-right">
                                         <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-0.5">İşlem Yapan</p>
-                                        <p className="text-[13px] font-bold text-gray-900">{log.user}</p>
+                                        <p className="text-[13px] font-bold text-gray-900">{log.user || 'Sistem'}</p>
                                     </div>
-                                    <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center text-gray-500 font-black text-sm">
-                                        {log.user.charAt(0)}
+                                    <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-black text-sm shadow-lg shadow-indigo-100 italic">
+                                        {(log.user || 'S').charAt(0)}
                                     </div>
                                 </div>
                             </div>
