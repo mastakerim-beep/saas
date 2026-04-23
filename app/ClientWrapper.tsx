@@ -144,7 +144,7 @@ export default function ClientWrapper({ children }: { children: React.ReactNode 
                 console.warn("SAFETY TIMEOUT: Forced UI unlock.");
                 setIsChecking(false);
             }
-        }, 3000); 
+        }, 1500); 
 
         return () => {
             clearTimeout(timer);
@@ -179,11 +179,12 @@ export default function ClientWrapper({ children }: { children: React.ReactNode 
                     <div className="flex flex-col items-center gap-2">
                     <div className="flex flex-col items-center gap-4 mt-4">
                         <span className="text-[10px] font-black uppercase tracking-[0.4em] animate-pulse">Siber Güvenlik Katmanı</span>
+                        <span className="text-[8px] text-indigo-400 font-bold uppercase tracking-[0.2em] mt-1 opacity-60">"En ince ayrıntısına kadar hâkimiyet."</span>
                         <button 
                              onClick={() => setIsChecking(false)}
                              className="px-4 py-2 bg-white/5 hover:bg-white/10 rounded-xl text-[8px] font-black uppercase tracking-widest transition-all border border-white/5"
                         >
-                            YÜKLEME UZUN MU SÜRDÜ? BURAYA TIKLA
+                            SİSTEM YÜKLENİYOR...
                         </button>
                     </div>
                     </div>

@@ -228,8 +228,8 @@ export default function FinancesPage() {
       <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6">
         <div>
           <div className="flex items-center gap-3 mb-2">
-            <h1 className="text-5xl font-black tracking-tight text-indigo-950 dark:text-white italic">Aura Financials</h1>
-            <div className="px-3 py-1 bg-indigo-600 text-white text-[10px] font-black rounded-full shadow-lg shadow-indigo-200">V3.0</div>
+            <h1 className="text-5xl font-black tracking-tight text-indigo-950 dark:text-white italic">Aura Finans</h1>
+            <div className="px-3 py-1 bg-indigo-600 text-white text-[10px] font-black rounded-full shadow-lg shadow-indigo-200">Sürüm 3.0</div>
           </div>
           <div className="flex items-center gap-4">
             <p className="text-indigo-500 font-bold text-sm flex items-center gap-2 opacity-60">
@@ -319,7 +319,7 @@ export default function FinancesPage() {
                   <BotIcon />
               </div>
               <div className="flex-1">
-                  <h4 className="text-indigo-300 text-[10px] font-black uppercase tracking-[0.4em] mb-2">Aura AI Premium Advisor</h4>
+                  <h4 className="text-indigo-300 text-[10px] font-black uppercase tracking-[0.4em] mb-2">Aura AI Kıdemli Danışman</h4>
                   <p className="text-white text-xl font-medium tracking-tight leading-relaxed max-w-4xl">
                       "{aiInsight}"
                   </p>
@@ -454,7 +454,7 @@ export default function FinancesPage() {
               <div className="flex items-center gap-4 mb-8">
                   <div className="w-14 h-14 bg-red-600 rounded-2xl flex items-center justify-center shadow-xl shadow-red-900/50"><ShieldAlert className="w-7 h-7" /></div>
                   <div>
-                    <h4 className="text-[10px] font-black uppercase tracking-[0.3em] text-white opacity-60">Fraud Engine</h4>
+                    <h4 className="text-[10px] font-black uppercase tracking-[0.3em] text-white opacity-60">Risk Denetim Motoru</h4>
                     <p className="text-red-500 font-black text-lg leading-none">{suspiciousActivities.length} Kritik Risk</p>
                   </div>
               </div>

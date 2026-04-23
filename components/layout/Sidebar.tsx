@@ -172,7 +172,7 @@ export default function Sidebar() {
                             className="overflow-hidden whitespace-nowrap"
                         >
                             <h1 className="font-black text-xl leading-none text-gray-900 dark:text-white tracking-tighter antialiased">Aura Spa</h1>
-                            <p className="text-[10px] text-primary font-black tracking-[0.2em] uppercase mt-1.5 opacity-80">Enterprise</p>
+                            <p className="text-[10px] text-primary font-black tracking-[0.2em] uppercase mt-1.5 opacity-80">Kurumsal</p>
                         </motion.div>
                     )}
                 </div>
@@ -301,7 +301,7 @@ export default function Sidebar() {
                                 className="min-w-0 flex-1 overflow-hidden"
                             >
                                 <p className="text-[11px] font-black text-gray-900 truncate tracking-tight mb-0.5">{currentUser?.name}</p>
-                                <p className="text-[9px] text-indigo-400/80 font-black uppercase tracking-widest">{currentUser?.role?.replace('_', ' ') || ''}</p>
+                                <p className="text-[9px] text-indigo-400/80 font-black uppercase tracking-widest">{currentUser?.role?.replace('Business_Owner', 'İŞLETME SAHİBİ').replace('SaaS_Owner', 'SİSTEM SAHİBİ').replace('Branch_Manager', 'ŞUBE MÜDÜRÜ').replace('_', ' ') || ''}</p>
                             </motion.div>
                             <button 
                                 onClick={(e) => {
@@ -337,9 +337,9 @@ export default function Sidebar() {
                     <div className="p-5 bg-indigo-50 dark:bg-indigo-950/40 rounded-[2rem] border border-indigo-100 dark:border-indigo-500/10 shadow-sm relative overflow-hidden group/audit">
                         <div className="flex items-center gap-3 mb-1">
                             <ShieldCheck className="w-3.5 h-3.5 text-indigo-600 animate-pulse" />
-                            <span className="text-[8px] font-black text-indigo-950 dark:text-white uppercase tracking-[0.2em]">SECURITY PROTOCOL</span>
+                            <span className="text-[8px] font-black text-indigo-950 dark:text-white uppercase tracking-[0.2em]">GÜVENLİK PROTOKOLÜ</span>
                         </div>
-                        <p className="text-[9px] font-black text-indigo-600 uppercase tracking-widest pl-7">ACTIVE</p>
+                        <p className="text-[9px] font-black text-indigo-600 uppercase tracking-widest pl-7">AKTİF</p>
                         <div className="absolute -right-2 -bottom-2 w-10 h-10 bg-indigo-600/5 rounded-full group-hover/audit:scale-150 transition-transform duration-700" />
                     </div>
                 </div>

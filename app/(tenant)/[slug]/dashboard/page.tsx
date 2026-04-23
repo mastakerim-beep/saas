@@ -203,7 +203,7 @@ export default function Dashboard() {
                     <h3 className="text-3xl font-black text-gray-900 tracking-tighter">{formatPrice(dailyRevenue)}</h3>
                     <div className={`mt-4 inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[10px] font-black uppercase tracking-tighter ${dailyGrowth >= 0 ? 'bg-emerald-50 text-emerald-600' : 'bg-rose-50 text-rose-600'}`}>
                         {dailyGrowth >= 0 ? <ArrowUpRight className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />} 
-                        {dailyGrowth >= 0 ? '+' : ''}{dailyGrowth}% vs Dün
+                        {dailyGrowth >= 0 ? '+' : ''}{dailyGrowth}% Düne Göre
                     </div>
                 </motion.div>
 
@@ -239,7 +239,7 @@ export default function Dashboard() {
                 </motion.div>
 
                 <motion.div variants={itemVariants} className="card-apple p-6 group bg-white/40 backdrop-blur-xl border-white/60">
-                    <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Güvenlik & Churn</p>
+                    <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Güvenlik & Müşteri Kaybı</p>
                     <h3 className="text-3xl font-black text-amber-600 tracking-tighter">{suspiciousCount + churnRiskCount} <span className="text-lg font-bold text-gray-300 tracking-normal">Risk</span></h3>
                     <div className="mt-4 flex gap-2">
                         <div className="px-3 py-1 bg-amber-50 text-amber-700 rounded-xl text-[9px] font-black uppercase">Sızıntı: {suspiciousCount}</div>
@@ -295,7 +295,7 @@ export default function Dashboard() {
                         <div className="relative z-10">
                             <div className="flex items-center gap-3 mb-6">
                                 <div className="p-2 bg-white/20 rounded-xl"><Sparkles className="w-4 h-4 text-white" /></div>
-                                <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-indigo-200">Aura AI Advisor</h4>
+                                <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-indigo-200">Aura AI Danışmanı</h4>
                             </div>
                             <h5 className="text-xl font-black mb-3 leading-tight">Yarın yoğun geçecek!</h5>
                             <p className="text-indigo-100 text-xs font-semibold leading-relaxed mb-8">Sabah saatlerindeki 3 boşluk için sadık müşterilerinize otomatik indirim SMS'i gönderelim mi?</p>
