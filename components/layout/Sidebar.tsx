@@ -49,13 +49,13 @@ const SidebarItem = memo(({ href, icon: Icon, label, badge, colorClass, isHovere
                 ${isActive ? 'text-white' : 'text-indigo-400 hover:bg-indigo-50/50 dark:hover:bg-indigo-950/40 hover:text-indigo-900 dark:hover:text-white'}
             `}>
                 <div className="flex items-center justify-center min-w-[32px] relative z-10">
-                    <Icon className={`w-5 h-5 transition-transform duration-300 group-hover/item:scale-110 ${isActive ? 'text-white' : (colorClass || 'text-indigo-400/70')}`} />
+                    <Icon className={`w-5 h-5 transition-transform duration-300 group-hover/item:scale-110 ${isActive ? 'text-white' : (colorClass || 'text-indigo-500/80 dark:text-indigo-300/80')}`} />
                     
                     {/* THE MARK: More prominent active indicator */}
                     {isActive && (
                         <motion.div 
                             layoutId="active-glow"
-                            className="absolute -left-8 w-2 h-8 bg-indigo-500 rounded-full blur-[2px] shadow-[0_0_15px_rgba(79,70,229,0.8)]"
+                            className="absolute -left-10 w-2 h-10 bg-indigo-500 rounded-full blur-[4px] shadow-[0_0_20px_rgba(79,70,229,1)]"
                         />
                     )}
                 </div>
@@ -300,7 +300,7 @@ export default function Sidebar() {
                                 animate={{ opacity: 1 }}
                                 className="min-w-0 flex-1 overflow-hidden"
                             >
-                                <p className="text-[11px] font-black text-gray-900 truncate tracking-tight mb-0.5">{currentUser?.name}</p>
+                                <p className="text-[11px] font-black text-gray-900 dark:text-white truncate tracking-tight mb-0.5">{currentUser?.name}</p>
                                 <p className="text-[9px] text-indigo-400/80 font-black uppercase tracking-widest">{currentUser?.role?.replace('Business_Owner', 'İŞLETME SAHİBİ').replace('SaaS_Owner', 'SİSTEM SAHİBİ').replace('Branch_Manager', 'ŞUBE MÜDÜRÜ').replace('_', ' ') || ''}</p>
                             </motion.div>
                             <button 

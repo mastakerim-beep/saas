@@ -167,7 +167,7 @@ export default function ClientWrapper({ children }: { children: React.ReactNode 
     // If still checking, show loader
     if (isChecking && !isLoginPath) {
         return (
-            <div className={`${inter.className} flex flex-col h-screen w-full items-center justify-center bg-[#050505] text-white overflow-hidden`}>
+            <div className={`${inter.className} flex flex-col h-screen w-full items-center justify-center bg-[#020210] text-white overflow-hidden`}>
                 <motion.div 
                     initial={{ opacity: 0, scale: 0.8 }}
                     animate={{ opacity: 1, scale: 1 }}

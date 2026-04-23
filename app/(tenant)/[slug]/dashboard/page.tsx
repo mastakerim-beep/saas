@@ -147,7 +147,7 @@ export default function Dashboard() {
                         <div className="bg-primary/10 text-primary p-2 rounded-2xl">
                             <Activity className="w-5 h-5" />
                         </div>
-                        <h1 className="text-3xl md:text-4xl font-black tracking-tight text-gray-900 leading-tight">
+                        <h1 className="text-3xl md:text-4xl font-black tracking-tight text-gray-900 dark:text-white leading-tight">
                             {timeGreeting}, <span className="text-gradient">{currentUser?.name?.split(' ')[0] || ''}</span>
                             <span className="block text-lg font-bold text-gray-400 mt-1">{currentBusiness?.name || ''}</span>
                         </h1>
@@ -200,7 +200,7 @@ export default function Dashboard() {
                         {dailyGrowth >= 0 ? <TrendingUp size={80} className="text-emerald-500" /> : <TrendingDown size={80} className="text-rose-500" />}
                     </div>
                     <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Bugünkü Ciro</p>
-                    <h3 className="text-3xl font-black text-gray-900 tracking-tighter">{formatPrice(dailyRevenue)}</h3>
+                    <h3 className="text-3xl font-black text-gray-900 dark:text-white tracking-tighter">{formatPrice(dailyRevenue)}</h3>
                     <div className={`mt-4 inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[10px] font-black uppercase tracking-tighter ${dailyGrowth >= 0 ? 'bg-emerald-50 text-emerald-600' : 'bg-rose-50 text-rose-600'}`}>
                         {dailyGrowth >= 0 ? <ArrowUpRight className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />} 
                         {dailyGrowth >= 0 ? '+' : ''}{dailyGrowth}% Düne Göre
@@ -209,7 +209,7 @@ export default function Dashboard() {
 
                 <motion.div variants={itemVariants} className="card-apple p-6 group bg-white/40 backdrop-blur-xl border-white/60">
                     <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Bekleyen İşlem</p>
-                    <h3 className="text-3xl font-black text-gray-900 tracking-tighter">{pendingAppointments} <span className="text-lg font-bold text-gray-300 tracking-normal">Randevu</span></h3>
+                    <h3 className="text-3xl font-black text-gray-900 dark:text-white tracking-tighter">{pendingAppointments} <span className="text-lg font-bold text-gray-300 tracking-normal">Randevu</span></h3>
                     <div className="mt-4 flex -space-x-2">
                         {[1,2,3].map(i => <div key={i} className="w-6 h-6 rounded-full bg-gray-100 border-2 border-white flex items-center justify-center text-[8px] font-black text-gray-400">?</div>)}
                         <div className="pl-4 text-[10px] text-gray-400 font-bold flex items-center">Hazırlık Bekliyor</div>
@@ -254,7 +254,7 @@ export default function Dashboard() {
                 <motion.div variants={itemVariants} className="lg:col-span-2 card-apple p-8 md:p-10 bg-white/40 backdrop-blur-xl border-white/60">
                     <div className="flex justify-between items-center mb-10">
                         <div>
-                            <h3 className="text-xl font-black text-gray-900 tracking-tight">Performans Analitiği</h3>
+                            <h3 className="text-xl font-black text-gray-900 dark:text-white tracking-tight">Performans Analitiği</h3>
                             <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mt-1">İşletme Büyüme Trendi (Son 7 Gün)</p>
                         </div>
                         <select className="bg-gray-50 border-none rounded-xl px-4 py-2 text-[10px] font-black uppercase tracking-widest text-gray-500 outline-none cursor-pointer">
@@ -323,7 +323,7 @@ export default function Dashboard() {
                                         <Activity className="w-4 h-4" />
                                     </div>
                                     <div className="flex-1 min-w-0">
-                                        <p className="text-[11px] font-black text-gray-900 leading-tight truncate">{log.action}</p>
+                                        <p className="text-[11px] font-black text-gray-900 dark:text-white leading-tight truncate">{log.action}</p>
                                         <p className="text-[10px] text-gray-400 font-bold mt-0.5 truncate">{log.customerName || 'Sistem Kararı'}</p>
                                         <div className="flex justify-between items-center mt-2">
                                             <span className="text-[8px] font-black text-gray-300 uppercase">{new Date(log.date).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })}</span>
@@ -360,7 +360,7 @@ export default function Dashboard() {
                             exit={{ opacity: 0, scale: 0.9, y: 20 }}
                             className="bg-white rounded-[3rem] p-10 w-full max-w-md relative z-10 shadow-2xl"
                         >
-                            <h3 className="text-2xl font-black text-gray-900 tracking-tighter uppercase italic mb-2">Hedef Belirle</h3>
+                            <h3 className="text-2xl font-black text-gray-900 dark:text-white tracking-tighter uppercase italic mb-2">Hedef Belirle</h3>
                             <p className="text-xs font-bold text-gray-400 mb-8 uppercase tracking-widest">İşletmenizin geleceğini inşa edin</p>
                             
                             <div className="space-y-6">
@@ -402,7 +402,7 @@ export default function Dashboard() {
                     <div className="fixed inset-0 z-[300] flex items-center justify-center p-6">
                         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setIsEfficiencyOpen(false)} className="absolute inset-0 bg-black/60 backdrop-blur-md" />
                         <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }} className="bg-white rounded-[3rem] p-12 max-w-2xl w-full relative z-10 shadow-2xl">
-                            <h3 className="text-3xl font-black text-gray-900 tracking-tighter italic uppercase mb-8">Operasyonel Verimlilik</h3>
+                            <h3 className="text-3xl font-black text-gray-900 dark:text-white tracking-tighter italic uppercase mb-8">Operasyonel Verimlilik</h3>
                             <div className="grid grid-cols-2 gap-8">
                                 <div className="space-y-2">
                                     <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Kapasite Kullanımı</p>

@@ -4,66 +4,66 @@
 @tailwind utilities;
 
 :root {
-  /* Premium Purple/Indigo Palette - Royal Spa Aesthetic */
-  --background: 250 40% 98%;
-  --foreground: 250 50% 10%;
+  /* Premium Royal Indigo Palette */
+  --background: 240 40% 98%; /* Soft Ice Indigo */
+  --foreground: 240 50% 5%;
 
   --card: 0 0% 100%;
-  --card-foreground: 250 50% 10%;
+  --card-foreground: 240 50% 10%;
 
   --popover: 0 0% 100%;
-  --popover-foreground: 250 50% 10%;
+  --popover-foreground: 240 50% 10%;
 
-  --primary: 255 75% 55%; /* Rich Royal Purple */
+  --primary: 260 85% 56%; /* Vibrant Deep Purple-Indigo */
   --primary-foreground: 0 0% 100%;
 
-  --secondary: 255 30% 95%;
-  --secondary-foreground: 255 50% 20%;
+  --secondary: 260 40% 96%;
+  --secondary-foreground: 260 60% 20%;
 
-  --muted: 255 30% 95%;
-  --muted-foreground: 255 10% 45%;
+  --muted: 240 20% 95%;
+  --muted-foreground: 240 20% 40%;
 
-  --accent: 255 75% 55%;
-  --accent-foreground: 255 50% 10%;
+  --accent: 260 85% 56%;
+  --accent-foreground: 260 60% 10%;
 
-  --destructive: 0 84% 60%;
+  --destructive: 0 85% 60%;
   --destructive-foreground: 0 0% 98%;
 
-  --border: 255 20% 90%;
-  --input: 255 20% 90%;
-  --ring: 255 75% 55%;
+  --border: 240 30% 92%;
+  --input: 240 30% 92%;
+  --ring: 260 85% 56%;
 
-  --radius: 1.5rem;
+  --radius: 2rem;
 }
 
 .dark {
-  --background: 255 45% 4%; /* Ultra Deep Indigo-Black */
-  --foreground: 255 20% 98%;
+  --background: 240 50% 3%; /* Ultra Deep Galaxy Indigo */
+  --foreground: 240 20% 98%;
 
-  --card: 255 45% 6%;
-  --card-foreground: 255 20% 98%;
+  --card: 240 50% 5%;
+  --card-foreground: 240 20% 98%;
 
-  --popover: 255 45% 6%;
-  --popover-foreground: 255 20% 98%;
+  --popover: 240 50% 5%;
+  --popover-foreground: 240 20% 98%;
 
-  --primary: 255 75% 65%; /* Brightened Purple for Dark Mode */
+  --primary: 260 90% 65%; /* Glowing Purple */
   --primary-foreground: 0 0% 100%;
 
-  --secondary: 255 35% 12%;
-  --secondary-foreground: 255 20% 98%;
+  --secondary: 240 40% 12%;
+  --secondary-foreground: 240 20% 98%;
 
-  --muted: 255 35% 12%;
-  --muted-foreground: 255 15% 65%;
+  --muted: 240 40% 12%;
+  --muted-foreground: 240 20% 70%;
 
-  --accent: 255 35% 15%;
-  --accent-foreground: 255 20% 98%;
+  --accent: 240 40% 15%;
+  --accent-foreground: 240 20% 98%;
 
-  --destructive: 0 70% 45%;
+  --destructive: 0 70% 50%;
   --destructive-foreground: 0 0% 98%;
 
-  --border: 255 35% 15%;
-  --input: 255 35% 15%;
-  --ring: 255 75% 65%;
+  --border: 240 40% 15%;
+  --input: 240 40% 15%;
+  --ring: 260 90% 65%;
 }
 
 body {
@@ -84,23 +84,15 @@ body {
   }
 
   .card-apple {
-    @apply bg-white dark:bg-indigo-950/20 border border-gray-100 dark:border-indigo-500/10 rounded-[2.5rem] shadow-[0_20px_50px_rgba(79,70,229,0.03)] hover:shadow-[0_20px_50px_rgba(79,70,229,0.05)] transition-all duration-500;
+    @apply bg-white dark:bg-indigo-950/20 border border-indigo-50/50 dark:border-indigo-500/10 rounded-[3rem] shadow-[0_25px_60px_rgba(79,70,229,0.06)] hover:shadow-[0_25px_60px_rgba(79,70,229,0.1)] hover:-translate-y-1 transition-all duration-500;
   }
   
   .btn-premium {
-    @apply relative overflow-hidden transition-all duration-300 active:scale-95 disabled:opacity-50 disabled:pointer-events-none;
-  }
-
-  .animate-stagger-fade > * {
-    @apply opacity-0 animate-[fadeIn_0.5s_ease-out_forwards];
-  }
-
-  .modal-premium {
-    @apply bg-white dark:bg-[#0A0A1F] border border-indigo-100 dark:border-white/5 rounded-[3.5rem] shadow-2xl;
+    @apply relative overflow-hidden transition-all duration-300 active:scale-95 disabled:opacity-50 disabled:pointer-events-none rounded-2xl shadow-lg shadow-indigo-500/10;
   }
 
   .text-gradient {
-    @apply bg-clip-text text-transparent bg-gradient-to-br from-indigo-500 via-purple-500 to-violet-600;
+    @apply text-indigo-600 bg-clip-text text-transparent bg-gradient-to-br from-indigo-600 via-violet-600 to-purple-700;
   }
 
   .custom-scrollbar::-webkit-scrollbar {
