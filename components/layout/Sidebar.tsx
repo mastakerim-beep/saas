@@ -264,6 +264,24 @@ export default function Sidebar() {
                         </div>
                     </div>
                 )}
+
+                {/* GUEST ERROR STATE */}
+                {isInitialized && !currentUser && (
+                    <div className="px-4">
+                        <div className="p-4 bg-rose-50 dark:bg-rose-950/20 rounded-2xl border border-rose-100 dark:border-rose-500/10">
+                            <div className="flex items-center gap-3 text-rose-600 mb-2">
+                                <ShieldCheck size={16} />
+                                {isHovered && <span className="text-[10px] font-black uppercase tracking-widest">Yetki Hatası</span>}
+                            </div>
+                            {isHovered && (
+                                <>
+                                    <p className="text-[9px] font-bold text-rose-400 leading-normal mb-3">Oturum açıldı ancak profil verisi yüklenemedi. Lütfen tekrar giriniz.</p>
+                                    <button onClick={() => logout()} className="w-full py-2 bg-rose-600 text-white rounded-xl text-[9px] font-black uppercase tracking-widest hover:bg-rose-700 transition-all">Yeniden Gir</button>
+                                </>
+                            )}
+                        </div>
+                    </div>
+                )}
             </div>
 
             {/* Profile / Bottom Action */}

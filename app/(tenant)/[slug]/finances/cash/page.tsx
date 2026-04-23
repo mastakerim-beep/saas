@@ -57,15 +57,15 @@ export default function CashManagementPage() {
     };
 
     const transactions = useMemo(() => {
-        const pMap = payments
-            .filter(p => {
+        const pMap = (payments as Payment[])
+            .filter((p) => {
                 const d = p.date.split('T')[0];
                 const isDateMatch = d >= dateRange.start && d <= dateRange.end;
                 const isBranchMatch = p.branchId === currentBranch?.id;
                 const isSearchMatch = p.customerName.toLowerCase().includes(searchQuery.toLowerCase());
                 return isDateMatch && isBranchMatch && isSearchMatch;
             })
-            .map(p => ({
+            .map((p) => ({
                 id: p.id,
                 date: p.date,
                 party: p.customerName,
@@ -79,15 +79,15 @@ export default function CashManagementPage() {
                 original: p
             }));
 
-        const eMap = expenses
-            .filter(e => {
+        const eMap = (expenses as Expense[])
+            .filter((e) => {
                 const d = e.date.split('T')[0];
                 const isDateMatch = d >= dateRange.start && d <= dateRange.end;
                 const isBranchMatch = e.branchId === currentBranch?.id;
                 const isSearchMatch = e.desc.toLowerCase().includes(searchQuery.toLowerCase());
                 return isDateMatch && isBranchMatch && isSearchMatch;
             })
-            .map(e => ({
+            .map((e) => ({
                 id: e.id,
                 date: e.date,
                 party: 'Firma / Diğer',
@@ -108,13 +108,13 @@ export default function CashManagementPage() {
         const totalIncome = transactions.filter(t => t.type === 'Para girişi').reduce((s, t) => s + t.amount, 0);
         const totalExpense = transactions.filter(t => t.type === 'Para çıkışı').reduce((s, t) => s + t.amount, 0);
         
-        const methodMap: any = {};
-        const toolMap: any = {};
+        const methodMap: Record<string, number> = {};
+        const toolMap: Record<string, number> = {};
 
         transactions.filter(t => t.type === 'Para girişi').forEach(t => {
             methodMap[t.method] = (methodMap[t.method] || 0) + t.amount;
             if (t.toolId) {
-                const tool = paymentDefinitions.find(pd => pd.id === t.toolId);
+                const tool = (paymentDefinitions as PaymentDefinition[]).find(pd => pd.id === t.toolId);
                 const toolName = tool?.name || 'Diğer';
                 toolMap[toolName] = (toolMap[toolName] || 0) + t.amount;
             }
@@ -289,18 +289,48 @@ export default function CashManagementPage() {
                 animate={{ opacity: 1, y: 0 }}
                 className="bg-white rounded-[4rem] shadow-2xl shadow-indigo-100/50 border border-indigo-50 overflow-hidden"
             >
-                <div className="px-12 py-8 border-b border-indigo-50 flex justify-between items-center bg-gray-50/30">
-                    <h3 className="font-black text-indigo-950 uppercase italic tracking-tighter flex items-center gap-3">
-                        <Activity size={20} className="text-indigo-600" /> İŞLEM LOGLARI
-                        <span className="ml-4 px-3 py-1 bg-indigo-100 text-indigo-600 rounded-full text-[10px] font-black uppercase not-italic">CANLI</span>
-                    </h3>
-                    <div className="flex gap-4">
-                        {stats.methods.map(([method, amount]: any) => (
-                             <div key={method} className="flex items-center gap-2 px-4 py-2 bg-white rounded-xl border border-indigo-50 shadow-sm">
-                                <span className="text-[10px] font-black text-indigo-400 capitalize">{method}</span>
-                                <span className="text-xs font-black text-indigo-950">₺{amount.toLocaleString('tr-TR')}</span>
-                             </div>
-                        ))}
+                <div className="px-12 py-8 border-b border-indigo-50 flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6 bg-gray-50/30">
+                    <div>
+                        <h3 className="font-black text-indigo-950 uppercase italic tracking-tighter flex items-center gap-3">
+                            <Activity size={20} className="text-indigo-600" /> İŞLEM LOGLARI
+                            <span className="ml-4 px-3 py-1 bg-indigo-100 text-indigo-600 rounded-full text-[10px] font-black uppercase not-italic">CANLI</span>
+                        </h3>
+                    </div>
+                    
+                    {/* Method Breakdown Pills */}
+                    <div className="flex flex-wrap gap-3">
+                        {stats.methods.map(([method, amount]: any) => {
+                            const isCard = method?.toLowerCase().includes('kart');
+                            const isCash = method?.toLowerCase().includes('nakit');
+                            const isTransfer = method?.toLowerCase().includes('havale');
+                            
+                            return (
+                                <div key={method} className="flex flex-col gap-1 p-4 bg-white rounded-2xl border border-indigo-50 shadow-sm min-w-[140px] group transition-all hover:border-indigo-200">
+                                    <div className="flex items-center justify-between mb-1">
+                                        <span className="text-[9px] font-black text-indigo-400 capitalize flex items-center gap-2">
+                                            {isCash && <Banknote size={10} />}
+                                            {isCard && <Landmark size={10} />}
+                                            {isTransfer && <ArrowUpRight size={10} />}
+                                            {method}
+                                        </span>
+                                        <div className="w-1.5 h-1.5 rounded-full bg-indigo-500 animate-pulse" />
+                                    </div>
+                                    <span className="text-sm font-black text-indigo-950">₺{amount.toLocaleString('tr-TR')}</span>
+                                    
+                                    {/* Bank Breakdown Mini-List for Cards */}
+                                    {isCard && stats.tools.length > 0 && (
+                                        <div className="mt-2 pt-2 border-t border-indigo-50 space-y-1">
+                                            {stats.tools.map(([toolName, toolAmount]: any) => (
+                                                <div key={toolName} className="flex justify-between text-[8px] font-bold">
+                                                    <span className="text-indigo-300 uppercase">{toolName}</span>
+                                                    <span className="text-indigo-600">₺{toolAmount.toLocaleString('tr-TR')}</span>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
+                            );
+                        })}
                     </div>
                 </div>
 
@@ -320,7 +350,7 @@ export default function CashManagementPage() {
                         <tbody className="divide-y divide-indigo-50">
                             <AnimatePresence mode="popLayout">
                                 {transactions.map((t, idx) => {
-                                    const tool = paymentDefinitions.find(pd => pd.id === t.toolId);
+                                    const tool = (paymentDefinitions as PaymentDefinition[]).find((pd: PaymentDefinition) => pd.id === t.toolId);
                                     return (
                                         <motion.tr 
                                             key={t.id}

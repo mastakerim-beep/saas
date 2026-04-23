@@ -30,11 +30,15 @@ export const fetchData = async (
     
     // If SaaS and on a slug, but bizId is missing, resolve it NOW
     if (isSaaS && !actualBizId && slug) {
-        console.log("🔍 [Aura Sync] Identity Warp: Resolving business ID from slug...");
-        const { data: bData } = await supabase.from('businesses').select('id').eq('slug', slug).single();
-        if (bData?.id) {
-            actualBizId = bData.id;
-            console.log("✅ [Aura Sync] Identity Locked:", actualBizId);
+        try {
+            console.log("🔍 [Aura Sync] Identity Warp: Resolving business ID from slug...");
+            const { data: bData } = await supabase.from('businesses').select('id').eq('slug', slug).single();
+            if (bData?.id) {
+                actualBizId = bData.id;
+                console.log("✅ [Aura Sync] Identity Locked:", actualBizId);
+            }
+        } catch (e) {
+            console.error("Failed to resolve identity from slug:", e);
         }
     }
 

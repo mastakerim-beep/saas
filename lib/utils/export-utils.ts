@@ -100,3 +100,90 @@ export const exportToPDF = (headers: string[], body: any[][], filename: string, 
     // Dosyayı Kaydet
     doc.save(`${filename}_${new Date().toISOString().split('T')[0]}.pdf`);
 };
+
+/**
+ * Premium Finansal Kitapçık Dışa Aktarma
+ * @param data Kapsamlı finansal veri objesi
+ */
+export const exportFinancialBooklet = (data: {
+    businessName: string,
+    period: string,
+    stats: { label: string, value: string }[],
+    staffData: any[],
+    chartData: any[],
+    suspicious: any[]
+}) => {
+    const doc = new jsPDF() as any;
+    const primary = [79, 70, 229]; // Indigo
+    const gray = [107, 114, 128];
+
+    // --- KAPAK SAYFASI ---
+    doc.setFillColor(17, 24, 39); // Dark background
+    doc.rect(0, 0, 210, 297, 'F');
+    
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(40);
+    doc.setFont('helvetica', 'bold');
+    doc.text('FINANSAL', 20, 100);
+    doc.text('KITAPCIK', 20, 120);
+    
+    doc.setDrawColor(...primary);
+    doc.setLineWidth(2);
+    doc.line(20, 130, 100, 130);
+    
+    doc.setFontSize(14);
+    doc.text(data.businessName.toUpperCase(), 20, 150);
+    doc.text(`DONEM: ${data.period}`, 20, 160);
+    
+    doc.setFontSize(10);
+    doc.setTextColor(...gray);
+    doc.text('AURA SPA ERP - SUPREME AUTHORITY REPORTING', 20, 280);
+
+    // --- SAYFA 2: GENEL OZET ---
+    doc.addPage();
+    doc.setTextColor(17, 24, 39);
+    doc.setFontSize(22);
+    doc.text('Donem Ozeti', 20, 30);
+    
+    // KPI Kutuları
+    let y = 50;
+    data.stats.forEach((s, i) => {
+        doc.setFillColor(249, 250, 251);
+        doc.roundedRect(20, y, 170, 25, 3, 3, 'F');
+        doc.setTextColor(...gray);
+        doc.setFontSize(10);
+        doc.text(s.label.toUpperCase(), 30, y + 10);
+        doc.setTextColor(17, 24, 39);
+        doc.setFontSize(14);
+        doc.setFont('helvetica', 'bold');
+        doc.text(s.value, 30, y + 20);
+        y += 30;
+    });
+
+    // Riski Islemler Tablosu
+    doc.setFontSize(16);
+    doc.text('Denetim & Risk Analizi (Fraud Engine)', 20, y + 20);
+    
+    doc.autoTable({
+        startY: y + 30,
+        head: [['Tip', 'Aciklama', 'Tarih']],
+        body: data.suspicious.map(s => [s.type, s.desc, s.date]),
+        headStyles: { fillColor: [220, 38, 38] }, // Red for risk
+        margin: { left: 20, right: 20 }
+    });
+
+    // --- SAYFA 3: PERSONEL PERFORMANS ---
+    doc.addPage();
+    doc.setFontSize(22);
+    doc.text('Personel Verimlilik Raporu', 20, 30);
+    
+    doc.autoTable({
+        startY: 50,
+        head: [['Uzman Ismi', 'Toplam Ciro', 'Hak Edilen Prim']],
+        body: data.staffData.map(st => [st.name, `TL ${st.sales.toLocaleString('tr-TR')}`, `TL ${st.commission.toLocaleString('tr-TR')}`]),
+        headStyles: { fillColor: primary },
+        margin: { left: 20, right: 20 }
+    });
+
+    doc.save(`Finansal_Kitapcik_${data.businessName.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.pdf`);
+};
