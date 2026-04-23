@@ -140,15 +140,15 @@ export default function SuperAdminPage() {
     // GLOBAL STATS CALCULATIONS
     const stats = useMemo(() => {
         // SaaS Geliri: SaaS Org'a yapılan tüm ödemelerin toplamı
-        const totalRev = allPayments.reduce((s, p) => s + (p.totalAmount || 0), 0);
+        const totalRev = allPayments.reduce((s: number, p: any) => s + (p.totalAmount || 0), 0);
         
         // Aktif Node'lar: Durumu Aktif veya active olan tüm işletmeler
-        const activeTenants = allBusinesses.filter(b => b.status === 'active' || b.status === 'Aktif').length;
+        const activeTenants = allBusinesses.filter((b: any) => b.status === 'active' || b.status === 'Aktif').length;
         
         // Gerçek MRR: Tüm işletmelerin tanımlı aylık ücretlerinin (MRR) toplamı
-        const mrr = allBusinesses.reduce((s, b) => s + (b.mrr || 0), 0);
+        const mrr = allBusinesses.reduce((s: number, b: any) => s + (b.mrr || 0), 0);
         
-        const pendingNotifs = allNotifs.filter(n => n.type === 'INTERNAL_REPORT').length;
+        const pendingNotifs = allNotifs.filter((n: any) => n.type === 'INTERNAL_REPORT').length;
 
         return { totalRev, activeTenants, mrr, pendingNotifs };
     }, [allPayments, allBusinesses, allNotifs]);
@@ -163,8 +163,8 @@ export default function SuperAdminPage() {
             
             // O güne ait gerçek SaaS geliri
             const dayRev = allPayments
-                .filter(p => (p.date || p.createdAt?.split('T')[0]) === dateStr)
-                .reduce((s, p) => s + (p.totalAmount || 0), 0);
+                .filter((p: any) => (p.date || p.createdAt?.split('T')[0]) === dateStr)
+                .reduce((s: number, p: any) => s + (p.totalAmount || 0), 0);
             
             // Projeksiyon: Mevcut MRR'ın günlük ortalaması (Canlı hissi verir)
             const dailyMrrGoal = stats.mrr / 30;
@@ -347,7 +347,7 @@ export default function SuperAdminPage() {
                                             <span className="text-[8px] font-black text-indigo-500 bg-indigo-50 px-2 py-1 rounded-lg">CANLI BESLEME</span>
                                         </h4>
                                         <div className="space-y-4 max-h-[400px] overflow-y-auto no-scrollbar pr-2">
-                                            {allLogs.length > 0 ? allLogs.slice(0, 15).map((log, i) => (
+                                            {allLogs.length > 0 ? allLogs.slice(0, 15).map((log: any, i: number) => (
                                                 <div key={i} className="flex gap-4 items-center group cursor-pointer hover:translate-x-1 transition-transform">
                                                     <div className="w-10 h-10 bg-slate-50 border border-indigo-50 rounded-2xl flex items-center justify-center text-indigo-600 group-hover:text-white group-hover:bg-indigo-600 transition-all">
                                                         {log.action?.includes('Business') ? <Globe size={14} /> : <Database size={14} />}
@@ -408,7 +408,7 @@ export default function SuperAdminPage() {
                                 </div>
 
                                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 pb-10">
-                                    {filteredBusinesses.map((biz) => (
+                                    {filteredBusinesses.map((biz: any) => (
                                         <TenantCard 
                                             key={biz.id} 
                                             biz={biz} 
@@ -429,7 +429,7 @@ export default function SuperAdminPage() {
                                     <p className="text-[10px] font-bold text-indigo-600 uppercase tracking-[0.3em] mb-10">AI Tarafından Üretilen Gün Sonu Özetleri</p>
                                     
                                     <div className="space-y-6 pb-10">
-                                        {allNotifs.filter(n => n.type === 'INTERNAL_REPORT').map((n, i) => (
+                                        {allNotifs.filter((n: any) => n.type === 'INTERNAL_REPORT').map((n: any, i: number) => (
                                             <div key={i} className="bg-slate-50 border border-indigo-50 rounded-[2rem] p-8 group hover:border-indigo-500/30 transition-all">
                                                 <div className="flex justify-between items-start mb-6">
                                                     <div className="flex items-center gap-4">
@@ -685,7 +685,7 @@ function BroadcastForm() {
     );
 }
 
-function NavBtn({ id, active, onClick, icon: Icon, label, badge }: any) {
+function NavBtn({ id, active, onClick, icon: Icon, label, badge }: { id: AdminTab, active: AdminTab, onClick: (id: AdminTab) => void, icon: any, label: string, badge?: string }) {
     const isActive = active === id;
     return (
         <button 
@@ -709,7 +709,7 @@ function NavBtn({ id, active, onClick, icon: Icon, label, badge }: any) {
     );
 }
 
-function StatCard({ title, value, icon: Icon, trend, color }: any) {
+function StatCard({ title, value, icon: Icon, trend, color }: { title: string, value: string | number, icon: any, trend: string, color: 'indigo' | 'purple' | 'blue' }) {
     const bgMap: any = {
         indigo: 'bg-indigo-600',
         purple: 'bg-purple-600',
@@ -735,7 +735,7 @@ function StatCard({ title, value, icon: Icon, trend, color }: any) {
     );
 }
 
-function MetricBox({ label, value, trend }: any) {
+function MetricBox({ label, value, trend }: { label: string, value: string | number, trend: string }) {
     return (
         <div className="bg-slate-50 border border-indigo-50 rounded-2xl p-4 flex flex-col justify-between h-24 shadow-inner">
             <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">{label}</p>
@@ -749,7 +749,7 @@ function MetricBox({ label, value, trend }: any) {
     );
 }
 
-function TenantCard({ biz, onImpersonate, onDelete, onToggleStatus, isLoading }: any) {
+function TenantCard({ biz, onImpersonate, onDelete, onToggleStatus, isLoading }: { biz: any, onImpersonate: () => void, onDelete: () => void, onToggleStatus: () => void, isLoading: boolean }) {
     const { renewSubscription } = useStore();
     const isActive = biz.status === 'active' || biz.status === 'Aktif';
     

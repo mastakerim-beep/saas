@@ -34,7 +34,7 @@ export default function Dashboard() {
         setMounted(true);
     }, []);
 
-    const getRate = (code: string) => rates.find(r => r.code === code)?.rate || 1;
+    const getRate = (code: string) => rates.find((r: any) => r.code === code)?.rate || 1;
 
     const formatPrice = (val: number) => {
         if (currency === 'TRY') return `₺${val.toLocaleString('tr-TR')}`;
@@ -68,11 +68,11 @@ export default function Dashboard() {
 
     // Capacity Logic: Real data based
     const capacity = useMemo(() => {
-        const activeStaff = staffMembers.filter(s => s.status === 'active').length;
+        const activeStaff = staffMembers.filter((s: any) => s.status === 'active').length;
         if (activeStaff === 0) return 0;
         // Simplified: avg 8 appointments per staff max
         const maxDaily = activeStaff * 8;
-        const current = appointments.filter(a => a.date === today && a.status !== 'cancelled').length;
+        const current = appointments.filter((a: any) => a.date === today && a.status !== 'cancelled').length;
         return Math.min(100, Math.round((current / maxDaily) * 100));
     }, [staffMembers, appointments, today]);
 
@@ -112,8 +112,8 @@ export default function Dashboard() {
         return last7Days;
     }, [payments]);
 
-    const churnRiskCount = customers.filter(c => c.isChurnRisk).length;
-    const suspiciousCount = appointments.filter(a => a.status === 'completed' && a.price > 0 && !payments.some(p => p.appointmentId === a.id)).length;
+    const churnRiskCount = customers.filter((c: any) => c.isChurnRisk).length;
+    const suspiciousCount = appointments.filter((a: any) => a.status === 'completed' && a.price > 0 && !payments.some((p: any) => p.appointmentId === a.id)).length;
 
     const containerVariants = {
         hidden: { opacity: 0 },

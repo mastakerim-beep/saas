@@ -16,7 +16,7 @@ export default function CustomerGallery({ customerId }: CustomerGalleryProps) {
     const [selectedImage, setSelectedImage] = useState<CustomerMedia | null>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
 
-    const media = customerMedia.filter(m => m.customerId === customerId).sort((a,b) => new Date(b.createdAt || '').getTime() - new Date(a.createdAt || '').getTime());
+    const media = customerMedia.filter((m: any) => m.customerId === customerId).sort((a: any, b: any) => new Date(b.createdAt || '').getTime() - new Date(a.createdAt || '').getTime());
 
     const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
@@ -120,7 +120,7 @@ export default function CustomerGallery({ customerId }: CustomerGalleryProps) {
                 </div>
             ) : (
                 <div className="grid grid-cols-2 gap-3">
-                    {media.map((item) => (
+                    {media.map((item: any) => (
                         <div 
                             key={item.id} 
                             onClick={() => setSelectedImage(item)}
