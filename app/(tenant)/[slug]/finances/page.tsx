@@ -238,7 +238,7 @@ export default function FinancesPage() {
           </div>
         </div>
 
-        <div className="flex flex-wrap items-center gap-3 bg-white/50 dark:bg-indigo-900/20 backdrop-blur-xl p-3 rounded-[2.5rem] border border-white dark:border-indigo-500/10 shadow-2xl shadow-indigo-100/50">
+        <div className="flex flex-wrap items-center gap-3 bg-white/50 dark:bg-indigo-900/20 backdrop-blur-xl p-3 rounded-[2.5rem] border border-white dark:border-indigo-500/10 shadow-2xl shadow-indigo-100/50 relative z-[30]">
             {/* Branch Switcher */}
             <div className="flex items-center gap-2 px-4 py-3 bg-white dark:bg-indigo-950 rounded-[1.5rem] border border-indigo-50 dark:border-indigo-800 shadow-sm relative">
                 <MapPin size={16} className="text-indigo-500" />
