@@ -197,7 +197,7 @@ export default function Header() {
                         onClick={() => setShowProfileMenu(!showProfileMenu)}
                         className="w-12 h-12 bg-gradient-to-br from-indigo-600 to-purple-600 rounded-full flex items-center justify-center text-white font-black text-sm cursor-pointer hover:scale-105 active:scale-95 transition-all shadow-xl shadow-indigo-100 border-4 border-white"
                     >
-                        {currentUser.name?.substring(0, 2).toUpperCase()}
+                        {currentUser?.name?.substring(0, 2).toUpperCase()}
                     </div>
 
                     <AnimatePresence>
@@ -217,7 +217,7 @@ export default function Header() {
                                     <div className="p-6 bg-gradient-to-br from-indigo-600 to-purple-700 rounded-[2rem] text-white mb-3 shadow-lg shadow-indigo-100 relative overflow-hidden">
                                         <div className="relative z-10">
                                             <p className="text-[10px] font-black opacity-60 uppercase tracking-[0.2em] mb-1">YÖNETİCİ PANELİ</p>
-                                            <p className="font-black text-xl tracking-tight mb-2 leading-none">{currentUser.name}</p>
+                                            <p className="font-black text-xl tracking-tight mb-2 leading-none">{currentUser?.name}</p>
                                             <div className="flex flex-col gap-1.5 pt-2 border-t border-white/10 mt-2">
                                                 <div className="flex items-center gap-2 text-[10px] font-black opacity-80 uppercase">
                                                     <Building2 size={12} className="opacity-50" /> {currentBusiness?.name}
@@ -227,7 +227,7 @@ export default function Header() {
                                                 </div>
                                             </div>
                                             <div className="mt-4 inline-block px-3 py-1 bg-white/20 rounded-full text-[9px] font-black uppercase tracking-widest leading-none">
-                                                {currentUser.role.replace('_', ' ')}
+                                                {currentUser?.role?.replace('_', ' ') || ''}
                                             </div>
                                         </div>
                                         <div className="absolute -right-6 -bottom-6 w-24 h-24 bg-white/10 rounded-full blur-2xl" />

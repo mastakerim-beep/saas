@@ -110,6 +110,12 @@ const StoreOrchestrator = ({ children }: { children: ReactNode }) => {
             id = auth.currentUser.businessId;
         }
 
+        // STICKY IDENTITY CACHE (Hydration Guard)
+        // If we are on a slug but data is still loading, do not revert to NULL
+        if (!id && slug && lastResolvedBizIdRef.current) {
+             id = lastResolvedBizIdRef.current;
+        }
+
         if (id) lastResolvedBizIdRef.current = id;
         return id;
     }, [auth.impersonatedBusinessId, auth.currentUser?.businessId, auth.currentUser?.role, slug, biz.allBusinesses]);
@@ -1249,6 +1255,7 @@ const StoreOrchestrator = ({ children }: { children: ReactNode }) => {
                 currentBranch: biz.currentBranch,
                 isOnline: isOnline,
                 syncStatus: syncStatus,
+                isInitialized: auth.isInitialized,
                 isManagerAuthorized: isManagerAuthorized,
                 allBusinesses: biz.allBusinesses,
                 allUsers: auth.allUsers,

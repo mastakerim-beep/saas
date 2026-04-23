@@ -25,22 +25,21 @@ export const fetchData = async (
 
     const isSaaS = currentUser?.role === 'SaaS_Owner';
     
-    // CRITICAL: If I am a SaaS owner on a slug, but bizId is undefined, 
-    // it means it's still being resolved from the business list.
-    // I must NOT use currentUser?.businessId as targetId because that would fetch SaaS Org data.
-    // HYPER-SCALE OPTIMIZATION: 
-    // If we have a bizId (cached) or we are non-SaaS, we don't need the specialized 'businesses' fetch phase.
-    const isBusinessesEmpty = !setters.allBusinesses?.length;
-    const isSlugPending = isSaaS && !bizId && isBusinessesEmpty;
-    const targetId = isSlugPending ? undefined : (bizId || currentUser?.businessId);
+    // --- IDENTITY RESOLUTION ---
+    let actualBizId = bizId;
     
-    // If we are a SaaS owner but businesses are ALREADY LOADED (via persistence),
-    // we should NOT do a Phase 1 fetch. We skip directly to Phase 2.
-    const tablesToFetch = isSlugPending ? ['businesses'] : tables;
-    
-    if (isSlugPending) {
-        console.log("🚧 [Aura Sync] Identity Lock: Fetching ONLY specialized business list...");
+    // If SaaS and on a slug, but bizId is missing, resolve it NOW
+    if (isSaaS && !actualBizId && slug) {
+        console.log("🔍 [Aura Sync] Identity Warp: Resolving business ID from slug...");
+        const { data: bData } = await supabase.from('businesses').select('id').eq('slug', slug).single();
+        if (bData?.id) {
+            actualBizId = bData.id;
+            console.log("✅ [Aura Sync] Identity Locked:", actualBizId);
+        }
     }
+
+    const targetId = actualBizId || currentUser?.businessId;
+    const tablesToFetch = tables;
 
     if (!targetId && !isSaaS) {
         console.warn("⚠️ Fetch aborted: No targetId and not SaaS");

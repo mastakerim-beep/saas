@@ -101,7 +101,8 @@ export default function Sidebar() {
     const pathname = usePathname();
     const { 
         can, currentUser, currentBusiness, tenantModules, 
-        allBusinesses, logout, isImpersonating, setImpersonatedBusinessId 
+        allBusinesses, logout, isImpersonating, setImpersonatedBusinessId,
+        isInitialized
     } = useStore();
     const [isHovered, setIsHovered] = useState(false);
     const [isMounted, setIsMounted] = useState(false);
@@ -110,6 +111,8 @@ export default function Sidebar() {
     useEffect(() => {
         setIsMounted(true);
     }, []);
+
+    if (!isMounted || !isInitialized) return null;
 
     const isAdminView = pathname.startsWith('/admin');
 
@@ -272,7 +275,7 @@ export default function Sidebar() {
                     ${!isHovered ? 'justify-center' : ''}
                 `}>
                     <div className="w-10 h-10 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-2xl flex items-center justify-center text-white font-black shadow-lg shadow-indigo-200 shrink-0">
-                        {currentUser?.name.charAt(0)}
+                        {currentUser?.name?.charAt(0) || '?'}
                     </div>
                     {isHovered && (
                         <div className="flex items-center gap-2">
@@ -282,7 +285,7 @@ export default function Sidebar() {
                                 className="min-w-0 flex-1 overflow-hidden"
                             >
                                 <p className="text-[11px] font-black text-gray-900 truncate tracking-tight mb-0.5">{currentUser?.name}</p>
-                                <p className="text-[9px] text-indigo-400/80 font-black uppercase tracking-widest">{currentUser?.role.replace('_', ' ')}</p>
+                                <p className="text-[9px] text-indigo-400/80 font-black uppercase tracking-widest">{currentUser?.role?.replace('_', ' ') || ''}</p>
                             </motion.div>
                             <button 
                                 onClick={(e) => {
