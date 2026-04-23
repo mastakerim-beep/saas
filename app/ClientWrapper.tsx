@@ -144,7 +144,7 @@ export default function ClientWrapper({ children }: { children: React.ReactNode 
                 console.warn("SAFETY TIMEOUT: Forced UI unlock.");
                 setIsChecking(false);
             }
-        }, 6000); 
+        }, 3000); 
 
         return () => {
             clearTimeout(timer);
@@ -177,12 +177,15 @@ export default function ClientWrapper({ children }: { children: React.ReactNode 
                         <Sparkles className="w-12 h-12 text-white" />
                     </div>
                     <div className="flex flex-col items-center gap-2">
+                    <div className="flex flex-col items-center gap-4 mt-4">
                         <span className="text-[10px] font-black uppercase tracking-[0.4em] animate-pulse">Siber Güvenlik Katmanı</span>
-                        <div className="flex items-center gap-1">
-                             <div className="w-1 h-1 bg-indigo-500 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
-                             <div className="w-1 h-1 bg-indigo-500 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
-                             <div className="w-1 h-1 bg-indigo-500 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
-                        </div>
+                        <button 
+                             onClick={() => setIsChecking(false)}
+                             className="px-4 py-2 bg-white/5 hover:bg-white/10 rounded-xl text-[8px] font-black uppercase tracking-widest transition-all border border-white/5"
+                        >
+                            YÜKLEME UZUN MU SÜRDÜ? BURAYA TIKLA
+                        </button>
+                    </div>
                     </div>
                 </motion.div>
                 

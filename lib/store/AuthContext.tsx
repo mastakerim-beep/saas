@@ -91,7 +91,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
                 console.warn('Auth initialization timeout triggered.');
                 setIsInitialized(true);
             }
-        }, 5000);
+        }, 2000);
 
         return () => {
             subscription.unsubscribe();

@@ -112,8 +112,6 @@ export default function Sidebar() {
         setIsMounted(true);
     }, []);
 
-    if (!isMounted) return null;
-
     const isAdminView = pathname.startsWith('/admin');
 
     // URL'den slug ayıklama (fallback için)
