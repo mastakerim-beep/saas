@@ -148,8 +148,8 @@ export default function Dashboard() {
                             <Activity className="w-5 h-5" />
                         </div>
                         <h1 className="text-3xl md:text-4xl font-black tracking-tight text-gray-900 leading-tight">
-                            {timeGreeting}, <span className="text-gradient">{currentUser?.name.split(' ')[0]}</span>
-                            <span className="block text-lg font-bold text-gray-400 mt-1">{currentBusiness?.name}</span>
+                            {timeGreeting}, <span className="text-gradient">{currentUser?.name?.split(' ')[0] || ''}</span>
+                            <span className="block text-lg font-bold text-gray-400 mt-1">{currentBusiness?.name || ''}</span>
                         </h1>
                     </div>
                     <p className="text-gray-400 font-bold text-sm tracking-tight flex items-center gap-2">

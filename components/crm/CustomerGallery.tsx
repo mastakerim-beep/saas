@@ -29,7 +29,7 @@ export default function CustomerGallery({ customerId }: CustomerGalleryProps) {
             // 1. Upload to Supabase Storage
             const fileExt = file.name.split('.').pop();
             const fileName = `${Math.random().toString(36).substring(2)}.${fileExt}`;
-            const filePath = `${currentUser.businessId}/${customerId}/${fileName}`;
+            const filePath = `${currentUser?.businessId || 'global'}/${customerId}/${fileName}`;
 
             const { data: uploadData, error: uploadError } = await supabase.storage
                 .from('customer-media')

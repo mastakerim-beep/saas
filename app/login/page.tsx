@@ -27,9 +27,9 @@ export default function LoginPage() {
         if (isInitialized) {
             setIsCheckingAuth(false);
             if (currentUser) {
-                if (currentUser.role === 'SaaS_Owner') {
+                if (currentUser?.role === 'SaaS_Owner') {
                     router.push('/admin');
-                } else if (currentUser.businessId) {
+                } else if (currentUser?.businessId) {
                     // We don't have the slug here easily without a fetch, 
                     // but StoreProvider will handle the redirect if we go to /
                     router.push('/dashboard'); 

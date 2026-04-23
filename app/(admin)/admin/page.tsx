@@ -236,7 +236,7 @@ export default function SuperAdminPage() {
 
                     <div className="flex items-center gap-3 pl-8 border-l border-slate-100">
                          <div className="text-right">
-                             <p className="text-[11px] font-black text-slate-900 leading-none mb-1">{currentUser.name}</p>
+                             <p className="text-[11px] font-black text-slate-900 leading-none mb-1">{currentUser?.name || ''}</p>
                              <p className="text-[8px] font-bold text-indigo-500 uppercase tracking-widest">Sovereign Admin</p>
                          </div>
                          <button 
