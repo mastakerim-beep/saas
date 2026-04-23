@@ -337,15 +337,19 @@ const StoreOrchestrator = ({ children }: { children: ReactNode }) => {
     }, [auth.currentUser]);
 
     const getCustomerAppointments = React.useCallback((cid: string) => {
-        return data.appointments.filter(a => a.customerId === cid);
+        return (data.appointments || []).filter(a => a.customerId === cid);
     }, [data.appointments]);
 
+    const getCustomerPackages = React.useCallback((cid: string) => {
+        return (data.packages || []).filter(p => p.customerId === cid);
+    }, [data.packages]);
+
     const getCustomerPayments = React.useCallback((cid: string) => {
-        return data.payments.filter(p => p.customerId === cid);
+        return (data.payments || []).filter(p => p.customerId === cid);
     }, [data.payments]);
 
     const getChurnRiskCustomers = React.useCallback(() => {
-        return data.customers.filter(c => c.isChurnRisk);
+        return (data.customers || []).filter(c => c.isChurnRisk);
     }, [data.customers]);
 
     const getUpsellPotentialCustomers = React.useCallback(() => {
@@ -363,7 +367,7 @@ const StoreOrchestrator = ({ children }: { children: ReactNode }) => {
 
     const getBirthdaysToday = React.useCallback(() => {
         const today = new Date().toISOString().split('T')[0].substring(5); // MM-DD
-        return data.customers.filter((c: Customer) => c.birthdate?.includes(today));
+        return (data.customers || []).filter((c: Customer) => c.birthdate?.includes(today));
     }, [data.customers]);
 
     const calculateCommission = React.useCallback((staffId: string, serviceName: string, amount: number) => {
@@ -1232,6 +1236,7 @@ const StoreOrchestrator = ({ children }: { children: ReactNode }) => {
         determineChurnRisk,
         getTodayDate,
         getTodayPayments,
+        getCustomerPackages,
         getCustomerAppointments,
         getCustomerPayments,
         getChurnRiskCustomers,
@@ -1239,13 +1244,14 @@ const StoreOrchestrator = ({ children }: { children: ReactNode }) => {
         getBirthdaysToday
     }), [
         fetchData, markAsModified, biz.clearCatalog, can, addLog, addZReport, calculateCommission, determineChurnRisk, getTodayDate, getTodayPayments, 
+        getCustomerPackages, 
         getCustomerAppointments, getCustomerPayments, getChurnRiskCustomers, getUpsellPotentialCustomers, getBirthdaysToday
     ]);
 
-    const shieldedAppointments = useMemo(() => data.appointments.filter(a => !recentlyModified.has(a.id)), [data.appointments, recentlyModified]);
-    const shieldedBlocks = useMemo(() => data.blocks.filter(b => !recentlyModified.has(b.id)), [data.blocks, recentlyModified]);
-    const shieldedCustomers = useMemo(() => data.customers.filter(c => !recentlyModified.has(c.id)), [data.customers, recentlyModified]);
-    const shieldedInventory = useMemo(() => data.inventory.filter(p => !recentlyModified.has(p.id)), [data.inventory, recentlyModified]);
+    const shieldedAppointments = useMemo(() => (data.appointments || []).filter(a => !recentlyModified.has(a.id)), [data.appointments, recentlyModified]);
+    const shieldedBlocks = useMemo(() => (data.blocks || []).filter(b => !recentlyModified.has(b.id)), [data.blocks, recentlyModified]);
+    const shieldedCustomers = useMemo(() => (data.customers || []).filter(c => !recentlyModified.has(c.id)), [data.customers, recentlyModified]);
+    const shieldedInventory = useMemo(() => (data.inventory || []).filter(p => !recentlyModified.has(p.id)), [data.inventory, recentlyModified]);
 
     return (
         <StoreMethodsContext.Provider value={stableMethods}>
@@ -1262,54 +1268,54 @@ const StoreOrchestrator = ({ children }: { children: ReactNode }) => {
                 impersonatedBusinessId: auth.impersonatedBusinessId,
                 isImpersonating: auth.isImpersonating,
                 currentStaff: auth.currentUser ? data.staffMembers.find(s => s.id === auth.currentUser?.staffId || s.name === auth.currentUser?.name) : undefined,
-                customers: shieldedCustomers,
-                allCustomers: shieldedCustomers,
-                packages: data.packages,
-                allPackages: data.packages,
-                membershipPlans: data.membershipPlans,
-                customerMemberships: data.customerMemberships,
-                appointments: shieldedAppointments,
-                allAppointments: shieldedAppointments,
-                blocks: shieldedBlocks,
-                allBlocks: shieldedBlocks,
+                customers: shieldedCustomers || [],
+                allCustomers: shieldedCustomers || [],
+                packages: data.packages || [],
+                allPackages: data.packages || [],
+                membershipPlans: data.membershipPlans || [],
+                customerMemberships: data.customerMemberships || [],
+                appointments: shieldedAppointments || [],
+                allAppointments: shieldedAppointments || [],
+                blocks: shieldedBlocks || [],
+                allBlocks: shieldedBlocks || [],
                 payments: data.payments || [],
                 allPayments: data.payments || [],
-                staffMembers: data.staffMembers,
-                allStaff: data.staffMembers,
-                debts: data.debts,
-                allDebts: data.debts,
-                branches: biz.branches,
-                allLogs: data.allLogs,
-                allNotifs: data.allNotifs,
-                aiInsights: data.aiInsights,
-                customerMedia: data.customerMedia,
-                inventory: shieldedInventory,
-                rooms: data.rooms,
-                services: data.services,
-                packageDefinitions: data.packageDefinitions,
-                commissionRules: data.commissionRules,
-                rates: biz.allRates,
-                expenses: data.expenses,
-                zReports: data.zReports,
+                staffMembers: data.staffMembers || [],
+                allStaff: data.staffMembers || [],
+                debts: data.debts || [],
+                allDebts: data.debts || [],
+                branches: biz.branches || [],
+                allLogs: data.allLogs || [],
+                allNotifs: data.allNotifs || [],
+                aiInsights: data.aiInsights || [],
+                customerMedia: data.customerMedia || [],
+                inventory: shieldedInventory || [],
+                rooms: data.rooms || [],
+                services: data.services || [],
+                packageDefinitions: data.packageDefinitions || [],
+                commissionRules: data.commissionRules || [],
+                rates: biz.allRates || [],
+                expenses: data.expenses || [],
+                zReports: data.zReports || [],
                 settings: biz.settings,
-                allowedBranches: biz.branches,
+                allowedBranches: biz.branches || [],
                 bookingSettings: biz.bookingSettings,
-                paymentDefinitions: biz.paymentDefinitions,
-                bankAccounts: biz.bankAccounts,
-                expenseCategories: biz.expenseCategories,
-                referralSources: biz.referralSources,
-                consentFormTemplates: biz.consentFormTemplates,
-                quotes: data.quotes,
-                tenantModules: data.tenantModules,
-                marketingRules: data.marketingRules,
-                pricingRules: data.pricingRules,
-                wallets: data.wallets,
-                walletTransactions: data.walletTransactions,
-                bodyMaps: data.bodyMaps,
-                usageNorms: data.usageNorms,
+                paymentDefinitions: biz.paymentDefinitions || [],
+                bankAccounts: biz.bankAccounts || [],
+                expenseCategories: biz.expenseCategories || [],
+                referralSources: biz.referralSources || [],
+                consentFormTemplates: biz.consentFormTemplates || [],
+                quotes: data.quotes || [],
+                tenantModules: data.tenantModules || [],
+                marketingRules: data.marketingRules || [],
+                pricingRules: data.pricingRules || [],
+                wallets: data.wallets || [],
+                walletTransactions: data.walletTransactions || [],
+                bodyMaps: data.bodyMaps || [],
+                usageNorms: data.usageNorms || [],
                 loyaltySettings: biz.loyaltySettings,
-                webhooks: biz.webhooks,
-                inventoryCategories: data.inventoryCategories,
+                webhooks: biz.webhooks || [],
+                inventoryCategories: data.inventoryCategories || [],
                 isLicenseExpired
             }}>
                 {children}

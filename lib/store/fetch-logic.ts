@@ -203,6 +203,8 @@ export const fetchData = async (
         setters.setAllServices(dataMap.services || []);
         setters.setAllPackageDefinitions(dataMap.package_definitions || []);
         setters.setAllUsers?.(dataMap.app_users || []);
+        setters.setAllPackages(dataMap.packages || []);
+        setters.setAllCommissionRules?.(dataMap.commission_rules || []);
         console.log(`✅ Fetch Success - Staff: ${dataMap.staff?.length || 0}, Appts: ${dataMap.appointments?.length || 0}, Biz: ${dataMap.businesses?.length || 0}`);
         setters.setAllLogs?.(dataMap.audit_logs || []);
         setters.setAllCustomerMedia(dataMap.customer_media || []);
