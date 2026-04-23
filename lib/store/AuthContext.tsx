@@ -85,7 +85,18 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             }
         });
 
-        return () => subscription.unsubscribe();
+        // --- SAFETY TIMEOUT: Force initialization if auth listener is stuck ---
+        const safetyTimer = setTimeout(() => {
+            if (!isInitialized) {
+                console.warn('Auth initialization timeout triggered.');
+                setIsInitialized(true);
+            }
+        }, 5000);
+
+        return () => {
+            subscription.unsubscribe();
+            clearTimeout(safetyTimer);
+        };
     }, []);
 
     const login = async (email: string, pass: string): Promise<AppUser | null> => {

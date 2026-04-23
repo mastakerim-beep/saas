@@ -112,7 +112,7 @@ export default function Sidebar() {
         setIsMounted(true);
     }, []);
 
-    if (!isMounted || !isInitialized) return null;
+    if (!isMounted) return null;
 
     const isAdminView = pathname.startsWith('/admin');
 
@@ -123,7 +123,7 @@ export default function Sidebar() {
     const resolvedSlug = useMemo(() => {
         if (currentBusiness?.slug) return currentBusiness.slug;
         if (currentUser?.businessId) {
-            const biz = allBusinesses.find(b => b.id === currentUser.businessId);
+            const biz = allBusinesses.find((b: any) => b.id === currentUser.businessId);
             if (biz?.slug) return biz.slug;
         }
         
@@ -144,7 +144,7 @@ export default function Sidebar() {
     const isModuleEnabled = (name: string) => {
         // SaaS_Owner sees everything
         if (currentUser?.role === 'SaaS_Owner') return true;
-        const mod = tenantModules.find(m => m.moduleName === name);
+        const mod = tenantModules.find((m: any) => m.moduleName === name);
         // Default to enabled if not found, or specific logic if preferred
         return mod ? mod.isEnabled : true;
     };

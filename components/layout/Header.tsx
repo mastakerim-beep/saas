@@ -23,10 +23,10 @@ export default function Header() {
     const [showBranchMenu, setShowBranchMenu] = useState(false);
     const [showAuditMenu, setShowAuditMenu] = useState(false);
 
-    if (!currentUser) return null;
+    // if (!currentUser) return null; // Removed to prevent header disappearing during hydration hang
 
     const auditAlerts = runImperialAudit ? runImperialAudit() : [];
-    const criticalAuditCount = auditAlerts.filter(a => a.type === 'critical').length;
+    const criticalAuditCount = auditAlerts.filter((a: any) => a.type === 'critical').length;
 
     return (
         <header className="h-[84px] bg-white border-b border-gray-100 flex items-center justify-between px-10 sticky top-0 z-[100] antialiased shadow-sm transition-all duration-300">
@@ -85,7 +85,7 @@ export default function Header() {
                                             <p className="text-sm font-bold">Sistemde herhangi bir operasyonel ihlal bulunmuyor.</p>
                                         </div>
                                     ) : (
-                                        auditAlerts.map((alert, idx) => (
+                                        auditAlerts.map((alert: any, idx: number) => (
                                             <div key={idx} className={`p-4 rounded-2xl border-l-4 shadow-sm flex gap-4 ${
                                                 alert.type === 'critical' 
                                                 ? 'bg-rose-50 border-rose-500' 
@@ -162,7 +162,7 @@ export default function Header() {
                                     <p className="text-sm font-black text-gray-900 leading-tight">Şu an: <span className="text-primary">{currentBranch?.name || 'Tüm Şubeler'}</span></p>
                                 </div>
                                 <div className="space-y-1.5 px-1 py-1">
-                                    {branches.map(br => (
+                                    {branches.map((br: any) => (
                                         <button 
                                             key={br.id}
                                             onClick={() => {

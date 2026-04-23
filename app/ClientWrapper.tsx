@@ -144,7 +144,7 @@ export default function ClientWrapper({ children }: { children: React.ReactNode 
                 console.warn("SAFETY TIMEOUT: Forced UI unlock.");
                 setIsChecking(false);
             }
-        }, 3500); 
+        }, 6000); 
 
         return () => {
             clearTimeout(timer);
