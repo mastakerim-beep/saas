@@ -13,6 +13,7 @@ export type MembershipPlan = DB.MembershipPlan;
 export type CustomerMembership = DB.CustomerMembership;
 export type Package = DB.Package;
 export type PackageDefinition = DB.PackageDefinition;
+export type PackageUsageHistory = DB.PackageUsageHistory;
 export interface Appointment extends DB.Appointment {
     syncStatus?: 'idle' | 'syncing' | 'error';
     isSealed?: boolean;

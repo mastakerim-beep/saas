@@ -1,11 +1,11 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useStore, Appointment, PaymentMethod } from "@/lib/store";
+import { useStore, Appointment, PaymentMethod, Product, Customer, PaymentDefinition, BankAccount, Package, CustomerMembership, MembershipPlan } from "@/lib/store";
 import { 
     X, Plus, CreditCard, Banknote, Landmark,
     Trash2, Save, AlertCircle, Calendar,
-    Zap, Crown, Package, Sparkles, Printer, CheckCircle2, HeartHandshake, Percent, ShoppingBag
+    Zap, Crown, Package as PackageIcon, Sparkles, Printer, CheckCircle2, HeartHandshake, Percent, ShoppingBag
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -27,28 +27,34 @@ export default function SmartCheckout({ appointment, onClose, initialCustomerId,
     
     // Resolve target data
     const targetCustomerId = appointment?.customerId || initialCustomerId;
-    const customer = customers.find(c => c.id === targetCustomerId);
+    const customer = customers.find((c: Customer) => c.id === targetCustomerId);
     const targetBranchId = appointment?.branchId || currentBranch?.id || "";
     
     const initialServiceName = appointment?.service || initialService?.name || "Hızlı Satış";
     const initialServicePrice = appointment?.price || initialService?.price || 0;
     
     // TÜM paketleri göster (seans kalan)
-    const allCustomerPackages = packages.filter(p => 
+    const allCustomerPackagesWithStatus = packages.filter((p: Package) => 
         p.customerId === targetCustomerId && 
         (p.totalSessions - (p.usedSessions || 0)) > 0
-    );
-    const isMatchingPackage = (p: typeof allCustomerPackages[0]) => 
+    ).map((p: Package) => {
+        const isExpired = p.expiry && new Date(p.expiry) < new Date();
+        return { ...p, isExpired };
+    });
+
+    const isMatchingPackage = (p: any) => 
         p.id === appointment?.packageId ||
         p.name.toLowerCase().includes(initialServiceName.toLowerCase()) || 
         (p.serviceName && p.serviceName.toLowerCase().includes(initialServiceName.toLowerCase()));
+
     const applicablePackages = [
-        ...allCustomerPackages.filter(p => isMatchingPackage(p)),      // Önerilen (üstte)
-        ...allCustomerPackages.filter(p => !isMatchingPackage(p))       // Diğerleri (altta)
+        ...allCustomerPackagesWithStatus.filter((p: any) => isMatchingPackage(p) && !p.isExpired),      // Önerilen & Aktif
+        ...allCustomerPackagesWithStatus.filter((p: any) => !isMatchingPackage(p) && !p.isExpired),     // Diğer Aktifler
+        ...allCustomerPackagesWithStatus.filter((p: any) => p.isExpired)                                // Süresi Dolanlar
     ];
 
-    const activeMembership = customerMemberships.find(m => m.customerId === targetCustomerId && m.status === 'active' && m.remainingSessions > 0);
-    const membershipPlan = activeMembership ? membershipPlans.find(p => p.id === activeMembership.planId) : null;
+    const activeMembership = customerMemberships.find((m: CustomerMembership) => m.customerId === targetCustomerId && m.status === 'active' && m.remainingSessions > 0);
+    const membershipPlan = activeMembership ? membershipPlans.find((p: MembershipPlan) => p.id === activeMembership.planId) : null;
     
     // UI State
     const [selectedPackageId, setSelectedPackageId] = useState<string | null>(appointment?.packageId || null);
@@ -136,7 +142,7 @@ export default function SmartCheckout({ appointment, onClose, initialCustomerId,
                     customerId: targetCustomerId,
                     customerName: customer?.name || "Guest",
                     service: overrideService,
-                    methods: methods.map(m => ({ ...m, id: crypto.randomUUID() })),
+                    methods: methods.map((m: any) => ({ ...m, id: crypto.randomUUID() })),
                     totalAmount: totalPaid,
                     date: getTodayDate(),
                     isGift: isServiceGift || giftedItems.size > 0,
@@ -148,7 +154,7 @@ export default function SmartCheckout({ appointment, onClose, initialCustomerId,
                 },
                 {
                     installments: installmentList,
-                    soldProducts: soldProducts.map(p => ({ 
+                    soldProducts: soldProducts.map((p: any) => ({ 
                         productId: p.productId, 
                         name: p.name,
                         price: p.price,
@@ -226,7 +232,7 @@ export default function SmartCheckout({ appointment, onClose, initialCustomerId,
         const amountToAdd = predefinedAmount !== undefined ? predefinedAmount : Math.max(0, remaining);
         if (amountToAdd <= 0) return;
         
-        const defaultTool = paymentDefinitions.find(d => d.type === (type === 'kredi-karti' ? 'Bank' : 'Cash'));
+        const defaultTool = paymentDefinitions.find((d: PaymentDefinition) => d.type === (type === 'kredi-karti' ? 'Bank' : 'Cash'));
         
         setMethods([...methods, { 
             method: type, 
@@ -249,11 +255,11 @@ export default function SmartCheckout({ appointment, onClose, initialCustomerId,
     };
 
     const addProduct = (id: string) => {
-        const p = inventory.find(x => x.id === id);
+        const p = inventory.find((x: Product) => x.id === id);
         if (!p) return;
-        const existing = soldProducts.find(x => x.productId === id);
+        const existing = soldProducts.find((x: any) => x.productId === id);
         if (existing) {
-            setSoldProducts(soldProducts.map(x => x.productId === id ? { ...x, quantity: x.quantity + 1 } : x));
+            setSoldProducts(soldProducts.map((x: any) => x.productId === id ? { ...x, quantity: x.quantity + 1 } : x));
         } else {
             setSoldProducts([...soldProducts, { productId: p.id, name: p.name, price: p.price, quantity: 1 }]);
         }
@@ -338,28 +344,39 @@ export default function SmartCheckout({ appointment, onClose, initialCustomerId,
                                 <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-100/50 rounded-full -translate-y-1/2 translate-x-1/2 group-hover:scale-110 transition-transform" />
                                 <div className="relative">
                                     <h3 className="text-[10px] font-black text-emerald-600 uppercase tracking-widest flex items-center gap-2 mb-6">
-                                        <Package className="w-4 h-4" /> AKTİF PAKETLER (SEANSLAR)
+                                        <PackageIcon className="w-4 h-4" /> AKTİF PAKETLER (SEANSLAR)
                                     </h3>
                                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                                        {applicablePackages.map(pkg => {
+                                        {applicablePackages.map((pkg: any) => {
                                             const isMatch = isMatchingPackage(pkg);
                                             const isSelected = selectedPackageId === pkg.id;
+                                            const isExpired = pkg.isExpired;
+
                                             return (
                                                 <button 
                                                     key={pkg.id}
-                                                    onClick={() => setSelectedPackageId(isSelected ? null : pkg.id)}
-                                                    className={`flex items-center justify-between p-4 rounded-[1.5rem] border-2 transition-all ${isSelected ? 'bg-emerald-600 border-emerald-600 shadow-lg shadow-emerald-200' : 'bg-white border-white hover:border-emerald-200'}`}
+                                                    disabled={isExpired && !isSelected} // Prevent regular selection if expired unless manager override
+                                                    onClick={() => {
+                                                        if (isExpired && !isSelected) {
+                                                            if (confirm('Bu paketin süresi dolmuş. Yine de kullandırmak istiyor musunuz? (Bu işlem işletme politikasına bağlıdır)')) {
+                                                                setSelectedPackageId(pkg.id);
+                                                            }
+                                                        } else {
+                                                            setSelectedPackageId(isSelected ? null : pkg.id);
+                                                        }
+                                                    }}
+                                                    className={`flex items-center justify-between p-4 rounded-[1.5rem] border-2 transition-all ${isSelected ? 'bg-emerald-600 border-emerald-600 shadow-lg shadow-emerald-200' : isExpired ? 'bg-red-50 border-red-100' : 'bg-white border-white hover:border-emerald-200'}`}
                                                 >
                                                     <div className="flex items-center gap-3">
-                                                        <div className={`w-10 h-10 rounded-xl flex items-center justify-center transition-colors ${isSelected ? 'bg-white/20 text-white' : 'bg-emerald-50 text-emerald-600'}`}>
-                                                            <Zap size={18} />
+                                                        <div className={`w-10 h-10 rounded-xl flex items-center justify-center transition-colors ${isSelected ? 'bg-white/20 text-white' : isExpired ? 'bg-red-100 text-red-600' : 'bg-emerald-50 text-emerald-600'}`}>
+                                                            {isExpired ? <AlertCircle size={18} /> : <Zap size={18} />}
                                                         </div>
                                                         <div className="text-left">
                                                             <div className="flex items-center gap-1.5 mb-0.5">
-                                                                <p className={`font-black uppercase text-[10px] italic ${isSelected ? 'text-white' : 'text-emerald-900'}`}>{pkg.name}</p>
+                                                                <p className={`font-black uppercase text-[10px] italic ${isSelected ? 'text-white' : isExpired ? 'text-red-900' : 'text-emerald-900'}`}>{pkg.name}</p>
                                                             </div>
-                                                            <p className={`text-[8px] font-bold uppercase tracking-widest ${isSelected ? 'text-emerald-100' : 'text-emerald-400'}`}>
-                                                                {pkg.totalSessions - (pkg.usedSessions || 0)} SEANS KALDI
+                                                            <p className={`text-[8px] font-bold uppercase tracking-widest ${isSelected ? 'text-emerald-100' : isExpired ? 'text-red-400' : 'text-emerald-400'}`}>
+                                                                {pkg.totalSessions - (pkg.usedSessions || 0)} SEANS {isExpired ? 'KALDI (SÜRESİ DOLDU)' : 'KALDI'}
                                                             </p>
                                                         </div>
                                                     </div>
@@ -464,7 +481,7 @@ export default function SmartCheckout({ appointment, onClose, initialCustomerId,
                                                     <div className="pt-3 border-t border-dashed border-gray-200 flex items-center gap-3">
                                                         <p className="text-[8px] font-black text-gray-400 uppercase tracking-widest min-w-max">POS/BANKA:</p>
                                                         <div className="flex-1 flex gap-2 overflow-x-auto no-scrollbar pb-1">
-                                                            {bankAccounts.map(bank => (
+                                                            {bankAccounts.map((bank: BankAccount) => (
                                                                 <button 
                                                                     key={bank.id}
                                                                     onClick={() => updateMethod(idx, 'toolId', bank.id)}
@@ -540,7 +557,7 @@ export default function SmartCheckout({ appointment, onClose, initialCustomerId,
                         {/* 2. Tahsilat Kalemleri */}
                         <div className="space-y-4">
                             <h3 className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] flex items-center gap-3">
-                                <Package className="w-4 h-4 text-indigo-600" /> Tahsilat ve İkram Kalemleri
+                                <PackageIcon className="w-4 h-4 text-indigo-600" /> Tahsilat ve İkram Kalemleri
                             </h3>
                             
                             <div className={`p-6 rounded-[2rem] border transition-all duration-500 flex flex-col gap-4 ${isServiceGift ? 'bg-indigo-50/50 border-indigo-100 opacity-80 shadow-inner' : 'bg-white border-gray-100 shadow-sm'}`}>
@@ -582,13 +599,13 @@ export default function SmartCheckout({ appointment, onClose, initialCustomerId,
                                                 <select 
                                                     value={overrideService}
                                                     onChange={e => {
-                                                        const s = services.find(x => x.name === e.target.value);
+                                                        const s = services.find((x: any) => x.name === e.target.value);
                                                         setOverrideService(e.target.value);
                                                         if (s) setOverridePrice(s.price);
                                                     }}
                                                     className="w-full bg-gray-50 border-none rounded-xl px-4 py-3 text-xs font-black text-gray-900 outline-none focus:ring-2 focus:ring-indigo-500/10"
                                                 >
-                                                    {services.map(s => <option key={s.id} value={s.name}>{s.name}</option>)}
+                                                    {services.map((s: any) => <option key={s.id} value={s.name}>{s.name}</option>)}
                                                 </select>
                                             </div>
                                             <div className="space-y-2">
@@ -644,7 +661,7 @@ export default function SmartCheckout({ appointment, onClose, initialCustomerId,
                                  </h3>
                              </div>
                              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                                {inventory.slice(0, 4).map(p => (
+                                {inventory.slice(0, 4).map((p: Product) => (
                                     <button 
                                         key={p.id} 
                                         onClick={() => addProduct(p.id)}

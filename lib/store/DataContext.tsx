@@ -8,7 +8,7 @@ import {
     ZReport, Quote, TenantModule, MarketingRule, 
     DynamicPricingRule, CustomerWallet, WalletTransaction, 
     ConsultationBodyMap, InventoryUsageNorm, CustomerMedia,
-    PackageDefinition, CommissionRule, AppointmentStatus, Staff, Payment, InventoryCategory
+    PackageDefinition, CommissionRule, AppointmentStatus, Staff, Payment, InventoryCategory, PackageUsageHistory
 } from './types';
 import { syncDb } from './sync-db';
 
@@ -42,6 +42,7 @@ export interface DataContextType {
     commissionRules: CommissionRule[];
     payments: Payment[];
     inventoryCategories: InventoryCategory[];
+    packageUsageHistory: PackageUsageHistory[];
 
     setAllAppointments: React.Dispatch<React.SetStateAction<Appointment[]>>;
     setAllBlocks: React.Dispatch<React.SetStateAction<CalendarBlock[]>>;
@@ -72,6 +73,7 @@ export interface DataContextType {
     setAllCommissionRules: React.Dispatch<React.SetStateAction<CommissionRule[]>>;
     setAllPayments: React.Dispatch<React.SetStateAction<any[]>>;
     setAllInventoryCategories: React.Dispatch<React.SetStateAction<InventoryCategory[]>>;
+    setPackageUsageHistory: React.Dispatch<React.SetStateAction<PackageUsageHistory[]>>;
 
     // CRUD Methods
     addCustomer: (c: any) => Customer;
@@ -114,6 +116,7 @@ export interface DataContextType {
     updateInventoryCategory: (id: string, updates: Partial<InventoryCategory>) => Promise<void>;
     removeInventoryCategory: (id: string, deleteProducts: boolean) => Promise<void>;
     transferProduct: (productId: string, fromBranchId: string, toBranchId: string, amount: number, pricePerUnit?: number, transferType?: string) => Promise<boolean>;
+    addPackageUsageHistory: (h: any) => void;
 }
 
 const DataContext = createContext<DataContextType | null>(null);
@@ -148,6 +151,7 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
     const [commissionRules, setAllCommissionRules] = useState<CommissionRule[]>([]);
     const [allPayments, setAllPayments] = useState<any[]>([]);
     const [inventoryCategories, setAllInventoryCategories] = useState<InventoryCategory[]>([]);
+    const [packageUsageHistory, setPackageUsageHistory] = useState<PackageUsageHistory[]>([]);
 
     const addCustomer = useCallback((c: any) => {
         const newCustomer = { ...c, id: crypto.randomUUID(), createdAt: new Date().toISOString() };
@@ -414,6 +418,11 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
         });
     }, []);
 
+    const addPackageUsageHistory = useCallback((h: any) => {
+        const newHistory = { ...h, id: crypto.randomUUID(), createdAt: new Date().toISOString() };
+        setPackageUsageHistory(prev => [newHistory, ...prev]);
+    }, []);
+
     const contextValue: DataContextType = useMemo(() => ({
         appointments, blocks, customers, debts, inventory, rooms, services, packages,
         membershipPlans, customerMemberships, staffMembers, allLogs, allNotifs, aiInsights, expenses,
@@ -433,14 +442,14 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
         removePackageDefinition, addQuote, updateQuote, deleteQuote, addBodyMap, updateBodyMap,
         addUsageNorm, updateUsageNorm, updateRoom, removeRoom, addRoom,
         addInventoryCategory, updateInventoryCategory, removeInventoryCategory,
-        transferProduct,
-        inventoryCategories
+        transferProduct, addPackageUsageHistory,
+        inventoryCategories, packageUsageHistory, setPackageUsageHistory
     }), [
         appointments, blocks, customers, debts, inventory, rooms, services, packages,
         membershipPlans, customerMemberships, staffMembers, allLogs, allNotifs, aiInsights, expenses,
         zReports, quotes, tenantModules, marketingRules, pricingRules, wallets,
         allPayments, walletTransactions, bodyMaps, usageNorms, customerMedia,
-        packageDefinitions, commissionRules, inventoryCategories, transferProduct
+        packageDefinitions, commissionRules, inventoryCategories, transferProduct, packageUsageHistory
     ]);
 
     return <DataContext.Provider value={contextValue}>{children}</DataContext.Provider>;

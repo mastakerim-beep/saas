@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useDraggable, useDroppable } from '@dnd-kit/core';
 import { ShieldCheck, Activity, Ban, Coffee, Trash2, Loader2, Clock, User, MapPin, XCircle, RefreshCcw, CheckCircle2 } from 'lucide-react';
-import { useStore, Appointment, CalendarBlock, AppointmentStatus } from '@/lib/store';
+import { useStore, Appointment, CalendarBlock, AppointmentStatus, Branch, Room, Customer } from '@/lib/store';
 
 const SLOT_MINUTES = 15;
 const SLOT_HEIGHT = 42;
@@ -32,7 +32,7 @@ export default function CalendarItem({
     const appt = item as Appointment;
     const block = item as CalendarBlock;
 
-    const branch = isAppt ? (branches.find(b => b.id === appt.branchId) || currentBranch) : currentBranch;
+    const branch = isAppt ? (branches.find((b: Branch) => b.id === appt.branchId) || currentBranch) : currentBranch;
     const branchPrefix = branch?.name?.substring(0, 3).toUpperCase() || 'SYS';
     
     const todayStr = formatDate(new Date());
@@ -201,8 +201,8 @@ export default function CalendarItem({
         icon: <Coffee className="w-3.5 h-3.5 opacity-40" />,
         badge: null, badgeStyle: ''
     };
-    const room = isAppt && appt.roomId ? rooms.find(r => r.id === appt.roomId) : null;
-    const customer = isAppt ? customers.find(c => c.id === appt.customerId) : null;
+    const room = isAppt && appt.roomId ? rooms.find((r: Room) => r.id === appt.roomId) : null;
+    const customer = isAppt ? customers.find((c: Customer) => c.id === appt.customerId) : null;
 
     return (
         <div 

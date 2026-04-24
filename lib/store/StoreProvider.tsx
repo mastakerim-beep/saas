@@ -11,7 +11,7 @@ import {
     PaymentDefinition, BankAccount, ExpenseCategory, ReferralSource, 
     ConsentFormTemplate, AuditLog, NotificationLog, CommissionRule,
     PackageDefinition, Quote, MarketingRule, DynamicPricingRule, Room, Expense, CalendarBlock, AppointmentStatus, BookingSettings,
-    LoyaltySettings, Webhook, InventoryCategory, CurrencyRate
+    LoyaltySettings, Webhook, InventoryCategory, CurrencyRate, PackageUsageHistory
 } from './types';
 import { fetchData as fetchDataLogic } from './fetch-logic';
 import { syncDb } from './sync-db';
@@ -198,6 +198,7 @@ const StoreOrchestrator = ({ children }: { children: ReactNode }) => {
             setAllPayments: data.setAllPayments,
             setAllInventoryCategories: data.setAllInventoryCategories,
             setLoyaltySettings: biz.setLoyaltySettings,
+            setPackageUsageHistory: data.setPackageUsageHistory,
             setWebhooks: biz.setWebhooks
         };
 
@@ -613,10 +614,41 @@ const StoreOrchestrator = ({ children }: { children: ReactNode }) => {
         },
         addPackage: async (p: any) => {
             const id = crypto.randomUUID();
-            const np = { ...p, id, usedSessions: 0, createdAt: new Date().toISOString() };
+            const np = { 
+                ...p, 
+                id, 
+                usedSessions: p.usedSessions || 0, 
+                status: p.status || 'active',
+                createdAt: new Date().toISOString() 
+            };
+            
+            // Auto-calculate expiry if missing
+            if (!np.expiry && p.validityDays) {
+                const date = new Date();
+                date.setDate(date.getDate() + p.validityDays);
+                np.expiry = date.toISOString().split('T')[0];
+            }
+
             data.setAllPackages((prev: Package[]) => [np, ...prev]);
             await syncDb('packages', 'insert', np, id, activeBizId);
             await stableMethods.addLog('Paket Eklendi', p.customerId, '', p.name);
+        },
+        updatePackage: async (id: string, updates: any, historyLog?: any) => {
+            data.setAllPackages((prev: Package[]) => prev.map(p => p.id === id ? { ...p, ...updates } : p));
+            await syncDb('packages', 'update', updates, id, activeBizId);
+            
+            if (historyLog) {
+                const hid = crypto.randomUUID();
+                const log = { ...historyLog, id: hid, businessId: activeBizId, packageId: id, createdAt: new Date().toISOString() };
+                data.setPackageUsageHistory((prev: PackageUsageHistory[]) => [log, ...prev]);
+                await syncDb('package_usage_history', 'insert', log, hid, activeBizId);
+            }
+        },
+        addPackageUsageHistory: async (h: any) => {
+            const id = crypto.randomUUID();
+            const nh = { ...h, id, businessId: activeBizId, createdAt: new Date().toISOString() };
+            data.setPackageUsageHistory((prev: PackageUsageHistory[]) => [nh, ...prev]);
+            await syncDb('package_usage_history', 'insert', nh, id, activeBizId);
         },
         addMembershipPlan: async (p: any) => {
             const id = crypto.randomUUID();
@@ -817,6 +849,18 @@ const StoreOrchestrator = ({ children }: { children: ReactNode }) => {
                             const newUsed = Math.min(pkg.totalSessions, (pkg.usedSessions || 0) + 1);
                             dataRef.current.setAllPackages((prev: any[]) => prev.map(p => p.id === packageId ? { ...p, usedSessions: newUsed } : p));
                             await syncDb('packages', 'update', { used_sessions: newUsed }, packageId, bizId);
+                            
+                            // LOG USAGE
+                            const hid = crypto.randomUUID();
+                            const log: PackageUsageHistory = {
+                                id: hid, businessId: bizId, packageId: packageId,
+                                customerId: paymentData.customerId, action: 'use', sessionsImpact: 1,
+                                appointmentId: paymentData.appointmentId,
+                                note: `${paymentData.service || 'Hizmet'} kullanımı`,
+                                createdAt: new Date().toISOString()
+                            };
+                            dataRef.current.setPackageUsageHistory((prev: PackageUsageHistory[]) => [log, ...prev]);
+                            await syncDb('package_usage_history', 'insert', log, hid, bizId);
                         }
                     }
                     dataRef.current.updateAppointment(paymentData.appointmentId, updates);

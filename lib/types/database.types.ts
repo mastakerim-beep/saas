@@ -275,6 +275,7 @@ export interface PackageDefinition {
     details: any;
     price: number;
     totalSessions: number;
+    validityDays?: number;
     isActive: boolean;
     createdAt?: string;
 }
@@ -290,7 +291,20 @@ export interface Package {
     usedSessions: number;
     price: number;
     expiry: any;
+    status: 'active' | 'expired' | 'finished' | 'frozen';
     createdAt?: string;
+}
+
+export interface PackageUsageHistory {
+    id: string;
+    businessId: string;
+    packageId: string;
+    customerId: string;
+    action: 'use' | 'settle' | 'extend' | 'rollover';
+    sessionsImpact: number; // e.g. 1 for use, remaining count for settle
+    appointmentId?: string;
+    note?: string;
+    createdAt: string;
 }
 
 export interface PaymentDefinition {

@@ -152,19 +152,24 @@ export default function FinancesPage() {
   }, [filteredPayments, filteredExpenses, dateRange]);
 
   const handleDownloadBooklet = () => {
-    exportFinancialBooklet({
-        businessName: currentBusiness?.name || 'Aura Spa',
-        period: `${format(dateRange.start, 'dd.MM.yyyy')} - ${format(dateRange.end, 'dd.MM.yyyy')}`,
-        stats: [
-            { label: "Toplam Beklenen Gelir", value: `₺${totalExpected.toLocaleString('tr-TR')}` },
-            { label: "Net Tahsilat", value: `₺${totalCollected.toLocaleString('tr-TR')}` },
-            { label: "Toplam Gider & Prim", value: `₺${totalExpenses.toLocaleString('tr-TR')}` },
-            { label: "Net Kar", value: `₺${netProfit.toLocaleString('tr-TR')}` }
-        ],
-        staffData: staffCommData,
-        chartData: chartData,
-        suspicious: suspiciousActivities
-    });
+    try {
+        exportFinancialBooklet({
+            businessName: currentBusiness?.name || 'Aura Spa',
+            period: `${format(dateRange.start, 'dd.MM.yyyy')} - ${format(dateRange.end, 'dd.MM.yyyy')}`,
+            stats: [
+                { label: "Toplam Beklenen Gelir", value: `₺${totalExpected.toLocaleString('tr-TR')}` },
+                { label: "Net Tahsilat", value: `₺${totalCollected.toLocaleString('tr-TR')}` },
+                { label: "Toplam Gider & Prim", value: `₺${totalExpenses.toLocaleString('tr-TR')}` },
+                { label: "Net Kar", value: `₺${netProfit.toLocaleString('tr-TR')}` }
+            ],
+            staffData: staffCommData,
+            chartData: chartData,
+            suspicious: suspiciousActivities
+        });
+    } catch (err) {
+        console.error("Kitapçık indirme hatası:", err);
+        alert("Kitapçık oluşturulurken bir hata oluştu. Lütfen konsol kayıtlarını kontrol edin.");
+    }
   };
 
   const handleDatePreset = (days: number) => {

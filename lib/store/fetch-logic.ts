@@ -20,7 +20,7 @@ export const fetchData = async (
         'packages', 'package_definitions', 'commission_rules', 'calendar_blocks', 'notification_logs', 'z_reports',
         'payment_definitions', 'bank_accounts', 'expense_categories', 'referral_sources', 'consent_form_templates', 'quotes',
         'system_announcements', 'tenant_modules', 'marketing_rules', 'dynamic_pricing_rules', 'customer_wallets', 'wallet_transactions',
-        'consultation_body_maps', 'inventory_usage_norms', 'loyalty_settings', 'webhooks', 'inventory_categories', 'inventory_transfers'
+        'consultation_body_maps', 'inventory_usage_norms', 'loyalty_settings', 'webhooks', 'inventory_categories', 'inventory_transfers', 'package_usage_history'
     ];
 
     const isSaaS = currentUser?.role === 'SaaS_Owner';
@@ -232,6 +232,7 @@ export const fetchData = async (
         setters.setAllNotifs(dataMap.notification_logs || []);
         setters.setAllBlocks(dataMap.calendar_blocks || []);
         setters.setAllInventoryCategories(dataMap.inventory_categories || []);
+        setters.setPackageUsageHistory(dataMap.package_usage_history || []);
         
         if (branches.length > 0) {
             const savedBranchId = localStorage.getItem('aura_last_branch');

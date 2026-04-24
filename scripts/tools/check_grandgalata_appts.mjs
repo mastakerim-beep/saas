@@ -32,6 +32,7 @@ async function run() {
         console.log(` - Customer: ${a.customer_name}`);
         console.log(` - Created At: ${a.created_at}`);
         console.log(` - Status: ${a.status}`);
+        console.log(` - Price: ${a.price}`);
         console.log(` - Service: ${a.service}`);
     });
   } else {

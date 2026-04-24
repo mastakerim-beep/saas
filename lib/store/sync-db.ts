@@ -44,7 +44,7 @@ export const syncDb = async (
             'marketing_rules', 'dynamic_pricing_rules', 'customer_wallets', 'wallet_transactions',
             'consultation_body_maps', 'inventory_usage_norms', 'quotes', 'expense_categories', 
             'referral_sources', 'consent_form_templates', 'tenant_modules', 'loyalty_settings', 'webhooks',
-            'inventory_categories'
+            'inventory_categories', 'package_usage_history'
         ];
 
         if (op === 'insert' && tenantTables.includes(table)) {
