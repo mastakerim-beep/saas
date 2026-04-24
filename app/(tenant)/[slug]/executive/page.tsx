@@ -62,6 +62,15 @@ export default function ExecutiveDashboard() {
         fetchRates();
     }, []);
 
+    // Sorted Logs: Latest at Top
+    const sortedLogs = useMemo(() => {
+        return [...allLogs].sort((a: AuditLog, b: AuditLog) => {
+            const dateA = new Date(a.date || a.createdAt || 0).getTime();
+            const dateB = new Date(b.date || b.createdAt || 0).getTime();
+            return dateB - dateA;
+        });
+    }, [allLogs]);
+
     // REAL-TIME DATA CALCULATIONS
     const stats = useMemo(() => {
         const todayStr = new Date().toISOString().split('T')[0];
@@ -201,15 +210,17 @@ export default function ExecutiveDashboard() {
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 {/* Notifications */}
                 <SectionCard title="Sistem Hareketleri" icon={<Bell size={18} />} color="text-indigo-600">
-                    <div className="space-y-4 max-h-[160px] overflow-y-auto pr-2 custom-scrollbar">
-                        {allLogs.length > 0 ? allLogs.slice(0, 5).map((log: AuditLog, i: number) => (
+                    <div className="space-y-4 max-h-[220px] overflow-y-auto pr-2 custom-scrollbar">
+                        {sortedLogs.length > 0 ? sortedLogs.slice(0, 10).map((log: AuditLog, i: number) => (
                             <div key={i} className="flex gap-4 items-start group">
                                 <div className="p-2.5 bg-indigo-50/50 text-indigo-400 group-hover:text-indigo-600 group-hover:bg-indigo-100/50 rounded-xl transition-all">
                                     <Activity size={16} />
                                 </div>
                                 <div className="flex-1 border-b border-gray-50 pb-3">
-                                    <p className="text-xs font-black text-gray-800">{log.action}</p>
-                                    <p className="text-[10px] text-gray-400 mt-1">{log.customerName || 'Sistem'} - {new Date(log.date || log.createdAt || "").toLocaleTimeString('tr-TR')}</p>
+                                    <p className="text-xs font-black text-gray-800 uppercase leading-none">{log.action}</p>
+                                    <p className="text-[10px] text-gray-400 mt-1 font-bold">
+                                        {log.customerName || 'SİSTEM'} — {new Date(log.date || log.createdAt || "").toLocaleString('tr-TR')}
+                                    </p>
                                 </div>
                             </div>
                         )) : (
@@ -363,7 +374,7 @@ export default function ExecutiveDashboard() {
                                     paddingAngle={5} 
                                     dataKey="value"
                                 >
-                                    {pieData.map((entry, index) => (
+                                    {pieData.map((entry: any, index: number) => (
                                         <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                                     ))}
                                 </Pie>
@@ -374,7 +385,7 @@ export default function ExecutiveDashboard() {
                          <div className="h-[250px] flex items-center justify-center text-gray-300 text-[10px] font-black uppercase">Segment Verisi Yok</div>
                     )}
                     <div className="grid grid-cols-2 gap-2 mt-2">
-                        {pieData.map((d, i) => (
+                        {pieData.map((d: any, i: number) => (
                             <div key={i} className="flex items-center gap-2 text-[9px] font-black text-gray-400">
                                 <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: COLORS[i % COLORS.length] }} /> {d.name}
                             </div>
