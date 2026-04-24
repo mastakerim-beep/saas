@@ -8,7 +8,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useRouter, useParams } from "next/navigation";
 
 export default function GlobalSearch() {
-    const { customers, appointments, staffMembers, currentBusiness } = useStore();
+    const { customers, appointments, staffMembers, currentBusiness, currentBranch } = useStore();
     const [searchTerm, setSearchTerm] = useState("");
     const [isOpen, setIsOpen] = useState(false);
     const searchRef = useRef<HTMLDivElement>(null);
@@ -31,26 +31,33 @@ export default function GlobalSearch() {
 
         const term = searchTerm.toLowerCase();
 
+        // 1. Customers: Always scoped to Business (Universal across branches)
         const filteredCustomers = customers.filter((c: Customer) => 
             c.name.toLowerCase().includes(term) || 
             (c.phone && String(c.phone).includes(term))
         ).slice(0, 5);
 
-        const filteredAppointments = appointments.filter((a: Appointment) => 
-            a.customerName.toLowerCase().includes(term) || 
-            (a.service && a.service.toLowerCase().includes(term))
-        ).slice(0, 5);
+        // 2. Appointments: Scoped to current branch if selected
+        const filteredAppointments = appointments.filter((a: Appointment) => {
+            const matches = a.customerName.toLowerCase().includes(term) || 
+                           (a.service && a.service.toLowerCase().includes(term));
+            if (!currentBranch) return matches;
+            return matches && a.branchId === currentBranch.id;
+        }).slice(0, 5);
 
-        const filteredStaff = staffMembers.filter((s: Staff) => 
-            s.name.toLowerCase().includes(term)
-        ).slice(0, 5);
+        // 3. Staff: Scoped to current branch if selected
+        const filteredStaff = staffMembers.filter((s: Staff) => {
+            const matches = s.name.toLowerCase().includes(term);
+            if (!currentBranch) return matches;
+            return matches && s.branchId === currentBranch.id;
+        }).slice(0, 5);
 
         return {
             customers: filteredCustomers,
             appointments: filteredAppointments,
             staff: filteredStaff
         };
-    }, [searchTerm, customers, appointments, staffMembers]);
+    }, [searchTerm, customers, appointments, staffMembers, currentBranch]);
 
     const hasResults = results.customers.length > 0 || results.appointments.length > 0 || results.staff.length > 0;
 
