@@ -208,8 +208,8 @@ export default function ExecutiveDashboard() {
                                     <Activity size={16} />
                                 </div>
                                 <div className="flex-1 border-b border-gray-50 pb-3">
-                                    <p className="text-xs font-black text-gray-800">{log.action || log.type}</p>
-                                    <p className="text-[10px] text-gray-400 mt-1">{log.customerName || log.target} - {new Date(log.date || log.createdAt).toLocaleTimeString('tr-TR')}</p>
+                                    <p className="text-xs font-black text-gray-800">{log.action}</p>
+                                    <p className="text-[10px] text-gray-400 mt-1">{log.customerName || 'Sistem'} - {new Date(log.date || log.createdAt || "").toLocaleTimeString('tr-TR')}</p>
                                 </div>
                             </div>
                         )) : (
