@@ -68,12 +68,12 @@ export default function ExecutiveDashboard() {
         const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
         const sixtyDaysAgo = new Date(Date.now() - 60 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
         
-        const todayAppts = appointments.filter(a => a.date === todayStr);
-        const todayPayments = payments.filter(p => p.date === todayStr);
-        const todayCash = todayPayments.reduce((sum, p) => sum + p.totalAmount, 0);
+        const todayAppts = appointments.filter((a: Appointment) => a.date === todayStr);
+        const todayPayments = payments.filter((p: Payment) => p.date === todayStr);
+        const todayCash = todayPayments.reduce((sum: number, p: Payment) => sum + p.totalAmount, 0);
         
-        const thirtyDayRev = payments.filter(p => p.date >= thirtyDaysAgo).reduce((sum, p) => sum + p.totalAmount, 0);
-        const prevThirtyDayRev = payments.filter(p => p.date < thirtyDaysAgo && p.date >= sixtyDaysAgo).reduce((sum, p) => sum + p.totalAmount, 0);
+        const thirtyDayRev = payments.filter((p: Payment) => p.date >= thirtyDaysAgo).reduce((sum: number, p: Payment) => sum + p.totalAmount, 0);
+        const prevThirtyDayRev = payments.filter((p: Payment) => p.date < thirtyDaysAgo && p.date >= sixtyDaysAgo).reduce((sum: number, p: Payment) => sum + p.totalAmount, 0);
         
         const revenueDiff = prevThirtyDayRev > 0 ? ((thirtyDayRev - prevThirtyDayRev) / prevThirtyDayRev) * 100 : thirtyDayRev > 0 ? 100 : 0;
 
@@ -93,11 +93,11 @@ export default function ExecutiveDashboard() {
             const dateStr = date.toISOString().split('T')[0];
             const name = `${date.getDate().toString().padStart(2, '0')}.${(date.getMonth() + 1).toString().padStart(2, '0')}`;
             
-            const dayPayments = payments.filter(p => p.date === dateStr);
-            const tahsilat = dayPayments.reduce((sum, p) => sum + p.totalAmount, 0);
+            const dayPayments = payments.filter((p: Payment) => p.date === dateStr);
+            const tahsilat = dayPayments.reduce((sum: number, p: Payment) => sum + p.totalAmount, 0);
             
-            const dayAppts = appointments.filter(a => a.date === dateStr);
-            const satis = dayAppts.reduce((sum, a) => sum + (a.price || 0), 0);
+            const dayAppts = appointments.filter((a: Appointment) => a.date === dateStr);
+            const satis = dayAppts.reduce((sum: number, a: Appointment) => sum + (a.price || 0), 0);
 
             data.push({ name, satis, tahsilat });
         }
@@ -106,19 +106,15 @@ export default function ExecutiveDashboard() {
 
     // Real Heatmap Algorithm
     const heatmapData = useMemo(() => {
-        // Grid: 6 days (columns) x 24 half-hour slots (rows) = 144 slots
-        // But for simplicity in UI, we use the 144 cells for 7 days distribution
         const slots = Array(144).fill(0);
         const today = new Date();
         
-        appointments.forEach(appt => {
+        appointments.forEach((appt: Appointment) => {
             const apptDate = new Date(appt.date);
             const diffDays = Math.floor((today.getTime() - apptDate.getTime()) / (1000 * 60 * 60 * 24));
             if (diffDays >= 0 && diffDays < 7) {
-                // Determine hour slot (09:00 - 21:00 -> 12 hours * 2 slots = 24 slots)
                 const [h, m] = (appt.time || "09:00").split(':').map(Number);
-                const hourIdx = Math.max(0, Math.min(23, (h - 9) * (60/30) + (m >= 30 ? 1 : 0))); // Wait, let's fix this
-                // 12 hours * 2 slots/hour = 24 slots. 09:00 is idx 0.
+                const hourIdx = Math.max(0, Math.min(23, (h - 9) * 2 + (m >= 30 ? 1 : 0)));
                 const slotIdx = (diffDays * 20) + Math.max(0, Math.min(19, hourIdx)); 
                 if (slotIdx < 144) slots[slotIdx]++;
             }
@@ -130,8 +126,8 @@ export default function ExecutiveDashboard() {
         { subject: 'Danışan', A: customers.length, fullMark: Math.max(customers.length, 50) },
         { subject: 'Randevu', A: appointments.length, fullMark: Math.max(appointments.length, 50) },
         { subject: 'Satış', A: payments.length, fullMark: Math.max(payments.length, 50) },
-        { subject: 'Potansiyel', A: customers.filter(c => c.segment === 'Potansiyel').length, fullMark: Math.max(customers.length, 20) },
-        { subject: 'Ödeme', A: payments.filter(p => p.totalAmount > 0).length, fullMark: Math.max(payments.length, 20) },
+        { subject: 'Potansiyel', A: customers.filter((c: Customer) => c.segment === 'Potansiyel').length, fullMark: Math.max(customers.length, 20) },
+        { subject: 'Ödeme', A: payments.filter((p: Payment) => p.totalAmount > 0).length, fullMark: Math.max(payments.length, 20) },
         { subject: 'Gider', A: expenses.length, fullMark: Math.max(expenses.length, 20) },
     ], [customers, appointments, payments, expenses]);
 
@@ -139,13 +135,13 @@ export default function ExecutiveDashboard() {
         const segments = ['Normal', 'VIP', 'Potansiyel', 'Kurumsal'];
         return segments.map(s => ({
             name: s,
-            value: customers.filter(c => c.segment === s || (!c.segment && s === 'Normal')).length
+            value: customers.filter((c: Customer) => c.segment === s || (!c.segment && s === 'Normal')).length
         })).filter(d => d.value > 0);
     }, [customers]);
 
     const serviceData = useMemo(() => {
         const map: Record<string, number> = {};
-        payments.forEach(p => {
+        payments.forEach((p: Payment) => {
             if (p.service) {
                 map[p.service] = (map[p.service] || 0) + p.totalAmount;
             }
@@ -206,7 +202,7 @@ export default function ExecutiveDashboard() {
                 {/* Notifications */}
                 <SectionCard title="Sistem Hareketleri" icon={<Bell size={18} />} color="text-indigo-600">
                     <div className="space-y-4 max-h-[160px] overflow-y-auto pr-2 custom-scrollbar">
-                        {allLogs.length > 0 ? allLogs.slice(0, 5).map((log, i) => (
+                        {allLogs.length > 0 ? allLogs.slice(0, 5).map((log: AuditLog, i: number) => (
                             <div key={i} className="flex gap-4 items-start group">
                                 <div className="p-2.5 bg-indigo-50/50 text-indigo-400 group-hover:text-indigo-600 group-hover:bg-indigo-100/50 rounded-xl transition-all">
                                     <Activity size={16} />
@@ -225,7 +221,7 @@ export default function ExecutiveDashboard() {
                 {/* Announcements - REAL DATA */}
                 <SectionCard title="Duyurular" icon={<Megaphone size={18} />} color="text-indigo-600" action={<button className="text-[10px] font-black text-gray-300 hover:text-indigo-600 transition-colors">Tümü</button>}>
                     <div className="space-y-4 max-h-[160px] overflow-y-auto pr-2 custom-scrollbar">
-                        {systemAnnouncements && systemAnnouncements.length > 0 ? systemAnnouncements.slice(0, 3).map((ann, i) => (
+                        {systemAnnouncements && systemAnnouncements.length > 0 ? systemAnnouncements.slice(0, 3).map((ann: SystemAnnouncement, i: number) => (
                             <div key={i} className="p-3 bg-gray-50 rounded-2xl border border-gray-100 group hover:border-indigo-200 transition-all">
                                 <div className="flex items-center gap-2 mb-1">
                                     <Sparkles size={12} className="text-indigo-500" />
@@ -310,7 +306,7 @@ export default function ExecutiveDashboard() {
                 {/* Heatmap - REAL DATA */}
                 <ChartCard title="Randevu tarih-saat yoğunluğu" icon={<Activity size={16} />}>
                     <div className="h-[250px] w-full grid grid-cols-12 gap-1 p-2">
-                        {heatmapData.map((count, i) => {
+                        {heatmapData.map((count: number, i: number) => {
                             const opacity = Math.min(1, count * 0.3);
                             return (
                                 <div key={i} className={`rounded-sm transition-all hover:scale-110 ${count > 0 ? 'bg-[#0071E3]' : 'bg-gray-100'}`} style={{ opacity: count > 0 ? 0.3 + opacity : 1 }} />
@@ -436,7 +432,6 @@ function KPICard({ title, value, color, icon, footer, href }: any) {
         </Link>
     );
 }
-
 
 function SectionCard({ title, icon, color, children, action }: any) {
     return (
