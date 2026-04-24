@@ -66,7 +66,7 @@ export default function GlobalSearch() {
         setSearchTerm("");
         
         if (type === 'customer') {
-            router.push(`/${slug}/customers?search=${encodeURIComponent(extra || '')}`);
+            router.push(`/${slug}/customers?id=${id}`);
         } else if (type === 'appointment') {
             router.push(`/${slug}/calendar`);
         } else if (type === 'staff') {

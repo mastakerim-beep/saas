@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
+import { useSearchParams, useRouter } from 'next/navigation';
 import { useStore, Customer, Appointment, Package, Payment, Quote } from '@/lib/store';
 import { 
     User, CheckCircle, ArrowLeft, MessageCircle, Download, Clock, Tag, 
@@ -1254,6 +1255,22 @@ export default function CustomersPage() {
         start: '', 
         end: '' 
     });
+
+    const searchParams = useSearchParams();
+    const customerIdParam = searchParams.get('id');
+    const searchTermParam = searchParams.get('search');
+
+    useEffect(() => {
+        if (customerIdParam && customers.length > 0) {
+            const customer = customers.find(c => c.id === customerIdParam);
+            if (customer) {
+                setSelectedCustomer(customer);
+            }
+        }
+        if (searchTermParam) {
+            setSearch(searchTermParam);
+        }
+    }, [customerIdParam, searchTermParam, customers]);
 
     const insights = useMemo(() => ({
         churn: getChurnRiskCustomers(),
