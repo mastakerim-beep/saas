@@ -18,14 +18,21 @@ import {
     LineChart, Line
 } from 'recharts';
 import { motion, AnimatePresence } from "framer-motion";
+import Link from "next/link";
+import { useParams } from "next/navigation";
 
 export default function ExecutiveDashboard() {
+    const params = useParams();
+    const slug = params?.slug as string;
+    
     const { 
         branches, payments, appointments, customers, 
         expenses, allLogs, can, fetchData, systemAnnouncements 
     } = useStore();
 
     const [exchangeRates, setExchangeRates] = useState<{from: string, to: string, rate: string}[]>([]);
+
+    const getLink = (target: string) => `/${slug}/${target}`;
 
     useEffect(() => {
         fetchData();
@@ -110,8 +117,9 @@ export default function ExecutiveDashboard() {
             if (diffDays >= 0 && diffDays < 7) {
                 // Determine hour slot (09:00 - 21:00 -> 12 hours * 2 slots = 24 slots)
                 const [h, m] = (appt.time || "09:00").split(':').map(Number);
-                const hourIdx = Math.max(0, Math.min(23, (h - 9) * 2 + (m >= 30 ? 1 : 0)));
-                const slotIdx = (diffDays * 20) + hourIdx; // Spread it over the 144 grid
+                const hourIdx = Math.max(0, Math.min(23, (h - 9) * (60/30) + (m >= 30 ? 1 : 0))); // Wait, let's fix this
+                // 12 hours * 2 slots/hour = 24 slots. 09:00 is idx 0.
+                const slotIdx = (diffDays * 20) + Math.max(0, Math.min(19, hourIdx)); 
                 if (slotIdx < 144) slots[slotIdx]++;
             }
         });
@@ -165,13 +173,15 @@ export default function ExecutiveDashboard() {
                     color="bg-indigo-950" 
                     icon={<Users size={24} />} 
                     footer="DANIŞAN LİSTESİ"
+                    href={getLink('customers')}
                 />
                 <KPICard 
                     title="Günün Randevuları" 
                     value={stats.todayAppts} 
                     color="bg-indigo-600" 
                     icon={<Calendar size={24} />} 
-                    footer="TAKIVIME GİT"
+                    footer="TAKVİME GİT"
+                    href={getLink('calendar')}
                 />
                 <KPICard 
                     title="Günün Kasa Toplamı" 
@@ -179,6 +189,7 @@ export default function ExecutiveDashboard() {
                     color="bg-purple-600" 
                     icon={<Wallet size={24} />} 
                     footer="KASAYA GÖZ AT"
+                    href={getLink('finances/cash')}
                 />
                 <KPICard 
                     title="Ciro Farkı (30 gün)" 
@@ -186,6 +197,7 @@ export default function ExecutiveDashboard() {
                     color="bg-purple-500" 
                     icon={<TrendingUp size={24} />} 
                     footer="SATIŞ LİSTESİ"
+                    href={getLink('finances')}
                 />
             </div>
 
@@ -397,31 +409,34 @@ export default function ExecutiveDashboard() {
     );
 }
 
-function KPICard({ title, value, color, icon, footer }: any) {
+function KPICard({ title, value, color, icon, footer, href }: any) {
     return (
-        <motion.div 
-            whileHover={{ y: -5 }}
-            className={`bg-white rounded-[2rem] p-8 shadow-sm border border-gray-100 flex flex-col justify-between h-[180px] relative overflow-hidden group`}
-        >
-            <div className="flex justify-between items-start relative z-10 transition-transform group-hover:translate-x-1">
-                <div className="space-y-1">
-                    <p className="text-4xl font-black tracking-tighter text-gray-900">{value}</p>
-                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-[0.2em]">{title}</p>
+        <Link href={href || "#"} className="block group">
+            <motion.div 
+                whileHover={{ y: -5 }}
+                className={`bg-white rounded-[2rem] p-8 shadow-sm border border-gray-100 flex flex-col justify-between h-[180px] relative overflow-hidden`}
+            >
+                <div className="flex justify-between items-start relative z-10 transition-transform group-hover:translate-x-1">
+                    <div className="space-y-1">
+                        <p className="text-4xl font-black tracking-tighter text-gray-900">{value}</p>
+                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-[0.2em]">{title}</p>
+                    </div>
+                    <div className={`${color} p-3 rounded-2xl text-white shadow-xl group-hover:scale-110 transition-transform`}>
+                        {icon}
+                    </div>
                 </div>
-                <div className={`${color} p-3 rounded-2xl text-white shadow-xl group-hover:scale-110 transition-transform`}>
-                    {icon}
+                <div className="mt-8 relative z-10">
+                    <div className="text-[9px] font-black text-gray-400 uppercase tracking-widest flex items-center gap-2 group-hover:text-[#0071E3] transition-colors group-hover:gap-3">
+                        {footer} <ChevronRight size={12} />
+                    </div>
                 </div>
-            </div>
-            <div className="mt-8 relative z-10">
-                <button className="text-[9px] font-black text-gray-400 uppercase tracking-widest flex items-center gap-2 hover:text-[#0071E3] transition-colors group-hover:gap-3">
-                    {footer} <ChevronRight size={12} />
-                </button>
-            </div>
-            {/* Decoration */}
-            <div className={`absolute -right-10 -bottom-10 w-32 h-32 ${color} opacity-5 rounded-full group-hover:scale-150 transition-transform duration-700`} />
-        </motion.div>
+                {/* Decoration */}
+                <div className={`absolute -right-10 -bottom-10 w-32 h-32 ${color} opacity-5 rounded-full group-hover:scale-150 transition-transform duration-700`} />
+            </motion.div>
+        </Link>
     );
 }
+
 
 function SectionCard({ title, icon, color, children, action }: any) {
     return (
@@ -472,4 +487,3 @@ function AccessDenied() {
         </div>
     );
 }
-
