@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useEffect } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
-import { useStore, Customer, Appointment, Package, Payment, Quote } from '@/lib/store';
+import { useStore, Customer, Appointment, Package, Payment, Quote, Room } from '@/lib/store';
 import { 
     User, CheckCircle, ArrowLeft, MessageCircle, Download, Clock, Tag, 
     MessageSquare, Search, X, Phone, Mail, Calendar, ChevronRight, ChevronLeft,
@@ -156,6 +156,8 @@ function CustomerDetail({ customer, onClose }: { customer: Customer; onClose: ()
         deleteCustomer,
         addLog,
         staffMembers,
+        rooms,
+        can,
         currentBranch,
         quotes,
         addQuote,
@@ -216,9 +218,9 @@ function CustomerDetail({ customer, onClose }: { customer: Customer; onClose: ()
     };
 
     const pkgs = getCustomerPackages(customer.id);
-    const appts = getCustomerAppointments(customer.id).sort((a, b) => b.date.localeCompare(a.date));
+    const appts = getCustomerAppointments(customer.id).sort((a: Appointment, b: Appointment) => (b.date || '').localeCompare(a.date || ''));
     const payments = getCustomerPayments(customer.id);
-    const totalSpent = payments.reduce((s, p) => s + (p.totalAmount || 0), 0);
+    const totalSpent = payments.reduce((s: number, p: Payment) => s + (p.totalAmount || 0), 0);
 
     const statusLabels: Record<string, { label: string; cls: string; icon: any }> = {
         completed: { label: 'Tamamlandı', cls: 'bg-green-500/10 text-green-600 border-green-500/20', icon: CheckCircle },
@@ -631,27 +633,52 @@ function CustomerDetail({ customer, onClose }: { customer: Customer; onClose: ()
                                                             </td>
                                                             <td className="px-8 py-5 font-black text-gray-900">{a.time}</td>
                                                             <td className="px-8 py-5 text-sm font-bold text-gray-500 uppercase">{a.staffName}</td>
-                                                            <td className="px-8 py-5 text-sm font-bold text-indigo-600 italic">1. Masaj Odası</td>
-                                                            <td className="px-8 py-5 font-black text-gray-700 italic">(P) {a.service}</td>
+                                                            <td className="px-8 py-5 text-sm font-bold text-indigo-600 italic">
+                                                                {rooms.find((r: Room) => r.id === a.roomId)?.name || 'Atanmamış'}
+                                                            </td>
+                                                            <td className="px-8 py-5 font-black text-gray-700 italic">{a.service}</td>
                                                             <td className="px-8 py-5">
                                                                 <select 
+                                                                    disabled={!can('update_appointment_status')}
                                                                     value={a.status}
                                                                     onChange={(e) => updateAppointmentStatus(a.id, e.target.value as any)}
-                                                                    className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase border-2 outline-none appearance-none cursor-pointer tracking-widest ${s.cls}`}
+                                                                    className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase border-2 outline-none appearance-none cursor-pointer tracking-widest disabled:opacity-50 transition-all ${s.cls}`}
                                                                 >
                                                                     {Object.entries(statusLabels).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
                                                                 </select>
                                                             </td>
                                                             <td className="px-8 py-5 text-center">
                                                                 <div className="flex justify-center gap-2">
-                                                                    <div className="w-7 h-7 bg-red-500 rounded-full flex items-center justify-center text-white"><X className="w-4 h-4" /></div>
-                                                                    <div className="w-7 h-7 bg-green-600 rounded-lg flex items-center justify-center text-white"><FileText className="w-4 h-4" /></div>
+                                                                    <button 
+                                                                        disabled={!can('delete_appointment')}
+                                                                        onClick={() => updateAppointmentStatus(a.id, 'cancelled')}
+                                                                        title="Randevuyu İptal Et"
+                                                                        className="w-7 h-7 bg-red-500 rounded-full flex items-center justify-center text-white hover:bg-red-600 transition-colors shadow-lg shadow-red-200 disabled:opacity-30 disabled:grayscale"
+                                                                    >
+                                                                        <X className="w-4 h-4" />
+                                                                    </button>
+                                                                    <div 
+                                                                        title={a.note ? `Randevu Notu: ${a.note}` : 'Not eklenmemiş'}
+                                                                        className="w-7 h-7 bg-green-600 rounded-lg flex items-center justify-center text-white cursor-help hover:bg-green-700 transition-colors shadow-lg shadow-green-100"
+                                                                    >
+                                                                        <FileText className="w-4 h-4" />
+                                                                    </div>
                                                                 </div>
                                                             </td>
                                                             <td className="px-8 py-5 text-right">
                                                                 <div className="flex justify-end gap-2 opacity-50 group-hover:opacity-100">
-                                                                    <button className="p-2 bg-white border border-gray-100 rounded-lg hover:border-indigo-600 transition-all"><Edit2 className="w-4 h-4 text-gray-400" /></button>
-                                                                    <button className="p-2 bg-white border border-gray-100 rounded-lg"><ChevronRight className="w-4 h-4 text-gray-300 rotate-90" /></button>
+                                                                    <button 
+                                                                        disabled={!can('update_appointment')}
+                                                                        className="p-2 bg-white border border-gray-100 rounded-lg hover:border-indigo-600 transition-all disabled:opacity-30"
+                                                                    >
+                                                                        <Edit2 className="w-4 h-4 text-gray-400" />
+                                                                    </button>
+                                                                    <button 
+                                                                        disabled={!can('manage_appointments')}
+                                                                        className="p-2 bg-white border border-gray-100 rounded-lg disabled:opacity-30"
+                                                                    >
+                                                                        <ChevronRight className="w-4 h-4 text-gray-300 rotate-90" />
+                                                                    </button>
                                                                 </div>
                                                             </td>
                                                         </tr>
