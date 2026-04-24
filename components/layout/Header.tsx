@@ -8,6 +8,7 @@ import { Bell, Search, MapPin, Building2,
 import { useState } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
+import GlobalSearch from "./GlobalSearch";
 
 export default function Header() {
     const { 
@@ -37,14 +38,8 @@ export default function Header() {
 
             {/* Right Group: Search, Actions, Profile */}
             <div className="flex items-center gap-4 ml-auto">
-                {/* 1. Dynamic Search */}
-                <div className="relative group">
-                    <Search className="w-5 h-5 absolute left-5 top-1/2 -translate-y-1/2 text-indigo-300 group-focus-within:text-indigo-600 transition-colors" />
-                    <input 
-                        placeholder={`Ara (${currentBranch?.name || 'Tüm Şubeler'})`}
-                        className="bg-indigo-50/50 border border-indigo-50 focus:border-indigo-500/50 focus:bg-white focus:ring-4 focus:ring-indigo-500/5 rounded-2xl pl-12 pr-6 py-3 text-sm font-bold w-[400px] outline-none transition-all placeholder:text-indigo-200"
-                    />
-                </div>
+                {/* 1. Dynamic Global Search */}
+                <GlobalSearch />
 
                 {/* 0. Imperial Audit (God Mode) */}
                 <div className="relative">
