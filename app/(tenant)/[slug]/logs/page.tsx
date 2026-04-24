@@ -7,6 +7,7 @@ import {
     CheckCircle2, Clock, Trash2, Edit3, PlusCircle, Move,
     ChevronDown, Download, Zap
 } from "lucide-react";
+import { AuditLog } from "@/lib/store/types";
 import { useState, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { format } from "date-fns";
@@ -20,29 +21,45 @@ export default function KernelLogsPage() {
 
     const categories = ["Tümü", "Randevu", "Müşteri", "Finans", "Sistem"];
 
+    const safeFormat = (dateStr: any, formatStr: string) => {
+        try {
+            if (!dateStr) return "-";
+            const date = new Date(dateStr);
+            if (isNaN(date.getTime())) return "-";
+            return format(date, formatStr, { locale: tr });
+        } catch (e) {
+            return "-";
+        }
+    };
+
     const filteredLogs = useMemo(() => {
         return allLogs
-            .filter(log => {
-                const matchesSearch = log.customerName?.toLowerCase().includes(search.toLowerCase()) || 
-                                     log.action.toLowerCase().includes(search.toLowerCase()) ||
+            .filter((log: AuditLog) => {
+                const matchesSearch = (log.customerName || "").toLowerCase().includes(search.toLowerCase()) || 
+                                     (log.action || "").toLowerCase().includes(search.toLowerCase()) ||
                                      (log.user || "").toLowerCase().includes(search.toLowerCase());
                 
                 if (filter === "Tümü") return matchesSearch;
-                if (filter === "Randevu") return matchesSearch && log.action.includes("Randevu");
-                if (filter === "Müşteri") return matchesSearch && log.action.includes("Müşteri");
-                if (filter === "Finans") return matchesSearch && (log.action.includes("Ödeme") || log.action.includes("Borç") || log.action.includes("Gider"));
-                if (filter === "Sistem") return matchesSearch && (!log.action.includes("Randevu") && !log.action.includes("Müşteri") && !log.action.includes("Ödeme"));
+                if (filter === "Randevu") return matchesSearch && (log.action || "").includes("Randevu");
+                if (filter === "Müşteri") return matchesSearch && (log.action || "").includes("Müşteri");
+                if (filter === "Finans") return matchesSearch && ((log.action || "").includes("Ödeme") || (log.action || "").includes("Borç") || (log.action || "").includes("Gider"));
+                if (filter === "Sistem") return matchesSearch && (!(log.action || "").includes("Randevu") && !(log.action || "").includes("Müşteri") && !(log.action || "").includes("Ödeme"));
                 return matchesSearch;
             })
-            .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+            .sort((a, b) => {
+                const dateA = new Date(a.date || a.createdAt || 0).getTime();
+                const dateB = new Date(b.date || b.createdAt || 0).getTime();
+                return dateB - dateA;
+            });
     }, [allLogs, search, filter]);
 
     const getActionIcon = (action: string) => {
-        if (action.includes("Oluşturuldu") || action.includes("Kaydedildi")) return <PlusCircle className="text-emerald-500" size={18} />;
-        if (action.includes("Silindi")) return <Trash2 className="text-rose-500" size={18} />;
-        if (action.includes("Güncellendi") || action.includes("Değişti")) return <Edit3 className="text-amber-500" size={18} />;
-        if (action.includes("Taşındı")) return <Move className="text-indigo-500" size={18} />;
-        if (action.includes("Ödeme") || action.includes("Tahsil")) return <CheckCircle2 className="text-emerald-500" size={18} />;
+        const act = action || "";
+        if (act.includes("Oluşturuldu") || act.includes("Kaydedildi")) return <PlusCircle className="text-emerald-500" size={18} />;
+        if (act.includes("Silindi")) return <Trash2 className="text-rose-500" size={18} />;
+        if (act.includes("Güncellendi") || act.includes("Değişti")) return <Edit3 className="text-amber-500" size={18} />;
+        if (act.includes("Taşındı")) return <Move className="text-indigo-500" size={18} />;
+        if (act.includes("Ödeme") || act.includes("Tahsil")) return <CheckCircle2 className="text-emerald-500" size={18} />;
         return <Info className="text-gray-400" size={18} />;
     };
 
@@ -66,7 +83,7 @@ export default function KernelLogsPage() {
                         title="Sistem Hareket Kayitlari (Kernel Logs)"
                         headers={["Tarih", "Aksiyon", "Müşteri/İlgili", "Eski Değer", "Yeni Değer", "Kullanıcı"]}
                         excelMapping={(log) => ({
-                            "Tarih": format(new Date(log.date), 'dd.MM.yyyy HH:mm'),
+                            "Tarih": safeFormat(log.date || log.createdAt, 'dd.MM.yyyy HH:mm'),
                             "Aksiyon": log.action,
                             "Müşteri/Detay": log.customerName,
                             "Eski Değer": log.oldValue || '-',
@@ -74,7 +91,7 @@ export default function KernelLogsPage() {
                             "İşlemi Yapan": log.user || 'Sistem'
                         })}
                         pdfMapping={(log) => [
-                            format(new Date(log.date), 'dd.MM.yyyy HH:mm'),
+                            safeFormat(log.date || log.createdAt, 'dd.MM.yyyy HH:mm'),
                             log.action,
                             log.customerName,
                             log.oldValue || '-',
@@ -95,7 +112,7 @@ export default function KernelLogsPage() {
             <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-12">
                 {[
                     { label: 'Toplam Log', value: allLogs.length, icon: History, color: 'text-indigo-600', bg: 'bg-indigo-50' },
-                    { label: 'Kritik İşlem', value: allLogs.filter(l => l.action.includes('Silindi')).length, icon: AlertTriangle, color: 'text-rose-600', bg: 'bg-rose-50' },
+                    { label: 'Kritik İşlem', value: allLogs.filter((l: AuditLog) => (l.action || '').includes('Silindi')).length, icon: AlertTriangle, color: 'text-rose-600', bg: 'bg-rose-50' },
                     { label: 'Başarılı Sync', value: '100%', icon: CheckCircle2, color: 'text-emerald-600', bg: 'bg-emerald-50' },
                     { label: 'Sistem Yükü', value: 'Normal', icon: Zap, color: 'text-amber-600', bg: 'bg-amber-50' },
                 ].map((stat, i) => (
@@ -141,7 +158,7 @@ export default function KernelLogsPage() {
             {/* Logs Timeline */}
             <div className="space-y-4">
                 <AnimatePresence mode="popLayout">
-                    {filteredLogs.map((log, idx) => (
+                    {filteredLogs.map((log: AuditLog) => (
                         <motion.div 
                             layout
                             initial={{ opacity: 0, x: -20 }}
@@ -154,10 +171,10 @@ export default function KernelLogsPage() {
                             {/* Time Badge */}
                             <div className="min-w-[100px] text-center px-4 py-3 bg-gray-50 rounded-2xl border border-gray-100 group-hover:bg-gray-900 group-hover:text-white transition-colors duration-500">
                                 <p className="text-[14px] font-black leading-none mb-1">
-                                    {format(new Date(log.date), 'HH:mm')}
+                                    {safeFormat(log.date || log.createdAt, 'HH:mm')}
                                 </p>
                                 <p className="text-[9px] font-black uppercase tracking-tighter opacity-60">
-                                    {format(new Date(log.date), 'dd MMM', { locale: tr })}
+                                    {safeFormat(log.date || log.createdAt, 'dd MMM')}
                                 </p>
                             </div>
 

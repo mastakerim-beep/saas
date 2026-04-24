@@ -386,8 +386,19 @@ const StoreOrchestrator = ({ children }: { children: ReactNode }) => {
 
     const addLog = React.useCallback(async (type: string, target: string, source: string = 'Sistem', detail?: string) => {
         const id = crypto.randomUUID();
+        const now = new Date().toISOString();
         // action field added for backward compatibility with the NOT NULL constraint if it persists
-        const log = { id, type, target, source, detail, action: type, businessId: activeBizIdRef.current, createdAt: new Date().toISOString() };
+        const log = { 
+            id, 
+            type, 
+            target, 
+            source, 
+            detail, 
+            action: type, 
+            businessId: activeBizIdRef.current, 
+            date: now,
+            createdAt: now 
+        };
         data.setAllLogs((prev: any[]) => [log, ...prev]);
         await syncDb('audit_logs', 'insert', log, id, activeBizIdRef.current);
     }, [data.setAllLogs]);
