@@ -20,10 +20,13 @@ import {
 import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
 import { useParams } from "next/navigation";
+import PanopticonRadar from '@/components/system/panopticon/PanopticonRadar';
+import VetoCenter from '@/components/system/draconian/VetoCenter';
 
 export default function ExecutiveDashboard() {
     const params = useParams();
     const slug = params?.slug as string;
+    const [activeTab, setActiveTab] = useState<'overview' | 'treasury' | 'panopticon' | 'veto'>('overview');
     
     const { 
         branches, payments, appointments, customers, 
@@ -167,252 +170,335 @@ export default function ExecutiveDashboard() {
         return <AccessDenied />;
     }
 
+    // Treasury Simulation Data
+    const { totalIncome, totalExpense, pendingDebts, projectedCashflow } = useMemo(() => {
+        const income = (payments || []).reduce((acc: number, p: Payment) => acc + (p.totalAmount || 0), 0);
+        const exp = (expenses || []).reduce((acc: number, e: Expense) => acc + (e.amount || 0), 0);
+        const pDebts = customers.reduce((acc: number, c: Customer) => acc + (c.loyaltyPoints || 0), 0) * 10;
+        const projected = (income - exp) + (pDebts * 0.6);
+        return { totalIncome: income, totalExpense: exp, pendingDebts: pDebts, projectedCashflow: projected };
+    }, [payments, expenses, customers]);
+
     return (
         <div className="bg-[#E4E9F0] min-h-screen p-8 space-y-8 font-sans overflow-x-hidden pt-12">
             
-            {/* Top KPI row */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                <KPICard 
-                    title="Potansiyel Danışan" 
-                    value={stats.potentialCustomers} 
-                    color="bg-indigo-950" 
-                    icon={<Users size={24} />} 
-                    footer="DANIŞAN LİSTESİ"
-                    href={getLink('customers')}
-                />
-                <KPICard 
-                    title="Günün Randevuları" 
-                    value={stats.todayAppts} 
-                    color="bg-indigo-600" 
-                    icon={<Calendar size={24} />} 
-                    footer="TAKVİME GİT"
-                    href={getLink('calendar')}
-                />
-                <KPICard 
-                    title="Günün Kasa Toplamı" 
-                    value={`${stats.todayCash.toLocaleString('tr-TR')} TRY`} 
-                    color="bg-purple-600" 
-                    icon={<Wallet size={24} />} 
-                    footer="KASAYA GÖZ AT"
-                    href={getLink('finances/cash')}
-                />
-                <KPICard 
-                    title="Ciro Farkı (30 gün)" 
-                    value={`%${stats.revenueDiff.toFixed(1)}`} 
-                    color="bg-purple-500" 
-                    icon={<TrendingUp size={24} />} 
-                    footer="SATIŞ LİSTESİ"
-                    href={getLink('finances')}
-                />
+            {/* TABS NAVIGATION */}
+            <div className="flex gap-4 p-2 bg-white rounded-full shadow-sm border border-gray-100 mb-8 max-w-fit mx-auto relative z-10">
+                <TabBtn active={activeTab} id="overview" onClick={setActiveTab} label="Ciro Analizi" icon={<TrendingUp size={14} />} />
+                <TabBtn active={activeTab} id="treasury" onClick={setActiveTab} label="Hazine Simülasyonu" icon={<Wallet size={14} />} />
+                <TabBtn active={activeTab} id="veto" onClick={setActiveTab} label="Veto Merkezi" icon={<ShieldCheck size={14} />} />
+                <TabBtn active={activeTab} id="panopticon" onClick={setActiveTab} label="Panopticon Radar" icon={<Activity size={14} />} />
             </div>
 
-            {/* Middle Section: Notifications & Announcements & Rates */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                {/* Notifications */}
-                <SectionCard title="Sistem Hareketleri" icon={<Bell size={18} />} color="text-indigo-600">
-                    <div className="space-y-4 max-h-[220px] overflow-y-auto pr-2 custom-scrollbar">
-                        {sortedLogs.length > 0 ? sortedLogs.slice(0, 10).map((log: AuditLog, i: number) => (
-                            <div key={i} className="flex gap-4 items-start group">
-                                <div className="p-2.5 bg-indigo-50/50 text-indigo-400 group-hover:text-indigo-600 group-hover:bg-indigo-100/50 rounded-xl transition-all">
-                                    <Activity size={16} />
-                                </div>
-                                <div className="flex-1 border-b border-gray-50 pb-3">
-                                    <p className="text-xs font-black text-gray-800 uppercase leading-none">{log.action}</p>
-                                    <p className="text-[10px] text-gray-400 mt-1 font-bold">
-                                        {log.customerName || 'SİSTEM'} — {new Date(log.date || log.createdAt || "").toLocaleString('tr-TR')}
-                                    </p>
-                                </div>
-                            </div>
-                        )) : (
-                            <div className="text-center py-8 text-gray-300 text-[10px] font-black uppercase">Hareket Bulunmuyor</div>
-                        )}
-                    </div>
-                </SectionCard>
-
-                {/* Announcements - REAL DATA */}
-                <SectionCard title="Duyurular" icon={<Megaphone size={18} />} color="text-indigo-600" action={<button className="text-[10px] font-black text-gray-300 hover:text-indigo-600 transition-colors">Tümü</button>}>
-                    <div className="space-y-4 max-h-[160px] overflow-y-auto pr-2 custom-scrollbar">
-                        {systemAnnouncements && systemAnnouncements.length > 0 ? systemAnnouncements.slice(0, 3).map((ann: SystemAnnouncement, i: number) => (
-                            <div key={i} className="p-3 bg-gray-50 rounded-2xl border border-gray-100 group hover:border-indigo-200 transition-all">
-                                <div className="flex items-center gap-2 mb-1">
-                                    <Sparkles size={12} className="text-indigo-500" />
-                                    <span className="text-[10px] font-black text-indigo-950 uppercase">{ann.title}</span>
-                                </div>
-                                <p className="text-[10px] text-gray-500 line-clamp-2 leading-relaxed">{ann.content}</p>
-                            </div>
-                        )) : (
-                            <div className="h-40 flex flex-col items-center justify-center text-center opacity-20 grayscale">
-                                <Megaphone size={48} className="text-gray-300 mb-4" />
-                                <p className="text-[10px] font-black uppercase tracking-widest">Henüz Duyuru Yok</p>
-                            </div>
-                        )}
-                    </div>
-                </SectionCard>
-
-                {/* Exchange Rates - REAL API DATA */}
-                <SectionCard title="Canlı Döviz Kurları" icon={<DollarSign size={18} />} color="text-indigo-600">
-                    <table className="w-full text-left">
-                        <thead>
-                            <tr className="text-[10px] font-black text-gray-400 uppercase tracking-widest border-b border-gray-100">
-                                <th className="pb-3">Kaynak Kur</th>
-                                <th className="pb-3">Hedef Kur</th>
-                                <th className="pb-3 text-right">Parite</th>
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-gray-50">
-                            {exchangeRates.map((row, i) => (
-                                <tr key={i} className="text-xs text-gray-600">
-                                    <td className="py-3 font-bold">{row.from}</td>
-                                    <td className="py-3 font-bold">{row.to}</td>
-                                    <td className="py-3 font-black text-right text-gray-900">{row.rate}</td>
-                                </tr>
-                            ))}
-                            {exchangeRates.length === 0 && [
-                                 { from: 'TRY', to: 'EUR', rate: '34.1433' },
-                                 { from: 'TRY', to: 'USD', rate: '32.1245' },
-                                 { from: 'TRY', to: 'GBP', rate: '40.8625' },
-                            ].map((row, i) => (
-                                <tr key={i} className="text-xs text-gray-600 opacity-50">
-                                    <td className="py-3 font-bold">{row.from}</td>
-                                    <td className="py-3 font-bold">{row.to}</td>
-                                    <td className="py-3 font-black text-right text-gray-900">{row.rate}</td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
-                    <p className="text-[8px] text-gray-400 mt-2 italic">* exchangerate-api üzerinden anlık güncellenir.</p>
-                </SectionCard>
-            </div>
-
-            {/* Bottom Row 1: Charts */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                {/* Tahsilat - Satış */}
-                <ChartCard title="Tahsilat - Satış tutarları (TRY)" icon={<TrendingUp size={16} />}>
-                    <ResponsiveContainer width="100%" height={250}>
-                        <AreaChart data={lineData}>
-                            <defs>
-                                <linearGradient id="colorSatis" x1="0" y1="0" x2="0" y2="1">
-                                    <stop offset="5%" stopColor="#4F46E5" stopOpacity={0.1}/>
-                                    <stop offset="95%" stopColor="#4F46E5" stopOpacity={0}/>
-                                </linearGradient>
-                            </defs>
-                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
-                            <XAxis dataKey="name" fontSize={10} axisLine={false} tickLine={false} />
-                            <YAxis fontSize={10} axisLine={false} tickLine={false} tickFormatter={(val) => `₺${Math.floor(val/1000)}k`} />
-                            <Tooltip contentStyle={{ borderRadius: '20px', border: 'none', boxShadow: '0 10px 30px -10px rgba(0,0,0,0.1)' }} />
-                            <Area type="monotone" dataKey="satis" stroke="#3B82F6" strokeWidth={3} fillOpacity={0} />
-                            <Area type="monotone" dataKey="tahsilat" stroke="#1ABE9D" strokeWidth={3} fillOpacity={1} fill="url(#colorSatis)" />
-                        </AreaChart>
-                    </ResponsiveContainer>
-                    <div className="flex gap-4 mt-4 justify-center">
-                        <div className="flex items-center gap-2 text-[10px] font-black text-gray-400">
-                            <div className="w-2 h-2 rounded-full bg-blue-500" /> Tahmini Satış
+            <AnimatePresence mode="wait">
+                {activeTab === 'overview' && (
+                    <motion.div key="overview" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="space-y-8">
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                            <KPICard 
+                                title="Potansiyel Danışan" 
+                                value={stats.potentialCustomers} 
+                                color="bg-indigo-950" 
+                                icon={<Users size={24} />} 
+                                footer="DANIŞAN LİSTESİ"
+                                href={getLink('customers')}
+                            />
+                            <KPICard 
+                                title="Günün Randevuları" 
+                                value={stats.todayAppts} 
+                                color="bg-indigo-600" 
+                                icon={<Calendar size={24} />} 
+                                footer="TAKVİME GİT"
+                                href={getLink('calendar')}
+                            />
+                            <KPICard 
+                                title="Günün Kasa Toplamı" 
+                                value={`${stats.todayCash.toLocaleString('tr-TR')} TRY`} 
+                                color="bg-purple-600" 
+                                icon={<Wallet size={24} />} 
+                                footer="KASAYA GÖZ AT"
+                                href={getLink('finances/cash')}
+                            />
+                            <KPICard 
+                                title="Ciro Farkı (30 gün)" 
+                                value={`%${stats.revenueDiff.toFixed(1)}`} 
+                                color="bg-purple-500" 
+                                icon={<TrendingUp size={24} />} 
+                                footer="SATIŞ LİSTESİ"
+                                href={getLink('finances')}
+                            />
                         </div>
-                        <div className="flex items-center gap-2 text-[10px] font-black text-gray-400">
-                            <div className="w-2 h-2 rounded-full bg-indigo-500" /> Gerçekleşen Tahsilat
+
+                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                            <SectionCard title="Sistem Hareketleri" icon={<Bell size={18} />} color="text-indigo-600">
+                                <div className="space-y-4 max-h-[220px] overflow-y-auto pr-2 custom-scrollbar">
+                                    {sortedLogs.length > 0 ? sortedLogs.slice(0, 10).map((log: AuditLog, i: number) => (
+                                        <div key={i} className="flex gap-4 items-start group">
+                                            <div className="p-2.5 bg-indigo-50/50 text-indigo-400 group-hover:text-indigo-600 group-hover:bg-indigo-100/50 rounded-xl transition-all">
+                                                <Activity size={16} />
+                                            </div>
+                                            <div className="flex-1 border-b border-gray-50 pb-3">
+                                                <p className="text-xs font-black text-gray-800 uppercase leading-none">{log.action}</p>
+                                                <p className="text-[10px] text-gray-400 mt-1 font-bold">
+                                                    {log.customerName || 'SİSTEM'} — {new Date(log.date || log.createdAt || "").toLocaleString('tr-TR')}
+                                                </p>
+                                            </div>
+                                        </div>
+                                    )) : (
+                                        <div className="text-center py-8 text-gray-300 text-[10px] font-black uppercase">Hareket Bulunmuyor</div>
+                                    )}
+                                </div>
+                            </SectionCard>
+
+                            <SectionCard title="Duyurular" icon={<Megaphone size={18} />} color="text-indigo-600" action={<button className="text-[10px] font-black text-gray-300 hover:text-indigo-600 transition-colors">Tümü</button>}>
+                                <div className="space-y-4 max-h-[160px] overflow-y-auto pr-2 custom-scrollbar">
+                                    {systemAnnouncements && systemAnnouncements.length > 0 ? systemAnnouncements.slice(0, 3).map((ann: SystemAnnouncement, i: number) => (
+                                        <div key={i} className="p-3 bg-gray-50 rounded-2xl border border-gray-100 group hover:border-indigo-200 transition-all">
+                                            <div className="flex items-center gap-2 mb-1">
+                                                <Sparkles size={12} className="text-indigo-500" />
+                                                <span className="text-[10px] font-black text-indigo-950 uppercase">{ann.title}</span>
+                                            </div>
+                                            <p className="text-[10px] text-gray-500 line-clamp-2 leading-relaxed">{ann.content}</p>
+                                        </div>
+                                    )) : (
+                                        <div className="h-40 flex flex-col items-center justify-center text-center opacity-20 grayscale">
+                                            <Megaphone size={48} className="text-gray-300 mb-4" />
+                                            <p className="text-[10px] font-black uppercase tracking-widest">Henüz Duyuru Yok</p>
+                                        </div>
+                                    )}
+                                </div>
+                            </SectionCard>
+
+                            <SectionCard title="Canlı Döviz Kurları" icon={<DollarSign size={18} />} color="text-indigo-600">
+                                <table className="w-full text-left">
+                                    <thead>
+                                        <tr className="text-[10px] font-black text-gray-400 uppercase tracking-widest border-b border-gray-100">
+                                            <th className="pb-3">Kaynak Kur</th>
+                                            <th className="pb-3">Hedef Kur</th>
+                                            <th className="pb-3 text-right">Parite</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-gray-50">
+                                        {exchangeRates.map((row, i) => (
+                                            <tr key={i} className="text-xs text-gray-600">
+                                                <td className="py-3 font-bold">{row.from}</td>
+                                                <td className="py-3 font-bold">{row.to}</td>
+                                                <td className="py-3 font-black text-right text-gray-900">{row.rate}</td>
+                                            </tr>
+                                        ))}
+                                        {exchangeRates.length === 0 && [
+                                             { from: 'TRY', to: 'EUR', rate: '34.1433' },
+                                             { from: 'TRY', to: 'USD', rate: '32.1245' },
+                                             { from: 'TRY', to: 'GBP', rate: '40.8625' },
+                                        ].map((row, i) => (
+                                            <tr key={i} className="text-xs text-gray-600 opacity-50">
+                                                <td className="py-3 font-bold">{row.from}</td>
+                                                <td className="py-3 font-bold">{row.to}</td>
+                                                <td className="py-3 font-black text-right text-gray-900">{row.rate}</td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                                <p className="text-[8px] text-gray-400 mt-2 italic">* exchangerate-api üzerinden anlık güncellenir.</p>
+                            </SectionCard>
                         </div>
-                    </div>
-                </ChartCard>
 
-                {/* Heatmap - REAL DATA */}
-                <ChartCard title="Randevu tarih-saat yoğunluğu" icon={<Activity size={16} />}>
-                    <div className="h-[250px] w-full grid grid-cols-12 gap-1 p-2">
-                        {heatmapData.map((count: number, i: number) => {
-                            const opacity = Math.min(1, count * 0.3);
-                            return (
-                                <div key={i} className={`rounded-sm transition-all hover:scale-110 ${count > 0 ? 'bg-[#0071E3]' : 'bg-gray-100'}`} style={{ opacity: count > 0 ? 0.3 + opacity : 1 }} />
-                            );
-                        })}
-                    </div>
-                    <div className="flex justify-between mt-4 px-4 text-[9px] font-black text-gray-400">
-                        <span>Sabah</span>
-                        <span>Öğle</span>
-                        <span>Akşam</span>
-                    </div>
-                </ChartCard>
+                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                            <ChartCard title="Tahsilat - Satış tutarları (TRY)" icon={<TrendingUp size={16} />}>
+                                <ResponsiveContainer width="100%" height={250}>
+                                    <AreaChart data={lineData}>
+                                        <defs>
+                                            <linearGradient id="colorSatis" x1="0" y1="0" x2="0" y2="1">
+                                                <stop offset="5%" stopColor="#4F46E5" stopOpacity={0.1}/>
+                                                <stop offset="95%" stopColor="#4F46E5" stopOpacity={0}/>
+                                            </linearGradient>
+                                        </defs>
+                                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
+                                        <XAxis dataKey="name" fontSize={10} axisLine={false} tickLine={false} />
+                                        <YAxis fontSize={10} axisLine={false} tickLine={false} tickFormatter={(val) => `₺${Math.floor(val/1000)}k`} />
+                                        <Tooltip contentStyle={{ borderRadius: '20px', border: 'none', boxShadow: '0 10px 30px -10px rgba(0,0,0,0.1)' }} />
+                                        <Area type="monotone" dataKey="satis" stroke="#3B82F6" strokeWidth={3} fillOpacity={0} />
+                                        <Area type="monotone" dataKey="tahsilat" stroke="#1ABE9D" strokeWidth={3} fillOpacity={1} fill="url(#colorSatis)" />
+                                    </AreaChart>
+                                </ResponsiveContainer>
+                                <div className="flex gap-4 mt-4 justify-center">
+                                    <div className="flex items-center gap-2 text-[10px] font-black text-gray-400">
+                                        <div className="w-2 h-2 rounded-full bg-blue-500" /> Tahmini Satış
+                                    </div>
+                                    <div className="flex items-center gap-2 text-[10px] font-black text-gray-400">
+                                        <div className="w-2 h-2 rounded-full bg-indigo-500" /> Gerçekleşen Tahsilat
+                                    </div>
+                                </div>
+                            </ChartCard>
 
-                {/* Most Sold Service */}
-                <ChartCard title="En çok satış yapılanlar (TRY)" icon={<Award size={16} />}>
-                    {serviceData.length > 0 ? (
-                        <ResponsiveContainer width="100%" height={250}>
-                            <BarChart data={serviceData} layout="vertical">
-                                <XAxis type="number" hide />
-                                <YAxis dataKey="name" type="category" width={100} fontSize={8} axisLine={false} tickLine={false} />
-                                <Tooltip cursor={{ fill: '#F8F9FB' }} />
-                                <Bar dataKey="val" fill="#6366F1" radius={[0, 4, 4, 0]} barSize={20} />
-                            </BarChart>
-                        </ResponsiveContainer>
-                    ) : (
-                         <div className="h-[250px] flex items-center justify-center text-gray-300 text-[10px] font-black uppercase">Veri Bekleniyor</div>
-                    )}
-                </ChartCard>
-            </div>
+                            <ChartCard title="Randevu tarih-saat yoğunluğu" icon={<Activity size={16} />}>
+                                <div className="h-[250px] w-full grid grid-cols-12 gap-1 p-2">
+                                    {heatmapData.map((count: number, i: number) => {
+                                        const opacity = Math.min(1, count * 0.3);
+                                        return (
+                                            <div key={i} className={`rounded-sm transition-all hover:scale-110 ${count > 0 ? 'bg-[#0071E3]' : 'bg-gray-100'}`} style={{ opacity: count > 0 ? 0.3 + opacity : 1 }} />
+                                        );
+                                    })}
+                                </div>
+                                <div className="flex justify-between mt-4 px-4 text-[9px] font-black text-gray-400">
+                                    <span>Sabah</span>
+                                    <span>Öğle</span>
+                                    <span>Akşam</span>
+                                </div>
+                            </ChartCard>
 
-            {/* Bottom Row 2: Radar & Distribution */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 pb-20">
-                {/* Radar Chart */}
-                <ChartCard title="Sistem performans analizi" icon={<Zap size={16} />}>
-                    <ResponsiveContainer width="100%" height={250}>
-                        <RadarChart outerRadius="80%" data={radarData}>
-                            <PolarGrid stroke="#f0f0f0" />
-                            <PolarAngleAxis dataKey="subject" fontSize={8} />
-                            <PolarRadiusAxis angle={30} domain={[0, 'auto']} hide />
-                            <Radar name="Kullanım" dataKey="A" stroke="#4F46E5" fill="#4F46E5" fillOpacity={0.3} />
-                        </RadarChart>
-                    </ResponsiveContainer>
-                </ChartCard>
+                            <ChartCard title="En çok satış yapılanlar (TRY)" icon={<Award size={16} />}>
+                                {serviceData.length > 0 ? (
+                                    <ResponsiveContainer width="100%" height={250}>
+                                        <BarChart data={serviceData} layout="vertical">
+                                            <XAxis type="number" hide />
+                                            <YAxis dataKey="name" type="category" width={100} fontSize={8} axisLine={false} tickLine={false} />
+                                            <Tooltip cursor={{ fill: '#F8F9FB' }} />
+                                            <Bar dataKey="val" fill="#6366F1" radius={[0, 4, 4, 0]} barSize={20} />
+                                        </BarChart>
+                                    </ResponsiveContainer>
+                                ) : (
+                                     <div className="h-[250px] flex items-center justify-center text-gray-300 text-[10px] font-black uppercase">Veri Bekleniyor</div>
+                                )}
+                            </ChartCard>
+                        </div>
 
-                {/* Pie Chart: Distribution */}
-                <ChartCard title="Danışan tipleri dağılımı" icon={<PieChartIcon size={16} />}>
-                    {pieData.length > 0 ? (
-                        <ResponsiveContainer width="100%" height={250}>
-                            <PieChart>
-                                <Pie 
-                                    data={pieData} 
-                                    innerRadius={60} 
-                                    outerRadius={80} 
-                                    paddingAngle={5} 
-                                    dataKey="value"
-                                >
-                                    {pieData.map((entry: any, index: number) => (
-                                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 pb-20">
+                            <ChartCard title="Sistem performans analizi" icon={<Zap size={16} />}>
+                                <ResponsiveContainer width="100%" height={250}>
+                                    <RadarChart outerRadius="80%" data={radarData}>
+                                        <PolarGrid stroke="#f0f0f0" />
+                                        <PolarAngleAxis dataKey="subject" fontSize={8} />
+                                        <PolarRadiusAxis angle={30} domain={[0, 'auto']} hide />
+                                        <Radar name="Kullanım" dataKey="A" stroke="#4F46E5" fill="#4F46E5" fillOpacity={0.3} />
+                                    </RadarChart>
+                                </ResponsiveContainer>
+                            </ChartCard>
+
+                            <ChartCard title="Danışan tipleri dağılımı" icon={<PieChartIcon size={16} />}>
+                                {pieData.length > 0 ? (
+                                    <ResponsiveContainer width="100%" height={250}>
+                                        <PieChart>
+                                            <Pie 
+                                                data={pieData} 
+                                                innerRadius={60} 
+                                                outerRadius={80} 
+                                                paddingAngle={5} 
+                                                dataKey="value"
+                                            >
+                                                {pieData.map((entry: any, index: number) => (
+                                                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                                                ))}
+                                            </Pie>
+                                            <Tooltip />
+                                        </PieChart>
+                                    </ResponsiveContainer>
+                                ) : (
+                                     <div className="h-[250px] flex items-center justify-center text-gray-300 text-[10px] font-black uppercase">Segment Verisi Yok</div>
+                                )}
+                                <div className="grid grid-cols-2 gap-2 mt-2">
+                                    {pieData.map((d: any, i: number) => (
+                                        <div key={i} className="flex items-center gap-2 text-[9px] font-black text-gray-400">
+                                            <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: COLORS[i % COLORS.length] }} /> {d.name}
+                                        </div>
                                     ))}
-                                </Pie>
-                                <Tooltip />
-                            </PieChart>
-                        </ResponsiveContainer>
-                    ) : (
-                         <div className="h-[250px] flex items-center justify-center text-gray-300 text-[10px] font-black uppercase">Segment Verisi Yok</div>
-                    )}
-                    <div className="grid grid-cols-2 gap-2 mt-2">
-                        {pieData.map((d: any, i: number) => (
-                            <div key={i} className="flex items-center gap-2 text-[9px] font-black text-gray-400">
-                                <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: COLORS[i % COLORS.length] }} /> {d.name}
-                            </div>
-                        ))}
-                    </div>
-                </ChartCard>
+                                </div>
+                            </ChartCard>
 
-                {/* Growth Line Chart */}
-                <ChartCard title="Randevu trendi (14 Gün)" icon={<Calendar size={16} />}>
-                     <ResponsiveContainer width="100%" height={250}>
-                        <AreaChart data={lineData}>
-                            <defs>
-                                <linearGradient id="colorRand" x1="0" y1="0" x2="0" y2="1">
-                                    <stop offset="5%" stopColor="#3B82F6" stopOpacity={0.2}/>
-                                    <stop offset="95%" stopColor="#3B82F6" stopOpacity={0}/>
-                                </linearGradient>
-                            </defs>
-                            <XAxis dataKey="name" fontSize={10} axisLine={false} tickLine={false} />
-                            <YAxis hide />
-                            <Tooltip />
-                            <Area type="monotone" dataKey="satis" stroke="#3B82F6" strokeWidth={3} fill="url(#colorRand)" />
-                        </AreaChart>
-                    </ResponsiveContainer>
-                </ChartCard>
-            </div>
+                            <ChartCard title="Randevu trendi (14 Gün)" icon={<Calendar size={16} />}>
+                                 <ResponsiveContainer width="100%" height={250}>
+                                    <AreaChart data={lineData}>
+                                        <defs>
+                                            <linearGradient id="colorRand" x1="0" y1="0" x2="0" y2="1">
+                                                <stop offset="5%" stopColor="#3B82F6" stopOpacity={0.2}/>
+                                                <stop offset="95%" stopColor="#3B82F6" stopOpacity={0}/>
+                                            </linearGradient>
+                                        </defs>
+                                        <XAxis dataKey="name" fontSize={10} axisLine={false} tickLine={false} />
+                                        <YAxis hide />
+                                        <Tooltip />
+                                        <Area type="monotone" dataKey="satis" stroke="#3B82F6" strokeWidth={3} fill="url(#colorRand)" />
+                                    </AreaChart>
+                                </ResponsiveContainer>
+                            </ChartCard>
+                        </div>
+                    </motion.div>
+                )}
+
+                {activeTab === 'treasury' && (
+                    <motion.div key="treasury" initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} className="space-y-8">
+                        <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="p-8 rounded-3xl bg-white border border-emerald-500/20 shadow-sm relative overflow-hidden group">
+                                <div className="flex justify-between items-start mb-6 relative z-10">
+                                    <div className="p-3 bg-emerald-50 text-emerald-600 rounded-2xl"><TrendingUp size={24}/></div>
+                                </div>
+                                <p className="text-[10px] text-gray-500 font-black tracking-widest uppercase relative z-10">Toplam Tahsilat</p>
+                                <h3 className="text-3xl font-black text-gray-900 mt-2 tracking-tighter relative z-10">₺{totalIncome.toLocaleString('tr-TR')}</h3>
+                                <div className="absolute -right-8 -bottom-8 w-32 h-32 bg-emerald-50 rounded-full group-hover:scale-150 transition-all duration-700" />
+                            </motion.div>
+                            
+                            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="p-8 rounded-3xl bg-white border border-rose-500/20 shadow-sm relative overflow-hidden group">
+                                <div className="flex justify-between items-start mb-6 relative z-10">
+                                    <div className="p-3 bg-rose-50 text-rose-600 rounded-2xl"><TrendingDown size={24}/></div>
+                                </div>
+                                <p className="text-[10px] text-gray-500 font-black tracking-widest uppercase relative z-10">Toplam Gider</p>
+                                <h3 className="text-3xl font-black text-gray-900 mt-2 tracking-tighter relative z-10">₺{totalExpense.toLocaleString('tr-TR')}</h3>
+                                <div className="absolute -right-8 -bottom-8 w-32 h-32 bg-rose-50 rounded-full group-hover:scale-150 transition-all duration-700" />
+                            </motion.div>
+
+                            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="p-8 rounded-3xl bg-white border border-amber-500/20 shadow-sm relative overflow-hidden group">
+                                <div className="flex justify-between items-start mb-6 relative z-10">
+                                    <div className="p-3 bg-amber-50 text-amber-600 rounded-2xl"><DollarSign size={24}/></div>
+                                </div>
+                                <p className="text-[10px] text-gray-500 font-black tracking-widest uppercase relative z-10">Açık Borçlar (Tahmini Cari)</p>
+                                <h3 className="text-3xl font-black text-gray-900 mt-2 tracking-tighter relative z-10">₺{pendingDebts.toLocaleString('tr-TR')}</h3>
+                                <div className="absolute -right-8 -bottom-8 w-32 h-32 bg-amber-50 rounded-full group-hover:scale-150 transition-all duration-700" />
+                            </motion.div>
+
+                            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }} className="p-8 rounded-3xl bg-gradient-to-br from-indigo-600 to-purple-700 border border-indigo-400 shadow-xl shadow-indigo-500/20 relative overflow-hidden group">
+                                <div className="flex justify-between items-start mb-6 relative z-10">
+                                    <div className="p-3 bg-white/20 text-white rounded-2xl backdrop-blur-sm"><Wallet size={24}/></div>
+                                </div>
+                                <p className="text-[10px] text-indigo-200 font-black tracking-widest uppercase relative z-10">Projeksiyon Kasa Değeri</p>
+                                <h3 className="text-3xl font-black text-white mt-2 tracking-tighter relative z-10">₺{projectedCashflow.toLocaleString('tr-TR', { maximumFractionDigits: 0 })}</h3>
+                                <div className="absolute -right-8 -bottom-8 w-32 h-32 bg-white/10 rounded-full group-hover:scale-150 transition-all duration-700" />
+                            </motion.div>
+                        </div>
+                    </motion.div>
+                )}
+
+                {activeTab === 'veto' && (
+                    <motion.div key="veto" initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }}>
+                        <div className="max-w-5xl mx-auto">
+                            <VetoCenter />
+                        </div>
+                    </motion.div>
+                )}
+
+                {activeTab === 'panopticon' && (
+                    <motion.div key="panopticon" initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }}>
+                        <div className="max-w-5xl mx-auto">
+                            <PanopticonRadar />
+                        </div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
 
         </div>
+    );
+}
+
+function TabBtn({ active, id, onClick, label, icon }: any) {
+    const isActive = active === id;
+    return (
+        <button
+            onClick={() => onClick(id)}
+            className={`
+                px-6 py-3 rounded-full flex items-center gap-2 text-[11px] font-black uppercase tracking-widest transition-all
+                ${isActive ? 'bg-slate-900 text-white shadow-lg shadow-black/10' : 'bg-transparent text-gray-400 hover:text-gray-900 hover:bg-gray-50'}
+            `}
+        >
+            {icon} {label}
+        </button>
     );
 }
 
@@ -437,7 +523,6 @@ function KPICard({ title, value, color, icon, footer, href }: any) {
                         {footer} <ChevronRight size={12} />
                     </div>
                 </div>
-                {/* Decoration */}
                 <div className={`absolute -right-10 -bottom-10 w-32 h-32 ${color} opacity-5 rounded-full group-hover:scale-150 transition-transform duration-700`} />
             </motion.div>
         </Link>

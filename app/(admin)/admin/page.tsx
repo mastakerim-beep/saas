@@ -18,7 +18,7 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 import { MigrationWizard } from '@/components/system/migration/MigrationWizard';
 
-type AdminTab = 'monitor' | 'tenants' | 'notifications' | 'announcements' | 'system' | 'migration';
+type AdminTab = 'monitor' | 'tenants' | 'billing' | 'notifications' | 'announcements' | 'system' | 'migration';
 
 export default function SuperAdminPage() {
     const { 
@@ -141,18 +141,14 @@ export default function SuperAdminPage() {
 
     // Edit Modal State
     const [editingBiz, setEditingBiz] = useState<any>(null);
-    const { updateBusiness } = useStore();
+    const { updateAnyBusiness } = useStore();
 
     const handleUpdateBusiness = async (id: string, updates: any) => {
         setIsActionLoading(id);
         try {
-            // Since updateBusiness in StoreProvider might be designed for the current business,
-            // we might need a dedicated adminUpdateBusiness or use the supabase client directly.
-            // But usually the store has syncDb which handles ID-based updates.
-            const { syncDb } = require('@/lib/store');
-            await syncDb('businesses', 'update', updates, id, id);
-            await fetchData(undefined, undefined, true);
+            await updateAnyBusiness(id, updates);
             setEditingBiz(null);
+            alert("İşletme başarıyla güncellendi.");
         } catch (err: any) {
             alert("Güncelleme hatası: " + err.message);
         } finally {
@@ -282,6 +278,7 @@ export default function SuperAdminPage() {
                     <p className="px-4 text-[9px] font-black text-slate-400 uppercase tracking-[0.3em] mb-4">Tactical Matrix</p>
                     <NavBtn id="monitor" active={activeTab} onClick={setActiveTab} icon={Activity} label="İzleme" badge="CANLI" />
                     <NavBtn id="tenants" active={activeTab} onClick={setActiveTab} icon={Globe} label="İşletmeler" badge={allBusinesses.length.toString()} />
+                    <NavBtn id="billing" active={activeTab} onClick={setActiveTab} icon={CreditCard} label="SaaS Muhasebesi" badge="MRR" />
                     <NavBtn id="notifications" active={activeTab} onClick={setActiveTab} icon={Bell} label="İç Akış" badge={stats.pendingNotifs.toString()} />
                     <NavBtn id="announcements" active={activeTab} onClick={setActiveTab} icon={Bell} label="Yayın Merkezi" />
                     <NavBtn id="migration" active={activeTab} onClick={setActiveTab} icon={Database} label="Veri Aktarımı" />
@@ -445,7 +442,94 @@ export default function SuperAdminPage() {
                                 </div>
                             </motion.div>
                         )}
+                        {activeTab === 'billing' && (
+                            <motion.div key="billing" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="space-y-6">
+                                <div className="bg-white border border-indigo-100 rounded-[2.5rem] p-10 shadow-sm">
+                                    <div className="flex items-center gap-4 mb-8">
+                                        <div className="w-14 h-14 bg-emerald-600 rounded-2xl flex items-center justify-center text-white shadow-2xl shadow-emerald-600/20">
+                                            <CreditCard size={28} />
+                                        </div>
+                                        <div>
+                                            <h2 className="text-slate-900 text-3xl font-black italic uppercase tracking-tighter">SaaS Muhasebe Merkezi</h2>
+                                            <p className="text-[10px] font-bold text-emerald-600 uppercase tracking-[0.3em] mt-1">İşletmelerin Abonelik ve Fatura Metrikleri</p>
+                                        </div>
+                                    </div>
+                                    
+                                    <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+                                        <div className="p-6 rounded-2xl bg-slate-50 border border-slate-100">
+                                            <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">AYLIK KESİN GELİR (MRR)</p>
+                                            <p className="text-3xl font-black text-slate-900">₺{stats.mrr.toLocaleString()}</p>
+                                        </div>
+                                        <div className="p-6 rounded-2xl bg-slate-50 border border-emerald-100/50">
+                                            <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">AURA ENTERPRISE PLAN</p>
+                                            <p className="text-3xl font-black text-slate-900">{allBusinesses.filter((b: any) => b.plan === 'Aura Enterprise').length}</p>
+                                        </div>
+                                        <div className="p-6 rounded-2xl bg-slate-50 border border-slate-100">
+                                            <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">GÜNCEL FATURA TOPLAMI</p>
+                                            <p className="text-3xl font-black text-slate-900">₺{stats.totalRev.toLocaleString()}</p>
+                                        </div>
+                                        <div className="p-6 rounded-2xl bg-slate-50 border border-rose-100/50 relative overflow-hidden">
+                                            <p className="text-[9px] font-black text-rose-400 uppercase tracking-widest mb-1 relative z-10">MÜHÜRLÜ İŞLETMELER</p>
+                                            <p className="text-3xl font-black text-rose-600 relative z-10">{allBusinesses.filter((b: any) => b.is_suspended).length}</p>
+                                            <div className="absolute top-0 right-0 w-20 h-20 bg-rose-50 rounded-bl-full" />
+                                        </div>
+                                    </div>
 
+                                    <div className="overflow-x-auto rounded-2xl border border-indigo-50">
+                                        <table className="w-full text-left border-collapse min-w-[800px]">
+                                            <thead>
+                                                <tr className="bg-indigo-50/50 border-b border-indigo-50">
+                                                    <th className="py-4 px-6 text-[9px] font-black tracking-widest uppercase text-slate-400">İşletme</th>
+                                                    <th className="py-4 px-6 text-[9px] font-black tracking-widest uppercase text-slate-400">Vergi No / Daire</th>
+                                                    <th className="py-4 px-6 text-[9px] font-black tracking-widest uppercase text-slate-400">Aktif Plan</th>
+                                                    <th className="py-4 px-6 text-[9px] font-black tracking-widest uppercase text-slate-400">Güncel MRR</th>
+                                                    <th className="py-4 px-6 text-[9px] font-black tracking-widest uppercase text-slate-400">Kalan Süre (Gün)</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {filteredBusinesses.map((biz: any) => {
+                                                    const diff = biz.expiryDate ? Math.ceil((new Date(biz.expiryDate).getTime() - Date.now()) / (1000 * 60 * 60 * 24)) : null;
+                                                    const isOverdue = diff !== null && diff < 0;
+                                                    
+                                                    return (
+                                                        <tr key={biz.id} className="border-b border-indigo-50/30 hover:bg-slate-50/50 transition-colors">
+                                                            <td className="py-4 px-6">
+                                                                <div className="flex items-center gap-3">
+                                                                    <div className="w-8 h-8 rounded-xl bg-indigo-100 flex items-center justify-center text-indigo-600 font-bold text-xs">
+                                                                        {biz.name.charAt(0)}
+                                                                    </div>
+                                                                    <div>
+                                                                        <p className="text-sm font-bold text-slate-900">{biz.name}</p>
+                                                                        <p className="text-[9px] text-slate-400 font-bold uppercase">{biz.slug}</p>
+                                                                    </div>
+                                                                </div>
+                                                            </td>
+                                                            <td className="py-4 px-6">
+                                                                <p className="text-sm font-bold text-slate-700">{biz.taxId || 'Belirtilmedi'}</p>
+                                                                <p className="text-[9px] text-slate-400 font-bold uppercase">{biz.taxOffice || '-'}</p>
+                                                            </td>
+                                                            <td className="py-4 px-6">
+                                                                <span className={`px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest ${biz.plan === 'Aura Enterprise' ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-600'}`}>
+                                                                    {biz.plan || 'Basic'}
+                                                                </span>
+                                                            </td>
+                                                            <td className="py-4 px-6">
+                                                                <p className="text-sm font-black text-slate-900">₺{(biz.mrr || 1500).toLocaleString()}</p>
+                                                            </td>
+                                                            <td className="py-4 px-6">
+                                                                <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase ${isOverdue ? 'bg-rose-100 text-rose-600' : diff !== null && diff < 10 ? 'bg-amber-100 text-amber-600' : 'bg-indigo-50 text-indigo-600'}`}>
+                                                                    {diff !== null ? `${diff} Gün` : 'Sınırsız'}
+                                                                </span>
+                                                            </td>
+                                                        </tr>
+                                                    );
+                                                })}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </motion.div>
+                        )}
                         {activeTab === 'notifications' && (
                             <motion.div key="notifications" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6">
                                 <div className="bg-white border border-indigo-100 rounded-[2.5rem] p-10 shadow-sm">

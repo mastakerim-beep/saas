@@ -440,6 +440,13 @@ const StoreOrchestrator = ({ children }: { children: ReactNode }) => {
         updateBusinessStatus: authRef.current.updateBusinessStatus,
         deleteBusiness: authRef.current.deleteBusiness,
         addBusiness: authRef.current.addBusiness,
+        updateAnyBusiness: async (id: string, updates: any) => {
+            bizRef.current.setAllBusinesses((prev: any[]) => prev.map((b: any) => b.id === id ? { ...b, ...updates } : b));
+            await syncDb('businesses', 'update', updates, id, id);
+            // Refresh to ensure all relations (like modules/plans) are correctly mapped
+            await fetchData(undefined, undefined, true); 
+            return true;
+        },
         provisionBusinessUser: authRef.current.provisionBusinessUser,
         setImpersonatedBusinessId: (id: string | null) => {
             authRef.current.setImpersonatedBusinessId(id);
