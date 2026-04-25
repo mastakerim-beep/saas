@@ -832,23 +832,49 @@ const StoreOrchestrator = ({ children }: { children: ReactNode }) => {
 
                 // 3. Automated Commission & Expense
                 const apptId = paymentData.appointmentId;
-                if (apptId) {
-                    const appt = dataRef.current.appointments.find(a => a.id === apptId);
-                    const staffsToPay = [paymentData.staffId || appt?.staffId, ...(appt?.additionalStaff?.map((s:any) => s.id) || [])].filter(Boolean);
+                const isBundleSale = !!options.isBundleOrMembershipSale;
+                
+                if (apptId || paymentData.staffId) {
+                    const appt = apptId ? dataRef.current.appointments.find(a => a.id === apptId) : null;
+                    const primaryStaffId = paymentData.staffId || appt?.staffId;
+                    const staffsToPay = [primaryStaffId, ...(appt?.additionalStaff?.map((s:any) => s.id) || [])].filter(Boolean);
                     
                     for (const sid of staffsToPay) {
                         const amount = (paymentData.totalAmount || 0) / staffsToPay.length;
-                        const comm = stableMethods.calculateCommission(sid, appt?.service || 'Genel', amount);
-                        const expId = crypto.randomUUID();
-                        const exp = {
-                            id: expId, businessId: bizId, branchId: bizRef.current.currentBranch?.id,
-                            category: 'PERSONEL_PRIMI', amount: comm, date: new Date().toISOString().split('T')[0],
-                            description: `${paymentData.customerName || 'Müşteri'} - ${appt?.service || 'Hizmet'} Primi`,
-                            payout_status: 'BEKLEMEDE', related_staff_id: sid, related_appointment_id: apptId,
-                            createdAt: new Date().toISOString()
-                        };
-                        dataRef.current.setAllExpenses((prev: any[]) => [exp, ...prev]);
-                        await syncDb('expenses', 'insert', exp, expId, bizId);
+                        // Rule-based: If no rule exists for this sid/service, it returns 0
+                        const comm = stableMethods.calculateCommission(sid, appt?.service || (isBundleSale ? 'Satış/Paket' : 'Hizmet'), amount);
+                        
+                        if (comm > 0) {
+                            const expId = crypto.randomUUID();
+                            const exp = {
+                                id: expId, businessId: bizId, branchId: bizRef.current.currentBranch?.id,
+                                category: 'PERSONEL_PRIMI', amount: comm, date: new Date().toISOString().split('T')[0],
+                                description: `${paymentData.customerName || 'Müşteri'} - ${isBundleSale ? 'Paket/Üyelik Satış' : (appt?.service || 'Hizmet')} Primi`,
+                                payout_status: 'BEKLEMEDE', related_staff_id: sid, related_appointment_id: apptId,
+                                createdAt: new Date().toISOString()
+                            };
+                            dataRef.current.setAllExpenses((prev: any[]) => [exp, ...prev]);
+                            await syncDb('expenses', 'insert', exp, expId, bizId);
+                        }
+                    }
+
+                    // Product Commissions (Retail)
+                    if (soldProducts && soldProducts.length > 0 && primaryStaffId) {
+                        for (const sp of soldProducts) {
+                            const prodComm = stableMethods.calculateCommission(primaryStaffId, sp.name || 'Ürün', sp.price * sp.quantity);
+                            if (prodComm > 0) {
+                                const expId = crypto.randomUUID();
+                                const exp = {
+                                    id: expId, businessId: bizId, branchId: bizRef.current.currentBranch?.id,
+                                    category: 'PERSONEL_PRIMI', amount: prodComm, date: new Date().toISOString().split('T')[0],
+                                    description: `${paymentData.customerName || 'Müşteri'} - ${sp.name} Ürün Satış Primi`,
+                                    payout_status: 'BEKLEMEDE', related_staff_id: primaryStaffId,
+                                    createdAt: new Date().toISOString()
+                                };
+                                dataRef.current.setAllExpenses((prev: any[]) => [exp, ...prev]);
+                                await syncDb('expenses', 'insert', exp, expId, bizId);
+                            }
+                        }
                     }
                 }
 
@@ -952,7 +978,8 @@ const StoreOrchestrator = ({ children }: { children: ReactNode }) => {
         addStaff: async (s: any) => {
             const bizData = bizRef.current.currentTenant;
             if (bizData) {
-                const { allowed, limit } = checkQuota(bizData, 'users', dataRef.current.staffMembers.length);
+                const activeStaffCount = dataRef.current.staffMembers.filter((s:any) => s.status === 'active').length;
+                const { allowed, limit } = checkQuota(bizData, 'users', activeStaffCount);
                 if (!allowed) {
                     setQuotaError({ resource: 'Personel', limit });
                     return false;

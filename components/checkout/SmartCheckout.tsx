@@ -22,7 +22,7 @@ export default function SmartCheckout({ appointment, onClose, initialCustomerId,
         processCheckout, inventory, getUpsellSuggestions, 
         paymentDefinitions, getTodayDate, currentBusiness,
         packages, services, updateAppointment, bankAccounts,
-        currentBranch
+        currentBranch, staff: allStaff
     } = useStore();
     
     // Resolve target data
@@ -61,6 +61,7 @@ export default function SmartCheckout({ appointment, onClose, initialCustomerId,
     const [methods, setMethods] = useState<Omit<PaymentMethod, 'id'>[]>([]);
     const [soldProducts, setSoldProducts] = useState<{ productId: string, name: string, price: number, quantity: number }[]>([]);
     const [note, setNote] = useState("");
+    const [sellerId, setSellerId] = useState<string>(appointment?.staffId || "");
     const [dueDate, setDueDate] = useState<string>(() => {
         const date = new Date();
         date.setDate(date.getDate() + 30);
@@ -150,6 +151,7 @@ export default function SmartCheckout({ appointment, onClose, initialCustomerId,
                     finalPrice: grandTotal,
                     discountAmount: discountAmount,
                     note: note,
+                    staffId: sellerId,
                     status: remaining <= 0 ? 'paid' : 'partial'
                 },
                 {
@@ -770,6 +772,21 @@ export default function SmartCheckout({ appointment, onClose, initialCustomerId,
                                 </div>
                                 
                                 <div className="space-y-4">
+                                    {/* Seller Selection */}
+                                    <div className="flex flex-col gap-2 p-4 bg-gray-50 rounded-[1.5rem] border border-gray-100">
+                                        <label className="text-[8px] font-black text-gray-400 uppercase tracking-widest ml-1">Satışı Yapan Personel</label>
+                                        <select 
+                                            value={sellerId}
+                                            onChange={(e) => setSellerId(e.target.value)}
+                                            className="bg-white border-none rounded-xl px-4 py-2 text-xs font-black text-gray-900 outline-none focus:ring-2 focus:ring-indigo-500/10 appearance-none"
+                                        >
+                                            <option value="">Seçiniz...</option>
+                                            {allStaff.map((s: any) => (
+                                                <option key={s.id} value={s.id}>{s.name} {s.isVisibleOnCalendar ? '(Terapist)' : '(Satış/Hizmet)'}</option>
+                                            ))}
+                                        </select>
+                                    </div>
+
                                     <div className="flex justify-between items-center group">
                                         <span className="text-sm font-black text-gray-900 uppercase tracking-tight">{overrideService}</span>
                                         <span className={`text-xl font-black italic tracking-tighter ${isServiceGifted || isPackageUsed ? 'text-indigo-600' : 'text-gray-900'}`}>{isServiceGifted || isPackageUsed ? '₺0' : `₺${overridePrice}`}</span>

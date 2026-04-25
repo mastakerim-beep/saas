@@ -15,7 +15,8 @@ export default function MembershipsPage() {
     const { 
         membershipPlans, customerMemberships, customers, 
         assignMembership, addMembershipPlan,
-        packageDefinitions, packages, addPackageDefinition, addPackage, updatePackage, packageUsageHistory, addPackageUsageHistory 
+        packageDefinitions, packages, addPackageDefinition, addPackage, updatePackage, packageUsageHistory, addPackageUsageHistory,
+        staffMembers, processCheckout, getTodayDate
     } = useStore();
     const [selectedTab, setSelectedTab] = useState<'plans' | 'members' | 'bundles' | 'customer_bundles'>('plans');
 
@@ -39,6 +40,8 @@ export default function MembershipsPage() {
     // Sell Bundle Form State
     const [sellCustomer, setSellCustomer] = useState('');
     const [sellBundleDef, setSellBundleDef] = useState('');
+    const [sellSellerId, setSellSellerId] = useState('');
+    const [assignSellerId, setAssignSellerId] = useState('');
 
     const handleCreatePlan = (e: React.FormEvent) => {
         e.preventDefault();
@@ -71,18 +74,36 @@ export default function MembershipsPage() {
 
     const handleAssign = (e: React.FormEvent) => {
         e.preventDefault();
-        if (!assignCustomer || !assignPlan) return;
+        if (!assignCustomer || !assignPlan || !assignSellerId) return;
+        
+        const plan = membershipPlans.find((p: MembershipPlan) => p.id === assignPlan);
+        const customer = customers.find((c: Customer) => c.id === assignCustomer);
+        
         assignMembership(assignCustomer, assignPlan);
+
+        // Finansal kaydı oluştur (Prim için)
+        processCheckout({
+            customerId: assignCustomer,
+            customerName: customer?.name || 'Müşteri',
+            staffId: assignSellerId,
+            totalAmount: plan?.price || 0,
+            service: `${plan?.name} Üyelik Satışı`,
+            date: getTodayDate(),
+            methods: [{ id: crypto.randomUUID(), method: 'nakit', amount: plan?.price || 0, currency: 'TRY', rate: 1, isDeposit: false }]
+        }, { isBundleOrMembershipSale: true });
+
         setIsAssignOpen(false);
         setAssignCustomer('');
         setAssignPlan('');
+        setAssignSellerId('');
         setSelectedTab('members');
     };
 
     const handleSellBundle = (e: React.FormEvent) => {
         e.preventDefault();
-        if (!sellCustomer || !sellBundleDef) return;
+        if (!sellCustomer || !sellBundleDef || !sellSellerId) return;
         const def = packageDefinitions.find((d: PackageDefinition) => d.id === sellBundleDef);
+        const customer = customers.find((c: Customer) => c.id === sellCustomer);
         if (!def) return;
 
         // Check for rollover
@@ -109,9 +130,22 @@ export default function MembershipsPage() {
             validityDays: def.validityDays || 365,
             status: 'active'
         });
+
+        // Finansal kaydı oluştur (Prim için)
+        processCheckout({
+            customerId: sellCustomer,
+            customerName: customer?.name || 'Müşteri',
+            staffId: sellSellerId,
+            totalAmount: def.price,
+            service: `${def.name} Paket Satışı`,
+            date: getTodayDate(),
+            methods: [{ id: crypto.randomUUID(), method: 'nakit', amount: def.price, currency: 'TRY', rate: 1, isDeposit: false }]
+        }, { isBundleOrMembershipSale: true });
+
         setIsSellBundleOpen(false);
         setSellCustomer('');
         setSellBundleDef('');
+        setSellSellerId('');
         setSelectedTab('customer_bundles');
     };
 
@@ -496,6 +530,15 @@ export default function MembershipsPage() {
                                         {packageDefinitions.map((p: PackageDefinition) => <option key={p.id} value={p.id}>{p.name} ({p.totalSessions} Seans)</option>)}
                                     </select>
                                 </div>
+                                <div>
+                                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1 mb-2 block">Satan Personel</label>
+                                    <select required value={sellSellerId} onChange={e=>setSellSellerId(e.target.value)} className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 font-bold text-sm outline-none focus:border-indigo-400 appearance-none">
+                                        <option value="">Seçiniz...</option>
+                                        {staffMembers.map((s: any) => (
+                                            <option key={s.id} value={s.id}>{s.name} {s.isVisibleOnCalendar ? '(Terapist)' : '(Satış)'}</option>
+                                        ))}
+                                    </select>
+                                </div>
                                 
                                 {sellBundleDef && (
                                     <div className="bg-amber-50 border border-amber-100 rounded-xl p-4 flex gap-3 items-center">
@@ -534,6 +577,15 @@ export default function MembershipsPage() {
                                     <select required value={assignPlan} onChange={e=>setAssignPlan(e.target.value)} className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 font-bold text-sm outline-none focus:border-indigo-400 appearance-none">
                                         <option value="">Paket Seçiniz</option>
                                         {membershipPlans.map((p: MembershipPlan) => <option key={p.id} value={p.id}>{p.name} - ₺{p.price}</option>)}
+                                    </select>
+                                </div>
+                                <div>
+                                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1 mb-2 block">Satan Personel</label>
+                                    <select required value={assignSellerId} onChange={e=>setAssignSellerId(e.target.value)} className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 font-bold text-sm outline-none focus:border-indigo-400 appearance-none">
+                                        <option value="">Seçiniz...</option>
+                                        {staffMembers.map((s: any) => (
+                                            <option key={s.id} value={s.id}>{s.name} {s.isVisibleOnCalendar ? '(Terapist)' : '(Satış)'}</option>
+                                        ))}
                                     </select>
                                 </div>
                                 
