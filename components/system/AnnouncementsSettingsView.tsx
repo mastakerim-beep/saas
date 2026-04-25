@@ -17,7 +17,7 @@ export default function AnnouncementsSettingsView() {
         setContent("");
     };
 
-    const myNotifs = (allNotifs || []).filter(n => n.businessId === currentBusiness?.id);
+    const myNotifs = (allNotifs || []).filter((n: NotificationLog) => n.businessId === currentBusiness?.id);
 
     return (
         <div className="space-y-12">
@@ -60,7 +60,7 @@ export default function AnnouncementsSettingsView() {
                 </h3>
                 <div className="grid gap-4">
                     {myNotifs.length === 0 && <p className="text-xs font-bold text-gray-400 italic">Henüz bir duyuru yayınlamadınız.</p>}
-                    {myNotifs.map((n, i) => (
+                    {myNotifs.map((n: NotificationLog, i: number) => (
                         <div key={i} className="bg-white p-6 rounded-[2rem] border border-gray-50 shadow-sm flex items-center justify-between">
                             <div className="flex items-center gap-4">
                                 <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-white ${n.type === 'danger' ? 'bg-rose-500' : n.type === 'warning' ? 'bg-amber-500' : 'bg-indigo-600'}`}>

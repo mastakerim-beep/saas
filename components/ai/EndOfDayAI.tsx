@@ -27,27 +27,27 @@ export default function EndOfDayAI({ isOpen, onClose }: EndOfDayProps) {
     const today = useMemo(() => getTodayDate(), [getTodayDate]);
     
     // Improved filtering
-    const todayPayments = useMemo(() => payments.filter(p => p.date === today), [payments, today]);
-    const todayAppts = useMemo(() => appointments.filter(a => a.date === today), [appointments, today]);
-    const completedAppts = useMemo(() => todayAppts.filter(a => a.status === 'completed'), [todayAppts]);
+    const todayPayments = useMemo(() => payments.filter((p: Payment) => p.date === today), [payments, today]);
+    const todayAppts = useMemo(() => appointments.filter((a: Appointment) => a.date === today), [appointments, today]);
+    const completedAppts = useMemo(() => todayAppts.filter((a: Appointment) => a.status === 'completed'), [todayAppts]);
 
     // Imperial Audit Logic: Leakage detection
     const suspiciousAppts = useMemo(() => {
-        return completedAppts.filter(a => {
+        return completedAppts.filter((a: Appointment) => {
             if (a.price === 0) return false;
             // Check if there is a payment linked to this appointment
-            const hasPayment = todayPayments.some(p => p.appointmentId === a.id);
+            const hasPayment = todayPayments.some((p: Payment) => p.appointmentId === a.id);
             return !hasPayment;
         });
     }, [completedAppts, todayPayments]);
 
     // Unprocessed detection: Arrived but not completed
     const forgottenAppts = useMemo(() => {
-        return todayAppts.filter(a => a.status === 'arrived' || (a.status === 'pending' && a.time < new Date().toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })));
+        return todayAppts.filter((a: Appointment) => a.status === 'arrived' || (a.status === 'pending' && a.time < new Date().toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })));
     }, [todayAppts]);
     
-    const totalRev = todayPayments.reduce((s, p) => s + (p.totalAmount || 0), 0);
-    const cashTotal = todayPayments.reduce((s, p) => {
+    const totalRev = todayPayments.reduce((s: number, p: Payment) => s + (p.totalAmount || 0), 0);
+    const cashTotal = todayPayments.reduce((s: number, p: Payment) => {
         const cashPart = (p.methods as any || []).filter((m: any) => m.method === 'nakit').reduce((sum: number, m: any) => sum + m.amount, 0);
         return s + cashPart;
     }, 0);
@@ -55,7 +55,7 @@ export default function EndOfDayAI({ isOpen, onClose }: EndOfDayProps) {
 
     const topStaff = useMemo(() => {
         const map: Record<string, number> = {};
-        completedAppts.forEach(a => {
+        completedAppts.forEach((a: Appointment) => {
             map[a.staffName] = (map[a.staffName] || 0) + (a.price || 0);
         });
         return Object.entries(map).sort((a, b) => b[1] - a[1])[0] || ["-", 0];
@@ -72,13 +72,13 @@ export default function EndOfDayAI({ isOpen, onClose }: EndOfDayProps) {
         return d.toLocaleDateString('sv-SE');
     }, [today]);
 
-    const tomorrowAppts = useMemo(() => appointments.filter(a => a.date === tomorrow), [appointments, tomorrow]);
-    const tomorrowPotentialRev = tomorrowAppts.reduce((s, a) => s + (a.price || 0), 0);
+    const tomorrowAppts = useMemo(() => appointments.filter((a: Appointment) => a.date === tomorrow), [appointments, tomorrow]);
+    const tomorrowPotentialRev = tomorrowAppts.reduce((s: number, a: Appointment) => s + (a.price || 0), 0);
     
     // Room Audit Logic
     const roomUsage = useMemo(() => {
         const usage: Record<string, number> = {};
-        completedAppts.forEach(a => {
+        completedAppts.forEach((a: Appointment) => {
             if (a.roomId) {
                 usage[a.roomId] = (usage[a.roomId] || 0) + 1;
             }
@@ -87,9 +87,9 @@ export default function EndOfDayAI({ isOpen, onClose }: EndOfDayProps) {
     }, [completedAppts]);
 
     // Retail Target Analysis (Benchmark: 20%)
-    const productRev = todayPayments.reduce((s, p) => {
+    const productRev = todayPayments.reduce((s: number, p: Payment) => {
         const products = Array.isArray(p.soldProducts) ? p.soldProducts : [];
-        const productTotal = products.reduce((sum, pr) => sum + ((pr.price || 0) * (pr.quantity || 1)), 0);
+        const productTotal = products.reduce((sum: number, pr: any) => sum + ((pr.price || 0) * (pr.quantity || 1)), 0);
         return s + productTotal;
     }, 0);
     const retailPercentage = totalRev > 0 ? (productRev / totalRev) * 100 : 0;
@@ -125,7 +125,7 @@ export default function EndOfDayAI({ isOpen, onClose }: EndOfDayProps) {
 
         if (suspiciousAppts.length > 0) {
             insights.push(`KRİTİK: Ödemesi sisteme girilmemiş ${suspiciousAppts.length} randevu tespit edildi. (Sızıntı Riski)`);
-            suspiciousAppts.forEach(a => {
+            suspiciousAppts.forEach((a: Appointment) => {
                 insights.push(`- ${a.customerName} (₺${a.price.toLocaleString('tr-TR')})`);
             });
         }
@@ -343,7 +343,7 @@ export default function EndOfDayAI({ isOpen, onClose }: EndOfDayProps) {
                                                     ÖDEMESİ EKSİK RANDEVULAR
                                                 </h4>
                                                 <div className="space-y-3">
-                                                    {suspiciousAppts.map(a => (
+                                                    {suspiciousAppts.map((a: Appointment) => (
                                                         <div key={a.id} className="flex justify-between items-center p-5 bg-rose-50/30 rounded-[1.5rem] border border-rose-100 hover:bg-rose-50 transition-colors group">
                                                             <div className="flex flex-col gap-1">
                                                                 <span className="font-black text-sm text-rose-900 group-hover:text-rose-700">{a.customerName}</span>
@@ -365,7 +365,7 @@ export default function EndOfDayAI({ isOpen, onClose }: EndOfDayProps) {
                                                     UNUTULMUŞ OLABİLECEK İŞLEMLER
                                                 </h4>
                                                 <div className="space-y-3">
-                                                    {forgottenAppts.map(a => (
+                                                    {forgottenAppts.map((a: Appointment) => (
                                                         <div key={a.id} className="flex justify-between items-center p-5 bg-amber-50/30 rounded-[1.5rem] border border-amber-100 hover:bg-amber-50 transition-colors">
                                                             <div className="flex flex-col gap-1">
                                                                 <span className="font-black text-sm text-amber-900">{a.customerName}</span>
@@ -392,8 +392,8 @@ export default function EndOfDayAI({ isOpen, onClose }: EndOfDayProps) {
                             </div>
 
                             <div className="space-y-4">
-                                {staffMembers.filter(s => completedAppts.some(a => a.staffName === s.name)).map(staff => {
-                                    const rev = completedAppts.filter(a => a.staffName === staff.name).reduce((s, a) => s + (a.price || 0), 0);
+                                {staffMembers.filter((s: Staff) => completedAppts.some((a: Appointment) => a.staffName === s.name)).map((staff: Staff) => {
+                                    const rev = completedAppts.filter((a: Appointment) => a.staffName === staff.name).reduce((s: number, a: Appointment) => s + (a.price || 0), 0);
                                     if (rev === 0) return null;
                                     return (
                                         <div key={staff.id} className="group relative">

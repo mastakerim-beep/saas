@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { X, Sparkles, Clock, ShieldCheck, Loader2, Activity } from 'lucide-react';
-import { useStore, Customer, Service } from '@/lib/store';
+import { useStore, Customer, Service, Staff, Room } from '@/lib/store';
 import BodyMap from '@/components/crm/BodyMap';
 
 interface ServiceDropModalProps {
@@ -25,11 +25,11 @@ export default function ServiceDropModal({
     const [showBodyMap, setShowBodyMap] = useState(false);
     const [note, setNote] = useState('');
 
-    const staff = staffId ? staffMembers.find(s => s.id === staffId) : null;
+    const staff = staffId ? staffMembers.find((s: Staff) => s.id === staffId) : null;
 
     const handleSave = async () => {
         setIsSaving(true);
-        const svc = services.find(s => s.name === selectedService);
+        const svc = services.find((s: Service) => s.name === selectedService);
         if(!svc) {
             setIsSaving(false);
             return;
@@ -82,7 +82,7 @@ export default function ServiceDropModal({
                         <h3 className="text-2xl font-black text-gray-900 leading-none uppercase italic">{customer.name}</h3>
                         <div className="flex items-center gap-2 mt-4">
                              {staff && <span className="text-[10px] font-black bg-indigo-600 text-white px-3 py-1 rounded-full uppercase">{staff.name}</span>}
-                             {selectedRoomId && <span className="text-[10px] font-black bg-purple-600 text-white px-3 py-1 rounded-full uppercase">{rooms.find(r => r.id === selectedRoomId)?.name}</span>}
+                             {selectedRoomId && <span className="text-[10px] font-black bg-purple-600 text-white px-3 py-1 rounded-full uppercase">{rooms.find((r: Room) => r.id === selectedRoomId)?.name}</span>}
                              <span className="text-[10px] font-black bg-gray-100 px-3 py-1 rounded-full text-gray-600 uppercase">{time}</span>
                         </div>
                     </div>
@@ -95,7 +95,7 @@ export default function ServiceDropModal({
                     <div>
                         <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1 mb-3">Hizmet Seçimi</p>
                         <div className="grid grid-cols-1 gap-3 max-h-[30vh] overflow-y-auto pr-2 no-scrollbar">
-                            {services.map(s => (
+                            {services.map((s: Service) => (
                                 <button
                                     key={s.id}
                                     onClick={() => setSelectedService(s.name)}

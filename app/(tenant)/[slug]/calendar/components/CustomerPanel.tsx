@@ -20,7 +20,7 @@ export default function CustomerPanel({ isOpen, onClose }: CustomerPanelProps) {
 
     const filtered = useMemo(() => {
         if (!search) return [];
-        return customers.filter(c => 
+        return customers.filter((c: Customer) => 
             c.name.toLowerCase().includes(search.toLowerCase()) || 
             c.phone.includes(search)
         );
@@ -107,7 +107,7 @@ export default function CustomerPanel({ isOpen, onClose }: CustomerPanelProps) {
 
                 {search.length > 0 ? (
                     filtered.length > 0 ? (
-                        filtered.map(customer => (
+                        filtered.map((customer: Customer) => (
                             <DraggableCustomerCard key={customer.id} customer={customer} />
                         ))
                     ) : (

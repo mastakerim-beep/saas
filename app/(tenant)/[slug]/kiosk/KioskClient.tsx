@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { useStore } from '@/lib/store';
+import { useStore, Appointment } from '@/lib/store';
 import { QrCode, Search, CheckCircle2, AlertCircle, ShieldCheck } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -9,7 +9,7 @@ export default function KioskClient() {
     const { appointments, updateAppointmentStatus } = useStore();
     const [ticketId, setTicketId] = useState('');
     const [status, setStatus] = useState<'idle' | 'scanning' | 'success' | 'error'>('idle');
-    const [matchedAppt, setMatchedAppt] = useState<any>(null);
+    const [matchedAppt, setMatchedAppt] = useState<Appointment | null>(null);
 
     const handleCheckIn = async (e?: React.FormEvent) => {
         if (e) e.preventDefault();
@@ -19,7 +19,7 @@ export default function KioskClient() {
         
         // Simüle edilmiş bir arama, normalde veritabanında "ticket_id" = ticketId diye arar.
         // TicketId consists of the first chunk of the Appointment UUID
-        const found = appointments.find(a => 
+        const found = appointments.find((a: Appointment) => 
             (a.status === 'pending' || a.status === 'confirmed') &&
             a.id.toUpperCase().startsWith(ticketId.toUpperCase().replace('TK-', ''))
         );
