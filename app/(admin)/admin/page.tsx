@@ -7,7 +7,7 @@ import {
     ArrowUpRight, TrendingUp, Zap, Server, 
     Search, LayoutGrid, Database, LogOut,
     ChevronRight, Info, AlertCircle, Heart,
-    PieChart as PieChartIcon, Power, Plus, RefreshCw, X
+    PieChart as PieChartIcon, Power, Plus, RefreshCw, X, Settings as SettingsIcon
 } from 'lucide-react';
 import { useState, useMemo, useEffect } from 'react';
 import { 
@@ -41,6 +41,7 @@ export default function SuperAdminPage() {
         slug: '',
         mrr: 1500,
         expiryDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+        plan: 'Basic',
         taxId: '',
         taxOffice: '',
         billingAddress: '',
@@ -76,7 +77,8 @@ export default function SuperAdminPage() {
                 expiryDate: newBiz.expiryDate,
                 taxId: newBiz.taxId,
                 taxOffice: newBiz.taxOffice,
-                billingAddress: newBiz.billingAddress
+                billingAddress: newBiz.billingAddress,
+                plan: newBiz.plan
             };
 
             const biz = await addBusiness(bizData);
@@ -94,7 +96,7 @@ export default function SuperAdminPage() {
                 setShowCreateModal(false);
                 setModalStep(1);
                 setNewBiz({
-                    name: '', slug: '', mrr: 1500, 
+                    name: '', slug: '', mrr: 1500, plan: 'Basic',
                     expiryDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
                     taxId: '', taxOffice: '', billingAddress: '',
                     email: '', password: '', seatCount: 5, isStaff: true
@@ -130,6 +132,27 @@ export default function SuperAdminPage() {
         try {
             await updateBusinessStatus(id, newStatus);
             await fetchData(undefined, undefined, true);
+        } catch (err: any) {
+            alert("Güncelleme hatası: " + err.message);
+        } finally {
+            setIsActionLoading(null);
+        }
+    };
+
+    // Edit Modal State
+    const [editingBiz, setEditingBiz] = useState<any>(null);
+    const { updateBusiness } = useStore();
+
+    const handleUpdateBusiness = async (id: string, updates: any) => {
+        setIsActionLoading(id);
+        try {
+            // Since updateBusiness in StoreProvider might be designed for the current business,
+            // we might need a dedicated adminUpdateBusiness or use the supabase client directly.
+            // But usually the store has syncDb which handles ID-based updates.
+            const { syncDb } = require('@/lib/store');
+            await syncDb('businesses', 'update', updates, id, id);
+            await fetchData(undefined, undefined, true);
+            setEditingBiz(null);
         } catch (err: any) {
             alert("Güncelleme hatası: " + err.message);
         } finally {
@@ -174,7 +197,7 @@ export default function SuperAdminPage() {
         return data;
     }, [allPayments, stats.mrr]);
 
-    const filteredBusinesses = allBusinesses.filter(b => 
+    const filteredBusinesses = allBusinesses.filter((b: any) => 
         b.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
         b.slug.toLowerCase().includes(searchQuery.toLowerCase())
     );
@@ -416,6 +439,7 @@ export default function SuperAdminPage() {
                                             onImpersonate={() => setImpersonatedBusinessId(biz.id)} 
                                             onDelete={() => handleDeleteBusiness(biz.id, biz.name)}
                                             onToggleStatus={() => handleToggleStatus(biz.id, biz.status)}
+                                            onEdit={() => setEditingBiz(biz)}
                                         />
                                     ))}
                                 </div>
@@ -537,14 +561,25 @@ export default function SuperAdminPage() {
                                                 <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">İşletme Adı</label>
                                                 <input value={newBiz.name} onChange={e => setNewBiz({...newBiz, name: e.target.value})} placeholder="Örn: Aura Spa Merkezi" className="w-full bg-slate-50 border border-indigo-50 rounded-2xl py-4 px-6 text-slate-900 font-bold outline-none focus:border-indigo-500 transition-all shadow-inner" />
                                             </div>
+                                            <div className="space-y-2">
+                                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Slug (URL)</label>
+                                                <input value={newBiz.slug} onChange={e => setNewBiz({...newBiz, slug: e.target.value})} placeholder="aura-spa" className="w-full bg-slate-50 border border-indigo-50 rounded-2xl py-4 px-6 text-slate-900 font-bold outline-none focus:border-indigo-500 transition-all shadow-inner" />
+                                            </div>
                                             <div className="grid grid-cols-2 gap-4">
-                                                <div className="space-y-2">
-                                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Slug (URL)</label>
-                                                    <input value={newBiz.slug} onChange={e => setNewBiz({...newBiz, slug: e.target.value})} placeholder="aura-spa" className="w-full bg-slate-50 border border-indigo-50 rounded-2xl py-4 px-6 text-slate-900 font-bold outline-none focus:border-indigo-500 transition-all shadow-inner" />
-                                                </div>
                                                 <div className="space-y-2">
                                                     <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Koltuk Sayısı</label>
                                                     <input type="number" value={newBiz.seatCount} onChange={e => setNewBiz({...newBiz, seatCount: parseInt(e.target.value)})} className="w-full bg-slate-50 border border-indigo-50 rounded-2xl py-4 px-6 text-slate-900 font-bold outline-none focus:border-indigo-500 transition-all shadow-inner" />
+                                                </div>
+                                                <div className="space-y-2">
+                                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Plan</label>
+                                                    <select 
+                                                        value={newBiz.plan} 
+                                                        onChange={e => setNewBiz({...newBiz, plan: e.target.value})}
+                                                        className="w-full bg-slate-50 border border-indigo-50 rounded-2xl py-4 px-6 text-slate-900 font-bold outline-none focus:border-indigo-500 transition-all shadow-inner appearance-none"
+                                                    >
+                                                        <option value="Basic">Basic</option>
+                                                        <option value="Aura Enterprise">Aura Enterprise</option>
+                                                    </select>
                                                 </div>
                                             </div>
                                             <button onClick={() => setModalStep(2)} className="w-full py-5 bg-slate-900 text-white rounded-2xl font-black text-[11px] uppercase tracking-widest mt-8">SONRAKİ ADIM: CARİ & FİNANS</button>
@@ -606,6 +641,13 @@ export default function SuperAdminPage() {
                     </div>
                 )}
             </AnimatePresence>
+
+            <EditBusinessModal 
+                biz={editingBiz} 
+                onClose={() => setEditingBiz(null)} 
+                onUpdate={handleUpdateBusiness} 
+                loading={!!isActionLoading}
+            />
         </div>
     );
 }
@@ -749,7 +791,100 @@ function MetricBox({ label, value, trend }: { label: string, value: string | num
     );
 }
 
-function TenantCard({ biz, onImpersonate, onDelete, onToggleStatus, isLoading }: { biz: any, onImpersonate: () => void, onDelete: () => void, onToggleStatus: () => void, isLoading: boolean }) {
+function EditBusinessModal({ biz, onClose, onUpdate, loading }: { biz: any, onClose: () => void, onUpdate: (id: string, updates: any) => void, loading: boolean }) {
+    const [localBiz, setLocalBiz] = useState<any>(null);
+
+    useEffect(() => {
+        if (biz) setLocalBiz({ ...biz });
+    }, [biz]);
+
+    if (!biz || !localBiz) return null;
+
+    return (
+        <div className="fixed inset-0 z-[110] flex items-center justify-center p-6 backdrop-blur-md bg-slate-900/40 text-left">
+            <motion.div 
+                initial={{ scale: 0.9, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                className="bg-white border border-indigo-100 rounded-[2.5rem] w-full max-w-xl overflow-hidden shadow-2xl"
+            >
+                <div className="p-10 space-y-8">
+                    <div className="flex justify-between items-center">
+                        <div>
+                            <h2 className="text-slate-900 text-2xl font-black italic uppercase tracking-tighter">İşletme Yönetimi</h2>
+                            <p className="text-[10px] font-bold text-indigo-600 uppercase tracking-widest mt-1">{biz.name}</p>
+                        </div>
+                        <button onClick={onClose} className="w-10 h-10 bg-slate-50 rounded-full flex items-center justify-center text-slate-400 hover:bg-slate-100 transition-all">
+                            <X size={20} />
+                        </button>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-6">
+                        <div className="space-y-4">
+                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Abonelik Planı</label>
+                            <select 
+                                value={localBiz.plan || 'Basic'} 
+                                onChange={e => setLocalBiz({...localBiz, plan: e.target.value})}
+                                className="w-full bg-slate-50 border border-indigo-50 rounded-2xl py-4 px-6 text-slate-900 font-bold outline-none focus:border-indigo-500 transition-all appearance-none"
+                            >
+                                <option value="Basic">Basic</option>
+                                <option value="Aura Enterprise">Aura Enterprise</option>
+                            </select>
+                        </div>
+                        <div className="space-y-4">
+                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Koltuk (Node) Limiti</label>
+                            <input 
+                                type="number" 
+                                value={localBiz.maxUsers || 5} 
+                                onChange={e => setLocalBiz({...localBiz, maxUsers: parseInt(e.target.value)})}
+                                className="w-full bg-slate-50 border border-indigo-50 rounded-2xl py-4 px-6 text-slate-900 font-bold outline-none focus:border-indigo-500 transition-all"
+                            />
+                        </div>
+                    </div>
+
+                    <div className="space-y-4">
+                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Tolerans Süresi (Grace Period)</label>
+                        <input 
+                            type="date" 
+                            value={localBiz.grace_period_until ? localBiz.grace_period_until.split('T')[0] : ''} 
+                            onChange={e => setLocalBiz({...localBiz, grace_period_until: e.target.value})}
+                            className="w-full bg-slate-50 border border-indigo-50 rounded-2xl py-4 px-6 text-slate-900 font-bold outline-none focus:border-indigo-500 transition-all"
+                        />
+                    </div>
+
+                    <div className="grid grid-cols-1 gap-6">
+                         <div className="flex items-center justify-between bg-rose-50 p-6 rounded-[2rem] border border-rose-100">
+                            <div>
+                                <p className="text-[11px] font-black text-rose-900 uppercase">HESABI ASKIYA AL</p>
+                                <p className="text-[9px] font-bold text-rose-400 uppercase tracking-wider">Sistem Mührünü Manuel Aktif Et</p>
+                            </div>
+                            <button 
+                                onClick={() => setLocalBiz({...localBiz, is_suspended: !localBiz.is_suspended})}
+                                className={`px-6 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${localBiz.is_suspended ? 'bg-rose-600 text-white' : 'bg-white text-rose-600 border border-rose-200'}`}
+                            >
+                                {localBiz.is_suspended ? 'ASKIYA ALINDI' : 'ASKIYA AL'}
+                            </button>
+                         </div>
+                    </div>
+
+                    <button 
+                        onClick={() => onUpdate(biz.id, { 
+                            plan: localBiz.plan, 
+                            maxUsers: localBiz.maxUsers, 
+                            grace_period_until: localBiz.grace_period_until, 
+                            is_suspended: localBiz.is_suspended 
+                        })}
+                        disabled={loading}
+                        className="w-full py-6 bg-indigo-600 text-white rounded-[1.8rem] font-black text-[11px] uppercase tracking-[0.2em] shadow-xl shadow-indigo-600/40 hover:bg-indigo-700 transition-all disabled:opacity-50"
+                    >
+                        {loading ? 'GÜNCELLENİYOR...' : 'DEĞİŞİKLİKLERİ KAYDET ✓'}
+                    </button>
+                </div>
+            </motion.div>
+        </div>
+    );
+}
+
+function TenantCard({ biz, onImpersonate, onDelete, onToggleStatus, onEdit, isLoading }: { biz: any, onImpersonate: () => void, onDelete: () => void, onToggleStatus: () => void, onEdit: () => void, isLoading: boolean }) {
     const { renewSubscription } = useStore();
     const isActive = biz.status === 'active' || biz.status === 'Aktif';
     
@@ -784,6 +919,10 @@ function TenantCard({ biz, onImpersonate, onDelete, onToggleStatus, isLoading }:
                 <div className="absolute top-4 right-20 bg-emerald-500 text-white text-[7px] font-black px-2 py-1 rounded-md rotate-12 shadow-lg">SOVEREIGN OVERRIDE</div>
             )}
 
+            {biz.is_suspended && (
+                <div className="absolute top-4 right-20 bg-rose-600 text-white text-[8px] font-black px-3 py-1.5 rounded-lg -rotate-12 shadow-2xl z-20 border-2 border-rose-500">MÜHÜRLÜ</div>
+            )}
+
             <div>
                 <div className="flex justify-between items-start mb-6">
                     <div className="w-12 h-12 bg-indigo-50 rounded-2xl flex items-center justify-center text-indigo-600 text-xl font-black italic">
@@ -811,8 +950,8 @@ function TenantCard({ biz, onImpersonate, onDelete, onToggleStatus, isLoading }:
                 
                 <div className="grid grid-cols-2 gap-4 mb-4">
                      <div className="flex flex-col">
-                         <span className="text-[8px] font-black text-slate-300 uppercase">VERGİ NO</span>
-                         <span className="text-[10px] font-black text-slate-900 uppercase truncate">{biz.taxId || '-'}</span>
+                         <span className="text-[8px] font-black text-slate-300 uppercase">PLAN</span>
+                         <span className="text-[10px] font-black text-indigo-600 uppercase truncate">{biz.plan || 'Basic'}</span>
                      </div>
                      <div className="flex flex-col">
                          <span className="text-[8px] font-black text-slate-300 uppercase">KOLTUK</span>
@@ -842,10 +981,10 @@ function TenantCard({ biz, onImpersonate, onDelete, onToggleStatus, isLoading }:
                         <Zap size={12} className="fill-current" /> GOD MODE
                     </button>
                     <button 
-                        onClick={handleRenew}
+                        onClick={onEdit}
                         className="flex-1 py-4 bg-white border border-slate-200 text-slate-900 rounded-2xl font-black text-[9px] uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-slate-50 transition-all"
                     >
-                        <RefreshCw size={12} /> YENİLE
+                        <SettingsIcon size={12} /> YÖNET
                     </button>
                 </div>
             </div>
