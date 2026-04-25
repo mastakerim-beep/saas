@@ -331,4 +331,10 @@ export interface StoreState {
     addZReport: (data: any) => Promise<boolean>;
     runImperialAudit: () => { type: 'critical' | 'warning' | 'info'; title: string; desc: string; targetId?: string; table?: string }[];
     clearCatalog: () => void;
+
+    // Empire Command Center
+    pendingVetoes: { type: 'payment' | 'appointment', data: any }[];
+    panopticonFeed: any[];
+    approveDraconianVeto: (type: 'payment' | 'appointment', id: string) => Promise<boolean>;
+    rejectDraconianVeto: (type: 'payment' | 'appointment', id: string, reason?: string) => Promise<boolean>;
 }

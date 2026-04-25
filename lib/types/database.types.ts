@@ -222,6 +222,7 @@ export interface Customer {
     communicationSource: any;
     communicationChoice: any;
     loyaltyPoints: number;
+    tribute_score?: number;
     createdAt?: string;
     updatedAt?: string;
 }
@@ -335,6 +336,8 @@ export interface Payment {
     referenceCode: any;
     giftNote: any;
     soldProducts: any;
+    draconian_status?: string;
+    draconian_veto_reason?: any;
     createdAt?: string;
 }
 
@@ -367,6 +370,8 @@ export interface Appointment {
     groupId?: string;
     apptRef?: string;
     note?: any;
+    draconian_status?: string;
+    draconian_veto_reason?: any;
     createdAt?: string;
 }
 

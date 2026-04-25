@@ -44,6 +44,10 @@ const StoreOrchestrator = ({ children }: { children: ReactNode }) => {
     const [isOnline, setIsOnline] = useState(true);
     const [syncStatus, setSyncStatus] = useState<'idle' | 'syncing' | 'error'>('idle');
     const [isManagerAuthorized, setManagerAuthorized] = useState(false);
+    
+    // Empire Command Center States
+    const [pendingVetoes, setPendingVetoes] = useState<{type: 'payment' | 'appointment', data: any}[]>([]);
+    const [panopticonFeed, setPanopticonFeed] = useState<any[]>([]);
     const fetchControllerRef = React.useRef<AbortController | null>(null);
     const params = useParams();
     const slug = params?.slug as string;
@@ -426,6 +430,8 @@ const StoreOrchestrator = ({ children }: { children: ReactNode }) => {
     };
 
     const stableMethods: any = useMemo(() => ({
+        pendingVetoes,
+        panopticonFeed,
         login: authRef.current.login,
         logout: authRef.current.logout,
         fetchData,
@@ -806,7 +812,24 @@ const StoreOrchestrator = ({ children }: { children: ReactNode }) => {
                 const paymentId = crypto.randomUUID();
                 const payYear = new Date().getFullYear();
                 const paymentRef = `ODM-${payYear}-${Math.floor(Math.random()*9000)+1000}`;
-                const paymentRecord = { ...paymentData, id: paymentId, referenceCode: paymentRef, tipAmount: tipAmount || 0, soldProducts: soldProducts || [], createdAt: new Date().toISOString() };
+                
+                // Draconian Veto Interceptor
+                const isHighDiscount = paymentData.originalPrice && paymentData.totalAmount < paymentData.originalPrice * 0.7;
+                const isGifted = options.isGift || tipAmount > paymentData.totalAmount; // Some basic logic that might trigger veto
+                const needsVeto = isHighDiscount || isGifted;
+                const draconianStatus = needsVeto ? 'PENDING_APPROVAL' : 'APPROVED';
+
+                const paymentRecord = { ...paymentData, id: paymentId, referenceCode: paymentRef, tipAmount: tipAmount || 0, soldProducts: soldProducts || [], draconian_status: draconianStatus, createdAt: new Date().toISOString() };
+                
+                if (needsVeto) {
+                    setPendingVetoes(prev => [{ type: 'payment', data: paymentRecord }, ...prev]);
+                    // Yüksek indirim -> Direkt askıya alıp fonksiyondan çık
+                    dataRef.current.setAllPayments((prev: any[]) => [paymentRecord, ...prev]);
+                    await syncDb('payments', 'insert', paymentRecord, paymentId, bizId);
+                    stableMethods.addLog('🔴 VETO SİSTEMİ', paymentData.customerName || 'Bilinmiyor', `Ref: ${paymentRef}`, 'Sistem onaya aldı - Şüpheli indirim/tutar');
+                    setSyncStatus('idle');
+                    return { success: false, vetoed: true, message: 'Yetkili onayı bekleniyor...' };
+                }
                 
                 // 1. Loyalty Points Logic
                 if (paymentData.customerId) {
@@ -908,12 +931,39 @@ const StoreOrchestrator = ({ children }: { children: ReactNode }) => {
                     await syncDb('appointments', 'update', updates, paymentData.appointmentId, bizId);
                 }
                 setSyncStatus('idle');
-                return true;
+                return { success: true };
             } catch (err) {
                 console.error("Checkout Error:", err);
                 setSyncStatus('error');
-                return false;
+                return { success: false, error: err };
             }
+        },
+        
+        approveDraconianVeto: async (type: 'payment' | 'appointment', id: string) => {
+            const updates = { draconian_status: 'APPROVED' };
+            if (type === 'payment') {
+                dataRef.current.setAllPayments((prev: any[]) => prev.map(p => p.id === id ? { ...p, ...updates } : p));
+                await syncDb('payments', 'update', updates, id, activeBizIdRef.current);
+            } else {
+                dataRef.current.updateAppointment(id, updates);
+                await syncDb('appointments', 'update', updates, id, activeBizIdRef.current);
+            }
+            setPendingVetoes(prev => prev.filter(v => v.data.id !== id));
+            stableMethods.addLog('🟢 İmparator Onayı', id, 'VETO', 'ONAYLANDI');
+            return true;
+        },
+        rejectDraconianVeto: async (type: 'payment' | 'appointment', id: string, reason?: string) => {
+            const updates = { draconian_status: 'REJECTED', draconian_veto_reason: reason };
+            if (type === 'payment') {
+                dataRef.current.setAllPayments((prev: any[]) => prev.map(p => p.id === id ? { ...p, ...updates } : p));
+                await syncDb('payments', 'update', updates, id, activeBizIdRef.current);
+            } else {
+                dataRef.current.updateAppointment(id, updates);
+                await syncDb('appointments', 'update', updates, id, activeBizIdRef.current);
+            }
+            setPendingVetoes(prev => prev.filter(v => v.data.id !== id));
+            stableMethods.addLog('🔴 İmparator Reddi', id, 'VETO', 'REDDEDİLDİ');
+            return true;
         },
         sendNotification: async (cid: string, type: any, content: string) => {
             const id = crypto.randomUUID();
