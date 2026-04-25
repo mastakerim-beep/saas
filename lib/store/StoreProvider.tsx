@@ -17,6 +17,9 @@ import { fetchData as fetchDataLogic } from './fetch-logic';
 import { syncDb } from './sync-db';
 import { supabase } from '@/lib/supabase';
 import { triggerWebhooks } from '@/lib/utils/webhook-sender';
+import { checkQuota, checkSystemLock } from '@/lib/utils/feature-gate';
+import EmpireLockScreen from '@/components/layout/EmpireLockScreen';
+import QuotaUpgradeModal from '@/components/modals/QuotaUpgradeModal';
 
 const StoreMethodsContext = createContext<any>(undefined);
 const StoreDataContext = createContext<any>(undefined);
@@ -64,6 +67,7 @@ const StoreOrchestrator = ({ children }: { children: ReactNode }) => {
     
     const [recentlyModified, setRecentlyModified] = useState<Set<string>>(new Set());
     const recentlyModifiedRef = React.useRef<Set<string>>(new Set());
+    const [quotaError, setQuotaError] = useState<{resource: 'Şube' | 'Personel', limit: number} | null>(null);
 
     const markAsModified = React.useCallback((id: string) => {
         setRecentlyModified(prev => {
@@ -946,10 +950,19 @@ const StoreOrchestrator = ({ children }: { children: ReactNode }) => {
             await syncDb('commission_rules', 'delete', {}, id, activeBizIdRef.current);
         },
         addStaff: async (s: any) => {
+            const bizData = bizRef.current.currentTenant;
+            if (bizData) {
+                const { allowed, limit } = checkQuota(bizData, 'users', dataRef.current.staffMembers.length);
+                if (!allowed) {
+                    setQuotaError({ resource: 'Personel', limit });
+                    return false;
+                }
+            }
             const id = crypto.randomUUID();
-            const ns = { ...s, id, isVisibleOnCalendar: true, sortOrder: 0 };
+            const ns = { ...s, id, isVisibleOnCalendar: true, sortOrder: 0, businessId: activeBizIdRef.current, createdAt: new Date().toISOString() };
             dataRef.current.setAllStaff((prev: Staff[]) => [...prev, ns]);
             await syncDb('staff', 'insert', ns, id, activeBizIdRef.current);
+            return true;
         },
         updateStaff: async (id: string, s: any) => {
             dataRef.current.setAllStaff((prev: Staff[]) => prev.map((st: Staff) => st.id === id ? { ...st, ...s } : st));
@@ -1211,10 +1224,19 @@ const StoreOrchestrator = ({ children }: { children: ReactNode }) => {
             await syncDb('system_announcements', 'insert', ann, id, activeBizIdRef.current || '');
         },
         addBranch: async (branch: any) => {
+            const bizData = bizRef.current.currentTenant;
+            if (bizData) {
+                const { allowed, limit } = checkQuota(bizData, 'branches', bizRef.current.branches.length);
+                if (!allowed) {
+                    setQuotaError({ resource: 'Şube', limit });
+                    return false;
+                }
+            }
             const id = crypto.randomUUID();
             const nb = { ...branch, id, businessId: activeBizIdRef.current, createdAt: new Date().toISOString() };
             bizRef.current.setBranches((prev: any) => [...prev, nb]);
             await syncDb('branches', 'insert', nb, id, activeBizIdRef.current);
+            return true;
         },
         updateBranch: async (id: string, branch: any) => {
             bizRef.current.setBranches((prev: any) => prev.map((b: any) => b.id === id ? { ...b, ...branch } : b));
@@ -1308,6 +1330,11 @@ const StoreOrchestrator = ({ children }: { children: ReactNode }) => {
     const shieldedCustomers = useMemo(() => (data.customers || []).filter(c => !recentlyModified.has(c.id)), [data.customers, recentlyModified]);
     const shieldedInventory = useMemo(() => (data.inventory || []).filter(p => !recentlyModified.has(p.id)), [data.inventory, recentlyModified]);
 
+    const systemLock = useMemo(() => {
+        if (!biz.currentTenant) return { isLocked: false, reason: null, message: null };
+        return checkSystemLock(biz.currentTenant, auth.currentUser);
+    }, [biz.currentTenant, auth.currentUser]);
+
     return (
         <StoreMethodsContext.Provider value={stableMethods}>
             <StoreDataContext.Provider value={{
@@ -1373,6 +1400,14 @@ const StoreOrchestrator = ({ children }: { children: ReactNode }) => {
                 inventoryCategories: data.inventoryCategories || [],
                 isLicenseExpired
             }}>
+                {systemLock.isLocked && <EmpireLockScreen reason={systemLock.reason} message={systemLock.message || ""} slug={slug} />}
+                <QuotaUpgradeModal 
+                    isOpen={!!quotaError} 
+                    onClose={() => setQuotaError(null)} 
+                    resource={quotaError?.resource || 'Şube'} 
+                    limit={quotaError?.limit || 0} 
+                    slug={slug} 
+                />
                 {children}
             </StoreDataContext.Provider>
         </StoreMethodsContext.Provider>

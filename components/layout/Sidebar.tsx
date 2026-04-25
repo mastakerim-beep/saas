@@ -7,10 +7,11 @@ import {
     LayoutDashboard, Calendar, Users, Briefcase, 
     Receipt, Wallet, Package, Bot, UserCog, LucideIcon,
     Crown, Zap, Sparkles, TrendingUp, ShieldCheck, LayoutGrid,
-    Globe, Compass, CreditCard, FileText, ChevronRight, Info, Terminal, Settings as SettingsIcon, LogOut, FileCode
+    Globe, Compass, CreditCard, FileText, ChevronRight, Info, Terminal, Settings as SettingsIcon, LogOut, FileCode, Lock
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useState, useEffect, memo, useMemo } from 'react';
+import { hasFeature } from '@/lib/utils/feature-gate';
 
 interface SidebarItemProps {
     href: string;
@@ -20,9 +21,10 @@ interface SidebarItemProps {
     colorClass?: string;
     isHovered: boolean;
     pathname: string;
+    isLocked?: boolean;
 }
 
-const SidebarItem = memo(({ href, icon: Icon, label, badge, colorClass, isHovered, pathname }: SidebarItemProps) => {
+const SidebarItem = memo(({ href, icon: Icon, label, badge, colorClass, isHovered, pathname, isLocked }: SidebarItemProps) => {
     const isActive = useMemo(() => {
         // High-precision matching: 
         // 1. Exact match is always true
@@ -42,14 +44,18 @@ const SidebarItem = memo(({ href, icon: Icon, label, badge, colorClass, isHovere
 
         return pathname.startsWith(`${href}/`);
     }, [pathname, href]);
-    return (
+    return !isLocked ? (
         <Link href={href} className="relative block group/item">
             <div className={`
                 flex items-center gap-4 px-6 py-4 rounded-2xl text-[13px] font-semibold cursor-pointer transition-all duration-300
                 ${isActive ? 'text-white' : 'text-indigo-400 hover:bg-indigo-50/50 dark:hover:bg-indigo-950/40 hover:text-indigo-900 dark:hover:text-white'}
             `}>
                 <div className="flex items-center justify-center min-w-[32px] relative z-10">
-                    <Icon className={`w-5 h-5 transition-transform duration-300 group-hover/item:scale-110 ${isActive ? 'text-white' : (colorClass || 'text-indigo-500/80 dark:text-indigo-300/80')}`} />
+                    {isLocked ? (
+                        <Lock className="w-4 h-4 text-gray-400" />
+                    ) : (
+                        <Icon className={`w-5 h-5 transition-transform duration-300 group-hover/item:scale-110 ${isActive ? 'text-white' : (colorClass || 'text-indigo-500/80 dark:text-indigo-300/80')}`} />
+                    )}
                     
                     {/* THE MARK: More prominent active indicator */}
                     {isActive && (
@@ -69,7 +75,7 @@ const SidebarItem = memo(({ href, icon: Icon, label, badge, colorClass, isHovere
                             transition={{ duration: 0.2 }}
                             className="flex-1 flex items-center justify-between overflow-hidden whitespace-nowrap relative z-10"
                         >
-                            <span className="tracking-tight antialiased">{label}</span>
+                            <span className={`tracking-tight antialiased ${isLocked ? 'text-gray-400 italic' : ''}`}>{label}</span>
                             {badge && (
                                 <span className={`
                                     px-2 py-[1px] rounded-full text-[9px] font-black tracking-tighter
@@ -92,6 +98,20 @@ const SidebarItem = memo(({ href, icon: Icon, label, badge, colorClass, isHovere
                 )}
             </div>
         </Link>
+    ) : (
+        <div className="relative block cursor-not-allowed group/item grayscale opacity-50">
+             <div className="flex items-center gap-4 px-6 py-4 rounded-2xl text-[13px] font-semibold transition-all duration-300">
+                <div className="flex items-center justify-center min-w-[32px] relative z-10">
+                    <Lock className="w-4 h-4 text-gray-400" />
+                </div>
+                {isHovered && (
+                    <div className="flex-1 flex items-center justify-between overflow-hidden whitespace-nowrap relative z-10 text-gray-400">
+                        <span className="tracking-tight antialiased italic">{label}</span>
+                        <Crown size={12} className="text-amber-500 opacity-50" />
+                    </div>
+                )}
+             </div>
+        </div>
     );
 });
 
@@ -218,7 +238,7 @@ export default function Sidebar() {
                         <div className="space-y-1">
                             <SidebarItem isHovered={isHovered} pathname={pathname} href={getTenantLink('memberships')} icon={Crown} label="Abonelikler" badge="V2" colorClass="text-indigo-400" />
                             {isModuleEnabled('quotes') && <SidebarItem isHovered={isHovered} pathname={pathname} href={getTenantLink('quotes')} icon={FileText} label="Teklifler" colorClass="text-indigo-400" />}
-                            {isModuleEnabled('marketing') && <SidebarItem isHovered={isHovered} pathname={pathname} href={getTenantLink('marketing')} icon={Compass} label="AI Pazarlama" badge="AI" colorClass="text-indigo-400" />}
+                            {isModuleEnabled('marketing') && <SidebarItem isHovered={isHovered} pathname={pathname} href={getTenantLink('marketing')} icon={Compass} label="AI Pazarlama" badge="AI" colorClass="text-indigo-400" isLocked={!hasFeature(currentBusiness || {}, 'hasAI')} />}
                             {isModuleEnabled('inventory') && <SidebarItem isHovered={isHovered} pathname={pathname} href={getTenantLink('inventory')} icon={Package} label="Envanter" />}
                         </div>
                     </div>
@@ -229,7 +249,7 @@ export default function Sidebar() {
                     <div>
                         {isHovered && <p className="px-4 text-[10px] font-black text-indigo-400 uppercase tracking-widest mb-4 opacity-50 overflow-hidden whitespace-nowrap">Finans</p>}
                         <div className="space-y-1">
-                            {can('view_cash') && <SidebarItem isHovered={isHovered} pathname={pathname} href={getTenantLink('executive')} icon={Globe} label="Executive" badge="VIP" colorClass="text-primary" />}
+                            {can('view_cash') && <SidebarItem isHovered={isHovered} pathname={pathname} href={getTenantLink('executive')} icon={Globe} label="Executive" badge="VIP" colorClass="text-primary" isLocked={!hasFeature(currentBusiness || {}, 'hasAdvancedAnalytics')} />}
                             {can('view_historical_finance') && <SidebarItem isHovered={isHovered} pathname={pathname} href={getTenantLink('executive/reports')} icon={FileCode} label="Z-Raporu Arşivi" colorClass="text-indigo-500" />}
                             {can('view_cash') && <SidebarItem isHovered={isHovered} pathname={pathname} href={getTenantLink('finances/cash')} icon={Wallet} label="Günün Kasası" colorClass="text-indigo-500" />}
                             {can('view_historical_finance') && <SidebarItem isHovered={isHovered} pathname={pathname} href={getTenantLink('finances')} icon={TrendingUp} label="Ciro Analizi" colorClass="text-indigo-500" />}

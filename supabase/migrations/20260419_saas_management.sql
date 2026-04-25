@@ -9,7 +9,9 @@ ADD COLUMN IF NOT EXISTS payment_status VARCHAR(20) DEFAULT 'paid',
 ADD COLUMN IF NOT EXISTS last_payment_date TIMESTAMPTZ,
 ADD COLUMN IF NOT EXISTS last_payment_amount NUMERIC,
 ADD COLUMN IF NOT EXISTS is_manual_override BOOLEAN DEFAULT FALSE,
-ADD COLUMN IF NOT EXISTS subscription_history JSONB DEFAULT '[]';
+ADD COLUMN IF NOT EXISTS subscription_history JSONB DEFAULT '[]',
+ADD COLUMN IF NOT EXISTS grace_period_until TIMESTAMPTZ,
+ADD COLUMN IF NOT EXISTS is_suspended BOOLEAN DEFAULT FALSE;
 
 -- Audit log for migration
 COMMENT ON COLUMN businesses.tax_id IS 'İşletme Vergi Kimlik Numarası';

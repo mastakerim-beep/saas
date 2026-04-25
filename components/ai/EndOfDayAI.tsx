@@ -9,6 +9,9 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
+import Link from 'next/link';
+import { hasFeature } from '@/lib/utils/feature-gate';
+
 interface EndOfDayProps {
     isOpen: boolean;
     onClose: () => void;
@@ -19,6 +22,11 @@ export default function EndOfDayAI({ isOpen, onClose }: EndOfDayProps) {
         appointments, payments, staffMembers, addLog, getTodayDate, 
         currentBusiness, addZReport, currentUser, rooms 
     } = useStore();
+    
+    const isAiEnabled = useMemo(() => {
+        if (!currentBusiness) return false;
+        return hasFeature(currentBusiness, 'hasAI');
+    }, [currentBusiness]);
     
     const [isClosing, setIsClosing] = useState(false);
     const [isDone, setIsDone] = useState(false);
@@ -182,6 +190,29 @@ export default function EndOfDayAI({ isOpen, onClose }: EndOfDayProps) {
     return (
         <div className="fixed inset-0 bg-background/60 backdrop-blur-xl z-[200] flex items-center justify-center p-4 animate-[fadeIn_0.3s_ease]">
             <div className="modal-premium w-full max-w-4xl overflow-hidden flex flex-col max-h-[95vh] shadow-[0_0_100px_-20px_rgba(0,0,0,0.3)]">
+                {/* Locked State for Basic Plan */}
+                {!isAiEnabled ? (
+                    <div className="flex-1 flex flex-col items-center justify-center p-12 text-center space-y-8 bg-gray-50/50 relative overflow-hidden">
+                        <div className="absolute inset-0 bg-white/40 backdrop-blur-sm z-10" />
+                        <div className="relative z-20 space-y-6 max-w-md">
+                            <div className="w-20 h-20 bg-indigo-600 rounded-[2rem] flex items-center justify-center text-white mx-auto shadow-2xl shadow-indigo-600/30">
+                                <Zap size={40} fill="currentColor" />
+                            </div>
+                            <h3 className="text-3xl font-black text-gray-900 italic tracking-tighter">Aura AI Kilitli</h3>
+                            <p className="text-gray-500 font-bold leading-relaxed">
+                                Gelişmiş AI kapanış analizi, doluluk öngörüleri ve sızıntı denetimi sadece **Aura Enterprise** paketinde mevcuttur.
+                            </p>
+                            <Link 
+                                href={`/${currentBusiness?.slug}/billing`}
+                                onClick={onClose}
+                                className="inline-flex items-center gap-3 bg-indigo-600 text-white px-10 py-5 rounded-[1.5rem] font-black text-sm uppercase tracking-widest hover:bg-indigo-500 transition-all shadow-xl shadow-indigo-600/10 active:scale-95"
+                            >
+                                <Zap size={18} /> ENTERPRISE'A YÜKSELT
+                            </Link>
+                        </div>
+                    </div>
+                ) : (
+                    <>
                 {/* Header with improved spacing and contrast */}
                 <div className="px-10 py-8 border-b border-gray-100 flex justify-between items-center bg-white/50 backdrop-blur-sm">
                     <div className="flex items-center gap-5">
@@ -481,6 +512,8 @@ export default function EndOfDayAI({ isOpen, onClose }: EndOfDayProps) {
                         </motion.div>
                     )}
                 </div>
+                </>
+                )}
             </div>
         </div>
     );
