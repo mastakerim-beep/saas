@@ -3,9 +3,9 @@
 import React, { useState, useMemo } from 'react';
 import { 
     X, Search, Plus, Sparkles, ChevronRight, 
-    ShieldCheck, Loader2, Banknote, ChevronDown, Package, Clock, User
+    ShieldCheck, Loader2, Banknote, ChevronDown, Package as PackageIcon, Clock, User
 } from 'lucide-react';
-import { useStore, Customer } from '@/lib/store';
+import { useStore, Customer, Service, Staff, Room, Package, Appointment, CalendarBlock } from '@/lib/store';
 import { motion, AnimatePresence } from 'framer-motion';
 import BodyMap from '../crm/BodyMap';
 
@@ -20,7 +20,7 @@ interface BookingModalProps {
 export default function BookingModal({ initialData, onClose, date, mode: initialMode = 'add' }: BookingModalProps) {
     const { 
         customers, staffMembers, services, rooms, 
-        addAppointment, updateAppointment, addBlock, packages, addBodyMap,
+        addCustomer, addAppointment, updateAppointment, addBlock, packages, addBodyMap,
         currentBusiness, appointments, blocks, settings, addLog,
         currentUser
     } = useStore();
@@ -44,11 +44,11 @@ export default function BookingModal({ initialData, onClose, date, mode: initial
     const [basket, setBasket] = useState<any[]>([]);
     
     // Current entry state
-    const activeServices = useMemo(() => services.filter((s: any) => s.isActive !== false), [services]);
+    const activeServices = useMemo(() => services.filter((s: Service) => s.isActive !== false), [services]);
     const [currentService, setCurrentService] = useState(activeServices.length > 0 ? (initialData.service || activeServices[0]?.name) : '');
     const [currentRoomId, setCurrentRoomId] = useState<string | null>(initialData.roomId || (rooms.length > 0 ? rooms[0]?.id : null));
     const [currentPackageId, setCurrentPackageId] = useState<string | null>(null);
-    const [price, setPrice] = useState(services.find((s: any) => s.name === (initialData.service || services[0]?.name))?.price || 0);
+    const [price, setPrice] = useState(services.find((s: Service) => s.name === (initialData.service || services[0]?.name))?.price || 0);
     const [isSaving, setIsSaving] = useState(false);
     const [blockReason, setBlockReason] = useState('Toplantı');
     const [note, setNote] = useState('');
@@ -57,6 +57,11 @@ export default function BookingModal({ initialData, onClose, date, mode: initial
     );
     const [referralSource, setReferralSource] = useState(initialData?.communicationSource || 'Direkt');
     const [error, setError] = useState<string | null>(null);
+
+    // Quick Add States
+    const [isQuickAdding, setIsQuickAdding] = useState(false);
+    const [quickName, setQuickName] = useState('');
+    const [quickPhone, setQuickPhone] = useState('');
 
     // Conflict Detection (Staff & Room with Capacity)
     const checkConflict = (staffId: string, roomId: string | null, dt: string, tm: string, dur: number, excludeId?: string) => {
@@ -70,7 +75,7 @@ export default function BookingModal({ initialData, onClose, date, mode: initial
 
         // 1. Staff Check
         if (staffId) {
-            const hasAppt = appointments.some(a => {
+            const hasAppt = appointments.some((a: Appointment) => {
                 if (a.id === excludeId) return false;
                 if (a.date !== dt) return false;
                 if (['cancelled', 'excused'].includes(a.status)) return false;
@@ -83,13 +88,13 @@ export default function BookingModal({ initialData, onClose, date, mode: initial
 
                 // Primary or Additional Staff check
                 const isPrimary = a.staffId === staffId;
-                const isAdditional = Array.isArray(a.additionalStaff) && a.additionalStaff.some((s: any) => s.id === staffId);
+                const isAdditional = Array.isArray(a.additionalStaff) && (a.additionalStaff as any[]).some((s: any) => s.id === staffId);
                 return isPrimary || isAdditional;
             });
 
             if (hasAppt) return true;
 
-            const hasBlock = blocks.some((b: any) => {
+            const hasBlock = blocks.some((b: CalendarBlock) => {
                 if (b.date !== dt || b.staffId !== staffId) return false;
                 const [bh, bm] = b.time.split(':').map(Number);
                 const bStart = bh * 60 + bm;
@@ -102,10 +107,10 @@ export default function BookingModal({ initialData, onClose, date, mode: initial
 
         // 2. Room Check (Capacity Aware)
         if (roomId) {
-            const room = rooms.find(r => r.id === roomId);
+            const room = rooms.find((r: Room) => r.id === roomId);
             const capacity = room?.capacity || 1;
 
-            const occupants = appointments.filter((a: any) => {
+            const occupants = appointments.filter((a: Appointment) => {
                 if (a.id === excludeId) return false;
                 if (a.date !== dt || a.roomId !== roomId) return false;
                 if (['cancelled', 'excused'].includes(a.status)) return false;
@@ -138,16 +143,16 @@ export default function BookingModal({ initialData, onClose, date, mode: initial
         setSelectedRegions(prev => prev.includes(id) ? prev.filter(r => r !== id) : [...prev, id]);
     };
 
-    const filtered = customers.filter((c: any) => 
+    const filtered = customers.filter((c: Customer) => 
         c.name.toLowerCase().includes(search.toLowerCase()) || 
         c.phone.includes(search)
     );
     
-    const customer = customers.find((c: any) => c.id === selectedCustId);
+    const customer = customers.find((c: Customer) => c.id === selectedCustId);
 
     const customerPackages = useMemo(() => {
         if (!selectedCustId) return [];
-        return packages.filter((p: any) => 
+        return packages.filter((p: Package) => 
             p.customerId === selectedCustId && 
             p.usedSessions < p.totalSessions && 
             new Date(p.expiry) >= new Date()
@@ -155,8 +160,8 @@ export default function BookingModal({ initialData, onClose, date, mode: initial
     }, [selectedCustId, packages]);
 
     const addToBasket = () => {
-        const svc = services.find(s => s.name === currentService);
-        const staff = staffMembers.find(s => s.id === currentStaffId);
+        const svc = services.find((s: Service) => s.name === currentService);
+        const staff = staffMembers.find((s: Staff) => s.id === currentStaffId);
         if (!svc || !staff) return;
 
         setBasket(prev => [...prev, {
@@ -179,10 +184,38 @@ export default function BookingModal({ initialData, onClose, date, mode: initial
         setSelectedRegions([]);
     };
 
+    const handleQuickAdd = async () => {
+        if (!quickName || !quickPhone) {
+            setError("⚠️ Lütfen isim ve telefon numarasını eksiksiz giriniz.");
+            return;
+        }
+        setIsSaving(true);
+        setError(null);
+        try {
+            const newCust = await addCustomer({
+                name: quickName,
+                phone: quickPhone,
+                segment: 'Standard',
+                note: 'Takvim modalından hızlı eklendi'
+            });
+            if (newCust && newCust.id) {
+                setSelectedCustId(newCust.id);
+                setSelectedStep('details');
+                setIsQuickAdding(false);
+                setQuickName('');
+                setQuickPhone('');
+            }
+        } catch (err: any) {
+            setError("Müşteri oluşturulamadı: " + err.message);
+        } finally {
+            setIsSaving(false);
+        }
+    };
+
     const handleSave = async () => {
         if (isSaving) return;
         
-        const duration = overrideDuration || services.find(s => s.name === currentService)?.duration || 60;
+        const duration = overrideDuration || services.find((s: Service) => s.name === currentService)?.duration || 60;
         
         // Final Conflict Check (Staff & Room)
         if (checkConflict(currentStaffId, currentRoomId, selectedDate, selectedTime, duration, initialMode === 'edit' ? initialData?.id : undefined)) {
@@ -200,7 +233,7 @@ export default function BookingModal({ initialData, onClose, date, mode: initial
                     const updates = {
                         service: currentService,
                         staffId: currentStaffId,
-                        staffName: staffMembers.find(s => s.id === currentStaffId)?.name || '',
+                        staffName: staffMembers.find((s: Staff) => s.id === currentStaffId)?.name || '',
                         roomId: currentRoomId,
                         date: selectedDate,
                         time: selectedTime,
@@ -236,7 +269,7 @@ export default function BookingModal({ initialData, onClose, date, mode: initial
                     const finalBasket = basket.length > 0 ? basket : [{
                         service: currentService,
                         staffId: currentStaffId,
-                        staffName: staffMembers.find(s => s.id === currentStaffId)?.name || '',
+                        staffName: staffMembers.find((s: Staff) => s.id === currentStaffId)?.name || '',
                         roomId: currentRoomId,
                         packageId: currentPackageId,
                         price: currentPackageId ? 0 : price,
@@ -244,7 +277,7 @@ export default function BookingModal({ initialData, onClose, date, mode: initial
                         isPackageUsage: !!currentPackageId,
                         note: note,
                         regions: selectedRegions,
-                        additionalStaff: secondStaffId ? [{ id: secondStaffId, name: staffMembers.find((s: any) => s.id === secondStaffId)?.name || '' }] : []
+                        additionalStaff: secondStaffId ? [{ id: secondStaffId, name: staffMembers.find((s: Staff) => s.id === secondStaffId)?.name || '' }] : []
                     }];
 
                     let allSuccess = true;
@@ -365,43 +398,157 @@ export default function BookingModal({ initialData, onClose, date, mode: initial
                         </AnimatePresence>
                         {mode === 'appt' ? (
                             selectedStep === 'customer' ? (
-                                <div className="space-y-6">
-                                    <div className="text-center mb-8">
-                                        <h3 className="text-xl font-black text-gray-900 tracking-tight italic uppercase">Müşteri Seçimi</h3>
-                                        <p className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mt-1">İşleme başlamak için müşteri belirleyin</p>
-                                    </div>
-                                    <div className="relative group">
-                                        <Search className="w-6 h-6 absolute left-6 top-5 text-gray-300 group-focus-within:text-primary transition-colors duration-300" />
-                                        <input 
-                                            autoFocus
-                                            value={search} 
-                                            onChange={e => setSearch(e.target.value)} 
-                                            placeholder="İsim veya telefon numarası..." 
-                                            className="w-full bg-gray-50 border-2 border-gray-50 focus:border-primary/20 focus:bg-white rounded-[2rem] pl-16 pr-8 py-5 text-gray-900 font-black text-sm outline-none transition-all shadow-sm placeholder:text-gray-300"
-                                        />
-                                    </div>
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                                        {filtered.slice(0, 6).map(c => (
-                                            <div key={c.id} onClick={() => { setSelectedCustId(c.id); setSelectedStep('details'); }} className="p-5 bg-white rounded-[1.75rem] cursor-pointer hover:bg-primary/5 transition-all border border-gray-100/50 hover:border-primary/20 flex items-center gap-5 group shadow-sm hover:shadow-lg hover:shadow-primary/5 relative overflow-hidden">
-                                                <div className="w-14 h-14 rounded-2xl bg-gray-50 text-gray-400 font-black text-lg flex items-center justify-center group-hover:bg-primary group-hover:text-white group-hover:scale-105 transition-all duration-300 border border-gray-100 group-hover:border-transparent">
-                                                    {c.name.charAt(0)}
-                                                </div>
-                                                <div className="flex-1">
-                                                    <div className="flex items-center gap-2">
-                                                        <p className="font-black text-base text-gray-900 leading-none mb-1.5">{c.name?.toUpperCase() || 'İSİMSİZ MÜŞTERİ'}</p>
-                                                        {packages.some(p => p.customerId === c.id && p.usedSessions < p.totalSessions) && (
-                                                            <div className="px-2 py-0.5 bg-amber-50 border border-amber-100 rounded-md text-[8px] font-black text-amber-600 uppercase tracking-tighter mb-1 select-none">Paketli</div>
-                                                        )}
-                                                    </div>
-                                                    <p className="text-[10px] text-gray-400 font-black uppercase tracking-widest">{c.phone || 'Telefon Yok'}</p>
-                                                </div>
-                                                <ChevronRight className="w-5 h-5 text-gray-300 group-hover:text-primary group-hover:translate-x-1 transition-all" />
+                                <div className="space-y-8">
+                                        <div className="text-center mb-4">
+                                            <h3 className="text-2xl font-black text-gray-900 tracking-tight italic uppercase">Müşteri Seçimi</h3>
+                                            <p className="text-[11px] font-black text-gray-400 uppercase tracking-[0.2em] mt-1">İşleme başlamak için müşteri belirleyin</p>
+                                        </div>
+
+                                        <div className="relative group max-w-2xl mx-auto">
+                                            <div className="absolute inset-y-0 left-0 pl-6 flex items-center pointer-events-none">
+                                                <Search className="w-6 h-6 text-indigo-300 group-focus-within:text-indigo-600 transition-colors duration-300" />
                                             </div>
-                                        ))}
+                                            <input 
+                                                autoFocus
+                                                value={search} 
+                                                onChange={e => setSearch(e.target.value)} 
+                                                placeholder="İsim veya telefon numarası ile ara..." 
+                                                className="w-full bg-indigo-50/30 border-2 border-indigo-50/50 focus:border-indigo-200 focus:bg-white rounded-[2.5rem] pl-16 pr-8 py-6 text-gray-900 font-black text-base outline-none transition-all shadow-sm placeholder:text-indigo-200"
+                                            />
+                                            {search && (
+                                                <button onClick={() => setSearch('')} className="absolute inset-y-0 right-6 flex items-center text-indigo-300 hover:text-indigo-600 transition-colors">
+                                                    <X size={20} />
+                                                </button>
+                                            )}
+                                        </div>
+
+                                        <div className="flex flex-col gap-6">
+                                            <div className="flex items-center justify-between px-4">
+                                                <h4 className="text-[10px] font-black text-indigo-400 uppercase tracking-[0.25em]">
+                                                    {search.length > 0 ? `Arama Sonuçları (${filtered.length})` : 'Son Kayıtlar'}
+                                                </h4>
+                                                {!isQuickAdding && (
+                                                    <button 
+                                                        onClick={() => setIsQuickAdding(true)}
+                                                        className="flex items-center gap-2 px-6 py-2.5 bg-indigo-600 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-indigo-700 hover:shadow-xl hover:shadow-indigo-200 transition-all active:scale-95"
+                                                    >
+                                                        <Plus size={14} />
+                                                        Yeni Müşteri
+                                                    </button>
+                                                )}
+                                            </div>
+
+                                            <AnimatePresence mode="wait">
+                                                {isQuickAdding ? (
+                                                    <motion.div 
+                                                        initial={{ opacity: 0, y: 20, scale: 0.95 }}
+                                                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                                                        exit={{ opacity: 0, scale: 0.95 }}
+                                                        className="p-1"
+                                                    >
+                                                        <div className="bg-gradient-to-br from-indigo-600 via-indigo-700 to-purple-800 p-1 rounded-[3rem] shadow-2xl shadow-indigo-200">
+                                                            <div className="bg-white/10 backdrop-blur-md p-10 rounded-[2.8rem] space-y-6">
+                                                                <div className="flex items-center justify-between mb-2">
+                                                                    <div className="flex items-center gap-4 text-white">
+                                                                        <div className="w-12 h-12 rounded-2xl bg-white/20 flex items-center justify-center">
+                                                                            <Plus className="w-6 h-6" />
+                                                                        </div>
+                                                                        <div>
+                                                                            <h4 className="text-lg font-black uppercase italic tracking-tight">Hızlı Müşteri Kaydı</h4>
+                                                                            <p className="text-[10px] font-bold text-white/60 uppercase tracking-widest">Sadece isim ve telefon yeterli</p>
+                                                                        </div>
+                                                                    </div>
+                                                                    <button 
+                                                                        onClick={() => setIsQuickAdding(false)}
+                                                                        className="p-3 bg-white/10 hover:bg-white/20 rounded-2xl text-white transition-all"
+                                                                    >
+                                                                        <X size={20} />
+                                                                    </button>
+                                                                </div>
+
+                                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                                                    <div className="space-y-2">
+                                                                        <label className="text-[9px] font-black text-white/50 uppercase tracking-widest ml-1">Adı Soyadı</label>
+                                                                        <input 
+                                                                            value={quickName} 
+                                                                            onChange={e => setQuickName(e.target.value)} 
+                                                                            placeholder="Örn: Ahmet Yılmaz" 
+                                                                            className="w-full bg-white/10 border border-white/20 rounded-2xl px-6 py-5 text-white font-black text-sm outline-none placeholder:text-white/30 focus:bg-white/20 transition-all"
+                                                                        />
+                                                                    </div>
+                                                                    <div className="space-y-2">
+                                                                        <label className="text-[9px] font-black text-white/50 uppercase tracking-widest ml-1">Telefon Numarası</label>
+                                                                        <input 
+                                                                            value={quickPhone} 
+                                                                            onChange={e => setQuickPhone(e.target.value)} 
+                                                                            placeholder="05xx xxx xx xx" 
+                                                                            className="w-full bg-white/10 border border-white/20 rounded-2xl px-6 py-5 text-white font-black text-sm outline-none placeholder:text-white/30 focus:bg-white/20 transition-all"
+                                                                        />
+                                                                    </div>
+                                                                </div>
+
+                                                                <button 
+                                                                    onClick={handleQuickAdd}
+                                                                    className="w-full py-6 bg-white text-indigo-700 rounded-2xl font-black text-xs uppercase tracking-[0.3em] shadow-xl hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-3"
+                                                                >
+                                                                    KAYDET VE DEVAM ET
+                                                                    <ChevronRight size={16} />
+                                                                </button>
+                                                            </div>
+                                                        </div>
+                                                    </motion.div>
+                                                ) : (
+                                                    <motion.div 
+                                                        initial={{ opacity: 0 }}
+                                                        animate={{ opacity: 1 }}
+                                                        className="grid grid-cols-1 md:grid-cols-2 gap-4"
+                                                    >
+                                                        {filtered.length > 0 ? (
+                                                            filtered.slice(0, 8).map((c: Customer) => (
+                                                                <div key={c.id} onClick={() => { setSelectedCustId(c.id); setSelectedStep('details'); }} className="p-6 bg-white rounded-[2rem] cursor-pointer hover:bg-indigo-50/50 transition-all border border-indigo-100/40 hover:border-indigo-200 flex items-center gap-5 group shadow-sm hover:shadow-xl hover:shadow-indigo-100/20 relative overflow-hidden">
+                                                                    <div className="w-16 h-16 rounded-[1.25rem] bg-indigo-50 text-indigo-400 font-black text-xl flex items-center justify-center group-hover:bg-indigo-600 group-hover:text-white group-hover:scale-110 group-hover:rotate-3 transition-all duration-500 border border-indigo-100/50 group-hover:border-transparent">
+                                                                        {c.name.charAt(0).toUpperCase()}
+                                                                    </div>
+                                                                    <div className="flex-1">
+                                                                        <div className="flex items-center gap-2 mb-1.5">
+                                                                            <p className="font-black text-lg text-gray-900 leading-none tracking-tight">{c.name?.toUpperCase() || 'İSİMSİZ MÜŞTERİ'}</p>
+                                                                            {packages.some((p: Package) => p.customerId === c.id && p.usedSessions < p.totalSessions) && (
+                                                                                <div className="px-2 py-0.5 bg-amber-100/50 border border-amber-200 rounded-md text-[8px] font-black text-amber-600 uppercase tracking-tighter">Paketli</div>
+                                                                            )}
+                                                                        </div>
+                                                                        <p className="text-[11px] text-indigo-300 font-black uppercase tracking-[0.15em]">{c.phone || 'Telefon Yok'}</p>
+                                                                    </div>
+                                                                    <div className="w-10 h-10 rounded-full bg-indigo-50/50 flex items-center justify-center group-hover:bg-indigo-600 group-hover:text-white transition-all transform group-hover:translate-x-1">
+                                                                        <ChevronRight className="w-6 h-6" />
+                                                                    </div>
+                                                                </div>
+                                                            ))
+                                                        ) : (
+                                                            <div className="col-span-full py-20 bg-indigo-50/20 rounded-[3rem] border-2 border-dashed border-indigo-100 flex flex-col items-center justify-center text-center px-10">
+                                                                <div className="w-20 h-20 rounded-3xl bg-white text-indigo-200 flex items-center justify-center mb-6 shadow-sm">
+                                                                    <Search size={40} />
+                                                                </div>
+                                                                <h4 className="text-xl font-black text-indigo-900 uppercase italic tracking-tight mb-2">Müşteri Bulunamadı</h4>
+                                                                <p className="text-sm font-bold text-indigo-300 uppercase tracking-widest max-w-xs mb-8">"{search}" ile eşleşen bir kayıt bulamadık. Yeni bir müşteri oluşturmak ister misiniz?</p>
+                                                                <button 
+                                                                    onClick={() => {
+                                                                        setQuickName(search);
+                                                                        setIsQuickAdding(true);
+                                                                    }}
+                                                                    className="px-10 py-5 bg-indigo-600 text-white rounded-[2rem] font-black text-xs uppercase tracking-[0.2em] shadow-xl shadow-indigo-100 hover:bg-indigo-700 hover:scale-105 active:scale-95 transition-all flex items-center gap-4"
+                                                                >
+                                                                    <Plus size={20} />
+                                                                    YENİ MÜŞTERİ KAYDET
+                                                                </button>
+                                                            </div>
+                                                        )}
+                                                    </motion.div>
+                                                )}
+                                            </AnimatePresence>
+                                        </div>
                                     </div>
-                                </div>
-                            ) : (
-                                <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
+                                ) : (
+                                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
                                     <div className="space-y-8">
                                         {/* Basket Summary */}
                                         {basket.length > 0 && (
@@ -452,8 +599,8 @@ export default function BookingModal({ initialData, onClose, date, mode: initial
                                                                 onChange={e => setSelectedTime(e.target.value)}
                                                                 className="w-full text-2xl font-black text-primary/80 tracking-tighter italic leading-none bg-transparent outline-none appearance-none cursor-pointer pr-6 text-right"
                                                             >
-                                                                {slots.map(s => {
-                                                                    const duration = overrideDuration || services.find(svc => svc.name === currentService)?.duration || 60;
+                                                                {slots.map((s: string) => {
+                                                                    const duration = overrideDuration || services.find((svc: Service) => svc.name === currentService)?.duration || 60;
                                                                     const isFull = checkConflict(currentStaffId, currentRoomId, selectedDate, s, duration, initialMode === 'edit' ? initialData.id : undefined);
                                                                     return <option key={s} value={s} className={isFull ? 'text-red-400 font-bold' : ''}>{s} {isFull ? ' (ÇAKIŞMA)' : ''}</option>
                                                                 })}
@@ -469,12 +616,12 @@ export default function BookingModal({ initialData, onClose, date, mode: initial
                                                 <div className="bg-amber-50 rounded-[2rem] p-6 border border-amber-100 animate-in fade-in slide-in-from-right-4 duration-500">
                                                     <div className="flex items-center gap-3 mb-4">
                                                         <div className="p-2 bg-amber-500 text-white rounded-xl shadow-lg shadow-amber-200">
-                                                            <Package className="w-4 h-4" />
+                                                            <PackageIcon className="w-4 h-4" />
                                                         </div>
                                                         <p className="text-[10px] font-black text-amber-600 uppercase tracking-widest">Müşterinin Aktif Paketleri</p>
                                                     </div>
                                                     <div className="space-y-2">
-                                                        {customerPackages.map(pkg => (
+                                                        {customerPackages.map((pkg: Package) => (
                                                             <div key={pkg.id} className="flex justify-between items-center bg-white/80 p-3 rounded-xl border border-amber-100/50">
                                                                 <span className="text-[11px] font-black text-gray-900 uppercase tracking-tight">{pkg.name}</span>
                                                                 <span className="px-3 py-1 bg-amber-500 text-white rounded-lg text-[10px] font-black uppercase tracking-widest">
@@ -491,14 +638,14 @@ export default function BookingModal({ initialData, onClose, date, mode: initial
                                                     <label className="text-[9px] font-black text-gray-400 uppercase tracking-widest ml-1">Uygulanacak Hizmet</label>
                                                     <div className="relative group">
                                                         <select value={currentService} onChange={e => {
-                                                            const s = services.find(svc => svc.name === e.target.value);
+                                                            const s = services.find((svc: Service) => svc.name === e.target.value);
                                                             setCurrentService(e.target.value);
                                                             if(s) {
                                                                 setPrice(s.price);
                                                                 setOverrideDuration(s.duration);
                                                             }
                                                         }} className="w-full bg-white border border-gray-100 rounded-2xl px-6 py-5 text-sm font-black text-gray-900 outline-none focus:border-primary transition-all appearance-none shadow-sm group-hover:shadow-md">
-                                                            {activeServices.map(s => <option key={s.id} value={s.name}>{s.name} (₺{s.price})</option>)}
+                                                            {activeServices.map((s: Service) => <option key={s.id} value={s.name}>{s.name} (₺{s.price})</option>)}
                                                         </select>
                                                         <ChevronDown className="w-4 h-4 absolute right-6 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
                                                     </div>
@@ -518,18 +665,18 @@ export default function BookingModal({ initialData, onClose, date, mode: initial
                                                 <div className="space-y-4 pt-4 border-t border-gray-50">
                                                     <label className="text-[9px] font-black text-gray-400 uppercase tracking-widest ml-1 flex items-center justify-between">
                                                         <span>Uzman / Terapist (1)</span>
-                                                        {services.find(s => s.name === currentService)?.requiredStaffCount === 2 && (
+                                                        {services.find((s: Service) => s.name === currentService)?.requiredStaffCount === 2 && (
                                                             <span className="text-purple-600 animate-pulse">ÇİFT TERAPİST GEREKLİ</span>
                                                         )}
                                                     </label>
                                                     <div className="relative group">
                                                         <select value={currentStaffId} onChange={e => setCurrentStaffId(e.target.value)} className="w-full bg-white border border-gray-100 rounded-2xl px-6 py-5 text-sm font-black text-gray-900 outline-none focus:border-primary transition-all appearance-none shadow-sm group-hover:shadow-md">
-                                                            {staffMembers.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                                                            {staffMembers.map((s: Staff) => <option key={s.id} value={s.id}>{s.name}</option>)}
                                                         </select>
                                                         <ChevronDown className="w-4 h-4 absolute right-6 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
                                                     </div>
 
-                                                    {(services.find(s => s.name === currentService)?.requiredStaffCount === 2) && (
+                                                    {(services.find((s: Service) => s.name === currentService)?.requiredStaffCount === 2) && (
                                                         <div className="animate-in fade-in slide-in-from-top-2 duration-300">
                                                             <label className="text-[9px] font-black text-purple-600 uppercase tracking-widest ml-1">Uzman / Terapist (2)</label>
                                                             <div className="relative group mt-2">
@@ -539,7 +686,7 @@ export default function BookingModal({ initialData, onClose, date, mode: initial
                                                                     className="w-full bg-purple-50/50 border border-purple-100 rounded-2xl px-6 py-5 text-sm font-black text-purple-900 outline-none focus:border-purple-300 transition-all appearance-none shadow-sm group-hover:shadow-md"
                                                                 >
                                                                     <option value="">Seçiniz...</option>
-                                                                    {staffMembers.filter(s => s.id !== currentStaffId).map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                                                                    {staffMembers.filter((s: Staff) => s.id !== currentStaffId).map((s: Staff) => <option key={s.id} value={s.id}>{s.name}</option>)}
                                                                 </select>
                                                                 <ChevronDown className="w-4 h-4 absolute right-6 top-1/2 -translate-y-1/2 text-purple-400 pointer-events-none" />
                                                             </div>
@@ -560,8 +707,8 @@ export default function BookingModal({ initialData, onClose, date, mode: initial
                                             <div className="space-y-4">
                                                 <p className="text-[10px] font-black text-indigo-400 uppercase tracking-widest ml-1">Oda Seçimi (Opsiyonel)</p>
                                                 <div className="flex flex-wrap gap-2.5">
-                                                    {rooms.map(room => {
-                                                        const duration = overrideDuration || services.find(svc => svc.name === currentService)?.duration || 60;
+                                                    {rooms.map((room: Room) => {
+                                                        const duration = overrideDuration || services.find((svc: Service) => svc.name === currentService)?.duration || 60;
                                                         const isRoomFull = checkConflict('', room.id, selectedDate, selectedTime, duration, initialMode === 'edit' ? initialData.id : undefined);
                                                         
                                                         return (
@@ -590,7 +737,7 @@ export default function BookingModal({ initialData, onClose, date, mode: initial
                                                     <p className="text-[9px] font-black text-indigo-400 uppercase tracking-widest mb-1.5 opacity-60">Tanımlı Süre</p>
                                                     <div className="flex items-center gap-2">
                                                         <Clock className="w-4 h-4 text-indigo-600 animate-pulse" />
-                                                        <span className="text-sm font-black text-gray-900 uppercase tracking-tight italic">{overrideDuration || services.find(s => s.name === currentService)?.duration || 0} Dakika</span>
+                                                        <span className="text-sm font-black text-gray-900 uppercase tracking-tight italic">{overrideDuration || services.find((s: Service) => s.name === currentService)?.duration || 0} Dakika</span>
                                                     </div>
                                                 </div>
                                                 <div className="w-px h-10 bg-indigo-50" />
@@ -599,7 +746,7 @@ export default function BookingModal({ initialData, onClose, date, mode: initial
                                                     <p className="text-sm font-black text-primary uppercase tracking-tight italic">
                                                         {(() => {
                                                             const start = selectedTime;
-                                                            const dur = overrideDuration || services.find(s => s.name === currentService)?.duration || 0;
+                                                            const dur = overrideDuration || services.find((s: Service) => s.name === currentService)?.duration || 0;
                                                             const [h, m] = start.split(':').map(Number);
                                                             const endTotal = h * 60 + m + dur;
                                                             const endH = endTotal >= 1440 ? Math.floor((endTotal % 1440) / 60) : Math.floor(endTotal / 60);
