@@ -146,13 +146,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     };
 
     const logout = async () => {
-        console.log('🚪 [Auth Trace] Initiating logout...');
+        console.log('🚪 [Auth Trace] Initiating nuclear logout...');
+        // SHIELD: Mark not initialized immediately to break StoreProvider loops
         setIsInitialized(false); 
+        
         try {
-            // First, clear the local session explicitly via Supabase
-            const { error } = await supabase.auth.signOut();
-            if (error) console.error('SignOut Error:', error);
-
             // Nuclear Option: Clear Supabase-related keys from localStorage manually
             // This prevents the session from being restored on the next page load
             const keysToRemove = [];
@@ -168,6 +166,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             localStorage.removeItem('aura_business_catalog');
             localStorage.removeItem('aura_last_branch');
 
+            await supabase.auth.signOut();
             setCurrentUser(null);
         } catch (err) {
             console.error('Logout error:', err);

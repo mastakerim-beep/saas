@@ -292,6 +292,9 @@ const StoreOrchestrator = ({ children }: { children: ReactNode }) => {
                 console.log("⏳ [Aura Trace] No user/slug context. Releasing UI lock.");
                 setSyncStatus('idle');
             }
+        } else {
+            // SHIELD: Systems not initialized or logging out
+            setSyncStatus('idle');
         }
 
         // Debounced Realtime Trigger
