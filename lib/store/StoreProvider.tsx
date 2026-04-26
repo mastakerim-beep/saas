@@ -50,6 +50,7 @@ const StoreOrchestrator = ({ children }: { children: ReactNode }) => {
     const [panopticonFeed, setPanopticonFeed] = useState<any[]>([]);
     const fetchControllerRef = React.useRef<AbortController | null>(null);
     const params = useParams();
+    const pathname = usePathname();
     const slug = params?.slug as string;
     
     // --- IDENTITY ANCHOR ---
@@ -242,21 +243,27 @@ const StoreOrchestrator = ({ children }: { children: ReactNode }) => {
         window.addEventListener('online', handleOnline);
         window.addEventListener('offline', handleOffline);
 
+        const isLoginPath = pathname === '/login';
+
         // Otomatik veri çekme başlatıcı
         // Sadece auth süreci tamamlandığında ve ortam (slug/kullanıcı) hazır olduğunda çek
         if (auth.isInitialized) {
+            if (isLoginPath) {
+                console.log("🛡️ [Aura Trace] Login path detected. Releasing store locks.");
+                setSyncStatus('idle');
+                return;
+            }
+
             const hasTarget = auth.currentUser || slug;
             const isSaaS = auth.currentUser?.role === 'SaaS_Owner';
             
             // SLUG STABILIZATION: In tenant layout, wait for params to hydrate.
-            // Bu kontrol sadece SaaS sahipleri için değil, slug tabanlı erişen herkes için çalışmalı.
             if (!slug && typeof window !== 'undefined' && window.location.pathname.split('/').length >= 3) {
                  console.log("⏳ [Aura Trace] Holding fetch: Slug expected but not yet hydrated.");
                  return;
             }
 
-            // HYPER-SCALE OPTIMIZATION: If we already have businesses (from persistence or previous fetch),
-            // and we have successfully resolved the activeBizId, we can skip the specialized business fetch.
+            // HYPER-SCALE OPTIMIZATION
             const hasBusinesses = biz.allBusinesses.length > 0;
             const isNeedBusinesses = isSaaS && slug && !hasBusinesses;
 
@@ -267,7 +274,7 @@ const StoreOrchestrator = ({ children }: { children: ReactNode }) => {
             }
 
             if (hasTarget) {
-                // If we are SaaS and on a slug, ensure we don't fire UNTIL we have an ID or we are sure it's invalid
+                // If we are SaaS and on a slug, ensure we don't fire UNTIL we have an ID
                 if (isSaaS && slug && !activeBizId && hasBusinesses) {
                     console.log("⏳ [Aura Trace] Resolved ID is still pending despite having businesses...");
                     return;
@@ -282,7 +289,8 @@ const StoreOrchestrator = ({ children }: { children: ReactNode }) => {
                 });
                 fetchData(activeBizId);
             } else {
-                console.log("⏳ [Aura Trace] Waiting for user/slug context...");
+                console.log("⏳ [Aura Trace] No user/slug context. Releasing UI lock.");
+                setSyncStatus('idle');
             }
         }
 

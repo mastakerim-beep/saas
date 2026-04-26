@@ -134,17 +134,20 @@ export default function ClientWrapper({ children }: { children: React.ReactNode 
 
         // 3. STORE SYNC: Unlock UI as soon as store is ready
         if (isInitialized && isChecking) {
-             const t = setTimeout(() => setIsChecking(false), 300);
-             return () => clearTimeout(t);
+             console.log("🔓 [Aura Trace] Store initialized. SyncStatus:", syncStatus);
+             if (isLoginPath || syncStatus === 'idle' || syncStatus === 'error') {
+                 const t = setTimeout(() => setIsChecking(false), 200);
+                 return () => clearTimeout(t);
+             }
         }
 
         // EXTRA PROTECT: 'Safety Timeout' fallback
         const safetyTimer = setTimeout(() => {
             if (isChecking) {
-                console.warn("SAFETY TIMEOUT: Forced UI unlock.");
+                console.warn("⚠️ [Aura Trace] UI Unlock Timeout. Force unlocking. Status:", { isInitialized, syncStatus, isLoginPath });
                 setIsChecking(false);
             }
-        }, 1500); 
+        }, 2000); 
 
         return () => {
             clearTimeout(timer);

@@ -89,7 +89,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     useEffect(() => {
         // Handle all auth events in a single listener
         const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-            console.log('Auth Event:', event, session?.user?.email);
+            console.log('🛡️ [Auth Trace] Event:', event, session?.user?.email);
             
             if (session?.user) {
                 try {
@@ -107,22 +107,24 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         });
 
         // --- SAFETY TIMEOUT: Force initialization if auth listener is stuck ---
+        // Reduced timeout for better UX, now that we have multiple safety layers
+        const safetyTimeoutMs = 1500; 
         const safetyTimer = setTimeout(() => {
-            if (!isInitialized) {
-                console.warn('Auth initialization timeout triggered. Forced unlock.');
-                // Try one last time to get the session manually
-                supabase.auth.getSession().then(({ data: { session } }) => {
-                    if (session?.user) {
-                        fetchAppUserProfile(session.user.id, session.user.email!).then(profile => {
-                            if (profile) setCurrentUser(profile);
-                            setIsInitialized(true);
-                        });
-                    } else {
-                        setIsInitialized(true);
-                    }
-                });
-            }
-        }, 3500); // Increased timeout for slower environments
+            setIsInitialized(prev => {
+                if (!prev) {
+                    console.warn('⚠️ [Auth Trace] Initialization timeout. Forced unlock.');
+                    // Try manual session check
+                    supabase.auth.getSession().then(({ data: { session } }) => {
+                        if (session?.user) {
+                            fetchAppUserProfile(session.user.id, session.user.email!).then(profile => {
+                                if (profile) setCurrentUser(profile);
+                            });
+                        }
+                    });
+                }
+                return true; 
+            });
+        }, safetyTimeoutMs);
 
         return () => {
             subscription.unsubscribe();
@@ -144,9 +146,37 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     };
 
     const logout = async () => {
-        await supabase.auth.signOut();
-        setCurrentUser(null);
-        window.location.href = '/login';
+        console.log('🚪 [Auth Trace] Initiating logout...');
+        setIsInitialized(false); 
+        try {
+            // First, clear the local session explicitly via Supabase
+            const { error } = await supabase.auth.signOut();
+            if (error) console.error('SignOut Error:', error);
+
+            // Nuclear Option: Clear Supabase-related keys from localStorage manually
+            // This prevents the session from being restored on the next page load
+            const keysToRemove = [];
+            for (let i = 0; i < localStorage.length; i++) {
+                const key = localStorage.key(i);
+                if (key && (key.includes('supabase.auth.token') || key.startsWith('sb-'))) {
+                    keysToRemove.push(key);
+                }
+            }
+            keysToRemove.forEach(k => localStorage.removeItem(k));
+            
+            // Clear other app-specific caches
+            localStorage.removeItem('aura_business_catalog');
+            localStorage.removeItem('aura_last_branch');
+
+            setCurrentUser(null);
+        } catch (err) {
+            console.error('Logout error:', err);
+        }
+        
+        // Final fallback: redirect after a microscopic delay to let states settle
+        setTimeout(() => {
+            window.location.replace('/login');
+        }, 100);
     };
 
     // Placeholder Business Management methods
