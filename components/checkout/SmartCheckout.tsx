@@ -22,8 +22,9 @@ export default function SmartCheckout({ appointment, onClose, initialCustomerId,
         processCheckout, inventory, getUpsellSuggestions, 
         paymentDefinitions, getTodayDate, currentBusiness,
         packages, services, updateAppointment, bankAccounts,
-        currentBranch, staff: allStaff
+        currentBranch, staff: allStaffRaw
     } = useStore();
+    const allStaff = allStaffRaw ?? [];
     
     // Resolve target data
     const targetCustomerId = appointment?.customerId || initialCustomerId;
