@@ -1281,14 +1281,26 @@ const StoreOrchestrator = ({ children }: { children: ReactNode }) => {
             // 1. Ghost Room Audit
             dataRef.current.rooms.forEach(room => {
                 if (room.status === 'occupied' && !appts.some(a => a.date === today && a.roomId === room.id && a.status === 'in-service')) {
-                    alerts.push({ type: 'critical', title: 'Hayalet Oda', desc: `${room.name} dolu ama aktif randevu yok!`, targetId: room.id });
+                    const verticalLabel = room.category === 'Fitness' ? 'FITNESS' : 'SPA';
+                    alerts.push({ 
+                        type: 'critical', 
+                        title: 'Hayalet Oda', 
+                        desc: `${room.name} (${verticalLabel}) dolu ama aktif randevu yok!`, 
+                        targetId: room.id 
+                    });
                 }
             });
 
             // 2. Revenue Leakage Audit (Paid/Unpaid verification)
             appts.forEach(a => {
                 if (a.status === 'completed' && !a.isPaid && a.price > 0 && !a.isSealed) {
-                    alerts.push({ type: 'critical', title: 'Tahsilat Kaçağı', desc: `${a.customerName} - ${a.service} tamamlandı ama ödeme ALINMADI!`, targetId: a.id });
+                    const verticalLabel = (a as any).vertical?.toUpperCase() || 'SPA';
+                    alerts.push({ 
+                        type: 'critical', 
+                        title: `Tahsilat Kaçağı (${verticalLabel})`, 
+                        desc: `${a.customerName} - ${a.service} tamamlandı ama ödeme ALINMADI!`, 
+                        targetId: a.id 
+                    });
                 }
                 if (a.isSealed) {
                     // isSealed items are protected but we don't alert on them unless there's an inconsistency

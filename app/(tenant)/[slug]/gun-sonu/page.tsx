@@ -2,6 +2,7 @@
 
 import { useState, useMemo, useEffect } from 'react';
 import { useStore } from '@/lib/store';
+import { Payment } from '@/lib/store/types';
 import { 
     Banknote, CreditCard, Building2, Lock, CheckCircle, AlertCircle, 
     Sparkles, Send, History, ShieldAlert, Bot, RefreshCw, Box, UserCheck 
@@ -17,21 +18,21 @@ export default function GunSonuPage() {
 
     // Calculate expected amounts
     const todayStr = new Date().toISOString().split('T')[0];
-    const completedToday = appointments.filter(a => a.date === todayStr && a.status === 'completed');
+    const completedToday = appointments.filter((a: any) => a.date === todayStr && a.status === 'completed');
     
     useEffect(() => {
         const results = runImperialAudit();
         setAuditResults(results);
-    }, [appointments]); // Re-run audit when appointments change
+    }, [appointments, runImperialAudit]); // Re-run audit when appointments change
 
-    const nakitGercek = todayPayments.reduce((acc: number, p) => 
+    const nakitGercek = todayPayments.reduce((acc: number, p: Payment) => 
         acc + (p.methods?.filter((m: any) => m.method === 'nakit').reduce((s: number, m: any) => s + (m.amount * (m.rate || 1)), 0) || 0), 0);
-    const kartGercek = todayPayments.reduce((acc: number, p) => 
+    const kartGercek = todayPayments.reduce((acc: number, p: Payment) => 
         acc + (p.methods?.filter((m: any) => m.method === 'kredi-karti').reduce((s: number, m: any) => s + (m.amount * (m.rate || 1)), 0) || 0), 0);
-    const havaleGercek = todayPayments.reduce((acc: number, p) => 
+    const havaleGercek = todayPayments.reduce((acc: number, p: Payment) => 
         acc + (p.methods?.filter((m: any) => m.method === 'havale').reduce((s: number, m: any) => s + (m.amount * (m.rate || 1)), 0) || 0), 0);
-    const toplamGercek = todayPayments.reduce((s, p) => s + p.totalAmount, 0);
-    const toplamHediye = todayPayments.reduce((s, p) => s + (p.isGift ? (p.originalPrice || 0) - p.totalAmount : 0), 0);
+    const toplamGercek = todayPayments.reduce((s: number, p: any) => s + p.totalAmount, 0);
+    const toplamHediye = todayPayments.reduce((s: number, p: any) => s + (p.isGift ? (p.originalPrice || 0) - p.totalAmount : 0), 0);
 
     const [nakitSayılan, setNakitSayılan] = useState('');
     const [kartSayılan, setKartSayılan] = useState('');
@@ -43,7 +44,16 @@ export default function GunSonuPage() {
     const toplamFark = nakitFark + kartFark + havaleFark;
     const hasInputs = nakitSayılan || kartSayılan || havaleSayılan;
 
-    const isAlreadyClosed = zReports.some(r => r.reportDate === todayStr);
+    const verticalBreakdown = useMemo(() => {
+        const breakdown: Record<string, number> = {};
+        todayPayments.forEach(p => {
+            const v = (p as any).vertical || 'spa';
+            breakdown[v] = (breakdown[v] || 0) + p.totalAmount;
+        });
+        return breakdown;
+    }, [todayPayments]);
+
+    const isAlreadyClosed = zReports.some((r: any) => r.reportDate === todayStr);
 
     const handleCloseDay = async () => {
         if (!hasInputs) {
@@ -51,7 +61,7 @@ export default function GunSonuPage() {
             return;
         }
 
-        const criticalAlerts = auditResults.filter(a => a.type === 'critical');
+        const criticalAlerts = auditResults.filter((a: any) => a.type === 'critical');
         if (criticalAlerts.length > 0) {
             const proceed = confirm(`Sistemde ${criticalAlerts.length} adet KRİTİK kaçak tespit edildi! Kapatmadan önce bunları düzeltmeniz önerilir.\n\nDevam etmek istiyor musunuz?`);
             if (!proceed) return;
@@ -203,7 +213,17 @@ export default function GunSonuPage() {
                 <div className="lg:col-span-8 space-y-8">
                     <div className="bg-white border border-gray-100 rounded-[3rem] p-10 shadow-xl shadow-gray-200/40">
                         <div className="flex justify-between items-center mb-10">
-                            <h2 className="text-2xl font-black italic uppercase tracking-tighter">Kasa Mutabakatı</h2>
+                            <div>
+                                <h2 className="text-2xl font-black italic uppercase tracking-tighter">Kasa Mutabakatı</h2>
+                                <div className="flex gap-2 mt-2">
+                                    {Object.entries(verticalBreakdown).map(([v, amount]) => (
+                                        <div key={v} className="px-3 py-1 bg-gray-50 border border-gray-100 rounded-lg flex items-center gap-2">
+                                            <div className={`w-1.5 h-1.5 rounded-full ${v === 'fitness' ? 'bg-amber-500' : v === 'clinic' ? 'bg-emerald-500' : 'bg-indigo-500'}`} />
+                                            <span className="text-[10px] font-black uppercase text-gray-500 tracking-tighter">{v}: ₺{amount.toLocaleString('tr-TR')}</span>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
                             <div className="p-3 bg-gray-50 rounded-2xl border border-gray-100"><Banknote className="text-gray-400" /></div>
                         </div>
 
@@ -277,7 +297,7 @@ export default function GunSonuPage() {
                             <span className="text-[10px] font-black bg-gray-50 px-4 py-2 rounded-xl text-gray-400 uppercase border border-gray-100">{todayPayments.length} İşlem</span>
                         </div>
                         <div className="space-y-4 max-h-[500px] overflow-y-auto pr-2 custom-scrollbar">
-                            {todayPayments.map(p => (
+                            {todayPayments.map((p: Payment) => (
                                 <div key={p.id} className="flex justify-between items-center bg-gray-50/50 border border-gray-50 rounded-[2.5rem] p-8 hover:bg-white hover:border-indigo-100 hover:shadow-xl hover:shadow-indigo-50/20 transition-all group">
                                     <div className="flex items-center gap-5">
                                         <div className="w-3 h-3 rounded-full bg-indigo-500 shadow-[0_0_12px_rgba(79,70,229,0.6)] group-hover:scale-125 transition-transform" />
