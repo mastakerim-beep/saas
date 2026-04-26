@@ -64,6 +64,7 @@ WHERE r.status = 'occupied'
 ALTER TABLE public.customer_insights ENABLE ROW LEVEL SECURITY;
 
 -- Mevcut helper fonksiyonu (get_my_business_id) üzerinden RLS politikası
+DROP POLICY IF EXISTS "access_policy_customer_insights" ON public.customer_insights;
 CREATE POLICY "access_policy_customer_insights" ON public.customer_insights
 FOR ALL TO authenticated 
 USING (business_id = (SELECT business_id FROM app_users WHERE id = auth.uid()) OR (SELECT role FROM app_users WHERE id = auth.uid()) = 'SaaS_Owner');
