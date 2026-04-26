@@ -71,12 +71,11 @@ export const fetchData = async (
                     // If we are SaaS and don't have a bizId yet, but have a slug, fetch ONLY that business.
                     if (table === 'businesses' && isSaaS && !bizId && slug) {
                         q = q.eq('slug', slug);
-                    } else if (idToUse) {
+                    } else if (idToUse && !(table === 'businesses' && isSaaS && !bizId && !slug)) {
                         // Standard tenant filtering
                         if (table === 'businesses') q = q.eq('id', idToUse);
                         else if ((table === 'audit_logs' || table === 'payments' || table === 'notification_logs') && isSaaS && !bizId) {
                             // SaaS Global Dash: Do not filter by business_id for logs and SaaS payments
-                            // This allows seeing system-wide activity and income
                             q = q.order('created_at', { ascending: false }).limit(50);
                         } else {
                             q = q.eq('business_id', idToUse);
