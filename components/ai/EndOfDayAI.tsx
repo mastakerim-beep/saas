@@ -103,19 +103,25 @@ export default function EndOfDayAI({ isOpen, onClose }: EndOfDayProps) {
     const retailPercentage = totalRev > 0 ? (productRev / totalRev) * 100 : 0;
     const isRetailTargetMet = retailPercentage >= retailTarget;
 
+    const occupancyRate = useMemo(() => {
+        const totalSlots = (rooms || []).length * 8; // Standard 8-hour shift capacity
+        if (totalSlots === 0) return 0;
+        return Math.min(Math.round((completedAppts.length / totalSlots) * 100), 100);
+    }, [completedAppts, rooms]);
+
     const aiInsights = useMemo(() => {
-        if (totalRev === 0 && completedAppts.length === 0) return ["Bugün henüz bir işlem gerçekleşmedi. Operasyonel hareketlilik bekleniyor."];
+        if (totalRev === 0 && completedAppts.length === 0) return ["Supreme Authority Control: Bugün henüz bir işlem gerçekleşmedi. Operasyonel hareketlilik bekleniyor."];
         
         const insights = [
-            `Bugün toplam ₺${totalRev.toLocaleString('tr-TR')} ciro gerçekleşti.`,
-            `${topStaff[0]} bugün en yüksek performansı sergileyen ekip üyesi oldu.`
+            `Aura Analizi: Bugün toplam ₺${totalRev.toLocaleString('tr-TR')} ciro gerçekleşti.`,
+            `${topStaff[0]} bugün en yüksek katma değer üreten uzmanımız oldu.`
         ];
 
         // Retail Performance
         if (!isRetailTargetMet && totalRev > 0) {
-            insights.push(`STRATEJİ: Ürün satışı oranı %${retailPercentage.toFixed(1)} ile %${retailTarget} hedefinin altında kaldı. Yarın ekibe ürün bazlı bonus/hatırlatma yapılabilir.`);
+            insights.push(`SUPREME STRATEJİ: Ürün satışı %${retailPercentage.toFixed(1)} ile %${retailTarget} hedefinin altında. Aura önerisi: Yarın uzmanlara çapraz satış teşviki uygulanmalı.`);
         } else if (isRetailTargetMet) {
-            insights.push(`BAŞARI: Perakende satış hedefi (%${retailTarget}) aşıldı! Güncel oran: %${retailPercentage.toFixed(1)}.`);
+            insights.push(`DOMİNASYON: Perakende satış hedefi (%${retailTarget}) aşıldı! Güncel oran: %${retailPercentage.toFixed(1)}.`);
         }
 
         // Tomorrow's Outlook
@@ -139,7 +145,7 @@ export default function EndOfDayAI({ isOpen, onClose }: EndOfDayProps) {
         }
 
         if (forgottenAppts.length > 0) {
-            insights.push(`UYARI: ${forgottenAppts.length} randevu hala 'Bekliyor' veya 'Geldi' durumunda. Unutulmuş olabilirler.`);
+            insights.push(`DİKKAT: ${forgottenAppts.length} randevu 'Açık' statüsünde mühürlenmeyi bekliyor.`);
         }
 
         return insights;
@@ -180,7 +186,7 @@ export default function EndOfDayAI({ isOpen, onClose }: EndOfDayProps) {
             setIsClosing(false);
             setIsDone(true);
         } else {
-            alert('Rapor kaydedilirken bir hata oluştu.');
+            console.error('Rapor kaydedilemedi');
             setIsClosing(false);
         }
     };
@@ -190,31 +196,8 @@ export default function EndOfDayAI({ isOpen, onClose }: EndOfDayProps) {
     return (
         <div className="fixed inset-0 bg-background/60 backdrop-blur-xl z-[200] flex items-center justify-center p-4 animate-[fadeIn_0.3s_ease]">
             <div className="modal-premium w-full max-w-4xl overflow-hidden flex flex-col max-h-[95vh] shadow-[0_0_100px_-20px_rgba(0,0,0,0.3)]">
-                {/* Locked State for Basic Plan */}
-                {!isAiEnabled ? (
-                    <div className="flex-1 flex flex-col items-center justify-center p-12 text-center space-y-8 bg-gray-50/50 relative overflow-hidden">
-                        <div className="absolute inset-0 bg-white/40 backdrop-blur-sm z-10" />
-                        <div className="relative z-20 space-y-6 max-w-md">
-                            <div className="w-20 h-20 bg-indigo-600 rounded-[2rem] flex items-center justify-center text-white mx-auto shadow-2xl shadow-indigo-600/30">
-                                <Zap size={40} fill="currentColor" />
-                            </div>
-                            <h3 className="text-3xl font-black text-gray-900 italic tracking-tighter">Aura AI Kilitli</h3>
-                            <p className="text-gray-500 font-bold leading-relaxed">
-                                Gelişmiş AI kapanış analizi, doluluk öngörüleri ve sızıntı denetimi sadece **Aura Enterprise** paketinde mevcuttur.
-                            </p>
-                            <Link 
-                                href={`/${currentBusiness?.slug}/billing`}
-                                onClick={onClose}
-                                className="inline-flex items-center gap-3 bg-indigo-600 text-white px-10 py-5 rounded-[1.5rem] font-black text-sm uppercase tracking-widest hover:bg-indigo-500 transition-all shadow-xl shadow-indigo-600/10 active:scale-95"
-                            >
-                                <Zap size={18} /> ENTERPRISE'A YÜKSELT
-                            </Link>
-                        </div>
-                    </div>
-                ) : (
-                    <>
-                {/* Header with improved spacing and contrast */}
-                <div className="px-10 py-8 border-b border-gray-100 flex justify-between items-center bg-white/50 backdrop-blur-sm">
+                {/* Header - Always Visible */}
+                <div className="px-10 py-8 border-b border-gray-100 flex justify-between items-center bg-white/50 backdrop-blur-md shrink-0">
                     <div className="flex items-center gap-5">
                         <div className="w-16 h-16 bg-gradient-to-br from-primary to-indigo-600 rounded-[1.5rem] flex items-center justify-center text-white shadow-2xl shadow-primary/30 rotate-3 hover:rotate-0 transition-transform">
                             <BrainCircuit className="w-9 h-9" />
@@ -222,7 +205,7 @@ export default function EndOfDayAI({ isOpen, onClose }: EndOfDayProps) {
                         <div>
                             <h2 className="text-4xl font-black text-gray-900 italic tracking-tighter leading-none mb-1">Aura AI Kapanış</h2>
                             <p className="text-[10px] text-gray-400 font-bold uppercase tracking-[0.2em] italic flex items-center gap-2">
-                                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" /> Operasyonel Analiz & Kasa Mutabakatı
+                                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" /> SaaS Supreme Authority & Kasa Mutabakatı
                             </p>
                         </div>
                     </div>
@@ -234,19 +217,50 @@ export default function EndOfDayAI({ isOpen, onClose }: EndOfDayProps) {
                     </button>
                 </div>
 
+                {/* Locked State for Basic Plan */}
+                {!isAiEnabled ? (
+                    <div className="flex-1 flex flex-col items-center justify-center p-12 text-center space-y-8 bg-gradient-to-b from-white to-gray-50/50 relative overflow-hidden">
+                        <div className="absolute inset-0 bg-grid-slate-100 [mask-image:linear-gradient(0deg,white,rgba(255,255,255,0.5))] -z-10" />
+                        <div className="relative z-20 space-y-8 max-w-lg">
+                            <div className="w-24 h-24 bg-gradient-to-br from-indigo-500 via-purple-500 to-primary rounded-[2.5rem] flex items-center justify-center text-white mx-auto shadow-[0_20px_50px_rgba(79,70,229,0.3)] animate-pulse">
+                                <Zap size={48} fill="currentColor" />
+                            </div>
+                            <div className="space-y-4">
+                                <h3 className="text-4xl font-black text-gray-900 italic tracking-tighter">Aura Intelligence Devre Dışı</h3>
+                                <p className="text-gray-500 font-bold text-lg leading-relaxed">
+                                    Gelişmiş AI kapanış mühürleme, doluluk öngörüleri ve sızıntı denetimi sadece <span className="text-indigo-600 font-black">Aura Enterprise</span> paketinde mevcuttur.
+                                </p>
+                            </div>
+                            <Link 
+                                href={`/${currentBusiness?.slug}/billing`}
+                                onClick={onClose}
+                                className="inline-flex items-center gap-4 bg-gray-900 text-white px-12 py-6 rounded-[2rem] font-black text-sm uppercase tracking-[0.2em] hover:bg-indigo-600 transition-all shadow-2xl active:scale-95 group"
+                            >
+                                <Sparkles size={20} className="group-hover:rotate-12 transition-transform" /> 
+                                KİLİDİ AÇ & YÜKSELT
+                            </Link>
+                        </div>
+                    </div>
+                ) : (
+                    <>
+
                 <div className="p-10 overflow-y-auto space-y-12 flex-1 scrollbar-hide">
                     {/* Upper Stats with premium card style */}
                     <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6">
                         {[
-                            { label: 'Toplam Ciro', val: `₺${totalRev.toLocaleString('tr-TR')}`, bg: 'bg-slate-50', text: 'text-slate-900', sub: 'Tüm Tahsilatlar' },
-                            { label: 'Nakit Kasa', val: `₺${cashTotal.toLocaleString('tr-TR')}`, bg: 'bg-emerald-50', text: 'text-emerald-700', sub: 'Elde Nakit' },
-                            { label: 'Kart / Diğer', val: `₺${cardTotal.toLocaleString('tr-TR')}`, bg: 'bg-indigo-50', text: 'text-primary', sub: 'POS ve Havale' },
-                            { label: 'Tamamlanan', val: `${completedAppts.length} İşlem`, bg: 'bg-amber-50', text: 'text-amber-700', sub: 'Bugünkü Toplam' }
+                            { label: 'TOPLAM CİRO', val: `₺${totalRev.toLocaleString('tr-TR')}`, bg: 'bg-white border-2 border-slate-50', text: 'text-slate-950', sub: 'Tüm Tahsilatlar' },
+                            { label: 'NAKİT KASA', val: `₺${cashTotal.toLocaleString('tr-TR')}`, bg: 'bg-emerald-50/50 border border-emerald-100', text: 'text-emerald-700', sub: 'Elde Nakit' },
+                            { label: 'KART / DİĞER', val: `₺${cardTotal.toLocaleString('tr-TR')}`, bg: 'bg-indigo-50/50 border border-indigo-100', text: 'text-primary', sub: 'POS ve Havale' },
+                            { label: 'TAMAMLANAN', val: `${completedAppts.length} İşlem`, bg: 'bg-amber-50/50 border border-amber-100', text: 'text-amber-700', sub: 'Bugünkü Toplam' }
                         ].map((stat, i) => (
-                            <div key={i} className={`${stat.bg} p-6 rounded-[2.5rem] border border-white shadow-sm hover:shadow-md hover:-translate-y-1 transition-all duration-300 group`}>
-                                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1 group-hover:text-gray-600 transition-colors">{stat.label}</p>
-                                <p className={`text-2xl font-black ${stat.text} tracking-tight`}>{stat.val}</p>
-                                <p className="text-[9px] font-bold text-gray-300 uppercase mt-2 group-hover:text-gray-400">{stat.sub}</p>
+                            <div key={i} className={`${stat.bg} p-7 rounded-[2.5rem] shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-500 group relative overflow-hidden`}>
+                                <div className="absolute top-0 right-0 w-24 h-24 bg-black/5 rounded-full -mr-12 -mt-12 group-hover:scale-150 transition-transform duration-700" />
+                                <p className="text-[9px] font-black text-gray-400 uppercase tracking-[0.2em] mb-2 group-hover:text-gray-600 transition-colors relative z-10">{stat.label}</p>
+                                <p className={`text-3xl font-black ${stat.text} tracking-tighter relative z-10`}>{stat.val}</p>
+                                <div className="flex items-center gap-2 mt-3 relative z-10">
+                                    <div className="w-1 h-1 rounded-full bg-current opacity-40" />
+                                    <p className="text-[9px] font-bold text-gray-400 uppercase">{stat.sub}</p>
+                                </div>
                             </div>
                         ))}
                     </div>
@@ -295,13 +309,13 @@ export default function EndOfDayAI({ isOpen, onClose }: EndOfDayProps) {
                                 <Zap className="absolute top-4 right-4 w-12 h-12 text-slate-100 group-hover:text-indigo-50 group-hover:rotate-12 transition-all" />
                                 <div>
                                     <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Doluluk Oranı</p>
-                                    <h4 className="text-2xl font-black italic tracking-tighter">%{completedAppts.length > 0 ? '78' : '0'}</h4>
+                                    <h4 className="text-2xl font-black italic tracking-tighter">%{occupancyRate}</h4>
                                     <p className="text-[11px] font-bold text-slate-500 mt-1">Oda Kullanım Verimi</p>
                                 </div>
                                 <div className="mt-6">
                                     <div className="flex gap-1.5">
                                         {[1,2,3,4,5].map(i => (
-                                            <div key={i} className={`h-1.5 flex-1 rounded-full ${i <= 4 ? 'bg-indigo-500' : 'bg-slate-100'}`} />
+                                            <div key={i} className={`h-1.5 flex-1 rounded-full ${i <= Math.ceil(occupancyRate / 20) ? 'bg-indigo-500' : 'bg-slate-100'}`} />
                                         ))}
                                     </div>
                                 </div>
@@ -322,14 +336,14 @@ export default function EndOfDayAI({ isOpen, onClose }: EndOfDayProps) {
 
                                 <div className="space-y-6 relative z-10">
                                     {Array.isArray(aiInsights) ? aiInsights.map((ins, i) => {
-                                        const isCritical = ins.startsWith('KRİTİK') || ins.startsWith('-');
+                                        const isCritical = ins.includes('KRİTİK') || ins.includes('DİKKAT') || ins.startsWith('-');
                                         return (
                                             <div key={i} className="flex gap-4 group/item">
-                                                <div className={`w-2 h-2 rounded-full ${ins.includes('KRİTİK') ? 'bg-yellow-400 shadow-[0_0_10px_rgba(250,204,21,0.8)] animate-pulse' : (ins.startsWith('-') ? 'bg-yellow-300 ml-4' : 'bg-white/40')} mt-2.5 flex-shrink-0 group-hover/item:scale-150 transition-transform`} />
-                                                <p className={`${isCritical ? 'text-yellow-200 text-sm italic' : 'text-white/90 text-[15px]'} font-bold leading-relaxed tracking-tight`}>{ins}</p>
+                                                <div className={`w-2.5 h-2.5 rounded-full ${ins.includes('KRİTİK') ? 'bg-yellow-400 shadow-[0_0_15px_rgba(250,204,21,1)] animate-pulse' : (ins.startsWith('-') ? 'bg-yellow-300/60 ml-4' : 'bg-white/30')} mt-2 flex-shrink-0 group-hover/item:scale-150 transition-all duration-300`} />
+                                                <p className={`${isCritical ? 'text-yellow-100 text-[15px]' : 'text-white/90 text-[16px]'} font-bold leading-tight tracking-tight`}>{ins}</p>
                                             </div>
                                         );
-                                    }) : <p className="text-[15px] font-bold text-white/90 leading-relaxed">{aiInsights}</p>}
+                                    }) : <p className="text-[16px] font-bold text-white/90 leading-relaxed">{aiInsights}</p>}
                                 </div>
 
                                 <div className="mt-10 pt-8 border-t border-white/20 flex items-center justify-between relative z-20">
@@ -435,17 +449,13 @@ export default function EndOfDayAI({ isOpen, onClose }: EndOfDayProps) {
                                                     </div>
                                                     <div>
                                                         <span className="font-black text-base text-gray-900 block leading-tight mb-0.5">{staff.name}</span>
-                                                        <span className="text-[9px] text-slate-400 font-bold uppercase tracking-widest">Master Specialist</span>
+                                                        <span className="text-[9px] text-slate-400 font-bold uppercase tracking-[0.15em]">Imperial Specialist</span>
                                                     </div>
                                                 </div>
                                                 <div className="text-right">
-                                                    <span className="font-black text-lg text-indigo-600 flex items-center gap-1">₺{rev.toLocaleString('tr-TR')}</span>
-                                                    <div className="w-20 h-1 bg-slate-100 rounded-full mt-1 overflow-hidden">
-                                                        <motion.div 
-                                                            initial={{ width: 0 }}
-                                                            animate={{ width: '70%' }}
-                                                            className="h-full bg-indigo-500 rounded-full"
-                                                        />
+                                                    <div className="flex flex-col items-end">
+                                                        <span className="font-black text-xl text-indigo-600 tracking-tighter">₺{rev.toLocaleString('tr-TR')}</span>
+                                                        <span className="text-[8px] font-black text-emerald-500 uppercase tracking-tighter">Verimlilik %100</span>
                                                     </div>
                                                 </div>
                                             </div>

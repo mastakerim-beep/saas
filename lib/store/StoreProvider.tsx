@@ -423,7 +423,8 @@ const StoreOrchestrator = ({ children }: { children: ReactNode }) => {
             ...reportData,
             businessId: activeBizIdRef.current,
             branchId: biz.currentBranch?.id,
-            closedBy: auth.currentUser?.name
+            closedBy: auth.currentUser?.id,
+            closedByName: auth.currentUser?.name
         });
         if (ok) await fetchData();
         return ok;
