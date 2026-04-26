@@ -969,6 +969,37 @@ function EditBusinessModal({ biz, onClose, onUpdate, loading }: { biz: any, onCl
                         />
                     </div>
 
+                    <div className="space-y-4">
+                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Aktif Dikey Projeler (Kingdoms)</label>
+                        <div className="flex gap-3">
+                            {[
+                                { id: 'spa', label: 'SPA', color: 'bg-indigo-500' },
+                                { id: 'clinic', label: 'KLİNİK', color: 'bg-emerald-500' },
+                                { id: 'fitness', label: 'FITNESS', color: 'bg-amber-500' }
+                            ].map(v => (
+                                <button 
+                                    key={v.id}
+                                    onClick={() => {
+                                        const currentVents = localBiz.verticals || ['spa'];
+                                        const next = currentVents.includes(v.id) 
+                                            ? currentVents.filter((x: string) => x !== v.id)
+                                            : [...currentVents, v.id];
+                                        if (next.length === 0) return;
+                                        setLocalBiz({ ...localBiz, verticals: next });
+                                    }}
+                                    className={`flex-1 py-3 px-4 rounded-xl border-2 transition-all flex flex-col items-center gap-2 ${
+                                        (localBiz.verticals || ['spa']).includes(v.id)
+                                        ? 'border-indigo-600 bg-indigo-50/50'
+                                        : 'border-slate-100 bg-white'
+                                    }`}
+                                >
+                                    <div className={`w-3 h-3 rounded-full ${v.color} ${(localBiz.verticals || ['spa']).includes(v.id) ? 'scale-125' : 'opacity-40'}`} />
+                                    <span className={`text-[9px] font-black tracking-widest ${(localBiz.verticals || ['spa']).includes(v.id) ? 'text-indigo-950' : 'text-slate-400'}`}>{v.label}</span>
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+
                     <div className="grid grid-cols-1 gap-6">
                          <div className="flex items-center justify-between bg-rose-50 p-6 rounded-[2rem] border border-rose-100">
                             <div>
@@ -989,7 +1020,8 @@ function EditBusinessModal({ biz, onClose, onUpdate, loading }: { biz: any, onCl
                             plan: localBiz.plan, 
                             maxUsers: localBiz.maxUsers, 
                             grace_period_until: localBiz.grace_period_until, 
-                            is_suspended: localBiz.is_suspended 
+                            is_suspended: localBiz.is_suspended,
+                            verticals: localBiz.verticals || ['spa']
                         })}
                         disabled={loading}
                         className="w-full py-6 bg-indigo-600 text-white rounded-[1.8rem] font-black text-[11px] uppercase tracking-[0.2em] shadow-xl shadow-indigo-600/40 hover:bg-indigo-700 transition-all disabled:opacity-50"
