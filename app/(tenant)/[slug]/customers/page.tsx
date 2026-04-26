@@ -9,7 +9,7 @@ import {
     Package as PackageIcon, Star, Banknote, CreditCard, Building2, Trash2,
     Zap, Activity, Heart, Shield, RefreshCw, BarChart3, TrendingUp, Sparkles, MapPin,
     ArrowUpRight, Info, Plus, FileText, Gift, Settings, AlertCircle, Edit2, Globe, Languages, Users, ArrowDownRight, Printer,
-    Calendar as CalendarIcon
+    Calendar as CalendarIcon, Bot, Target
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import BookingModal from '@/components/calendar/BookingModal';
@@ -164,7 +164,8 @@ function CustomerDetail({ customer, onClose }: { customer: Customer; onClose: ()
         deleteQuote,
         getWallet,
         loadWallet,
-        walletTransactions
+        walletTransactions,
+        debts
     } = useStore();
     const [activeMenu, setActiveMenu] = useState('Detaylar');
     const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(true);
@@ -175,7 +176,7 @@ function CustomerDetail({ customer, onClose }: { customer: Customer; onClose: ()
     const [saveSuccess, setSaveSuccess] = useState(false);
     const [selectedSlot, setSelectedSlot] = useState<{staffId: string, time: string, customerId?: string} | null>(null);
 
-    const customerQuotes = quotes.filter(q => q.customerId === customer.id);
+    const customerQuotes = quotes.filter((q: Quote) => q.customerId === customer.id);
 
     const handleSave = async () => {
         setIsSaving(true);
@@ -232,6 +233,7 @@ function CustomerDetail({ customer, onClose }: { customer: Customer; onClose: ()
 
     const menuItems = [
         { id: 'Detaylar', label: 'Detaylar', icon: Info },
+        { id: 'AI Analiz', label: 'AI Analiz', icon: Bot },
         { id: 'Düzenle', label: 'Düzenle', icon: Edit2 },
         { id: 'Formlar', label: 'Formlar', icon: FileText },
         { id: 'Teklif', label: 'Teklif', icon: Zap },
@@ -244,6 +246,30 @@ function CustomerDetail({ customer, onClose }: { customer: Customer; onClose: ()
         { id: 'Paket Takibi', label: 'Paket Takibi', icon: PackageIcon },
         { id: 'Yolculuk', label: 'Müşteri Yolculuğu', icon: TrendingUp },
     ];
+
+    const getAiInsights = () => {
+        const history = appts;
+        const customerDebts = (debts || []).filter((d: any) => d.customerId === customer.id && d.status === 'açık');
+        const overdueTotal = customerDebts.filter((d: any) => new Date(d.dueDate) < new Date()).reduce((s: number, d: any) => s + d.amount, 0);
+
+        let logic = [];
+        if (overdueTotal > 0) {
+            logic.push({ title: 'Kritik Tahsilat Uyarısı', desc: `₺${overdueTotal.toLocaleString('tr-TR')} tutarında gecikmiş borç var.`, impact: 'high', category: 'risk' });
+        }
+        if (history.length > 5 && !pkgs.length) {
+            logic.push({ title: 'Paket Satış Fırsatı', desc: 'Müşteri sadık ancak aktif paket sahibi değil. %20 tasarruf teklif edilebilir.', impact: 'medium', category: 'sales' });
+        }
+        if (history.length > 0) {
+            const lastAppt = history[0];
+            const daysSince = (new Date().getTime() - new Date(lastAppt.date).getTime()) / (1000 * 3600 * 24);
+            if (daysSince > 60) {
+                logic.push({ title: 'Müşteri Kayıp Riski', desc: 'Son işlemden bu yana 60 günden fazla geçti. Bir hatırlatma ile iletişime geçin.', impact: 'high', category: 'churn' });
+            }
+        }
+        return logic;
+    };
+
+    const insights = getAiInsights();
 
     return (
         <motion.div 
@@ -554,7 +580,7 @@ function CustomerDetail({ customer, onClose }: { customer: Customer; onClose: ()
                                                         <td colSpan={5} className="py-20 text-center text-gray-300 font-black uppercase tracking-widest text-xs italic">Henüz teklif verilmedi</td>
                                                     </tr>
                                                 ) : (
-                                                    customerQuotes.map(q => (
+                                                    customerQuotes.map((q: Quote) => (
                                                         <tr key={q.id} className="hover:bg-gray-50/50 transition-all group">
                                                             <td className="px-8 py-5 font-bold text-gray-900">{q.serviceName}</td>
                                                             <td className="px-8 py-5 text-indigo-600 font-black tracking-widest text-sm">₺{q.amount?.toLocaleString('tr-TR')}</td>
@@ -624,7 +650,7 @@ function CustomerDetail({ customer, onClose }: { customer: Customer; onClose: ()
                                                 </tr>
                                             </thead>
                                             <tbody className="divide-y divide-gray-50">
-                                                {appts.map(a => {
+                                                {appts.map((a: Appointment) => {
                                                     const s = statusLabels[a.status] ?? { label: a.status, cls: 'bg-gray-50 text-gray-400', icon: Info };
                                                     return (
                                                         <tr key={a.id} className="hover:bg-gray-50/50 transition-all group">
@@ -789,7 +815,7 @@ function CustomerDetail({ customer, onClose }: { customer: Customer; onClose: ()
                                                     className="bg-gray-50 border border-transparent focus:bg-white focus:border-indigo-100 rounded-2xl p-4 text-sm font-bold outline-none transition-all appearance-none"
                                                 >
                                                     <option value="">Seçiniz</option>
-                                                    {staffMembers.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                                                    {staffMembers.map((s: any) => <option key={s.id} value={s.id}>{s.name}</option>)}
                                                 </select>
                                             </div>
                                         </div>
@@ -931,7 +957,7 @@ function CustomerDetail({ customer, onClose }: { customer: Customer; onClose: ()
                                                 </tr>
                                             </thead>
                                             <tbody className="divide-y divide-gray-50">
-                                                {payments.map(p => (
+                                                {payments.map((p: Payment) => (
                                                     <tr key={p.id} className="hover:bg-gray-50/50 transition-all font-bold text-gray-600 group">
                                                         <td className="px-8 py-5 text-sm">
                                                             {p.date}
@@ -1073,9 +1099,9 @@ function CustomerDetail({ customer, onClose }: { customer: Customer; onClose: ()
                                             </thead>
                                             <tbody className="divide-y divide-gray-50">
                                                 {walletTransactions
-                                                    .filter(tx => tx.walletId === getWallet(customer.id)?.id)
-                                                    .sort((a,b) => (b.createdAt || '').localeCompare(a.createdAt || ''))
-                                                    .map(tx => (
+                                                    .filter((tx: any) => tx.walletId === getWallet(customer.id)?.id)
+                                                    .sort((a: any, b: any) => (b.createdAt || '').localeCompare(a.createdAt || ''))
+                                                    .map((tx: any) => (
                                                         <tr key={tx.id} className="hover:bg-gray-50/50 transition-colors">
                                                             <td className="px-10 py-6 text-sm font-bold text-gray-600">
                                                                 {new Date(tx.createdAt || '').toLocaleDateString('tr-TR')}
@@ -1097,7 +1123,7 @@ function CustomerDetail({ customer, onClose }: { customer: Customer; onClose: ()
                                                             </td>
                                                         </tr>
                                                     ))}
-                                                {walletTransactions.filter(tx => tx.walletId === getWallet(customer.id)?.id).length === 0 && (
+                                                {walletTransactions.filter((tx: any) => tx.walletId === getWallet(customer.id)?.id).length === 0 && (
                                                     <tr>
                                                         <td colSpan={4} className="py-20 text-center text-gray-300 font-black uppercase tracking-widest text-xs italic">
                                                             Henüz bir işlem hareketi bulunmamakta
@@ -1133,7 +1159,7 @@ function CustomerDetail({ customer, onClose }: { customer: Customer; onClose: ()
                                                 <p className="text-[10px] font-black text-gray-300 uppercase tracking-[0.3em]">Aktif Paket Bulunmamaktadır</p>
                                             </div>
                                         ) : (
-                                            pkgs.map(pkg => {
+                                            pkgs.map((pkg: Package) => {
                                                 const remaining = pkg.totalSessions - (pkg.usedSessions || 0);
                                                 const progress = ((pkg.usedSessions || 0) / pkg.totalSessions) * 100;
                                                 return (
@@ -1199,6 +1225,77 @@ function CustomerDetail({ customer, onClose }: { customer: Customer; onClose: ()
                                 </div>
                             </motion.div>
                         )}
+                        {activeMenu === 'AI Analiz' && (
+                            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="space-y-8">
+                                <div className="bg-white border border-gray-100 rounded-[3rem] p-10 shadow-sm overflow-hidden relative group">
+                                    <div className="absolute top-0 right-0 p-10 opacity-[0.03] group-hover:rotate-12 transition-transform">
+                                        <Bot size={200} />
+                                    </div>
+                                    <div className="relative z-10">
+                                        <div className="mb-10">
+                                            <h2 className="text-3xl font-black text-gray-900 tracking-tighter uppercase italic">YZ Strateji Danışmanı</h2>
+                                            <p className="text-xs text-indigo-600 font-black mt-2 uppercase tracking-widest italic">Danışan verileri üzerinden anlık analiz sonuçları</p>
+                                        </div>
+
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-10">
+                                            <div className={`card-apple p-7 rounded-[2.5rem] border flex items-center gap-6 ${insights.some(i => i.impact === 'high') ? 'border-red-100 bg-red-50/50' : 'border-indigo-100 bg-indigo-50/50'}`}>
+                                                <div className={`w-14 h-14 rounded-2xl flex items-center justify-center ${insights.some(i => i.impact === 'high') ? 'bg-red-600 text-white shadow-xl shadow-red-200' : 'bg-indigo-600 text-white shadow-xl shadow-indigo-200'}`}>
+                                                    <Bot size={24} />
+                                                </div>
+                                                <div>
+                                                    <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">YZ Durum Notu</p>
+                                                    <p className="text-sm font-black text-gray-900 italic">
+                                                        {insights.length > 0 ? 
+                                                            `${insights.length} adet stratejik öneri bulundu.` : 
+                                                            "Danışan profili stabil."}
+                                                    </p>
+                                                </div>
+                                            </div>
+                                            <div className="card-apple p-7 rounded-[2.5rem] border border-gray-100 bg-white shadow-sm flex items-center gap-6">
+                                                <div className="w-14 h-14 rounded-2xl bg-amber-50 flex items-center justify-center text-amber-500">
+                                                    <Activity size={24} />
+                                                </div>
+                                                <div>
+                                                    <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Ciro Potansiyeli</p>
+                                                    <p className="text-sm font-black text-gray-900 italic">Bu danışan sistemde aktif bir portföye sahip.</p>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div className="space-y-4">
+                                            {insights.map((s: any, idx) => (
+                                                <div key={idx} className={`p-8 border-2 rounded-[2.5rem] flex items-center gap-6 group transition-all ${s.impact === 'high' ? 'border-red-50 bg-red-50/20' : 'border-indigo-50 bg-indigo-50/10 hover:border-indigo-100'}`}>
+                                                    <div className={`w-16 h-16 rounded-[1.5rem] flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform ${s.impact === 'high' ? 'bg-red-600 text-white shadow-red-100' : 'bg-white text-indigo-600'}`}>
+                                                        {s.impact === 'high' ? <AlertCircle className="w-8 h-8" /> : <Target className="w-8 h-8" />}
+                                                    </div>
+                                                    <div className="flex-1">
+                                                        <div className="flex items-center gap-3 mb-1">
+                                                            <h4 className="font-black text-xl text-gray-900 italic uppercase tracking-tighter">{s.title}</h4>
+                                                            <span className={`text-[9px] font-black px-2 py-0.5 rounded-full uppercase ${s.impact === 'high' ? 'bg-red-600 text-white' : 'bg-indigo-100 text-indigo-600'}`}>
+                                                                {s.impact === 'high' ? 'KRİTİK' : 'FIRSAT'}
+                                                            </span>
+                                                        </div>
+                                                        <p className="text-sm text-gray-500 font-bold">{s.desc}</p>
+                                                    </div>
+                                                    <button className="p-4 rounded-full bg-gray-50 text-gray-400 hover:bg-black hover:text-white transition-all transform hover:rotate-12">
+                                                        <ChevronRight className="w-6 h-6" />
+                                                    </button>
+                                                </div>
+                                            ))}
+                                            {insights.length === 0 && (
+                                                <div className="text-center py-20 bg-gray-50/50 rounded-[2.5rem] border-2 border-dashed border-gray-100">
+                                                    <div className="w-16 h-16 bg-white rounded-2xl flex items-center justify-center mx-auto mb-4 text-green-500 shadow-sm">
+                                                        <CheckCircle className="w-10 h-10" />
+                                                    </div>
+                                                    <p className="text-sm font-black text-gray-400 uppercase tracking-widest italic leading-tight">Müşteri durumu mükemmel.<br/>Ekstra bir YZ uyarısı bulunmamaktadır.</p>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+                                </div>
+                            </motion.div>
+                        )}
+
                         {activeMenu === 'Yolculuk' && (
                             <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="max-w-4xl">
                                 <div className="bg-white rounded-[3rem] p-10 border border-gray-100 shadow-sm relative overflow-hidden">
@@ -1217,8 +1314,8 @@ function CustomerDetail({ customer, onClose }: { customer: Customer; onClose: ()
 
                                      <div className="space-y-12 relative before:absolute before:inset-0 before:left-[2.25rem] before:w-0.5 before:bg-gray-50 pb-10">
                                         {/* Journey Items: Combined Appointments and Payments */}
-                                        {[...appts.map(a => ({ type: 'appt', date: a.date, data: a })), 
-                                          ...payments.map(p => ({ type: 'payment', date: p.date, data: p }))]
+                                        {[...appts.map((a: Appointment) => ({ type: 'appt', date: a.date, data: a })), 
+                                          ...payments.map((p: Payment) => ({ type: 'payment', date: p.date, data: p }))]
                                           .sort((a,b) => b.date.localeCompare(a.date))
                                           .map((item, idx) => (
                                             <div key={idx} className="flex gap-10 relative">
@@ -1289,7 +1386,7 @@ export default function CustomersPage() {
 
     useEffect(() => {
         if (customerIdParam && customers.length > 0) {
-            const customer = customers.find(c => c.id === customerIdParam);
+            const customer = customers.find((c: Customer) => c.id === customerIdParam);
             if (customer) {
                 setSelectedCustomer(customer);
             }
@@ -1306,19 +1403,19 @@ export default function CustomersPage() {
     }), [getChurnRiskCustomers, getUpsellPotentialCustomers, getBirthdaysToday]);
 
     const filtered = useMemo(() => {
-        let list = customers.filter(c => c.name.toLowerCase().includes(search.toLowerCase()) || c.phone.includes(search));
+        let list = customers.filter((c: Customer) => c.name.toLowerCase().includes(search.toLowerCase()) || c.phone.includes(search));
         
-        if (activeStack === 'VIP') list = list.filter(c => c.segment === 'VIP');
-        if (activeStack === 'Risk') list = list.filter(c => insights.churn.some(churnC => churnC.id === c.id));
-        if (activeStack === 'Upsell') list = list.filter(c => insights.upsell.some(u => u.customer.id === c.id));
-        if (activeStack === 'Dogum') list = list.filter(c => insights.birthdays.some(b => b.id === c.id));
+        if (activeStack === 'VIP') list = list.filter((c: Customer) => c.segment === 'VIP');
+        if (activeStack === 'Risk') list = list.filter((c: Customer) => insights.churn.some((churnC: Customer) => churnC.id === c.id));
+        if (activeStack === 'Upsell') list = list.filter((c: Customer) => insights.upsell.some((u: any) => u.customer.id === c.id));
+        if (activeStack === 'Dogum') list = list.filter((c: Customer) => insights.birthdays.some((b: Customer) => b.id === c.id));
         if (activeStack === 'Bugün') {
              const today = new Date().toISOString().split('T')[0];
-             list = list.filter(c => getCustomerAppointments(c.id).some(a => a.date === today));
+             list = list.filter((c: Customer) => getCustomerAppointments(c.id).some((a: Appointment) => a.date === today));
         }
 
         if (dateRange.start && dateRange.end) {
-            list = list.filter(c => {
+            list = list.filter((c: Customer) => {
                 const customerDate = c.createdAt?.split('T')[0];
                 return customerDate && customerDate >= dateRange.start && customerDate <= dateRange.end;
             });
@@ -1382,7 +1479,7 @@ export default function CustomersPage() {
                             "Müşteri Adı": c.name,
                             "Telefon": c.phone,
                             "Segment": c.segment,
-                            "Toplam Harcama": getCustomerPayments(c.id).reduce((s, p) => s + (p.totalAmount || 0), 0),
+                            "Toplam Harcama": getCustomerPayments(c.id).reduce((s: number, p: Payment) => s + (p.totalAmount || 0), 0),
                             "Randevu Sayısı": getCustomerAppointments(c.id).length,
                             "Kayıt Tarihi": c.createdAt?.split('T')[0] || '---'
                         })}
@@ -1391,7 +1488,7 @@ export default function CustomersPage() {
                             c.name,
                             c.phone,
                             c.segment,
-                            `₺${getCustomerPayments(c.id).reduce((s, p) => s + (p.totalAmount || 0), 0).toLocaleString('tr-TR')}`,
+                            `₺${getCustomerPayments(c.id).reduce((s: number, p: Payment) => s + (p.totalAmount || 0), 0).toLocaleString('tr-TR')}`,
                             getCustomerAppointments(c.id).length,
                             c.createdAt?.split('T')[0] || '---'
                         ]}
@@ -1415,7 +1512,7 @@ export default function CustomersPage() {
                     active={activeStack === 'Hepsi'} onClick={() => setActiveStack('Hepsi')} 
                 />
                 <SmartStack 
-                    icon={Star} label="VIP Danışanlar" count={customers.filter(c => c.segment === 'VIP').length} color="text-amber-500"
+                    icon={Star} label="VIP Danışanlar" count={customers.filter((c: Customer) => c.segment === 'VIP').length} color="text-amber-500"
                     active={activeStack === 'VIP'} onClick={() => setActiveStack('VIP')} 
                 />
                 <SmartStack 
@@ -1431,7 +1528,7 @@ export default function CustomersPage() {
                     active={activeStack === 'Dogum'} onClick={() => setActiveStack('Dogum')} 
                 />
                  <SmartStack 
-                    icon={Calendar} label="Bugün Aktif" count={customers.filter(c => getCustomerAppointments(c.id).some(a => a.date === new Date().toISOString().split('T')[0])).length} color="text-indigo-400"
+                    icon={Calendar} label="Bugün Aktif" count={customers.filter((c: Customer) => getCustomerAppointments(c.id).some((a: any) => a.date === new Date().toISOString().split('T')[0])).length} color="text-indigo-400"
                     active={activeStack === 'Bugün'} onClick={() => setActiveStack('Bugün')} 
                 />
             </div>
@@ -1445,10 +1542,10 @@ export default function CustomersPage() {
                             <p className="text-[10px] font-black text-gray-300 uppercase tracking-[0.5em]">Sonuç Bulunamadı</p>
                         </div>
                     ) : (
-                        filtered.map(c => {
+                        filtered.map((c: Customer) => {
                             const stats = {
                                 appt: getCustomerAppointments(c.id).length,
-                                spent: getCustomerPayments(c.id).reduce((s, p) => s + (p.totalAmount || 0), 0)
+                                spent: getCustomerPayments(c.id).reduce((s: number, p: Payment) => s + (p.totalAmount || 0), 0)
                             };
                             return (
                                 <motion.div 
@@ -1465,7 +1562,7 @@ export default function CustomersPage() {
                                         <div className="flex gap-5 items-center">
                                             <div className={`w-16 h-16 rounded-[2.5rem] flex items-center justify-center font-black text-2xl transition-all shadow-md border-4 ${
                                                 c.segment === 'VIP' ? 'bg-amber-50 border-amber-200 text-amber-600' :
-                                                insights.churn.some(risk => risk.id === c.id) ? 'bg-red-50 border-red-100 text-red-600' :
+                                                insights.churn.some((risk: Customer) => risk.id === c.id) ? 'bg-red-50 border-red-100 text-red-600' :
                                                 'bg-indigo-50 border-white text-indigo-600 group-hover:bg-indigo-600 group-hover:text-white'
                                             }`}>
                                                 {c.name.charAt(0)}
