@@ -7,7 +7,7 @@ import {
     LayoutDashboard, Calendar, Users, Briefcase, 
     Receipt, Wallet, Package, Bot, UserCog, LucideIcon,
     Crown, Zap, Sparkles, TrendingUp, ShieldCheck, LayoutGrid,
-    Globe, Compass, CreditCard, FileText, ChevronRight, Info, Terminal, Settings as SettingsIcon, LogOut, FileCode, Lock, Moon
+    Globe, Compass, CreditCard, FileText, ChevronRight, Info, Terminal, Settings as SettingsIcon, LogOut, FileCode, Lock, Moon, Activity
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useState, useEffect, memo, useMemo } from 'react';
@@ -182,8 +182,14 @@ export default function Sidebar() {
             {/* Header / Brand */}
             <div className="p-6 h-[100px] flex items-center justify-between">
                 <div className="flex items-center gap-4 min-w-[40px]">
-                    <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-black shadow-xl shadow-indigo-200 shrink-0">
-                        <Sparkles className="w-6 h-6 fill-white" />
+                    <div className={`w-12 h-12 rounded-2xl bg-gradient-to-br ${
+                        currentBusiness?.verticals?.includes('clinic') ? 'from-emerald-500 to-teal-600' :
+                        currentBusiness?.verticals?.includes('fitness') ? 'from-amber-500 to-orange-600' :
+                        'from-indigo-500 to-purple-600'
+                    } flex items-center justify-center text-white font-black shadow-xl shadow-indigo-200 shrink-0`}>
+                        {currentBusiness?.verticals?.includes('clinic') ? <Activity className="w-6 h-6 fill-white" /> :
+                         currentBusiness?.verticals?.includes('fitness') ? <TrendingUp className="w-6 h-6 stroke-white" /> :
+                         <Sparkles className="w-6 h-6 fill-white" />}
                     </div>
                     {isHovered && (
                         <motion.div 
@@ -191,8 +197,20 @@ export default function Sidebar() {
                             animate={{ opacity: 1 }}
                             className="overflow-hidden whitespace-nowrap"
                         >
-                            <h1 className="font-black text-xl leading-none text-gray-900 dark:text-white tracking-tighter antialiased">Aura Spa</h1>
-                            <p className="text-[10px] text-primary font-black tracking-[0.2em] uppercase mt-1.5 opacity-80">Kurumsal</p>
+                            <h1 className="font-black text-xl leading-none text-gray-900 dark:text-white tracking-tighter antialiased">
+                                {currentBusiness?.name || 'Aura Kingdom'}
+                            </h1>
+                            <div className="flex items-center gap-1.5 mt-1.5 overflow-x-auto no-scrollbar pb-0.5">
+                                {(currentBusiness?.verticals || ['spa']).map((v: string) => (
+                                    <span key={v} className={`text-[8px] font-black tracking-widest uppercase px-1.5 py-0.5 rounded-md border ${
+                                        v === 'spa' ? 'bg-indigo-50 border-indigo-100 text-indigo-500' :
+                                        v === 'clinic' ? 'bg-emerald-50 border-emerald-100 text-emerald-600' :
+                                        'bg-amber-50 border-amber-100 text-amber-600'
+                                    }`}>
+                                        {v}
+                                    </span>
+                                ))}
+                            </div>
                         </motion.div>
                     )}
                 </div>

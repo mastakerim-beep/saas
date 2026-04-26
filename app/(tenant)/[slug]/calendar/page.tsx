@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useEffect } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { useStore, Appointment, Staff, CalendarBlock, Customer, AppointmentStatus, Service } from '@/lib/store';
+import { useStore, Appointment, Staff, CalendarBlock, Customer, AppointmentStatus, Service, Room } from '@/lib/store';
 import { 
     DndContext, 
     DragEndEvent,
@@ -120,6 +120,7 @@ export default function CalendarPage() {
     const [pickerMonth, setPickerMonth] = useState(new Date());
     const [hoveredTime, setHoveredTime] = useState<string | null>(null);
     const [hoveredY, setHoveredY] = useState<number | null>(null);
+    const [activeVertical, setActiveVertical] = useState<string>('all');
 
     const sensors = useSensors(
         useSensor(PointerSensor, { activationConstraint: { distance: 3 } }),
@@ -132,11 +133,14 @@ export default function CalendarPage() {
     const staffToDisplay = useMemo(() => {
         return staffMembers
             .filter((s: Staff) => {
+                // Vertical Filter
+                if (activeVertical !== 'all' && s.vertical && s.vertical !== activeVertical) return false;
+
                 // Şube seçilmişse: Sadece o şubeye ait olanlar VEYA hiç şubesi atanmamış olanlar görünsün.
                 if (currentBranch?.id && s.branchId && s.branchId !== currentBranch.id) return false;
                 
                 const isActive = s.status === 'active';
-                const hasApptToday = appointments.some(a => a.staffId === s.id && a.date === selectedDate);
+                const hasApptToday = (appointments as Appointment[]).some(a => a.staffId === s.id && a.date === selectedDate);
                 const isExplicitlyHidden = s.isVisibleOnCalendar === false;
                 
                 if (isExplicitlyHidden) return false;
@@ -144,8 +148,8 @@ export default function CalendarPage() {
                 if (hasApptToday) return true;
                 return false;
             })
-            .sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0));
-    }, [staffMembers, appointments, selectedDate, currentBranch]);
+            .sort((a: Staff, b: Staff) => (a.sortOrder || 0) - (b.sortOrder || 0));
+    }, [staffMembers, appointments, selectedDate, currentBranch, activeVertical]);
 
     const roomsToDisplay = useMemo(() => {
         return (rooms || []).filter((r: Room) => {
@@ -273,6 +277,8 @@ export default function CalendarPage() {
                     setViewMode={setViewMode}
                     syncStatus={syncStatus}
                     onPanelToggle={() => setIsPanelOpen(!isPanelOpen)}
+                    activeVertical={activeVertical}
+                    onVerticalChange={setActiveVertical}
                 />
 
                 <main className="flex-1 flex overflow-hidden relative">
@@ -287,7 +293,7 @@ export default function CalendarPage() {
                                 id="col-header-scroll"
                                 className="flex flex-1 overflow-x-hidden"
                             >
-                                {(viewMode === 'staff' ? staffToDisplay : roomsToDisplay).map(target => (
+                                {(viewMode === 'staff' ? staffToDisplay : roomsToDisplay).map((target: Staff | Room) => (
                                     <div
                                         key={target.id}
                                         className="min-w-[280px] flex-1 h-[80px] flex flex-col items-center justify-center group/col border-r border-gray-100/30 bg-white hover:bg-indigo-50/20 transition-all px-4"
@@ -382,11 +388,20 @@ export default function CalendarPage() {
                                                     {(() => {
                                                         const colItems = (viewMode === 'staff' 
                                                             ? [
-                                                                ...appointments.filter(a => a.staffId === target.id || (Array.isArray(a.additionalStaff) && a.additionalStaff.some((s: any) => s.id === target.id))), 
-                                                                ...blocks.filter(b => b.staffId === target.id && b.date === selectedDate)
+                                                                ...(appointments as Appointment[]).filter(a => (a.staffId === target.id || (Array.isArray(a.additionalStaff) && a.additionalStaff.some((s: any) => s.id === target.id)))), 
+                                                                ...(blocks as CalendarBlock[]).filter(b => b.staffId === target.id && b.date === selectedDate)
                                                               ]
-                                                            : [...appointments.filter(a => a.roomId === target.id), ...blocks.filter(b => b.roomId === target.id && b.date === selectedDate)]
-                                                        ).filter(item => item.date === selectedDate);
+                                                            : [...(appointments as Appointment[]).filter(a => a.roomId === target.id), ...(blocks as CalendarBlock[]).filter(b => b.roomId === target.id && b.date === selectedDate)]
+                                                        ).filter(item => {
+                                                            const isDateMatch = item.date === selectedDate;
+                                                            if (!isDateMatch) return false;
+                                                            
+                                                            // Vertical Filter for Appointments
+                                                            if ((item as Appointment).customerId && activeVertical !== 'all') {
+                                                                return (item as Appointment).vertical === activeVertical;
+                                                            }
+                                                            return true;
+                                                        });
 
                                                         const overlapLayout = computeOverlapLayout(colItems);
 

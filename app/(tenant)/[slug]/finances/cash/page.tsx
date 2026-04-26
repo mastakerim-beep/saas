@@ -27,6 +27,7 @@ export default function CashManagementPage() {
     });
     const [searchQuery, setSearchQuery] = useState("");
     const [showEndOfDay, setShowEndOfDay] = useState(false);
+    const [activeVertical, setActiveVertical] = useState('all');
 
     const today = useMemo(() => isMounted ? getTodayDate() : '', [isMounted, getTodayDate]);
     
@@ -66,7 +67,8 @@ export default function CashManagementPage() {
                 const isDateMatch = d >= dateRange.start && d <= dateRange.end;
                 const isBranchMatch = p.branchId === currentBranch?.id;
                 const isSearchMatch = p.customerName.toLowerCase().includes(searchQuery.toLowerCase());
-                return isDateMatch && isBranchMatch && isSearchMatch;
+                const isVerticalMatch = activeVertical === 'all' || p.vertical === activeVertical;
+                return isDateMatch && isBranchMatch && isSearchMatch && isVerticalMatch;
             })
             .map((p) => ({
                 id: p.id,
@@ -259,6 +261,29 @@ export default function CashManagementPage() {
                 </div>
             </motion.div>
 
+            {/* Vertical Kingdom Selector */}
+            <div className="flex items-center gap-4">
+                {[
+                    { id: 'all', label: 'TÜMÜ', emoji: '🏛️', color: 'indigo' },
+                    { id: 'spa', label: 'SPA', emoji: '✨', color: 'indigo' },
+                    { id: 'clinic', label: 'KLİNİK', emoji: '🏥', color: 'emerald' },
+                    { id: 'fitness', label: 'FITNESS', emoji: '💪', color: 'amber' }
+                ].map(v => (
+                    <button
+                        key={v.id}
+                        onClick={() => setActiveVertical(v.id)}
+                        className={`flex items-center gap-3 px-8 py-3.5 rounded-[2rem] text-[10px] font-black uppercase tracking-widest transition-all ${
+                            activeVertical === v.id 
+                            ? `bg-white text-${v.color}-600 shadow-xl border border-${v.color}-100 scale-105` 
+                            : 'text-gray-400 hover:text-indigo-600'
+                        }`}
+                    >
+                        <span>{v.emoji}</span>
+                        {v.label}
+                    </button>
+                ))}
+            </div>
+
             {/* Summary Cards */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-10">
                 <motion.div 
@@ -386,7 +411,18 @@ export default function CashManagementPage() {
                                                         {t.party.charAt(0)}
                                                     </div>
                                                     <div>
-                                                        <p className="text-sm font-black text-indigo-950">{t.party}</p>
+                                                        <p className="text-sm font-black text-indigo-950 flex items-center gap-2">
+                                                            {t.party}
+                                                            {(t.original as Payment).vertical && (
+                                                                <span className={`text-[8px] px-1.5 py-0.5 rounded-md uppercase font-black ${
+                                                                    (t.original as Payment).vertical === 'spa' ? 'bg-indigo-50 text-indigo-500' :
+                                                                    (t.original as Payment).vertical === 'clinic' ? 'bg-emerald-50 text-emerald-600' :
+                                                                    'bg-amber-50 text-amber-600'
+                                                                }`}>
+                                                                    {(t.original as Payment).vertical}
+                                                                </span>
+                                                            )}
+                                                        </p>
                                                         <p className="text-[10px] font-bold text-indigo-300 uppercase tracking-tight line-clamp-1">{t.note || t.info}</p>
                                                     </div>
                                                 </div>

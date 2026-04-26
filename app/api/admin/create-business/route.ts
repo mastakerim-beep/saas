@@ -7,7 +7,7 @@ export async function POST(req: Request) {
   try {
     const { 
         name, ownerName, slug, plan, expiryDate, 
-        maxUsers, mrr, taxId, taxOffice, billingAddress 
+        maxUsers, mrr, taxId, taxOffice, billingAddress, verticals 
     } = await req.json();
 
     if (!name || !slug) {
@@ -78,7 +78,8 @@ export async function POST(req: Request) {
                 event: 'Kurulum (SaaS Start)',
                 amount: mrr || 0,
                 plan: plan || 'Basic'
-            }]
+            }],
+            verticals: verticals || ['spa']
         })
         .select()
         .single();
@@ -106,7 +107,8 @@ export async function POST(req: Request) {
             name: 'Genel Seans',
             duration: 60,
             price: 500,
-            color: 'bg-indigo-500'
+            color: 'bg-indigo-500',
+            vertical: verticals && verticals.length > 0 ? verticals[0] : 'spa'
         });
 
     if (serviceError) console.error('Auto-Service Creation Failed:', serviceError);

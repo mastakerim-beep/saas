@@ -103,6 +103,7 @@ export interface Business {
     lastPaymentAmount?: number;
     isManualOverride?: boolean;
     subscriptionHistory?: any[];
+    verticals: string[];
     createdAt?: string;
 }
 
@@ -150,6 +151,7 @@ export interface Staff {
     canLoginSystem: boolean;
     canLoginMobile: boolean;
     staffGroup: string;
+    vertical: string;
     lastLoginAt: any;
     createdAt?: string;
 }
@@ -168,6 +170,7 @@ export interface Service {
     isActive: boolean;
     imageUrl: any;
     requiredStaffCount: number;
+    vertical: string;
     createdAt?: string;
 }
 
@@ -336,6 +339,7 @@ export interface Payment {
     referenceCode: any;
     giftNote: any;
     soldProducts: any;
+    vertical: string;
     draconian_status?: string;
     draconian_veto_reason?: any;
     createdAt?: string;
@@ -348,6 +352,7 @@ export interface Appointment {
     customerId?: string;
     customerName: string;
     service: string;
+    vertical: string;
     staffId?: string;
     staffName: string;
     roomId?: string;

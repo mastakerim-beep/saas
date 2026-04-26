@@ -276,12 +276,21 @@ export default function CalendarItem({
 
             {/* Body Area: Main Content */}
             <div className={`flex-1 flex flex-col justify-center px-3 py-2 overflow-hidden ${(info as any).bodyBg || 'bg-white/40'} backdrop-blur-[12px]`}>
-                <div className="flex items-center gap-1 flex-wrap justify-center">
+                <div className="flex items-center gap-1.5 flex-wrap justify-center">
                     <p className="font-extrabold text-[11px] leading-tight uppercase tracking-tight text-gray-900 drop-shadow-sm truncate max-w-full">
                         {isAppt ? appt.customerName : 'MEŞGUL'}
                     </p>
                     {isAppt && appt.packageId && (
                         <span className="px-1 py-0.5 bg-indigo-600 text-white text-[7px] font-black rounded-sm shadow-sm ring-1 ring-white/20">P</span>
+                    )}
+                    {isAppt && appt.vertical && (
+                        <span className={`px-1 py-0.5 text-[6px] font-black rounded-sm border ${
+                            appt.vertical === 'spa' ? 'bg-indigo-50 border-indigo-100 text-indigo-400' :
+                            appt.vertical === 'clinic' ? 'bg-emerald-50 border-emerald-100 text-emerald-600' :
+                            'bg-amber-50 border-amber-100 text-amber-600'
+                        }`}>
+                            {appt.vertical.toUpperCase()}
+                        </span>
                     )}
                 </div>
                 

@@ -48,7 +48,8 @@ export default function SuperAdminPage() {
         email: '',
         password: '',
         seatCount: 5,
-        isStaff: true
+        isStaff: true,
+        verticals: ['spa'] as string[]
     });
     const [modalStep, setModalStep] = useState(1);
 
@@ -78,7 +79,8 @@ export default function SuperAdminPage() {
                 taxId: newBiz.taxId,
                 taxOffice: newBiz.taxOffice,
                 billingAddress: newBiz.billingAddress,
-                plan: newBiz.plan
+                plan: newBiz.plan,
+                verticals: newBiz.verticals
             };
 
             const biz = await addBusiness(bizData);
@@ -99,7 +101,8 @@ export default function SuperAdminPage() {
                     name: '', slug: '', mrr: 1500, plan: 'Basic',
                     expiryDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
                     taxId: '', taxOffice: '', billingAddress: '',
-                    email: '', password: '', seatCount: 5, isStaff: true
+                    email: '', password: '', seatCount: 5, isStaff: true,
+                    verticals: ['spa']
                 });
                 await fetchData(undefined, undefined, true);
             }
@@ -663,9 +666,40 @@ export default function SuperAdminPage() {
                                                     >
                                                         <option value="Basic">Basic</option>
                                                         <option value="Aura Enterprise">Aura Enterprise</option>
-                                                    </select>
+                                                     </select>
                                                 </div>
                                             </div>
+
+                                            <div className="space-y-4">
+                                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Aktif Dikey Projeler (Kingdoms)</label>
+                                                <div className="flex gap-3">
+                                                    {[
+                                                        { id: 'spa', label: 'SPA', color: 'bg-indigo-500' },
+                                                        { id: 'clinic', label: 'KLİNİK', color: 'bg-emerald-500' },
+                                                        { id: 'fitness', label: 'FITNESS', color: 'bg-amber-500' }
+                                                    ].map(v => (
+                                                        <button 
+                                                            key={v.id}
+                                                            onClick={() => {
+                                                                const next = newBiz.verticals.includes(v.id) 
+                                                                    ? newBiz.verticals.filter(x => x !== v.id)
+                                                                    : [...newBiz.verticals, v.id];
+                                                                if (next.length === 0) return; // En az bir dikey seçilmeli
+                                                                setNewBiz({ ...newBiz, verticals: next });
+                                                            }}
+                                                            className={`flex-1 py-3 px-4 rounded-xl border-2 transition-all flex flex-col items-center gap-2 ${
+                                                                newBiz.verticals.includes(v.id)
+                                                                ? 'border-indigo-600 bg-indigo-50/50'
+                                                                : 'border-slate-100 bg-white'
+                                                            }`}
+                                                        >
+                                                            <div className={`w-3 h-3 rounded-full ${v.color} ${newBiz.verticals.includes(v.id) ? 'scale-125' : 'opacity-40'}`} />
+                                                            <span className={`text-[9px] font-black tracking-widest ${newBiz.verticals.includes(v.id) ? 'text-indigo-950' : 'text-slate-400'}`}>{v.label}</span>
+                                                        </button>
+                                                    ))}
+                                                </div>
+                                            </div>
+
                                             <button onClick={() => setModalStep(2)} className="w-full py-5 bg-slate-900 text-white rounded-2xl font-black text-[11px] uppercase tracking-widest mt-8">SONRAKİ ADIM: CARİ & FİNANS</button>
                                         </motion.div>
                                     )}

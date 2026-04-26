@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from 'react';
-import { useStore, Service, PackageDefinition } from '@/lib/store';
+import { useStore, Service, PackageDefinition, Product, Staff } from '@/lib/store';
 import { 
     Plus, Clock, Package as PackageIcon, ShoppingBag, 
     Trash2, Edit3, Search, Zap, Activity, Layers, Filter, ChevronRight,
@@ -33,25 +33,25 @@ export default function CatalogSettingsView({ query }: { query: string }) {
     const [showArchived, setShowArchived] = useState(false);
 
     // Filtered data based on external query + internal tab + archive status
-    const filteredServices = services.filter(s => 
+    const filteredServices = services.filter((s: Service) => 
         (showArchived || s.isActive !== false) && 
         s.name.toLowerCase().includes(query.toLowerCase())
     );
-    const filteredPackages = packageDefinitions.filter(p => 
+    const filteredPackages = packageDefinitions.filter((p: PackageDefinition) => 
         (showArchived || p.isActive !== false) &&
         p.name.toLowerCase().includes(query.toLowerCase())
     );
-    const filteredProducts = inventory.filter(p => 
+    const filteredProducts = inventory.filter((p: any) => 
         p.name.toLowerCase().includes(query.toLowerCase())
     );
 
-    const serviceGroups = Array.from(new Set(services.map(s => s.category || 'Genel')));
-    const packageGroups = Array.from(new Set(packageDefinitions.map(p => p.groupName || 'Genel')));
-    const productGroups = Array.from(new Set(inventory.map(p => p.category || 'Genel')));
+    const serviceGroups = Array.from(new Set(services.map((s: Service) => s.category || 'Genel')));
+    const packageGroups = Array.from(new Set(packageDefinitions.map((p: PackageDefinition) => p.groupName || 'Genel')));
+    const productGroups = Array.from(new Set(inventory.map((p: any) => p.category || 'Genel')));
 
     const currentGroups = activeTab === 'hizmetler' ? serviceGroups : activeTab === 'paketler' ? packageGroups : productGroups;
 
-    const [form, setForm] = useState<any>({ name: '', duration: 60, price: 0, category: 'Masaj Terapileri', totalSessions: 1, requiredStaffCount: 1 });
+    const [form, setForm] = useState<any>({ name: '', duration: 60, price: 0, category: 'Masaj Terapileri', totalSessions: 1, requiredStaffCount: 1, vertical: 'spa' });
 
     const openPanel = (item: any = null) => {
         setShowNewCatInput(false);
@@ -65,6 +65,7 @@ export default function CatalogSettingsView({ query }: { query: string }) {
                 category: activeTab === 'paketler' ? (item.groupName || 'Genel') : (item.category || 'Genel'),
                 totalSessions: item.totalSessions || 1,
                 requiredStaffCount: item.requiredStaffCount || 1,
+                vertical: item.vertical || 'spa',
                 consumables: Array.isArray(item.consumables) ? item.consumables : []
             });
             setEditingItem(item);
@@ -76,6 +77,7 @@ export default function CatalogSettingsView({ query }: { query: string }) {
                 category: currentGroups[0] || 'Genel', 
                 totalSessions: 1,
                 requiredStaffCount: 1,
+                vertical: 'spa',
                 consumables: []
             });
             setEditingItem(null);
@@ -90,6 +92,7 @@ export default function CatalogSettingsView({ query }: { query: string }) {
         const payload: any = {
             name: form.name,
             price: Number(form.price),
+            vertical: form.vertical
         };
         
         if (activeTab === 'hizmetler') {
@@ -225,13 +228,13 @@ export default function CatalogSettingsView({ query }: { query: string }) {
                     >
                         TÜMÜ
                     </button>
-                    {currentGroups.map(group => (
+                    {currentGroups.map((group: any) => (
                         <button 
                             key={group}
                             onClick={() => setSelectedCategory(group)}
                             className={`px-8 py-2.5 rounded-full text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap shadow-sm border ${selectedCategory === group ? 'bg-indigo-600 border-indigo-600 text-white' : 'bg-white border-indigo-50 text-indigo-400 hover:border-indigo-200'}`}
                         >
-                            {group}
+                            {group as React.ReactNode}
                         </button>
                     ))}
                 </div>
@@ -247,7 +250,7 @@ export default function CatalogSettingsView({ query }: { query: string }) {
                     </button>
                     {showArchived && (
                         <span className="px-2 py-0.5 bg-indigo-100 text-indigo-600 rounded-md text-[8px] font-black">
-                            {services.filter(s => s.isActive === false).length + packageDefinitions.filter(p => p.isActive === false).length} ARŞİVDE
+                            {services.filter((s: Service) => s.isActive === false).length + packageDefinitions.filter((p: PackageDefinition) => p.isActive === false).length} ARŞİVDE
                         </span>
                     )}
                 </div>
@@ -314,8 +317,8 @@ export default function CatalogSettingsView({ query }: { query: string }) {
                                                         <option value="Cilt Bakımı">Cilt Bakımı</option>
                                                         <option value="Hamam">Hamam Rituals</option>
                                                         <option value="El & Ayak">El & Ayak</option>
-                                                        {currentGroups.filter(g => !['Masaj Terapileri', 'Cilt Bakımı', 'Hamam', 'El & Ayak', 'Genel'].includes(g)).map(g => (
-                                                            <option key={g} value={g}>{g}</option>
+                                                        {currentGroups.filter((g: any) => !['Masaj Terapileri', 'Cilt Bakımı', 'Hamam', 'El & Ayak', 'Genel'].includes(g)).map((g: any) => (
+                                                            <option key={g as string} value={g as string}>{g as React.ReactNode}</option>
                                                         ))}
                                                         <option value="Genel">Genel</option>
                                                         <option value="ADD_NEW" className="text-indigo-600 font-extrabold">+ YENİ KATEGORİ EKLE</option>
@@ -345,6 +348,32 @@ export default function CatalogSettingsView({ query }: { query: string }) {
                                             onChange={(v: string) => setForm({...form, [activeTab === 'hizmetler' ? 'duration' : 'totalSessions']: Number(v)})} 
                                             type="number"
                                         />
+                                    </div>
+
+                                    {/* Kingdom Selection */}
+                                    <div className="space-y-4">
+                                        <label className="text-[10px] font-black text-indigo-400 uppercase tracking-widest ml-1">KİNGDOM (DİKEY) SEÇİMİ</label>
+                                        <div className="flex gap-2">
+                                            {[
+                                                { id: 'spa', label: 'SPA', emoji: '✨', color: 'indigo' },
+                                                { id: 'clinic', label: 'KLİNİK', emoji: '🏥', color: 'emerald' },
+                                                { id: 'fitness', label: 'FITNESS', emoji: '💪', color: 'amber' }
+                                            ].map(king => (
+                                                <button
+                                                    key={king.id}
+                                                    type="button"
+                                                    onClick={() => setForm({...form, vertical: king.id})}
+                                                    className={`flex-1 flex flex-col items-center gap-2 p-4 rounded-3xl border-2 transition-all ${
+                                                        form.vertical === king.id 
+                                                        ? `bg-${king.color}-50 border-${king.color}-200 text-${king.color}-600 shadow-lg shadow-${king.color}-100` 
+                                                        : 'bg-white border-gray-100 text-gray-400 hover:border-indigo-100'
+                                                    }`}
+                                                >
+                                                    <span className="text-xl">{king.emoji}</span>
+                                                    <span className="text-[9px] font-black">{king.label}</span>
+                                                </button>
+                                            ))}
+                                        </div>
                                     </div>
 
                                     {activeTab === 'hizmetler' && (
@@ -419,7 +448,7 @@ export default function CatalogSettingsView({ query }: { query: string }) {
                                                         }}
                                                     >
                                                         <option value="">Ürün Seçin...</option>
-                                                        {inventory.map(p => (
+                                                        {inventory.map((p: any) => (
                                                             <option key={p.id} value={p.id}>{p.name} (Stok: {p.stock})</option>
                                                         ))}
                                                     </select>
@@ -475,19 +504,19 @@ export default function CatalogSettingsView({ query }: { query: string }) {
             <div className="space-y-24 pb-20">
                 {(activeTab === 'hizmetler' ? serviceGroups : activeTab === 'paketler' ? packageGroups : productGroups)
                     .filter(group => !selectedCategory || group === selectedCategory)
-                    .map(group => {
+                    .map((group: any) => {
                     const items = activeTab === 'hizmetler' 
-                        ? filteredServices.filter(s => (s.category || 'Genel') === group)
+                        ? filteredServices.filter((s: Service) => (s.category || 'Genel') === group)
                         : activeTab === 'paketler'
-                        ? filteredPackages.filter(p => (p.groupName || 'Genel') === group)
-                        : filteredProducts.filter(p => (p.category || 'Genel') === group);
+                        ? filteredPackages.filter((p: PackageDefinition) => (p.groupName || 'Genel') === group)
+                        : filteredProducts.filter((p: any) => (p.category || 'Genel') === group);
 
                     if (items.length === 0) return null;
 
                     return (
-                        <div key={group} className="space-y-12 group/section">
+                        <div key={group as string} className="space-y-12 group/section">
                             <div className="flex items-center gap-6">
-                                <h2 className="text-4xl font-black text-indigo-950 uppercase italic tracking-tighter shrink-0">{group}</h2>
+                                <h2 className="text-4xl font-black text-indigo-950 uppercase italic tracking-tighter shrink-0">{group as React.ReactNode}</h2>
                                 <div className="h-0.5 w-full bg-gradient-to-r from-indigo-100 to-transparent flex-1" />
                                 <div className="px-6 py-2 bg-white border border-indigo-50 rounded-full text-[10px] font-black text-indigo-400 uppercase tracking-widest whitespace-nowrap shadow-sm">
                                     {items.length} ÖĞE TANIMLI
@@ -575,6 +604,15 @@ function PremiumCard({ item, activeTab, onEdit, onDelete, onRestore }: any) {
                 )}
                 {activeTab === 'urunler' && (
                     <div className="flex items-center gap-1.5 underline decoration-green-200 underline-offset-4 decoration-2">{item.stock || 0} STOKTA</div>
+                )}
+                {item.vertical && (
+                    <div className={`px-2 py-0.5 rounded-md text-[8px] font-black uppercase ${
+                        item.vertical === 'spa' ? 'bg-indigo-50 text-indigo-500' :
+                        item.vertical === 'clinic' ? 'bg-emerald-50 text-emerald-600' :
+                        'bg-amber-50 text-amber-600'
+                    }`}>
+                        {item.vertical}
+                    </div>
                 )}
             </div>
 

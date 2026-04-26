@@ -34,6 +34,11 @@
   --ring: 260 85% 56%;
 
   --radius: 2rem;
+
+  /* Kingdom Themes */
+  --kingdom-spa: 260 85% 56%;       /* Indigo */
+  --kingdom-clinic: 160 84% 39%;    /* Emerald */
+  --kingdom-fitness: 35 92% 51%;      /* Amber */
 }
 
 .dark {

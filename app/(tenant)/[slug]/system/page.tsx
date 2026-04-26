@@ -1,6 +1,6 @@
 "use client";
 
-import { useStore, Staff, PaymentDefinition, BankAccount, ExpenseCategory, ReferralSource, ConsentFormTemplate, Branch } from "@/lib/store";
+import { useStore, Staff, PaymentDefinition, BankAccount, ExpenseCategory, ReferralSource, ConsentFormTemplate, Branch, Room, Service, PackageDefinition } from "@/lib/store";
 import { 
     Users, CreditCard, Landmark, ListTree, 
     MapPin, FileText, Share2, Settings as SettingsIcon,
@@ -117,6 +117,8 @@ export default function SystemSettingsPage() {
             const capacity = Number(data.capacity || 1);
             if (editingItem) updateRoom(editingItem.id, { ...data, category: finalCategory, capacity } as any);
             else addRoom({ ...data, category: finalCategory, status: 'active', capacity } as any);
+        } else if (activeTab === 'staff') {
+            if (editingItem) updateStaff(editingItem.id, data as any);
         }
 
         setIsEditModalOpen(false);
@@ -223,7 +225,7 @@ export default function SystemSettingsPage() {
                                 <ChannelsSettingsView business={currentBusiness} />
                             )}
                             {activeTab === 'staff' && (
-                                <StaffSettingsView staff={staffMembers} onUpdate={updateStaff} query={searchQuery} />
+                                <StaffSettingsView staff={staffMembers} onUpdate={updateStaff} query={searchQuery} currentBusiness={currentBusiness} onEdit={(s: Staff) => { setEditingItem(s); setIsEditModalOpen(true); }} />
                             )}
                             {activeTab === 'payment_methods' && (
                                 <GenericListView 
@@ -355,6 +357,26 @@ export default function SystemSettingsPage() {
                                 </div>
 
                                 <div className="p-8 space-y-6">
+                                    {activeTab === 'staff' && (
+                                        <>
+                                            <div>
+                                                <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Personel Adı</label>
+                                                <input name="name" defaultValue={editingItem?.name} required className="w-full px-4 py-3 bg-gray-50 border-none rounded-2xl focus:ring-2 focus:ring-blue-100 outline-none transition-all" />
+                                            </div>
+                                            <div>
+                                                <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Rol</label>
+                                                <input name="role" defaultValue={editingItem?.role} required className="w-full px-4 py-3 bg-gray-50 border-none rounded-2xl focus:ring-2 focus:ring-blue-100 outline-none transition-all" />
+                                            </div>
+                                            <div>
+                                                <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Kingdom (Dikey)</label>
+                                                <select name="vertical" defaultValue={editingItem?.vertical || 'spa'} className="w-full px-4 py-3 bg-gray-50 border-none rounded-2xl focus:ring-2 focus:ring-blue-100 outline-none transition-all appearance-none">
+                                                    <option value="spa">SPA ✨</option>
+                                                    <option value="clinic">KLİNİK 🏥</option>
+                                                    <option value="fitness">FITNESS 💪</option>
+                                                </select>
+                                            </div>
+                                        </>
+                                    )}
                                     {activeTab === 'payment_methods' && (
                                         <>
                                             <div>
@@ -517,13 +539,13 @@ export default function SystemSettingsPage() {
     );
 }
 
-function StaffSettingsView({ staff, onUpdate, query }: { staff: Staff[], onUpdate: any, query: string }) {
+function StaffSettingsView({ staff, onUpdate, query, onEdit, currentBusiness }: { staff: Staff[], onUpdate: (id: string, data: Partial<Staff>) => void, query: string, onEdit: (s: Staff) => void, currentBusiness: any }) {
     const filtered = [...staff]
         .sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0))
         .filter(s => s.name.toLowerCase().includes(query.toLowerCase()));
 
     const toggle = (id: string, field: keyof Staff, value: boolean) => {
-        onUpdate(id, { [field]: value });
+        onUpdate(id, { [field]: value } as Partial<Staff>);
     };
 
     const moveStaff = (index: number, direction: 'up' | 'down') => {
@@ -555,6 +577,7 @@ function StaffSettingsView({ staff, onUpdate, query }: { staff: Staff[], onUpdat
                         <th className="px-10 py-6 text-[10px] font-black text-gray-400 uppercase tracking-widest">AD SOYAD</th>
                         <th className="px-10 py-6 text-[10px] font-black text-gray-400 uppercase tracking-widest">YETKİ</th>
                         <th className="px-10 py-6 text-[10px] font-black text-gray-400 uppercase tracking-widest">GRUP</th>
+                        <th className="px-10 py-6 text-[10px] font-black text-gray-400 uppercase tracking-widest">KİNGDOM</th>
                         <th className="px-10 py-6 text-[10px] font-black text-gray-400 uppercase tracking-widest text-center">SİSTEM</th>
                         <th className="px-10 py-6 text-[10px] font-black text-gray-400 uppercase tracking-widest text-center">MOBİL</th>
                         <th className="px-10 py-6 text-[10px] font-black text-gray-400 uppercase tracking-widest text-center">TAKVİM</th>
@@ -564,7 +587,7 @@ function StaffSettingsView({ staff, onUpdate, query }: { staff: Staff[], onUpdat
                     </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-50">
-                    {filtered.map((s, index) => (
+                    {filtered.map((s: Staff, index: number) => (
                         <tr key={s.id} className="hover:bg-gray-50/50 transition-colors group">
                             <td className="px-10 py-6">
                                 <div className="flex flex-col gap-1 items-center justify-center">
@@ -590,6 +613,15 @@ function StaffSettingsView({ staff, onUpdate, query }: { staff: Staff[], onUpdat
                             </td>
                             <td className="px-10 py-6">
                                 <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{s.staffGroup || 'Terapist'}</span>
+                            </td>
+                            <td className="px-10 py-6">
+                                <span className={`text-[9px] font-black px-2 py-1 rounded-md uppercase ${
+                                    s.vertical === 'spa' ? 'bg-indigo-50 text-indigo-500' :
+                                    s.vertical === 'clinic' ? 'bg-emerald-50 text-emerald-600' :
+                                    'bg-amber-50 text-amber-600'
+                                }`}>
+                                    {s.vertical || 'SPA'}
+                                </span>
                             </td>
                             <td className="px-10 py-6 text-center">
                                 <Toggle checked={s.canLoginSystem} onChange={(v) => toggle(s.id, 'canLoginSystem', v)} />
@@ -621,7 +653,7 @@ function StaffSettingsView({ staff, onUpdate, query }: { staff: Staff[], onUpdat
                                 </select>
                             </td>
                             <td className="px-10 py-6 text-right">
-                                <button className="p-3 text-gray-300 hover:text-black transition-colors">
+                                <button onClick={() => onEdit(s)} className="p-3 text-gray-300 hover:text-black transition-colors">
                                     <Edit2 size={18} />
                                 </button>
                             </td>
@@ -635,11 +667,11 @@ function StaffSettingsView({ staff, onUpdate, query }: { staff: Staff[], onUpdat
 
 function RoomsSettingsView({ query }: { query: string }) {
     const { rooms, addRoom, deleteRoom, updateRoom } = useStore();
-    const filtered = rooms.filter(r => r.name.toLowerCase().includes(query.toLowerCase()));
+    const filtered = rooms.filter((r: Room) => r.name.toLowerCase().includes(query.toLowerCase()));
 
     return (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-10">
-            {filtered.map((room) => (
+            {filtered.map((room: Room) => (
                 <div key={room.id} className="bg-white p-10 rounded-[3.5rem] shadow-sm border border-gray-100 hover:shadow-2xl transition-all duration-500 hover:-translate-y-2 group overflow-hidden relative">
                     <div className="flex justify-between items-start mb-8">
                         <div 
@@ -691,7 +723,7 @@ function RoomsSettingsView({ query }: { query: string }) {
     );
 }
 
-function GenericListView({ items, columns, onEdit, onDelete, query }: { items: any[], columns: any[], onEdit: any, onDelete: any, query: string }) {
+function GenericListView({ items, columns, onEdit, onDelete, query }: { items: any[], columns: any[], onEdit: (item: any) => void, onDelete: (id: string) => void, query: string }) {
     const filtered = items.filter(item => 
         Object.values(item).some(val => 
             String(val).toLowerCase().includes(query.toLowerCase())
