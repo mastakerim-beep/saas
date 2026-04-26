@@ -6,7 +6,7 @@ import {
     Bell, Megaphone, DollarSign, Activity,
     TrendingDown, Search, ArrowUpRight, ArrowDownRight,
     Zap, Star, Award, LayoutGrid, Sparkles,
-    ChevronRight, Info, AlertTriangle, ShieldCheck,
+    ChevronRight, Info, AlertTriangle, ShieldCheck, Box,
     PieChart as PieChartIcon
 } from "lucide-react";
 import { useMemo, useState, useEffect } from "react";
@@ -22,11 +22,21 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import PanopticonRadar from '@/components/system/panopticon/PanopticonRadar';
 import VetoCenter from '@/components/system/draconian/VetoCenter';
+import { 
+    DndContext, 
+    useDraggable, 
+    useDroppable, 
+    DragOverlay,
+    DragEndEvent,
+    defaultDropAnimationSideEffects
+} from "@dnd-kit/core";
+import { CSS } from "@dnd-kit/utilities";
+import { Room } from "@/lib/store";
 
 export default function ExecutiveDashboard() {
     const params = useParams();
     const slug = params?.slug as string;
-    const [activeTab, setActiveTab] = useState<'overview' | 'treasury' | 'panopticon' | 'veto'>('overview');
+    const [activeTab, setActiveTab] = useState<'overview' | 'treasury' | 'panopticon' | 'veto' | 'vision'>('overview');
     
     const { 
         branches, payments, appointments, customers, 
@@ -185,6 +195,7 @@ export default function ExecutiveDashboard() {
             {/* TABS NAVIGATION */}
             <div className="flex gap-4 p-2 bg-white rounded-full shadow-sm border border-gray-100 mb-8 max-w-fit mx-auto relative z-10">
                 <TabBtn active={activeTab} id="overview" onClick={setActiveTab} label="Ciro Analizi" icon={<TrendingUp size={14} />} />
+                <TabBtn active={activeTab} id="vision" onClick={setActiveTab} label="Aura Vision" icon={<Box size={14} />} />
                 <TabBtn active={activeTab} id="treasury" onClick={setActiveTab} label="Hazine Simülasyonu" icon={<Wallet size={14} />} />
                 <TabBtn active={activeTab} id="veto" onClick={setActiveTab} label="Veto Merkezi" icon={<ShieldCheck size={14} />} />
                 <TabBtn active={activeTab} id="panopticon" onClick={setActiveTab} label="Panopticon Radar" icon={<Activity size={14} />} />
@@ -481,8 +492,160 @@ export default function ExecutiveDashboard() {
                         </div>
                     </motion.div>
                 )}
+
+                {activeTab === 'vision' && (
+                    <motion.div key="vision" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="space-y-8">
+                        <AuraVisionExecutive />
+                    </motion.div>
+                )}
             </AnimatePresence>
 
+        </div>
+    );
+}
+
+// --- Aura Vision Component for Executive ---
+function AuraVisionExecutive() {
+    const { rooms, appointments, assignRoomToAppointment, updateRoomStatus } = useStore();
+    const [selectedRoomId, setSelectedRoomId] = useState<string | null>(null);
+    const [activeDragId, setActiveDragId] = useState<string | null>(null);
+
+    const pendingAppointments = useMemo(() => appointments.filter((a: any) => a.status === 'pending'), [appointments]);
+    
+    const displayRooms = useMemo(() => {
+        if (rooms.length > 0) return rooms;
+        return [
+            { id: 'r1', name: 'Bali Room 1', status: 'available', category: 'VIP', color: '#fbbf24' },
+            { id: 'r2', name: 'Bali Room 2', status: 'occupied', category: 'VIP', color: '#fbbf24' },
+            { id: 'r3', name: 'Hamam VIP', status: 'available', category: 'Hamam', color: '#818cf8' },
+            { id: 'r4', name: 'Masaj 1', status: 'cleaning', category: 'Massage', color: '#34d399' },
+            { id: 'r5', name: 'Masaj 2', status: 'available', category: 'Massage', color: '#34d399' },
+            { id: 'r6', name: 'Cilt Bakımı', status: 'occupied', category: 'Skincare', color: '#f472b6' },
+        ] as Room[];
+    }, [rooms]);
+
+    const getOccupancyInfo = (roomId: string) => appointments.find((a: any) => a.roomId === roomId && a.status === 'arrived');
+
+    const handleDragStart = (event: any) => setActiveDragId(event.active.id);
+    const handleDragEnd = async (event: DragEndEvent) => {
+        const { active, over } = event;
+        setActiveDragId(null);
+        if (over && active.id !== over.id) {
+            await assignRoomToAppointment(active.id as string, over.id as string);
+        }
+    };
+
+    const activeAppointment = useMemo(() => pendingAppointments.find((a: any) => a.id === activeDragId), [activeDragId, pendingAppointments]);
+    const selectedRoom = displayRooms.find((r: any) => r.id === selectedRoomId);
+
+    return (
+        <DndContext onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+                <div className="lg:col-span-3">
+                    <div className="bg-white rounded-[2.5rem] p-6 shadow-sm border border-gray-100 min-h-[400px]">
+                        <h3 className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-6 px-2">Bekleyenler</h3>
+                        <div className="space-y-3">
+                            {pendingAppointments.map((appt: any) => (
+                                <DraggableItem key={appt.id} appointment={appt} />
+                            ))}
+                            {pendingAppointments.length === 0 && (
+                                <div className="py-10 text-center opacity-20">
+                                    <Sparkles className="mx-auto mb-2" />
+                                    <p className="text-[10px] font-black uppercase">Bekleyen Yok</p>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </div>
+                <div className="lg:col-span-9 grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6">
+                    {displayRooms.map((room: any) => (
+                        <DroppableNode 
+                            key={room.id} 
+                            room={room} 
+                            occupancy={getOccupancyInfo(room.id)}
+                            onSelect={setSelectedRoomId}
+                            isSelected={selectedRoomId === room.id}
+                        />
+                    ))}
+                </div>
+            </div>
+
+            <DragOverlay>
+                {activeDragId && activeAppointment ? (
+                    <div className="p-4 bg-white rounded-2xl shadow-2xl border border-indigo-100 flex items-center gap-3">
+                        <div className="w-2 h-2 rounded-full bg-indigo-500 animate-pulse" />
+                        <span className="text-xs font-black text-gray-900">{activeAppointment.customerName}</span>
+                    </div>
+                ) : null}
+            </DragOverlay>
+
+            <AnimatePresence>
+                {selectedRoomId && selectedRoom && (
+                    <div className="fixed inset-0 z-[100] flex items-center justify-end p-10 pointer-events-none">
+                        <motion.div initial={{ x: 600 }} animate={{ x: 0 }} exit={{ x: 600 }} className="w-full max-w-md bg-white/95 backdrop-blur-2xl shadow-2xl rounded-[3rem] p-10 border border-gray-100 pointer-events-auto">
+                            <h3 className="text-3xl font-black mb-1">{selectedRoom.name}</h3>
+                            <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-8">{selectedRoom.category}</p>
+                            
+                            <div className="grid grid-cols-2 gap-4 mb-8">
+                                <button onClick={() => { updateRoomStatus(selectedRoomId, 'available'); setSelectedRoomId(null); }} className="p-6 bg-emerald-50 text-emerald-600 rounded-3xl font-black text-[10px] uppercase">Müsait</button>
+                                <button onClick={() => { updateRoomStatus(selectedRoomId, 'cleaning'); setSelectedRoomId(null); }} className="p-6 bg-amber-50 text-amber-600 rounded-3xl font-black text-[10px] uppercase">Temizlik</button>
+                            </div>
+                            
+                            <button onClick={() => setSelectedRoomId(null)} className="w-full py-4 bg-gray-900 text-white rounded-2xl font-black text-[10px] uppercase">Kapat</button>
+                        </motion.div>
+                    </div>
+                )}
+            </AnimatePresence>
+        </DndContext>
+    );
+}
+
+function DraggableItem({ appointment }: any) {
+    const { attributes, listeners, setNodeRef, transform } = useDraggable({ id: appointment.id });
+    return (
+        <div ref={setNodeRef} {...listeners} {...attributes} style={{ transform: CSS.Translate.toString(transform) }} className="p-4 bg-gray-50 rounded-2xl border border-gray-100 cursor-grab active:cursor-grabbing hover:border-indigo-200 transition-all">
+            <p className="text-xs font-black text-gray-900">{appointment.customerName}</p>
+            <p className="text-[9px] font-bold text-gray-400 uppercase">{appointment.service}</p>
+        </div>
+    );
+}
+
+function DroppableNode({ room, occupancy, onSelect, isSelected }: any) {
+    const { isOver, setNodeRef } = useDroppable({ id: room.id });
+    const statusColor = room.status === 'occupied' ? 'bg-rose-50 text-rose-600' : (room.status === 'cleaning' ? 'bg-amber-50 text-amber-600' : 'bg-emerald-50 text-emerald-600');
+    
+    return (
+        <div 
+            ref={setNodeRef} 
+            onClick={() => onSelect(room.id)}
+            className={`p-6 rounded-[2.5rem] bg-white border-2 transition-all cursor-pointer relative overflow-hidden group ${isOver ? 'border-indigo-400 scale-105 shadow-xl' : (isSelected ? 'border-indigo-600' : 'border-gray-50')}`}
+        >
+            <div className="flex justify-between items-start mb-4 relative z-10">
+                <div className="w-10 h-10 rounded-xl bg-gray-50 flex items-center justify-center font-black text-xs text-gray-400 group-hover:bg-indigo-50 group-hover:text-indigo-600 transition-colors">
+                    {room.name.charAt(0)}
+                </div>
+                <div className={`px-3 py-1 rounded-full text-[8px] font-black uppercase ${statusColor}`}>
+                    {room.status}
+                </div>
+            </div>
+            <h4 className="font-black text-gray-900 group-hover:text-indigo-600 mb-1 relative z-10">{room.name}</h4>
+            <p className="text-[9px] font-black text-gray-400 uppercase mb-4 relative z-10">{room.category}</p>
+            
+            {occupancy ? (
+                <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl relative z-10">
+                    <div className="flex-1">
+                        <p className="text-[10px] font-black text-gray-800">{occupancy.customerName}</p>
+                        <p className="text-[8px] font-bold text-gray-400 uppercase">{occupancy.service}</p>
+                    </div>
+                    <div className="w-1.5 h-1.5 rounded-full bg-indigo-500 animate-pulse" />
+                </div>
+            ) : (
+                <div className="h-10 flex items-center justify-center border-2 border-dashed border-gray-100 rounded-xl opacity-20 relative z-10">
+                    <p className="text-[8px] font-black uppercase">Boş</p>
+                </div>
+            )}
+            
+            <div className="absolute -right-4 -bottom-4 w-20 h-20 bg-gray-50 rounded-full opacity-0 group-hover:opacity-100 transition-opacity" />
         </div>
     );
 }

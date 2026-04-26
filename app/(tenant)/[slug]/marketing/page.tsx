@@ -42,16 +42,16 @@ export default function MarketingPage() {
 
     // Statistics Calculation
     const stats = useMemo(() => {
-        const churn = customers.filter(c => c.isChurnRisk).length;
+        const churn = customers.filter((c: any) => c.isChurnRisk).length;
         const total = customers.length;
         const conversion = total > 0 ? ((total - churn) / total * 100).toFixed(1) : '0';
         return { churn, total, conversion };
     }, [customers]);
 
     const allCategories = useMemo(() => Array.from(new Set([
-        ...services.map(s => s.category),
-        ...inventory.map(p => p.category),
-        ...rooms.map(r => r.category)
+        ...services.map((s: any) => s.category),
+        ...inventory.map((p: any) => p.category),
+        ...rooms.map((r: any) => r.category)
     ].filter(Boolean))), [services, inventory, rooms]);
 
     const handleAddRule = async () => {
@@ -210,7 +210,33 @@ export default function MarketingPage() {
                                     </AnimatePresence>
 
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                                        {marketingRules.map(rule => (
+                                        {/* AI Sales Pilot Card */}
+                                        <Link href="ai-sales" className="bg-gradient-to-br from-indigo-700 to-indigo-900 border border-indigo-400/20 rounded-[3.5rem] p-10 shadow-2xl group hover:scale-[1.02] transition-all relative overflow-hidden">
+                                            <div className="absolute top-0 right-0 p-10 opacity-10 group-hover:opacity-20 transition-opacity">
+                                                <Bot size={100} />
+                                            </div>
+                                            <div className="flex justify-between items-start mb-8 relative z-10">
+                                                <div className="w-14 h-14 bg-white/10 backdrop-blur-md text-white rounded-2xl flex items-center justify-center border border-white/10">
+                                                    <Zap className="w-8 h-8" />
+                                                </div>
+                                                <div className="px-4 py-1.5 bg-emerald-500 text-white rounded-xl text-[9px] font-black uppercase tracking-tighter shadow-lg shadow-emerald-500/20">
+                                                    PREMIUM AI
+                                                </div>
+                                            </div>
+                                            <h4 className="text-2xl font-black italic tracking-tighter uppercase text-white mb-2 relative z-10">AI Sales Pilot</h4>
+                                            <div className="flex items-center gap-3 relative z-10">
+                                                <span className="w-2 h-2 bg-emerald-400 rounded-full animate-pulse" />
+                                                <p className="text-[10px] font-black text-emerald-400 uppercase tracking-widest">OTOPİLOT HAZIR</p>
+                                            </div>
+                                            <p className="text-sm font-bold text-indigo-100/60 mt-6 leading-relaxed italic relative z-10">Kayıp (churn) riski taşıyan VIP'leri tespit eder ve WhatsApp üzerinden geri kazanım kampanyaları başlatır.</p>
+                                            
+                                            <div className="mt-10 pt-8 border-t border-white/5 flex justify-between items-center relative z-10">
+                                                <span className="text-[10px] font-black text-indigo-200 uppercase tracking-[0.2em] italic">Yönetmek için tıklayın</span>
+                                                <ChevronRight className="text-white opacity-40 group-hover:opacity-100 group-hover:translate-x-2 transition-all" size={20} />
+                                            </div>
+                                        </Link>
+
+                                        {marketingRules.map((rule: any) => (
                                             <div key={rule.id} className="bg-white border border-gray-100 rounded-[3.5rem] p-10 shadow-sm group hover:border-indigo-200 transition-all relative overflow-hidden">
                                                 <div className="flex justify-between items-start mb-8">
                                                     <div className="w-14 h-14 bg-indigo-50 text-indigo-600 rounded-2xl flex items-center justify-center">
@@ -393,7 +419,7 @@ export default function MarketingPage() {
                                                 <p className="text-xs font-bold text-gray-300 italic">n8n veya WhatsApp botunuzu bağlamak için Webhook ekleyin.</p>
                                             </div>
                                         )}
-                                        {webhooks.map(wh => (
+                                        {webhooks.map((wh: any) => (
                                             <div key={wh.id} className="bg-white border border-gray-100 rounded-[3rem] p-10 flex items-center gap-10 group hover:border-indigo-200 transition-all">
                                                 <div className="w-20 h-20 bg-gray-50 rounded-[2rem] flex items-center justify-center text-gray-300 group-hover:bg-indigo-50 group-hover:text-indigo-600 transition-all">
                                                     <Link size={32} />
@@ -468,7 +494,7 @@ export default function MarketingPage() {
                             </div>
                          </div>
                          <div className="space-y-6">
-                            {aiInsights.slice(0, 3).map((insight, idx) => (
+                            {aiInsights.slice(0, 3).map((insight: any, idx: number) => (
                                 <div key={idx} className="p-6 bg-gray-50/50 rounded-[2rem] border border-transparent hover:border-indigo-100 hover:bg-white transition-all group">
                                     <div className="flex justify-between items-start mb-2">
                                         <p className="text-[10px] font-black text-indigo-600 uppercase tracking-widest italic">{insight.title}</p>
@@ -493,7 +519,7 @@ export default function MarketingPage() {
                                     <p className="text-xs font-black text-gray-300 uppercase tracking-widest italic">İletişim akışı henüz boş</p>
                                 </div>
                             )}
-                            {allNotifs.map(notif => (
+                            {allNotifs.map((notif: any) => (
                                 <div key={notif.id} className="relative pl-10 border-l-2 border-indigo-100/50 group transition-all">
                                     <div className="absolute -left-[11px] top-0 w-5 h-5 bg-white border-2 border-indigo-600 rounded-full group-hover:scale-125 group-hover:bg-indigo-600 group-hover:border-indigo-600 transition-all z-10" />
                                     <div className="flex justify-between items-start mb-3">
@@ -505,7 +531,7 @@ export default function MarketingPage() {
                                         <span className="text-[8px] font-black text-gray-300 uppercase italic">BK{notif.id.slice(0,3).toUpperCase()}</span>
                                     </div>
                                     <p className="text-base font-black italic text-gray-900 uppercase italic leading-none mb-3">
-                                        {customers.find(c => c.id === notif.customerId)?.name || 'Eski Müşteri'}
+                                        {customers.find((c: any) => c.id === notif.customerId)?.name || 'Eski Müşteri'}
                                     </p>
                                     <p className="text-sm font-bold text-gray-400 italic leading-relaxed line-clamp-3 bg-gray-50/50 p-4 rounded-2xl border border-transparent group-hover:border-indigo-50 transition-all">“{notif.content}”</p>
                                 </div>

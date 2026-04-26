@@ -7,7 +7,7 @@ import {
     LayoutDashboard, Calendar, Users, Briefcase, 
     Receipt, Wallet, Package, Bot, UserCog, LucideIcon,
     Crown, Zap, Sparkles, TrendingUp, ShieldCheck, LayoutGrid,
-    Globe, Compass, CreditCard, FileText, ChevronRight, Info, Terminal, Settings as SettingsIcon, LogOut, FileCode, Lock
+    Globe, Compass, CreditCard, FileText, ChevronRight, Info, Terminal, Settings as SettingsIcon, LogOut, FileCode, Lock, Moon
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useState, useEffect, memo, useMemo } from 'react';

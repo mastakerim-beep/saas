@@ -10,6 +10,8 @@ import {
 import { useState, useMemo, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import ExportDropdown from "@/components/ui/ExportDropdown";
+import EndOfDayAI from "@/components/ai/EndOfDayAI";
+import { Bot, Moon } from "lucide-react";
 
 export default function CashManagementPage() {
     const { 
@@ -24,6 +26,7 @@ export default function CashManagementPage() {
         end: '' 
     });
     const [searchQuery, setSearchQuery] = useState("");
+    const [showEndOfDay, setShowEndOfDay] = useState(false);
 
     const today = useMemo(() => isMounted ? getTodayDate() : '', [isMounted, getTodayDate]);
     
@@ -177,11 +180,23 @@ export default function CashManagementPage() {
                             `₺${t.amount.toLocaleString('tr-TR')}`
                         ]}
                     />
+                    <button 
+                        onClick={() => setShowEndOfDay(true)}
+                        className="flex items-center gap-3 px-8 py-4 bg-gradient-to-br from-indigo-600 to-indigo-800 text-white rounded-[1.5rem] text-[10px] font-black uppercase tracking-widest hover:scale-[1.02] active:scale-95 transition-all shadow-2xl shadow-indigo-600/30 border border-white/10 group"
+                    >
+                        <Bot size={16} className="group-hover:animate-pulse" /> Gün Sonu Yap (AI)
+                    </button>
                     <button className="flex items-center gap-2 px-8 py-4 bg-indigo-950 text-white rounded-[1.5rem] text-[10px] font-black uppercase tracking-widest hover:scale-[1.02] active:scale-95 transition-all shadow-2xl shadow-indigo-200">
                         <Plus size={16} /> Yeni İşlem
                     </button>
                 </div>
             </header>
+
+            {/* AI Modal Integration */}
+            <EndOfDayAI 
+                isOpen={showEndOfDay} 
+                onClose={() => setShowEndOfDay(false)} 
+            />
 
             {/* Filter Section */}
             <motion.div 
