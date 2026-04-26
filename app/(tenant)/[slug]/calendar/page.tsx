@@ -94,7 +94,8 @@ export default function CalendarPage() {
     const { 
         staffMembers, appointments, blocks, settings, moveAppointment, 
         syncStatus, customers, isOnline, rooms, currentBranch, 
-        updateAppointmentStatus, deleteAppointment, updateBlock 
+        updateAppointmentStatus, deleteAppointment, updateBlock,
+        currentBusiness
     } = useStore();
     
     const searchParams = useSearchParams();
@@ -279,6 +280,7 @@ export default function CalendarPage() {
                     onPanelToggle={() => setIsPanelOpen(!isPanelOpen)}
                     activeVertical={activeVertical}
                     onVerticalChange={setActiveVertical}
+                    enabledVerticals={currentBusiness?.verticals}
                 />
 
                 <main className="flex-1 flex overflow-hidden relative">

@@ -16,15 +16,26 @@ interface CalendarHeaderProps {
     onPanelToggle: () => void;
     activeVertical: string;
     onVerticalChange: (v: string) => void;
+    enabledVerticals?: string[];
 }
 
 export default function CalendarHeader({ 
     selectedDate, onPrevDay, onNextDay, onToday, onDatePickerToggle, 
     currentBranch, viewMode, setViewMode, syncStatus, onPanelToggle,
-    activeVertical, onVerticalChange 
+    activeVertical, onVerticalChange, enabledVerticals = ['spa']
 }: CalendarHeaderProps) {
     // Standardize date parsing to computer local time to prevent day shifts
     const safeDate = selectedDate + 'T00:00:00';
+
+    const kings = [
+        { id: 'all', label: 'TÜMÜ', emoji: '🌐', color: 'bg-indigo-600 text-white shadow-indigo-100' },
+        { id: 'spa', label: 'SPA', emoji: '✨', color: 'bg-indigo-600 text-white shadow-indigo-100' },
+        { id: 'clinic', label: 'KLİNİK', emoji: '🏥', color: 'bg-emerald-600 text-white shadow-emerald-100' },
+        { id: 'fitness', label: 'FITNESS', emoji: '💪', color: 'bg-amber-500 text-white shadow-amber-100' }
+    ].filter(k => k.id === 'all' || enabledVerticals.includes(k.id));
+
+    // Yalnızca 1 dikey aktifse TÜMÜ ve SPA butonlarına gerek yok, saklıyoruz.
+    const showFilter = kings.length > 2; // 'all' + 1 dikeyden fazlaysa göster
 
     return (
         <header className="h-[80px] border-b border-gray-100 bg-white px-6 flex items-center justify-between z-10">
@@ -54,7 +65,7 @@ export default function CalendarHeader({
                                 </span>
                             </div>
                         </button>
-
+ 
                         <button 
                             onClick={onNextDay} 
                             className="p-3 hover:bg-gray-50 rounded-full transition-all text-gray-400 hover:text-indigo-600 active:scale-95 group"
@@ -74,27 +85,24 @@ export default function CalendarHeader({
                         </button>
                     </div>
 
-                <div className="flex items-center bg-gray-50 border border-gray-100 rounded-[2.5rem] p-1.5 shadow-inner">
-                    {[
-                        { id: 'all', label: 'TÜMÜ', emoji: '🌐', color: 'bg-indigo-600 text-white shadow-indigo-100' },
-                        { id: 'spa', label: 'SPA', emoji: '✨', color: 'bg-indigo-600 text-white shadow-indigo-100' },
-                        { id: 'clinic', label: 'KLİNİK', emoji: '🏥', color: 'bg-emerald-600 text-white shadow-emerald-100' },
-                        { id: 'fitness', label: 'FITNESS', emoji: '💪', color: 'bg-amber-500 text-white shadow-amber-100' }
-                    ].map(king => (
-                        <button
-                            key={king.id}
-                            onClick={() => onVerticalChange(king.id)}
-                            className={`flex items-center gap-2 px-6 py-2.5 rounded-[2rem] text-[9px] font-black uppercase tracking-widest transition-all duration-300 ${
-                                activeVertical === king.id 
-                                ? `${king.color} shadow-xl scale-105 border border-white/20` 
-                                : 'text-gray-400 hover:bg-white/50'
-                            }`}
-                        >
-                            <span>{king.emoji}</span>
-                            <span>{king.label}</span>
-                        </button>
-                    ))}
-                </div>
+                {showFilter && (
+                    <div className="flex items-center bg-gray-50 border border-gray-100 rounded-[2.5rem] p-1.5 shadow-inner">
+                        {kings.map(king => (
+                            <button
+                                key={king.id}
+                                onClick={() => onVerticalChange(king.id)}
+                                className={`flex items-center gap-2 px-6 py-2.5 rounded-[2rem] text-[9px] font-black uppercase tracking-widest transition-all duration-300 ${
+                                    activeVertical === king.id 
+                                    ? `${king.color} shadow-xl scale-105 border border-white/20` 
+                                    : 'text-gray-400 hover:bg-white/50'
+                                }`}
+                            >
+                                <span>{king.emoji}</span>
+                                <span>{king.label}</span>
+                            </button>
+                        ))}
+                    </div>
+                )}
             </div>
 
             <div className="flex items-center gap-6">
