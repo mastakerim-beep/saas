@@ -39,8 +39,9 @@ export default function CalendarHeader({
 
     return (
         <header className="h-[80px] border-b border-gray-100 bg-white px-6 flex items-center justify-between z-10">
-            <div className="flex items-center gap-10">
+            <div className="flex items-center gap-4 lg:gap-10">
                 <div className="flex items-center bg-white border-2 border-gray-100/80 rounded-[2rem] shadow-sm overflow-hidden p-1.5 transition-all hover:shadow-md hover:border-gray-200">
+
                         <button 
                             onClick={onPrevDay} 
                             className="p-3 hover:bg-gray-50 rounded-full transition-all text-gray-400 hover:text-indigo-600 active:scale-95 group"
@@ -91,7 +92,7 @@ export default function CalendarHeader({
                             <button
                                 key={king.id}
                                 onClick={() => onVerticalChange(king.id)}
-                                className={`flex items-center gap-2 px-6 py-2.5 rounded-[2rem] text-[9px] font-black uppercase tracking-widest transition-all duration-300 ${
+                                className={`flex items-center gap-1.5 px-4 lg:px-6 py-2.5 rounded-[2rem] text-[9px] font-black uppercase tracking-widest transition-all duration-300 ${
                                     activeVertical === king.id 
                                     ? `${king.color} shadow-xl scale-105 border border-white/20` 
                                     : 'text-gray-400 hover:bg-white/50'
@@ -105,33 +106,33 @@ export default function CalendarHeader({
                 )}
             </div>
 
-            <div className="flex items-center gap-6">
+            <div className="flex items-center gap-3 lg:gap-6">
                 <div className="flex p-2 bg-gray-50 border border-gray-100 rounded-[2.5rem] shadow-inner">
                     <button 
                         onClick={() => setViewMode('staff')}
-                        className={`flex items-center gap-3 px-8 py-3.5 rounded-[2rem] text-[11px] font-black uppercase tracking-widest transition-all duration-500 ${viewMode === 'staff' ? 'bg-indigo-600 text-white shadow-xl shadow-indigo-100 scale-105' : 'text-gray-400 hover:text-indigo-600'}`}
+                        className={`flex items-center gap-2 lg:gap-3 px-6 lg:px-8 py-3.5 rounded-[2rem] text-[11px] font-black uppercase tracking-widest transition-all duration-500 ${viewMode === 'staff' ? 'bg-indigo-600 text-white shadow-xl shadow-indigo-100 scale-105' : 'text-gray-400 hover:text-indigo-600'}`}
                     >
                         <User size={14} className={viewMode === 'staff' ? 'animate-pulse' : ''} />
-                        Personel Görünümü
+                        <span className="hidden sm:inline">Personel Görünümü</span>
                     </button>
                     <button 
                         onClick={() => setViewMode('room')}
-                        className={`flex items-center gap-3 px-8 py-3.5 rounded-[2rem] text-[11px] font-black uppercase tracking-widest transition-all duration-500 ${viewMode === 'room' ? 'bg-indigo-600 text-white shadow-xl shadow-indigo-100 scale-105' : 'text-gray-400 hover:text-indigo-600'}`}
+                        className={`flex items-center gap-2 lg:gap-3 px-6 lg:px-8 py-3.5 rounded-[2rem] text-[11px] font-black uppercase tracking-widest transition-all duration-500 ${viewMode === 'room' ? 'bg-indigo-600 text-white shadow-xl shadow-indigo-100 scale-105' : 'text-gray-400 hover:text-indigo-600'}`}
                     >
                         <MapPin size={14} className={viewMode === 'room' ? 'animate-pulse' : ''} />
-                        Oda Görünümü
+                        <span className="hidden sm:inline">Oda Görünümü</span>
                     </button>
                 </div>
 
-                <div className="h-10 w-px bg-gray-100 mx-2" />
+                <div className="h-10 w-px bg-gray-100 mx-1 lg:mx-2" />
 
                 <button 
                     onClick={onPanelToggle}
-                    className="flex items-center gap-3 px-10 h-[60px] bg-indigo-600 hover:bg-indigo-700 text-white rounded-[2rem] shadow-2xl shadow-indigo-200 transition-all active:scale-95 group relative overflow-hidden"
+                    className="flex items-center gap-3 px-6 lg:px-10 h-[60px] bg-indigo-600 hover:bg-indigo-700 text-white rounded-[2rem] shadow-2xl shadow-indigo-200 transition-all active:scale-95 group relative overflow-hidden"
                 >
                     <div className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/10 to-white/0 -translate-x-full group-hover:translate-x-full transition-transform duration-1000" />
                     <Search className="w-5 h-5 group-hover:rotate-12 transition-transform" />
-                    <span className="text-[11px] font-black uppercase tracking-[0.2em] hidden xl:block">Müşteri Rehberi</span>
+                    <span className="text-[11px] font-black uppercase tracking-[0.2em] hidden lg:block">Müşteri Rehberi</span>
                 </button>
             </div>
         </header>
