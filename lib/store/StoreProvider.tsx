@@ -257,7 +257,9 @@ const StoreOrchestrator = ({ children }: { children: ReactNode }) => {
         window.addEventListener('online', handleOnline);
         window.addEventListener('offline', handleOffline);
 
-        const isLoginPath = pathname === '/login';
+        const normalizePath = (p: string) => p?.replace(/\/+$/, '') || '/';
+        const normalizedPath = normalizePath(pathname);
+        const isLoginPath = normalizedPath.startsWith('/login');
 
         // Otomatik veri çekme başlatıcı
         // Sadece auth süreci tamamlandığında ve ortam (slug/kullanıcı) hazır olduğunda çek

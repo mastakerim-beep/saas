@@ -84,7 +84,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             } catch (err) {
                 console.error('🛡️ [Auth Trace] Initial session check failed:', err);
             } finally {
-                // We don't necessarily set isInitialized here because the listener will also fire
+                setIsInitialized(true); 
             }
         };
         checkInitialSession();
