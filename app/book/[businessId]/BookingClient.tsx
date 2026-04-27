@@ -220,7 +220,11 @@ export default function BookingClient({
           
           {step === 1 && (
             <div className="animate-[fadeIn_0.3s_ease]">
-              <SmartTriage onSelectService={(s: any) => { setService(s); setStep(2); }} services={services} />
+              <SmartTriage 
+                onSelectService={(s: any) => { setService(s); setStep(2); }} 
+                services={services} 
+                verticals={business?.verticals || []}
+              />
               
               <h2 className="text-2xl font-black mb-6">Size Uygun Hizmeti Seçin</h2>
               <div className="grid grid-cols-1 gap-4">

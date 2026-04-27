@@ -6,7 +6,7 @@ import { useStore, Customer, Appointment, Package, Payment, Quote, Room } from '
 import { 
     User, CheckCircle, ArrowLeft, MessageCircle, Download, Clock, Tag, 
     MessageSquare, Search, X, Phone, Mail, Calendar, ChevronRight, ChevronLeft,
-    Package as PackageIcon, Star, Banknote, CreditCard, Building2, Trash2,
+    Package as PackageIcon, Star, Banknote, CreditCard, Building2, Trash2, Crown,
     Zap, Activity, Heart, Shield, RefreshCw, BarChart3, TrendingUp, Sparkles, MapPin,
     ArrowUpRight, Info, Plus, FileText, Gift, Settings, AlertCircle, Edit2, Globe, Languages, Users, ArrowDownRight, Printer,
     Calendar as CalendarIcon, Bot, Target
@@ -244,6 +244,7 @@ function CustomerDetail({ customer, onClose }: { customer: Customer; onClose: ()
         { id: 'Faturalar', label: 'Faturalar', icon: FileText },
         { id: 'Puan', label: 'Cüzdan & Sadakat', icon: Star },
         { id: 'Paket Takibi', label: 'Paket Takibi', icon: PackageIcon },
+        { id: 'Kuponlar', label: 'Imperial Kuponlar', icon: Gift },
         { id: 'Yolculuk', label: 'Müşteri Yolculuğu', icon: TrendingUp },
     ];
 
@@ -1296,6 +1297,50 @@ function CustomerDetail({ customer, onClose }: { customer: Customer; onClose: ()
                             </motion.div>
                         )}
 
+                        {activeMenu === 'Kuponlar' && (
+                            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="space-y-8">
+                                <div className="bg-white border border-gray-100 rounded-[3rem] p-10 shadow-sm relative overflow-hidden">
+                                     <div className="flex justify-between items-center mb-10 border-b border-gray-50 pb-8">
+                                         <div>
+                                             <h3 className="text-2xl font-black italic tracking-tighter uppercase italic text-shadow-sm">İmparatorluk Kuponları</h3>
+                                             <p className="text-[10px] font-black text-amber-600 uppercase tracking-widest mt-1">Özel Müşteri Sadakat Ödülleri</p>
+                                         </div>
+                                         <button className="px-8 py-3 bg-indigo-600 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest hover:scale-105 active:scale-95 transition-all shadow-xl shadow-indigo-100">
+                                             YENİ KUPON ÜRET
+                                         </button>
+                                     </div>
+                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                         <div className="p-8 bg-slate-50 rounded-[2.5rem] border border-slate-100 border-dashed flex flex-col items-center justify-center text-center">
+                                             <div className="w-16 h-16 bg-white rounded-2xl flex items-center justify-center text-slate-300 mb-4 shadow-sm">
+                                                 <Gift size={32} />
+                                             </div>
+                                             <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Henüz bu müşteri için aktif kupon bulunmamaktadır.</p>
+                                         </div>
+                                         {/* Mock Coupon */}
+                                         <div className="bg-gradient-to-br from-indigo-600 to-purple-700 p-8 rounded-[2.5rem] text-white relative overflow-hidden group">
+                                             <div className="absolute top-0 right-0 p-8 opacity-20 group-hover:scale-110 transition-transform">
+                                                 <Crown size={80} />
+                                             </div>
+                                             <div className="relative z-10">
+                                                 <p className="text-[10px] font-black uppercase tracking-widest text-indigo-200 mb-2 italic">HOŞGELDİN HEDİYESİ</p>
+                                                 <h4 className="text-3xl font-black italic tracking-tight italic">AURA-20-OFF</h4>
+                                                 <div className="mt-8 flex justify-between items-end">
+                                                     <div>
+                                                         <p className="text-[8px] font-black text-indigo-200 uppercase mb-1">GEÇERLİLİK</p>
+                                                         <p className="text-xs font-bold font-mono lowercase tracking-tighter">31.12.2026</p>
+                                                     </div>
+                                                     <div className="text-right">
+                                                         <p className="text-[8px] font-black text-indigo-200 uppercase mb-1">İNDİRİM</p>
+                                                         <p className="text-3xl font-black tracking-tighter">%20</p>
+                                                     </div>
+                                                 </div>
+                                             </div>
+                                         </div>
+                                     </div>
+                                </div>
+                            </motion.div>
+                        )}
+
                         {activeMenu === 'Yolculuk' && (
                             <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="max-w-4xl">
                                 <div className="bg-white rounded-[3rem] p-10 border border-gray-100 shadow-sm relative overflow-hidden">
@@ -1586,6 +1631,26 @@ export default function CustomersPage() {
                                         <div className="p-4 bg-gray-50 rounded-3xl flex flex-col items-center justify-center text-center">
                                             <p className="text-xl font-black italic text-indigo-600 leading-none">₺{stats.spent.toLocaleString('tr-TR')}</p>
                                             <p className="text-[8px] font-black text-gray-400 uppercase tracking-widest mt-1">Harcama</p>
+                                        </div>
+                                    </div>
+
+                                    {/* Freshness Bar */}
+                                    <div className="space-y-1.5">
+                                        <div className="flex justify-between items-end">
+                                            <p className="text-[8px] font-black text-gray-400 uppercase tracking-widest">Sadakat Tazeliği</p>
+                                            <p className={`text-[8px] font-black uppercase tracking-widest ${
+                                                insights.churn.some((risk: Customer) => risk.id === c.id) ? 'text-red-500' : 'text-green-500'
+                                            }`}>
+                                                {insights.churn.some((risk: Customer) => risk.id === c.id) ? 'RİSKLİ' : 'TAZE'}
+                                            </p>
+                                        </div>
+                                        <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                                            <div 
+                                                className={`h-full rounded-full ${
+                                                    insights.churn.some((risk: Customer) => risk.id === c.id) ? 'bg-red-500' : 'bg-green-500'
+                                                }`}
+                                                style={{ width: insights.churn.some((risk: Customer) => risk.id === c.id) ? '30%' : '100%' }}
+                                            />
                                         </div>
                                     </div>
 

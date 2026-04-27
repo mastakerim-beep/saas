@@ -2,8 +2,16 @@
 
 import { useState } from 'react';
 import { supabase } from '@/lib/supabase';
-import { Phone, ArrowRight, Star, CreditCard, Sparkles, MapPin, Bell, User, Calendar as CalendarIcon, KeyRound, QrCode, ChevronRight, Clock, Plus } from 'lucide-react';
+import { 
+    Phone, ArrowRight, Star, CreditCard, Sparkles, MapPin, 
+    Bell, User, Calendar as CalendarIcon, KeyRound, QrCode, 
+    ChevronRight, Clock, Plus, Activity, Pill, Weight, Ruler, ShieldCheck
+} from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { 
+    LineChart, Line, XAxis, YAxis, CartesianGrid, 
+    Tooltip, ResponsiveContainer, AreaChart, Area 
+} from 'recharts';
 
 export default function PortalClient({ business }: { business: any }) {
     const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -13,6 +21,7 @@ export default function PortalClient({ business }: { business: any }) {
     const [customerData, setCustomerData] = useState<any>(null);
     const [customerPackages, setCustomerPackages] = useState<any[]>([]);
     const [appointments, setAppointments] = useState<any[]>([]);
+    const [activeTab, setActiveTab] = useState<'appointments' | 'fitness' | 'clinic'>('appointments');
 
     const handleLogin = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -157,6 +166,7 @@ export default function PortalClient({ business }: { business: any }) {
     }
 
     const isClinic = business?.verticals?.includes('clinic');
+    const isFitness = business?.verticals?.includes('fitness');
 
     return (
         <div className="min-h-screen bg-[#fafafa] flex flex-col relative pb-24 font-sans antialiased">
@@ -184,124 +194,247 @@ export default function PortalClient({ business }: { business: any }) {
                 </div>
             </header>
 
-            <main className="px-6 -mt-8 relative z-20 space-y-10">
-                {/* Appointments Section */}
-                <section>
-                    <h3 className="text-sm font-black text-gray-900 mb-5 px-2 tracking-tight uppercase">{isClinic ? 'Vizite Takvimim' : 'Randevularım'}</h3>
-                    <div className="space-y-5">
-                        {upcomingAppointments.length > 0 ? upcomingAppointments.map((appt: any, i: number) => (
-                            <div key={i} className="bg-white p-7 rounded-[3rem] shadow-xl shadow-indigo-900/5 group border border-indigo-50/50">
-                                <div className="flex justify-between items-center mb-6">
-                                    <span className={`text-[10px] font-black uppercase tracking-widest flex items-center gap-2 px-4 py-1.5 rounded-full ${appt.status === 'confirmed' ? 'bg-indigo-50 text-indigo-600' : 'bg-amber-50 text-amber-600'}`}>
-                                        <CalendarIcon className="w-3.5 h-3.5" /> 
-                                        {appt.status === 'confirmed' ? 'ONAYLANDI' : 'ONAY BEKLİYOR'}
-                                    </span>
-                                    <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">
-                                        {new Date(appt.date).toLocaleDateString('tr-TR', { day: 'numeric', month: 'long' })}
-                                    </span>
-                                </div>
-                                <div className="flex items-center gap-5 mb-8 text-left">
-                                    <div className="flex-1">
-                                        <h3 className="text-xl font-black text-gray-900 leading-tight tracking-tight">{appt.service}</h3>
-                                        <p className="text-xs font-bold text-gray-400 mt-2 flex items-center gap-2">
-                                            <Clock className="w-3.5 h-3.5" /> {appt.time} • {appt.staff_name || 'Uzman Atanıyor'}
-                                        </p>
-                                    </div>
-                                    <div className="w-14 h-14 bg-gray-50 flex items-center justify-center rounded-[1.5rem] border border-gray-100 group-hover:scale-105 transition-transform">
-                                        <QrCode className="w-7 h-7 text-gray-900" />
-                                    </div>
-                                </div>
-                                <div className="flex gap-3">
-                                    <button onClick={() => alert('Referans No: ' + appt.appt_ref)} className="flex-1 bg-gray-900 text-white font-black text-[11px] uppercase tracking-widest py-4 rounded-2xl shadow-lg shadow-gray-200">Ref Kod</button>
-                                    <button onClick={() => handleCancelAppointment(appt.id)} className="flex-1 bg-rose-50 text-rose-600 font-black text-[11px] uppercase tracking-widest py-4 rounded-2xl border border-rose-100/50">İptal Et</button>
-                                </div>
-                            </div>
-                        )) : (
-                            <div className="bg-white p-12 rounded-[3.5rem] shadow-sm text-center border-2 border-dashed border-gray-100">
-                                <div className="w-14 h-14 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-4">
-                                    <CalendarIcon className="w-6 h-6 text-gray-300" />
-                                </div>
-                                <p className="text-gray-400 text-[11px] font-black uppercase tracking-widest leading-relaxed">Yaklaşan randevunuz yok.</p>
-                                <a href={`/book/${business?.id}`} className="inline-block mt-4 text-indigo-600 font-black text-[10px] uppercase tracking-widest bg-indigo-50 px-6 py-2 rounded-full">Yeni Randevu Al</a>
-                            </div>
-                        )}
-                    </div>
-                </section>
+            <main className="px-6 -mt-8 relative z-20 space-y-8">
+                {/* Tabs */}
+                <div className="flex bg-white/50 backdrop-blur-md p-1.5 rounded-[2rem] border border-white shadow-sm overflow-x-auto no-scrollbar">
+                    <button 
+                        onClick={() => setActiveTab('appointments')}
+                        className={`flex-1 min-w-[100px] py-4 rounded-[1.5rem] text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === 'appointments' ? 'bg-black text-white shadow-lg' : 'text-gray-400 hover:bg-white/50'}`}
+                    >
+                        Randevular
+                    </button>
+                    {isFitness && (
+                        <button 
+                            onClick={() => setActiveTab('fitness')}
+                            className={`flex-1 min-w-[100px] py-4 rounded-[1.5rem] text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === 'fitness' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-200' : 'text-gray-400 hover:bg-white/50'}`}
+                        >
+                            Antrenman
+                        </button>
+                    )}
+                    {isClinic && (
+                        <button 
+                            onClick={() => setActiveTab('clinic')}
+                            className={`flex-1 min-w-[100px] py-4 rounded-[1.5rem] text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === 'clinic' ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-100' : 'text-gray-400 hover:bg-white/50'}`}
+                        >
+                            Sağlık
+                        </button>
+                    )}
+                </div>
 
-                {/* Active Packages */}
-                <section>
-                    <h3 className="text-sm font-black text-gray-900 mb-5 px-2 tracking-tight uppercase">Aktif {isClinic ? 'Paketler' : 'Seanslar'}</h3>
-                    <div className="space-y-5">
-                        {customerPackages.filter((p: any) => (p.total_sessions - p.used_sessions) > 0).map((pkg: any, i: number) => (
-                            <div key={i} className="bg-gradient-to-br from-indigo-600 to-indigo-800 p-8 rounded-[3.5rem] text-white relative overflow-hidden shadow-2xl">
-                                <div className="absolute top-0 right-0 w-40 h-40 bg-white/10 rounded-full blur-[40px] -mr-10 -mt-10" />
-                                <div className="relative z-10 flex justify-between items-start mb-8">
-                                    <div className="pr-10">
-                                        <p className="font-black text-xl leading-tight uppercase tracking-tighter">{pkg.name}</p>
-                                        <p className="text-[10px] font-bold text-white/50 uppercase tracking-widest mt-2 bg-white/10 inline-block px-3 py-1 rounded-full">Exp: {pkg.expiry || 'Süresiz'}</p>
-                                    </div>
-                                    <div className="w-12 h-12 bg-white/10 backdrop-blur-md rounded-2xl flex items-center justify-center">
-                                        <CreditCard className="w-6 h-6 text-white" />
-                                    </div>
+                <AnimatePresence mode="wait">
+                    {activeTab === 'appointments' && (
+                        <motion.div 
+                            key="tab-appt"
+                            initial={{ opacity: 0, y: 10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, y: -10 }}
+                            className="space-y-10"
+                        >
+                            {/* Upcoming Section */}
+                            <section>
+                                <h3 className="text-sm font-black text-gray-900 mb-5 px-2 tracking-tight uppercase">Yaklaşan Randevular</h3>
+                                <div className="space-y-5">
+                                    {upcomingAppointments.length > 0 ? upcomingAppointments.map((appt: any, i: number) => (
+                                        <div key={i} className="bg-white p-7 rounded-[3rem] shadow-xl shadow-indigo-900/5 group border border-indigo-50/50">
+                                            <div className="flex justify-between items-center mb-6">
+                                                <span className={`text-[10px] font-black uppercase tracking-widest flex items-center gap-2 px-4 py-1.5 rounded-full ${appt.status === 'confirmed' ? 'bg-indigo-50 text-indigo-600' : 'bg-amber-50 text-amber-600'}`}>
+                                                    <CalendarIcon className="w-3.5 h-3.5" /> 
+                                                    {appt.status === 'confirmed' ? 'ONAYLANDI' : 'ONAY BEKLİYOR'}
+                                                </span>
+                                                <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">
+                                                    {new Date(appt.date).toLocaleDateString('tr-TR', { day: 'numeric', month: 'long' })}
+                                                </span>
+                                            </div>
+                                            <div className="flex items-center gap-5 mb-8 text-left">
+                                                <div className="flex-1">
+                                                    <h3 className="text-xl font-black text-gray-900 leading-tight tracking-tight">{appt.service}</h3>
+                                                    <p className="text-xs font-bold text-gray-400 mt-2 flex items-center gap-2">
+                                                        <Clock className="w-3.5 h-3.5" /> {appt.time} • {appt.staff_name || 'Uzman Atanıyor'}
+                                                    </p>
+                                                </div>
+                                                <div className="w-14 h-14 bg-gray-50 flex items-center justify-center rounded-[1.5rem] border border-gray-100 group-hover:scale-105 transition-transform">
+                                                    <QrCode className="w-7 h-7 text-gray-900" />
+                                                </div>
+                                            </div>
+                                            <div className="flex gap-3">
+                                                <button onClick={() => alert('Ref Kod: ' + appt.appt_ref)} className="flex-1 bg-gray-900 text-white font-black text-[11px] uppercase tracking-widest py-4 rounded-2xl">Ref Kod</button>
+                                                <button onClick={() => handleCancelAppointment(appt.id)} className="flex-1 bg-rose-50 text-rose-600 font-black text-[11px] uppercase tracking-widest py-4 rounded-2xl">İptal Et</button>
+                                            </div>
+                                        </div>
+                                    )) : (
+                                        <div className="bg-white p-12 rounded-[3.5rem] shadow-sm text-center border-2 border-dashed border-gray-100">
+                                            <p className="text-gray-400 text-[11px] font-black uppercase">Yaklaşan randevunuz yok.</p>
+                                        </div>
+                                    )}
                                 </div>
-                                <div className="relative z-10">
-                                    <div className="flex justify-between items-end mb-3">
-                                        <p className="text-[10px] font-black uppercase tracking-widest text-white/50">Kullanılabilir / Toplam</p>
-                                        <p className="text-4xl font-black">{pkg.total_sessions - pkg.used_sessions}<span className="text-lg text-white/30 font-bold ml-1">/ {pkg.total_sessions}</span></p>
-                                    </div>
-                                    <div className="w-full bg-black/20 h-2 rounded-full overflow-hidden">
-                                        <motion.div 
-                                            initial={{ width: 0 }} 
-                                            animate={{ width: `${((pkg.total_sessions - pkg.used_sessions) / pkg.total_sessions) * 100}%` }} 
-                                            transition={{ duration: 1.5, type: "spring" }}
-                                            className="bg-white h-full rounded-full" 
-                                        />
-                                    </div>
-                                </div>
-                            </div>
-                        ))}
-                        {customerPackages.length === 0 && (
-                            <div className="bg-gray-100/50 p-10 rounded-[3rem] text-center border border-gray-200">
-                                <p className="text-gray-400 text-[10px] font-black uppercase tracking-widest">Kayıtlı paketiniz bulunmuyor.</p>
-                            </div>
-                        )}
-                    </div>
-                </section>
+                            </section>
 
-                {/* Record History */}
-                {pastAppointments.length > 0 && (
-                    <section className="pb-12">
-                        <h3 className="text-sm font-black text-gray-900 mb-5 px-2 tracking-tight uppercase">İşlem Geçmişi</h3>
-                        <div className="bg-white rounded-[2.5rem] shadow-xl shadow-indigo-900/5 divide-y divide-gray-50 overflow-hidden border border-gray-50">
-                            {pastAppointments.slice(0, 5).map((appt: any, i: number) => (
-                                <div key={i} className="p-6 flex items-center justify-between hover:bg-gray-50 transition-colors">
-                                    <div className="flex items-center gap-5">
-                                        <div className={`w-11 h-11 rounded-2xl flex items-center justify-center ${appt.status === 'completed' ? 'bg-emerald-50 text-emerald-500' : 'bg-rose-50 text-rose-500'}`}>
-                                            <CalendarIcon size={20} />
+                            {/* Active Packages */}
+                            <section>
+                                <h3 className="text-sm font-black text-gray-900 mb-5 px-2 tracking-tight uppercase">Aktif Haklarım</h3>
+                                <div className="space-y-4">
+                                    {customerPackages.filter((p: any) => (p.total_sessions - p.used_sessions) > 0).map((pkg: any, i: number) => (
+                                        <div key={i} className="bg-gradient-to-br from-indigo-600 to-indigo-800 p-8 rounded-[3.5rem] text-white shadow-xl">
+                                            <div className="flex justify-between items-start mb-6">
+                                                <p className="font-black text-lg uppercase tracking-tighter">{pkg.name}</p>
+                                                <CreditCard className="w-5 h-5 text-white/50" />
+                                            </div>
+                                            <div className="flex justify-between items-end">
+                                                <p className="text-3xl font-black">{pkg.total_sessions - pkg.used_sessions}<span className="text-sm opacity-30 ml-1">/ {pkg.total_sessions}</span></p>
+                                                <p className="text-[9px] font-black uppercase opacity-50">Seans Kaldı</p>
+                                            </div>
                                         </div>
-                                        <div>
-                                            <p className="text-[13px] font-black text-gray-900 tracking-tight leading-none mb-1.5">{appt.service}</p>
-                                            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">
-                                                {new Date(appt.date).toLocaleDateString('tr-TR')} • {appt.status === 'completed' ? 'TAMAMLANDI' : 'İPTAL'}
-                                            </p>
-                                        </div>
-                                    </div>
-                                    <ChevronRight size={16} className="text-gray-300" />
+                                    ))}
                                 </div>
-                            ))}
-                        </div>
-                    </section>
-                )}
+                            </section>
+
+                            {/* History Section */}
+                            {pastAppointments.length > 0 && (
+                                <section className="pb-12">
+                                    <h3 className="text-sm font-black text-gray-900 mb-5 px-2 tracking-tight uppercase">Geçmiş İşlemler</h3>
+                                    <div className="bg-white rounded-[3rem] shadow-xl shadow-indigo-900/5 divide-y divide-gray-50 overflow-hidden border border-gray-50">
+                                        {pastAppointments.slice(0, 5).map((appt: any, i: number) => (
+                                            <div key={i} className="p-6 flex items-center justify-between">
+                                                <div className="flex items-center gap-4">
+                                                    <div className="w-10 h-10 rounded-xl bg-gray-50 flex items-center justify-center text-gray-400">
+                                                        <CalendarIcon size={16} />
+                                                    </div>
+                                                    <div>
+                                                        <p className="text-xs font-black text-gray-900 tracking-tight">{appt.service}</p>
+                                                        <p className="text-[9px] font-bold text-gray-400 uppercase">{new Date(appt.date).toLocaleDateString('tr-TR')}</p>
+                                                    </div>
+                                                </div>
+                                                <ChevronRight size={14} className="text-gray-300" />
+                                            </div>
+                                        ))}
+                                    </div>
+                                </section>
+                            )}
+                        </motion.div>
+                    )}
+
+                    {activeTab === 'fitness' && (
+                        <motion.div 
+                            key="tab-fitness"
+                            initial={{ opacity: 0, y: 10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, y: -10 }}
+                            className="space-y-8"
+                        >
+                            <div className="bg-white p-8 rounded-[3.5rem] shadow-xl shadow-indigo-900/5 border border-indigo-50/50">
+                                <div className="flex items-center gap-4 mb-8">
+                                    <div className="w-12 h-12 bg-indigo-50 rounded-2xl flex items-center justify-center text-indigo-600">
+                                        <Activity className="w-6 h-6" />
+                                    </div>
+                                    <div>
+                                        <p className="text-[10px] font-black uppercase tracking-widest text-indigo-400">Titan Ölçüm Paneli</p>
+                                        <h3 className="text-lg font-black text-gray-900 italic uppercase">Vücut Analizi</h3>
+                                    </div>
+                                </div>
+
+                                <div className="grid grid-cols-2 gap-4">
+                                    {customerData?.vertical_data?.fitness?.measurements?.length > 0 ? (
+                                        <>
+                                            <div className="bg-gray-50/50 p-6 rounded-[2rem] border border-gray-100">
+                                                <p className="text-[9px] font-black text-gray-400 uppercase mb-2">Ağırlık</p>
+                                                <p className="text-2xl font-black text-gray-900">{customerData.vertical_data.fitness.measurements.slice(-1)[0].weight} <span className="text-xs text-gray-400">KG</span></p>
+                                            </div>
+                                            <div className="bg-gray-50/50 p-6 rounded-[2rem] border border-gray-100">
+                                                <p className="text-[9px] font-black text-gray-400 uppercase mb-2">Yağ Oranı</p>
+                                                <p className="text-2xl font-black text-gray-900">{customerData.vertical_data.fitness.measurements.slice(-1)[0].bodyFat} <span className="text-xs text-gray-400">%</span></p>
+                                            </div>
+                                        </>
+                                    ) : (
+                                        <div className="col-span-2 py-10 text-center text-gray-400 text-[10px] font-black uppercase italic">Henüz ölçüm kaydı yok.</div>
+                                    )}
+                                </div>
+                            </div>
+
+                            {customerData?.vertical_data?.fitness?.measurements?.length > 1 && (
+                                <div className="bg-white p-8 rounded-[3.5rem] shadow-xl shadow-indigo-900/5 border border-indigo-50/50 h-[300px]">
+                                    <p className="text-[10px] font-black uppercase tracking-widest text-indigo-400 mb-6">Ağırlık Değişimi</p>
+                                    <ResponsiveContainer width="100%" height="80%">
+                                        <AreaChart data={customerData.vertical_data.fitness.measurements.map((m: any) => ({ weight: parseFloat(m.weight), date: new Date(m.date).toLocaleDateString('tr-TR', { day: 'numeric', month: 'short' }) }))}>
+                                            <defs>
+                                                <linearGradient id="colorW" x1="0" y1="0" x2="0" y2="1">
+                                                    <stop offset="5%" stopColor="#6366f1" stopOpacity={0.1}/>
+                                                    <stop offset="95%" stopColor="#6366f1" stopOpacity={0}/>
+                                                </linearGradient>
+                                            </defs>
+                                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
+                                            <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{ fontSize: 9, fontWeight: 900 }} />
+                                            <YAxis hide />
+                                            <Tooltip contentStyle={{ borderRadius: '1rem', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)', fontSize: '10px', fontWeight: 'bold' }} />
+                                            <Area type="monotone" dataKey="weight" stroke="#6366f1" strokeWidth={3} fillOpacity={1} fill="url(#colorW)" />
+                                        </AreaChart>
+                                    </ResponsiveContainer>
+                                </div>
+                            )}
+                        </motion.div>
+                    )}
+
+                    {activeTab === 'clinic' && (
+                        <motion.div 
+                            key="tab-clinic"
+                            initial={{ opacity: 0, y: 10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, y: -10 }}
+                            className="space-y-8"
+                        >
+                            <div className="bg-white p-8 rounded-[3.5rem] shadow-xl shadow-emerald-900/5 border border-emerald-50/50">
+                                <div className="flex items-center gap-4 mb-8">
+                                    <div className="w-12 h-12 bg-emerald-50 rounded-2xl flex items-center justify-center text-emerald-600">
+                                        <Pill className="w-6 h-6" />
+                                    </div>
+                                    <div>
+                                        <p className="text-[10px] font-black uppercase tracking-widest text-emerald-400">Sanctus Reçeteler</p>
+                                        <h3 className="text-lg font-black text-gray-900 italic uppercase">Tıbbi Bilgiler</h3>
+                                    </div>
+                                </div>
+
+                                <div className="space-y-4">
+                                    {appointments.filter(a => a.vertical_notes?.clinic?.prescription).length > 0 ? (
+                                        appointments.filter(a => a.vertical_notes?.clinic?.prescription).map((appt, i) => (
+                                            <div key={i} className="bg-gray-50/50 p-6 rounded-[2.5rem] border border-gray-100 relative overflow-hidden group">
+                                                <div className="absolute top-0 right-0 p-4 opacity-10">
+                                                    <ShieldCheck size={40} className="text-emerald-600" />
+                                                </div>
+                                                <div className="flex justify-between items-start mb-4">
+                                                    <div>
+                                                        <p className="text-[10px] font-black text-emerald-600 uppercase tracking-widest">Onaylı Kayıt</p>
+                                                        <p className="text-[9px] font-bold text-gray-400 uppercase mt-1">{new Date(appt.date).toLocaleDateString('tr-TR', { day: 'numeric', month: 'long' })}</p>
+                                                    </div>
+                                                </div>
+                                                <div className="space-y-3">
+                                                    {appt.vertical_notes.clinic.prescription.medications?.map((med: any, idx: number) => (
+                                                        <div key={idx} className="flex justify-between items-center bg-white/60 p-4 rounded-[1.25rem] border border-emerald-50/50">
+                                                            <div>
+                                                                <p className="text-xs font-black text-gray-900 uppercase">{med.name}</p>
+                                                                <p className="text-[9px] font-bold text-gray-400 uppercase mt-0.5">{med.dosage} • {med.frequency}</p>
+                                                            </div>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        ))
+                                    ) : (
+                                        <div className="py-10 text-center text-gray-400 text-[10px] font-black uppercase italic">Aktif reçete bulunamadı.</div>
+                                    )}
+                                </div>
+                            </div>
+                        </motion.div>
+                    )}
+                </AnimatePresence>
             </main>
 
-            {/* Bottom Nav (PWA Native App Feel) */}
+            {/* Bottom Nav */}
             <div className="fixed bottom-0 left-0 w-full bg-white/80 backdrop-blur-3xl border-t border-gray-100 pb-safe pt-5 px-10 z-50 rounded-t-[3rem] shadow-[0_-15px_40px_rgba(0,0,0,0.05)] flex justify-between items-center text-gray-400">
-                <button className="flex flex-col items-center gap-1.5 text-indigo-600">
+                <button className={`flex flex-col items-center gap-1.5 ${activeTab === 'appointments' ? 'text-indigo-600' : ''}`} onClick={() => setActiveTab('appointments')}>
                     <User className="w-6 h-6" />
                     <span className="text-[9px] font-black uppercase tracking-widest">Profil</span>
                 </button>
                 <div className="relative -top-7">
-                    <a href={`/book/${business?.id}`} className="w-16 h-16 bg-black text-white rounded-full flex items-center justify-center shadow-2xl shadow-indigo-200 hover:scale-110 active:scale-95 transition-all">
+                    <a href={`/book/${business?.id}`} className="w-16 h-16 bg-black text-white rounded-full flex items-center justify-center shadow-2xl hover:scale-110 active:scale-95 transition-all">
                         <Plus className="w-7 h-7" />
                     </a>
                 </div>

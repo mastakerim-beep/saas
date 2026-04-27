@@ -96,3 +96,38 @@ export const retryRequest = async <T,>(fn: () => Promise<T>, retries = 3, delay 
         return retryRequest(fn, retries - 1, delay * 2);
     }
 };
+/**
+ * Fiyatı yerel ayarlara göre formatlar.
+ */
+export const formatPrice = (amount: number, locale: 'tr' | 'en' = 'tr') => {
+    const formatter = new Intl.NumberFormat(locale === 'tr' ? 'tr-TR' : 'en-US', {
+        style: 'currency',
+        currency: locale === 'tr' ? 'TRY' : 'USD',
+        minimumFractionDigits: 0,
+        maximumFractionDigits: 0,
+    });
+    return formatter.format(amount);
+};
+
+/**
+ * Şube saat dilimine göre şimdiki zamanı döner.
+ */
+export const getBranchTime = (timezone: string = 'Europe/Istanbul') => {
+    const now = new Date();
+    const formatter = new Intl.DateTimeFormat('sv-SE', {
+        timeZone: timezone,
+        year: 'numeric', month: '2-digit', day: '2-digit',
+        hour: '2-digit', minute: '2-digit', second: '2-digit',
+        hour12: false
+    });
+    
+    const parts = formatter.formatToParts(now);
+    const map: Record<string, string> = {};
+    parts.forEach(p => map[p.type] = p.value);
+    
+    return {
+        full: `${map.year}-${map.month}-${map.day}T${map.hour}:${map.minute}:${map.second}`,
+        date: `${map.year}-${map.month}-${map.day}`,
+        time: `${map.hour}:${map.minute}`
+    };
+};

@@ -13,17 +13,36 @@ ADD COLUMN IF NOT EXISTS intervention_delta NUMERIC DEFAULT 0;
 -- mühürü kırabilir (ancak bu işlem Audit Log'da takip edilir).
 CREATE OR REPLACE FUNCTION public.fn_check_sealed_appointment()
 RETURNS TRIGGER AS $$
+DECLARE
+    is_z_closed BOOLEAN;
 BEGIN
-    -- Eğer kayıt mühürlüyse kontrol et
-    IF (OLD.is_sealed = true) THEN
-        -- Eğer işlemi yapan kişi SaaS_Owner veya Business_Owner değilse engelle
-        IF NOT EXISTS (
-            SELECT 1 FROM public.app_users 
-            WHERE id = auth.uid() AND role IN ('SaaS_Owner', 'Business_Owner')
-        ) THEN
-            RAISE EXCEPTION 'Bu kayıt mühürlenmiştir. Müdahale yetkiniz bulunmamaktadır. İmparatorluk Vetosu gereklidir.';
+        -- Kayıt mühürlü mü veya Drakoniyen 15 dakikalık süre geçti mi?
+        IF (OLD.is_sealed = true OR (now() - OLD.created_at > interval '15 minutes')) THEN
+            -- İlgili güne ait Z-Raporu kapandı mı kontrol et
+            SELECT EXISTS (
+                SELECT 1 FROM public.z_reports 
+                WHERE business_id = OLD.business_id 
+                  AND report_date = OLD.date
+            ) INTO is_z_closed;
+
+            -- İşlemi yapan yetkili SaaS_Owner ise her zaman izin ver
+            IF EXISTS (SELECT 1 FROM public.app_users WHERE id = auth.uid() AND role = 'SaaS_Owner') THEN
+                RETURN NEW;
+            END IF;
+
+            -- Z-Raporu kapandıysa Business_Owner dahil kimse (SaaS_Owner hariç) değiştiremez
+            IF (is_z_closed) THEN
+                RAISE EXCEPTION 'Bu günün Z-Raporu kapatılmıştır. Veri artık dondurulmuştur (Süper Mühür). Müdahale için Sistem Yöneticisi ile irtibata geçin.';
+            END IF;
+
+            -- Eğer mühürlendiği halde Z-Raporu kapanmadıysa, Business_Owner müdahalede bulunabilir (Imperial Veto)
+            IF NOT EXISTS (
+                SELECT 1 FROM public.app_users 
+                WHERE id = auth.uid() AND role = 'Business_Owner'
+            ) THEN
+                RAISE EXCEPTION 'Bu kayıt mühürlenmiştir (15dk geçti). Müdahale için İşletme Sahibi (Veto) yetkisi gereklidir.';
+            END IF;
         END IF;
-    END IF;
     RETURN NEW;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;

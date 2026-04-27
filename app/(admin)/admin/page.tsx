@@ -5,7 +5,7 @@ import {
     Globe, ShieldCheck, Activity, Terminal, 
     Bell, CreditCard, Zap, Server, 
     Search, Database, LogOut,
-    ChevronRight, Plus, RefreshCw, X
+    ChevronRight, Plus, RefreshCw, X, ShieldAlert
 } from 'lucide-react';
 import { useState, useMemo } from 'react';
 import { 
@@ -20,13 +20,14 @@ import { TenantCard, EditBusinessModal } from './components/ManagementComponents
 import { CreateBusinessModal } from './components/CreateBusinessModal';
 import { BroadcastForm } from './components/BroadcastForm';
 import { MigrationWizard } from '@/components/system/migration/MigrationWizard';
+import { ImperialOversight } from './components/ImperialOversight';
 
-type AdminTab = 'monitor' | 'tenants' | 'billing' | 'notifications' | 'announcements' | 'system' | 'migration';
+type AdminTab = 'monitor' | 'tenants' | 'billing' | 'oversight' | 'notifications' | 'announcements' | 'system' | 'migration';
 
 export default function SuperAdminPage() {
     const { 
         currentUser, allBusinesses, allPayments, allLogs, 
-        allNotifs, setImpersonatedBusinessId,
+        allNotifs, zReports, setImpersonatedBusinessId,
         logout, addBusiness, provisionBusinessUser, 
         deleteBusiness, updateBusinessStatus, clearCatalog, fetchData,
         updateAnyBusiness
@@ -235,6 +236,7 @@ export default function SuperAdminPage() {
                     <p className="px-4 text-[9px] font-black text-slate-400 uppercase tracking-[0.3em] mb-4">Tactical Matrix</p>
                     <NavBtn id="monitor" active={activeTab} onClick={setActiveTab} icon={Activity} label="İzleme" badge="CANLI" />
                     <NavBtn id="tenants" active={activeTab} onClick={setActiveTab} icon={Globe} label="İşletmeler" badge={allBusinesses.length.toString()} />
+                    <NavBtn id="oversight" active={activeTab} onClick={setActiveTab} icon={ShieldAlert} label="İmparatorluk Denetimi" badge="AI" />
                     <NavBtn id="billing" active={activeTab} onClick={setActiveTab} icon={CreditCard} label="SaaS Muhasebesi" badge="MRR" />
                     <NavBtn id="notifications" active={activeTab} onClick={setActiveTab} icon={Bell} label="İç Akış" badge={stats.pendingNotifs.toString()} />
                     <NavBtn id="announcements" active={activeTab} onClick={setActiveTab} icon={Bell} label="Yayın Merkezi" />
@@ -327,6 +329,12 @@ export default function SuperAdminPage() {
                                         </div>
                                     </div>
                                 </div>
+                            </motion.div>
+                        )}
+
+                        {activeTab === 'oversight' && (
+                            <motion.div key="oversight" initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0 }}>
+                                <ImperialOversight businesses={allBusinesses} logs={allLogs} zReports={zReports} />
                             </motion.div>
                         )}
 

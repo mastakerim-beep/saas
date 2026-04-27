@@ -6,7 +6,9 @@
 import * as DB from '@/lib/types/database.types';
 
 export type Business = DB.Business;
-export type Branch = DB.Branch;
+export interface Branch extends DB.Branch {
+    timezone?: string; // e.g. "Europe/Istanbul", "Europe/London", "America/New_York"
+}
 export type AppUser = DB.AppUser;
 export type Customer = DB.Customer;
 export type MembershipPlan = DB.MembershipPlan;

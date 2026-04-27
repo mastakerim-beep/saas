@@ -1,0 +1,52 @@
+export const dictionary = {
+    tr: {
+        dashboard: "Panel",
+        calendar: "Takvim",
+        customers: "Danışanlar",
+        finances: "Kasa & Finans",
+        inventory: "Envanter",
+        marketing: "AI Pazarlama",
+        executive: "Executive",
+        settings: "Ayarlar",
+        logout: "Çıkış Yap",
+        search: "Ara...",
+        welcome: "Hoş Geldiniz",
+        ai_pazarlama_title: "İmparatorluk Pazarlama Paneli",
+        churn_risk: "Churn Riski",
+        loyalty_pulse: "Sadakat Nabzı",
+        refresh: "Güncelle",
+        executive_summary: "Yönetici Özeti",
+        vision: "Aura Vision",
+        treasury: "Hazine",
+        veto: "Veto Merkezi",
+        radar: "Panopticon Radar",
+        forecast: "Gelecek Tahmini",
+        enable_alerts: "AI ALARM KUR"
+    },
+    en: {
+        dashboard: "Dashboard",
+        calendar: "Calendar",
+        customers: "Customers",
+        finances: "Finance & Cash",
+        inventory: "Inventory",
+        marketing: "AI Marketing",
+        executive: "Executive",
+        settings: "Settings",
+        logout: "Logout",
+        search: "Search...",
+        welcome: "Welcome",
+        ai_pazarlama_title: "Imperial Marketing Panel",
+        churn_risk: "Churn Risk",
+        loyalty_pulse: "Loyalty Pulse",
+        refresh: "Refresh",
+        executive_summary: "Executive Summary",
+        vision: "Aura Vision",
+        treasury: "Treasury",
+        veto: "Veto Center",
+        radar: "Panopticon Radar",
+        forecast: "AI Forecasting",
+        enable_alerts: "ENABLE AI ALERTS"
+    }
+};
+
+export type Locale = 'tr' | 'en';

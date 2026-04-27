@@ -52,6 +52,7 @@ export interface DataContextType {
     systemAnnouncements: SystemAnnouncement[];
     loyaltySettings: LoyaltySettings | null;
     webhooks: Webhook[];
+    locale: 'tr' | 'en';
 
     setAllAppointments: React.Dispatch<React.SetStateAction<Appointment[]>>;
     setAllBlocks: React.Dispatch<React.SetStateAction<CalendarBlock[]>>;
@@ -91,6 +92,7 @@ export interface DataContextType {
     setSystemAnnouncements: React.Dispatch<React.SetStateAction<SystemAnnouncement[]>>;
     setLoyaltySettings: React.Dispatch<React.SetStateAction<LoyaltySettings | null>>;
     setWebhooks: React.Dispatch<React.SetStateAction<Webhook[]>>;
+    setLocale: (l: 'tr' | 'en') => void;
 
     // CRUD Methods
     addCustomer: (c: any) => Customer;
@@ -135,6 +137,8 @@ export interface DataContextType {
     transferProduct: (productId: string, fromBranchId: string, toBranchId: string, amount: number, pricePerUnit?: number, transferType?: string) => Promise<boolean>;
     addPackageUsageHistory: (h: any) => void;
     addLog: (action: string, customer: string, oldValue?: string, newValue?: string) => Promise<void>;
+    addMarketingRule: (rule: any) => Promise<void>;
+    deleteMarketingRule: (id: string) => Promise<void>;
 }
 
 const DataContext = createContext<DataContextType | null>(null);
@@ -178,6 +182,7 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
     const [systemAnnouncements, setSystemAnnouncements] = useState<SystemAnnouncement[]>([]);
     const [loyaltySettings, setLoyaltySettings] = useState<LoyaltySettings | null>(null);
     const [webhooks, setWebhooks] = useState<Webhook[]>([]);
+    const [locale, setLocale] = useState<'tr' | 'en'>('tr');
 
 
     const addCustomer = useCallback((c: any) => {
@@ -474,6 +479,17 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
         });
     }, []);
 
+    const addMarketingRule = useCallback(async (rule: any) => {
+        const newRule = { ...rule, id: crypto.randomUUID(), createdAt: new Date().toISOString() };
+        setMarketingRules(prev => [...prev, newRule]);
+        syncDb('marketing_rules', 'insert', newRule);
+    }, []);
+
+    const deleteMarketingRule = useCallback(async (id: string) => {
+        setMarketingRules(prev => prev.filter(r => r.id !== id));
+        syncDb('marketing_rules', 'delete', {}, id);
+    }, []);
+
     const contextValue: DataContextType = useMemo(() => ({
         appointments, blocks, customers, debts, inventory, rooms, services, packages,
         membershipPlans, customerMemberships, staffMembers, allLogs, allNotifs, aiInsights, expenses,
@@ -498,7 +514,9 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
         addUsageNorm, updateUsageNorm, updateRoom, removeRoom, addRoom,
         addInventoryCategory, updateInventoryCategory, removeInventoryCategory,
         transferProduct, addPackageUsageHistory, addLog,
-        inventoryCategories, packageUsageHistory, setPackageUsageHistory
+        addMarketingRule, deleteMarketingRule,
+        inventoryCategories, packageUsageHistory, setPackageUsageHistory,
+        locale, setLocale
     }), [
         appointments, blocks, customers, debts, inventory, rooms, services, packages,
         membershipPlans, customerMemberships, staffMembers, allLogs, allNotifs, aiInsights, expenses,
@@ -506,7 +524,8 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
         allPayments, walletTransactions, bodyMaps, usageNorms, customerMedia,
         packageDefinitions, commissionRules, inventoryCategories, transferProduct, packageUsageHistory,
         paymentDefinitions, bankAccounts, expenseCategories, referralSources, consentFormTemplates,
-        systemAnnouncements, loyaltySettings, webhooks
+        systemAnnouncements, loyaltySettings, webhooks,
+        locale
     ]);
 
 

@@ -12,6 +12,7 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 import { useState, useEffect, memo, useMemo } from 'react';
 import { hasFeature } from '@/lib/utils/feature-gate';
+import { dictionary } from '@/lib/i18n/dict';
 
 interface SidebarItemProps {
     href: string;
@@ -122,10 +123,11 @@ export default function Sidebar() {
     const { 
         can, currentUser, currentBusiness, tenantModules, 
         allBusinesses, logout, isImpersonating, setImpersonatedBusinessId,
-        isInitialized
+        isInitialized, locale, setLocale
     } = useStore();
     const [isHovered, setIsHovered] = useState(false);
     const [isMounted, setIsMounted] = useState(false);
+    const d = dictionary[locale as 'tr' | 'en'];
 
     // Initial mount check to prevent hydration mismatch
     useEffect(() => {
@@ -236,10 +238,10 @@ export default function Sidebar() {
                     <div>
                         {isHovered && <p className="px-4 text-[10px] font-black text-indigo-400 uppercase tracking-widest mb-4 opacity-50 overflow-hidden whitespace-nowrap">Ana Operasyon</p>}
                         <div className="space-y-1">
-                            <SidebarItem isHovered={isHovered} pathname={pathname} href={getTenantLink('dashboard')} icon={LayoutDashboard} label="Genel Bakış" />
-                            {can('move_appt') && <SidebarItem isHovered={isHovered} pathname={pathname} href={getTenantLink('calendar')} icon={Calendar} label="Takvim" />}
-                            {can('manage_customers') && <SidebarItem isHovered={isHovered} pathname={pathname} href={getTenantLink('customers')} icon={Users} label={currentBusiness?.verticals?.includes('clinic') ? "Hastalar" : "Müşteriler"} />}
-                            {can('manage_staff') && <SidebarItem isHovered={isHovered} pathname={pathname} href={getTenantLink('booking-settings')} icon={Globe} label="Randevu Portalı" colorClass="text-indigo-500" />}
+                            <SidebarItem isHovered={isHovered} pathname={pathname} href={getTenantLink('dashboard')} icon={LayoutDashboard} label={d.dashboard} />
+                            {can('move_appt') && <SidebarItem isHovered={isHovered} pathname={pathname} href={getTenantLink('calendar')} icon={Calendar} label={d.calendar} />}
+                            {can('manage_customers') && <SidebarItem isHovered={isHovered} pathname={pathname} href={getTenantLink('customers')} icon={Users} label={d.customers} />}
+                            {can('manage_staff') && <SidebarItem isHovered={isHovered} pathname={pathname} href={getTenantLink('booking-settings')} icon={Globe} label="Portal" colorClass="text-indigo-500" />}
                             {can('manage_staff') && <SidebarItem isHovered={isHovered} pathname={pathname} href={getTenantLink('staff')} icon={Briefcase} label="Ekip" />}
                         </div>
                     </div>
@@ -282,10 +284,10 @@ export default function Sidebar() {
                             </p>
                         )}
                         <div className="space-y-1">
-                            <SidebarItem isHovered={isHovered} pathname={pathname} href={getTenantLink('memberships')} icon={Crown} label="Abonelikler" badge="V2" colorClass="text-indigo-400" />
+                            <SidebarItem isHovered={isHovered} pathname={pathname} href={getTenantLink('memberships')} icon={Crown} label="Üyelikler" badge="V2" colorClass="text-indigo-400" />
                             {isModuleEnabled('quotes') && <SidebarItem isHovered={isHovered} pathname={pathname} href={getTenantLink('quotes')} icon={FileText} label="Teklifler" colorClass="text-indigo-400" />}
-                            {isModuleEnabled('marketing') && <SidebarItem isHovered={isHovered} pathname={pathname} href={getTenantLink('marketing')} icon={Compass} label="AI Pazarlama" badge="AI" colorClass="text-indigo-400" isLocked={!hasFeature(currentBusiness || {}, 'hasAI')} />}
-                            {isModuleEnabled('inventory') && <SidebarItem isHovered={isHovered} pathname={pathname} href={getTenantLink('inventory')} icon={Package} label="Envanter" />}
+                            {isModuleEnabled('marketing') && <SidebarItem isHovered={isHovered} pathname={pathname} href={getTenantLink('marketing')} icon={Compass} label={d.marketing} badge="AI" colorClass="text-indigo-400" isLocked={!hasFeature(currentBusiness || {}, 'hasAI')} />}
+                            {isModuleEnabled('inventory') && <SidebarItem isHovered={isHovered} pathname={pathname} href={getTenantLink('inventory')} icon={Package} label={d.inventory} />}
                         </div>
                     </div>
                 )}
@@ -295,12 +297,10 @@ export default function Sidebar() {
                     <div>
                         {isHovered && <p className="px-4 text-[10px] font-black text-indigo-400 uppercase tracking-widest mb-4 opacity-50 overflow-hidden whitespace-nowrap">Finans</p>}
                         <div className="space-y-1">
-                            {can('view_cash') && <SidebarItem isHovered={isHovered} pathname={pathname} href={getTenantLink('executive')} icon={Globe} label="Executive" badge="VIP" colorClass="text-primary" isLocked={!hasFeature(currentBusiness || {}, 'hasAdvancedAnalytics')} />}
-                            {can('view_historical_finance') && <SidebarItem isHovered={isHovered} pathname={pathname} href={getTenantLink('executive/reports')} icon={FileCode} label="Z-Raporu Arşivi" colorClass="text-indigo-500" />}
-                            {can('view_cash') && <SidebarItem isHovered={isHovered} pathname={pathname} href={getTenantLink('finances/cash')} icon={Wallet} label="Günün Kasası" colorClass="text-indigo-500" />}
-                            {can('view_historical_finance') && <SidebarItem isHovered={isHovered} pathname={pathname} href={getTenantLink('finances')} icon={TrendingUp} label="Ciro Analizi" colorClass="text-indigo-500" />}
-                            {can('manage_expenses') && <SidebarItem isHovered={isHovered} pathname={pathname} href={getTenantLink('expenses')} icon={Receipt} label="Giderler" colorClass="text-indigo-500" />}
-                            {can('view_historical_finance') && <SidebarItem isHovered={isHovered} pathname={pathname} href={getTenantLink('balances')} icon={Wallet} label="Açık Hesap" colorClass="text-indigo-500" />}
+                            {can('view_cash') && <SidebarItem isHovered={isHovered} pathname={pathname} href={getTenantLink('executive')} icon={Globe} label={d.executive} badge="VIP" colorClass="text-primary" isLocked={!hasFeature(currentBusiness || {}, 'hasAdvancedAnalytics')} />}
+                            {can('view_historical_finance') && <SidebarItem isHovered={isHovered} pathname={pathname} href={getTenantLink('executive/reports')} icon={FileCode} label="Z-Raporu" colorClass="text-indigo-500" />}
+                            {can('view_cash') && <SidebarItem isHovered={isHovered} pathname={pathname} href={getTenantLink('finances/cash')} icon={Wallet} label={d.finances} colorClass="text-indigo-500" />}
+                            {can('view_historical_finance') && <SidebarItem isHovered={isHovered} pathname={pathname} href={getTenantLink('finances')} icon={TrendingUp} label="Analiz" colorClass="text-indigo-500" />}
                         </div>
                     </div>
                 )}
@@ -369,16 +369,28 @@ export default function Sidebar() {
                                 <p className="text-[11px] font-black text-gray-900 dark:text-white truncate tracking-tight mb-0.5">{currentUser?.name}</p>
                                 <p className="text-[9px] text-indigo-400/80 font-black uppercase tracking-widest">{currentUser?.role?.replace('Business_Owner', 'İŞLETME SAHİBİ').replace('SaaS_Owner', 'SİSTEM SAHİBİ').replace('Branch_Manager', 'ŞUBE MÜDÜRÜ').replace('_', ' ') || ''}</p>
                             </motion.div>
-                            <button 
-                                onClick={(e) => {
-                                    e.stopPropagation();
-                                    logout();
-                                }}
-                                className="p-2 hover:bg-red-50 text-gray-400 hover:text-red-500 rounded-xl transition-all"
-                                title="Çıkış Yap"
-                            >
-                                <LogOut size={16} />
-                            </button>
+                            <div className="flex flex-col gap-2">
+                                <button 
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        setLocale(locale === 'tr' ? 'en' : 'tr');
+                                    }}
+                                    className="p-2 hover:bg-indigo-50 text-indigo-400 hover:text-indigo-600 rounded-xl transition-all font-black text-[10px]"
+                                    title="Dili Değiştir"
+                                >
+                                    {locale === 'tr' ? 'EN' : 'TR'}
+                                </button>
+                                <button 
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        logout();
+                                    }}
+                                    className="p-2 hover:bg-red-50 text-gray-400 hover:text-red-500 rounded-xl transition-all"
+                                    title="Çıkış Yap"
+                                >
+                                    <LogOut size={16} />
+                                </button>
+                            </div>
                         </div>
                     )}
                     {!isHovered && (
