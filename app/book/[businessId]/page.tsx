@@ -68,10 +68,18 @@ export default async function BookingPage({
     .eq('business_id', businessId)
     .eq('is_public', true);
 
+  // Fetch Booking Settings
+  const { data: settingsData } = await supabase
+    .from('booking_settings')
+    .select('*')
+    .eq('business_id', businessId)
+    .single();
+
   const staff = staffData || [];
   const bookedSlots = apptData || [];
   const pricingRules = pricingData || [];
   const services = servicesData || [];
+  const bookingSettings = settingsData || null;
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col font-sans">
@@ -83,6 +91,7 @@ export default async function BookingPage({
             services={services}
             pricingRules={pricingRules}
             branchId={activeBranchId}
+            bookingSettings={bookingSettings}
           />
       </div>
     </div>

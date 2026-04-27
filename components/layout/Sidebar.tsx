@@ -176,7 +176,7 @@ export default function Sidebar() {
             onMouseLeave={() => setIsHovered(false)}
             animate={{ width: isHovered ? 280 : 88 }}
             transition={{ type: "spring", stiffness: 300, damping: 35, restDelta: 0.5 }}
-            className="hidden md:flex flex-col border-r border-indigo-100 dark:border-indigo-900/30 bg-white/80 dark:bg-background/50 backdrop-blur-3xl z-50 shrink-0 h-screen overflow-hidden font-sans relative shadow-2xl shadow-indigo-100/20 [will-change:width]"
+            className="hidden md:flex flex-col border-r border-indigo-100 dark:border-indigo-900/30 bg-white/80 dark:bg-background/50 backdrop-blur-3xl z-[150] shrink-0 h-screen overflow-hidden font-sans relative shadow-2xl shadow-indigo-100/20 [will-change:width]"
             style={{ transform: 'translateZ(0)' }}
         >
             {/* Header / Brand */}

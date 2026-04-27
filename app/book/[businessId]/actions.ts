@@ -15,6 +15,8 @@ export async function submitBooking(data: {
   duration: number;
   price: number;
   branchId: string;
+  depositPaid?: number;
+  isPaid?: boolean;
 }) {
   const supabase = createServiceClient();
 

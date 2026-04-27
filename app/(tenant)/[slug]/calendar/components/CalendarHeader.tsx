@@ -38,9 +38,9 @@ export default function CalendarHeader({
     const showFilter = kings.length > 2; // 'all' + 1 dikeyden fazlaysa göster
 
     return (
-        <header className="min-h-[80px] lg:h-[80px] border-b border-gray-100 bg-white px-2 lg:px-6 flex flex-wrap lg:flex-nowrap items-center justify-between z-10 py-2 lg:py-0 gap-2">
-            <div className="flex flex-wrap items-center gap-2 lg:gap-10">
-                <div className="flex items-center bg-white border-2 border-gray-100/80 rounded-[2rem] shadow-sm overflow-hidden p-1 transition-all hover:shadow-md hover:border-gray-200">
+        <header className="min-h-[80px] lg:h-[80px] border-b border-gray-100 bg-white px-4 lg:px-6 flex items-center justify-between z-10 py-2 lg:py-0 gap-4 overflow-x-auto no-scrollbar">
+            <div className="flex items-center gap-4 lg:gap-6 shrink-0">
+                <div className="flex items-center bg-white border-2 border-gray-100/80 rounded-[2rem] shadow-sm overflow-hidden p-1 transition-all hover:shadow-md hover:border-gray-200 shrink-0">
 
                         <button 
                             onClick={onPrevDay} 

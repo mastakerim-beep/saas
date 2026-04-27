@@ -2,7 +2,7 @@
 
 import { useState, useMemo } from 'react';
 import { Database } from '@/lib/supabase';
-import { Check, Calendar, Clock, User, Phone, ArrowRight, Loader2, Sparkles, MapPin, Tag } from 'lucide-react';
+import { Check, Calendar, Clock, User, Phone, ArrowRight, Loader2, Sparkles, MapPin, Tag, CreditCard, ShieldCheck } from 'lucide-react';
 import { submitBooking } from './actions';
 import SmartTriage from './components/SmartTriage';
 import WalletPassTicket from './components/WalletPassTicket';
@@ -33,7 +33,8 @@ export default function BookingClient({
   bookedSlots,
   services = [],
   pricingRules = [],
-  branchId
+  branchId,
+  bookingSettings
 }: {
   business: Business;
   staff: Staff[];
@@ -41,6 +42,7 @@ export default function BookingClient({
   services?: Service[];
   pricingRules?: any[];
   branchId: string;
+  bookingSettings?: any;
 }) {
   const getToday = () => new Date().toLocaleDateString('sv-SE');
 
@@ -56,6 +58,12 @@ export default function BookingClient({
   const [isSuccess, setIsSuccess] = useState(false);
   const [ticketId, setTicketId] = useState('');
   const [error, setError] = useState('');
+  
+  // Payment States (Mock)
+  const [cardHolder, setCardHolder] = useState('');
+  const [cardNumber, setCardNumber] = useState('');
+  const [expiry, setExpiry] = useState('');
+  const [cvv, setCvv] = useState('');
 
   // Sadece bugünden itibaren 14 gün
   const DATES = Array.from({ length: 14 }).map((_, i) => {
@@ -93,6 +101,24 @@ export default function BookingClient({
         return { isDiscounted: true, percent: discount, newPrice: basePrice - (basePrice * discount / 100) };
     }
     return { isDiscounted: false, percent: 0, newPrice: basePrice };
+  };
+
+  const currentPrice = useMemo(() => {
+    return time ? getDynamicPrice(service.price, time).newPrice : service.price;
+  }, [service.price, time]);
+
+  const depositAmount = useMemo(() => {
+    if (!bookingSettings?.requireDeposit) return 0;
+    return (currentPrice * (bookingSettings?.depositPercentage || 20)) / 100;
+  }, [currentPrice, bookingSettings]);
+
+  const handleNextFromInfo = () => {
+    if (!name || !phone) return;
+    if (bookingSettings?.requireDeposit) {
+        setStep(4);
+    } else {
+        handleSubmit();
+    }
   };
 
   const handleSubmit = async () => {
@@ -167,6 +193,7 @@ export default function BookingClient({
             { id: 1, title: 'Hizmet Seçimi' },
             { id: 2, title: 'Zaman & Uzman' },
             { id: 3, title: 'Kişisel Bilgiler' },
+            ...(bookingSettings?.requireDeposit ? [{ id: 4, title: 'Güvenli Ödeme' }] : []),
           ].map(s => (
             <div key={s.id} className="flex items-center gap-4 mb-8 last:mb-0">
               <div className={`w-10 h-10 rounded-2xl flex items-center justify-center font-black transition-all ${step >= s.id ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-100' : 'bg-gray-200 text-gray-400'}`}>
@@ -358,11 +385,109 @@ export default function BookingClient({
                 </button>
                 <button 
                   disabled={!name || !phone || isSubmitting}
-                  onClick={handleSubmit} 
+                  onClick={handleNextFromInfo} 
                   className="bg-indigo-600 text-white font-black py-4 px-8 rounded-full flex items-center gap-3 hover:shadow-xl hover:shadow-indigo-200 transition disabled:opacity-50"
                 >
-                  {isSubmitting ? <Loader2 className="w-5 h-5 animate-spin" /> : <Check className="w-5 h-5" />}
-                  {isSubmitting ? 'İletiliyor...' : 'Randevuyu Tamamla'}
+                  {isSubmitting ? <Loader2 className="w-5 h-5 animate-spin" /> : (bookingSettings?.requireDeposit ? <ArrowRight className="w-5 h-5" /> : <Check className="w-5 h-5" />)}
+                  {isSubmitting ? 'İletiliyor...' : (bookingSettings?.requireDeposit ? 'Ödeme Adımına Geç' : 'Randevuyu Tamamla')}
+                </button>
+              </div>
+            </div>
+          )}
+
+          {step === 4 && (
+            <div className="animate-[fadeIn_0.3s_ease]">
+              <div className="flex items-center gap-3 mb-6">
+                  <div className="w-12 h-12 rounded-2xl bg-indigo-50 text-indigo-600 flex items-center justify-center">
+                    <CreditCard size={24} />
+                  </div>
+                  <div>
+                    <h2 className="text-2xl font-black leading-none">Güvenli Ödeme</h2>
+                    <p className="text-[10px] font-black text-indigo-400 uppercase tracking-widest mt-1">Kapora Tahsilatı</p>
+                  </div>
+              </div>
+
+              <div className="bg-gray-900 rounded-[2rem] p-6 text-white mb-8 shadow-2xl relative overflow-hidden">
+                <div className="relative z-10 flex flex-col h-full justify-between">
+                    <div className="flex justify-between items-start mb-8">
+                        <div className="w-10 h-8 bg-amber-400/20 rounded-md border border-white/10" />
+                        <Sparkles className="text-white/20 w-8 h-8" />
+                    </div>
+                    <div className="space-y-4">
+                        <p className="text-xl font-black tracking-widest">{cardNumber || '•••• •••• •••• ••••'}</p>
+                        <div className="flex justify-between items-end">
+                            <div>
+                                <p className="text-[8px] font-black opacity-40 uppercase tracking-widest">KART SAHİBİ</p>
+                                <p className="text-sm font-black tracking-tight">{cardHolder.toUpperCase() || 'AD SOYAD'}</p>
+                            </div>
+                            <div className="text-right">
+                                <p className="text-[8px] font-black opacity-40 uppercase tracking-widest">VALID THRU</p>
+                                <p className="text-sm font-black tracking-tight">{expiry || 'MM/YY'}</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div className="absolute -right-10 -bottom-10 w-40 h-40 bg-indigo-500/10 rounded-full blur-3xl" />
+              </div>
+
+              <div className="space-y-4 mb-8">
+                <input 
+                    value={cardHolder} onChange={e => setCardHolder(e.target.value)}
+                    type="text" placeholder="Kart Üzerindeki İsim"
+                    className="w-full bg-gray-50 border-2 border-transparent focus:border-indigo-500 rounded-2xl py-4 px-6 font-bold outline-none transition"
+                />
+                <input 
+                    value={cardNumber} onChange={e => setCardNumber(e.target.value.replace(/\D/g,'').match(/.{1,4}/g)?.join(' ') || '')}
+                    maxLength={19}
+                    type="text" placeholder="Kart Numarası"
+                    className="w-full bg-gray-50 border-2 border-transparent focus:border-indigo-500 rounded-2xl py-4 px-6 font-bold outline-none transition"
+                />
+                <div className="grid grid-cols-2 gap-4">
+                  <input 
+                    value={expiry} onChange={e => setExpiry(e.target.value)}
+                    placeholder="AA/YY"
+                    className="w-full bg-gray-50 border-2 border-transparent focus:border-indigo-500 rounded-2xl py-4 px-6 font-bold outline-none transition"
+                  />
+                  <input 
+                    value={cvv} onChange={e => setCvv(e.target.value)}
+                    maxLength={3}
+                    placeholder="CVV"
+                    className="w-full bg-gray-50 border-2 border-transparent focus:border-indigo-500 rounded-2xl py-4 px-6 font-bold outline-none transition"
+                  />
+                </div>
+              </div>
+
+              <div className="p-6 bg-indigo-50 rounded-[2rem] border border-indigo-100 mb-8">
+                <div className="flex justify-between items-center mb-2">
+                    <span className="text-xs font-bold text-gray-500">Hizmet Tutarı:</span>
+                    <span className="text-xs font-black text-gray-900">₺{currentPrice}</span>
+                </div>
+                <div className="flex justify-between items-center pt-3 border-t border-indigo-200/30">
+                    <span className="text-sm font-black text-indigo-600">Ödenecek Kapora (%{bookingSettings?.depositPercentage}):</span>
+                    <span className="text-xl font-black text-indigo-600">₺{depositAmount}</span>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-3 mb-8 text-emerald-600 bg-emerald-50 p-4 rounded-2xl">
+                <ShieldCheck size={20} className="shrink-0" />
+                <p className="text-[10px] font-black uppercase tracking-widest leading-tight">256-Bit SSL Sertifikalı Güvenli Ödeme Altyapısı</p>
+              </div>
+
+              <div className="flex border-t border-gray-100 pt-6">
+                <button 
+                  onClick={() => setStep(3)} 
+                  className="font-black text-gray-400 hover:text-gray-900 transition mr-auto py-3 px-6"
+                >
+                  Geri
+                </button>
+                <button 
+                  disabled={!cardHolder || !cardNumber || isSubmitting}
+                  onClick={handleSubmit} 
+                  className="bg-indigo-600 text-white font-black py-4 px-10 rounded-full flex items-center gap-3 hover:shadow-xl hover:shadow-indigo-200 transition disabled:opacity-50"
+                  id="submit-booking-button"
+                >
+                  {isSubmitting ? <Loader2 className="w-5 h-5 animate-spin" /> : <CreditCard className="w-5 h-5" />}
+                  {isSubmitting ? 'Ödeme Alınıyor...' : `₺${depositAmount} Öde ve Onayla`}
                 </button>
               </div>
             </div>
