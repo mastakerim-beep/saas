@@ -16,6 +16,7 @@ const formatDate = (date: Date) => {
 interface CalendarItemProps {
     item: Appointment | CalendarBlock;
     type: 'appt' | 'block';
+    isCompact?: boolean;
     onCheckout?: (a: Appointment) => void;
     onAction?: (a: Appointment) => void;
     onResizeStart?: (id: string, initialDuration: number) => void;
@@ -24,7 +25,7 @@ interface CalendarItemProps {
 }
 
 export default function CalendarItem({ 
-    item, type, onCheckout, onAction, onResizeStart, onResizeUpdate, onResizeEnd 
+    item, type, isCompact, onCheckout, onAction, onResizeStart, onResizeUpdate, onResizeEnd 
 }: CalendarItemProps) {
     const { currentUser, deleteAppointment, updateAppointmentStatus, updateAppointment, updateBlock, removeBlock, rooms, packages, branches, currentBranch, customers } = useStore();
     
@@ -251,12 +252,12 @@ export default function CalendarItem({
 
             {/* Header Area: Time & Status */}
             <div className={`
-                flex items-center justify-between px-2 py-1 border-b border-black/10
+                flex items-center justify-between px-2 py-0.5 border-b border-black/10
                 ${(info as any).headerBg || info.indicator} text-white
             `}>
                 <div className="flex items-center gap-1">
-                    <Clock size={9} className="opacity-80 shrink-0" />
-                    <span className="text-[9px] font-black tracking-tighter tabular-nums truncate">
+                    <Clock size={isCompact ? 7 : 9} className="opacity-80 shrink-0" />
+                    <span className={`${isCompact ? 'text-[7px]' : 'text-[9px]'} font-black tracking-tighter tabular-nums truncate`}>
                         {item.time} - {(() => {
                             const [h, m] = item.time.split(':').map(Number);
                             const endMin = h * 60 + m + (localDuration || 60);
@@ -265,7 +266,7 @@ export default function CalendarItem({
                     </span>
                 </div>
                 <div className="flex items-center gap-1">
-                    {(info as any).badge && (
+                    {(info as any).badge && !isCompact && (
                         <span className="text-[8px] font-black uppercase tracking-wider bg-white/20 px-1.5 py-0.5 rounded-md">
                             {(info as any).badge}
                         </span>
@@ -275,15 +276,15 @@ export default function CalendarItem({
             </div>
 
             {/* Body Area: Main Content */}
-            <div className={`flex-1 flex flex-col justify-center px-3 py-2 overflow-hidden ${(info as any).bodyBg || 'bg-white/40'} backdrop-blur-[12px]`}>
-                <div className="flex items-center gap-1.5 flex-wrap justify-center">
-                    <p className="font-extrabold text-[11px] leading-tight uppercase tracking-tight text-gray-900 drop-shadow-sm truncate max-w-full">
+            <div className={`flex-1 flex flex-col justify-center ${isCompact ? 'px-1.5 py-1' : 'px-3 py-2'} overflow-hidden ${(info as any).bodyBg || 'bg-white/40'} backdrop-blur-[12px]`}>
+                <div className={`flex items-center gap-1.5 flex-wrap ${isCompact ? 'justify-start' : 'justify-center'}`}>
+                    <p className={`font-extrabold leading-tight uppercase tracking-tight text-gray-900 drop-shadow-sm truncate max-w-full ${isCompact ? 'text-[9px]' : 'text-[11px]'}`}>
                         {isAppt ? appt.customerName : 'MEŞGUL'}
                     </p>
                     {isAppt && appt.packageId && (
-                        <span className="px-1 py-0.5 bg-indigo-600 text-white text-[7px] font-black rounded-sm shadow-sm ring-1 ring-white/20">P</span>
+                        <span className={`px-1 py-0.5 bg-indigo-600 text-white font-black rounded-sm shadow-sm ring-1 ring-white/20 ${isCompact ? 'text-[6px]' : 'text-[7px]'}`}>P</span>
                     )}
-                    {isAppt && appt.vertical && (
+                    {isAppt && appt.vertical && !isCompact && (
                         <span className={`px-1 py-0.5 text-[6px] font-black rounded-sm border ${
                             appt.vertical === 'spa' ? 'bg-indigo-50 border-indigo-100 text-indigo-400' :
                             appt.vertical === 'clinic' ? 'bg-emerald-50 border-emerald-100 text-emerald-600' :
@@ -294,22 +295,24 @@ export default function CalendarItem({
                     )}
                 </div>
                 
-                <p className="text-[9px] font-bold text-indigo-600/70 mt-0.5 leading-none truncate w-full text-center">
+                <p className={`${isCompact ? 'text-[7px]' : 'text-[9px]'} font-bold text-indigo-600/70 mt-0.5 leading-none truncate w-full ${isCompact ? 'text-left' : 'text-center'}`}>
                     {isAppt ? appt.service : block.reason}
                 </p>
 
-                <div className="flex items-center justify-center gap-2 mt-2 opacity-40">
-                    <div className="flex items-center gap-1 shrink-0">
-                        <User size={8} />
-                        <span className="text-[8px] font-black uppercase truncate max-w-[60px]">{isAppt ? (appt.staffName || '---') : 'Blok'}</span>
-                    </div>
-                    {room && (
+                {!isCompact && (
+                    <div className="flex items-center justify-center gap-2 mt-2 opacity-40">
                         <div className="flex items-center gap-1 shrink-0">
-                            <MapPin size={8} />
-                            <span className="text-[8px] font-bold italic truncate max-w-[40px]">{room.name}</span>
+                            <User size={8} />
+                            <span className="text-[8px] font-black uppercase truncate max-w-[60px]">{isAppt ? (appt.staffName || '---') : 'Blok'}</span>
                         </div>
-                    )}
-                </div>
+                        {room && (
+                            <div className="flex items-center gap-1 shrink-0">
+                                <MapPin size={8} />
+                                <span className="text-[8px] font-bold italic truncate max-w-[40px]">{room.name}</span>
+                            </div>
+                        )}
+                    </div>
+                )}
             </div>
 
             {/* Footer Area: Randevu Ref & Müşteri Kayıt Kodu - Kaçak Kontrol */}

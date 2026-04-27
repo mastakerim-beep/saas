@@ -159,6 +159,10 @@ export default function CalendarPage() {
         });
     }, [rooms, currentBranch]);
 
+    const displayCount = viewMode === 'staff' ? staffToDisplay.length : roomsToDisplay.length;
+    const isCompact = displayCount > 5;
+    const columnWidthClass = displayCount > 10 ? 'min-w-[120px]' : displayCount > 7 ? 'min-w-[150px]' : displayCount > 4 ? 'min-w-[200px]' : 'min-w-[280px]';
+
     // ---- HANDLERS ----
     const handleDragStart = (event: any) => {
         setActiveId(event.active.id);
@@ -298,7 +302,7 @@ export default function CalendarPage() {
                                 {(viewMode === 'staff' ? staffToDisplay : roomsToDisplay).map((target: Staff | Room) => (
                                     <div
                                         key={target.id}
-                                        className="min-w-[280px] flex-1 h-[80px] flex flex-col items-center justify-center group/col border-r border-gray-100/30 bg-white hover:bg-indigo-50/20 transition-all px-4"
+                                        className={`${columnWidthClass} flex-1 h-[80px] flex flex-col items-center justify-center group/col border-r border-gray-100/30 bg-white hover:bg-indigo-50/20 transition-all px-4`}
                                     >
                                         <div className="relative">
                                             <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-indigo-50 to-gray-50 flex items-center justify-center mb-1 group-hover/col:scale-110 transition-transform duration-500 shadow-sm border border-gray-100">
@@ -308,7 +312,7 @@ export default function CalendarPage() {
                                                 <div className="absolute -top-1 -right-1 w-3.5 h-3.5 bg-emerald-500 rounded-full border-2 border-white shadow-sm" />
                                             )}
                                         </div>
-                                        <h3 className="text-[10px] font-black text-gray-900 uppercase tracking-widest truncate w-full text-center">{target.name}</h3>
+                                        <h3 className={`${isCompact ? 'text-[8px]' : 'text-[10px]'} font-black text-gray-900 uppercase tracking-widest truncate w-full text-center`}>{target.name}</h3>
                                     </div>
                                 ))}
                             </div>
@@ -356,7 +360,7 @@ export default function CalendarPage() {
                                 {/* Columns Grid */}
                                 <div className="flex flex-1 min-w-full">
                                     {(viewMode === 'staff' ? staffToDisplay : roomsToDisplay).map((target: any) => (
-                                        <div key={target.id} className="min-w-[280px] flex-1 flex flex-col relative group/col border-r border-gray-100/30">
+                                        <div key={target.id} className={`${columnWidthClass} flex-1 flex flex-col relative group/col border-r border-gray-100/30`}>
                                             {/* Slots Grid */}
                                             <div className="relative flex-1">
                                                 {SLOTS.map(time => {
@@ -427,6 +431,7 @@ export default function CalendarPage() {
                                                                     <CalendarItem 
                                                                         item={item} 
                                                                         type={(item as Appointment).customerId ? 'appt' : 'block'}
+                                                                        isCompact={isCompact}
                                                                         onAction={(data) => {
                                                                             if ((data as Appointment).customerId) {
                                                                                 setActionMenuAppt(data as Appointment);
