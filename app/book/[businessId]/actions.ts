@@ -14,6 +14,7 @@ export async function submitBooking(data: {
   time: string;
   duration: number;
   price: number;
+  branchId: string;
 }) {
   const supabase = createServiceClient();
 
@@ -41,9 +42,9 @@ export async function submitBooking(data: {
     });
   }
 
-  // 2. Insert Appointment
+  // 2. Use Passed Branch ID
+  const branchId = data.branchId;
   const apptId = crypto.randomUUID();
-  const branchId = 'b2000000-0000-0000-0000-000000000000'; // Temporary hardcode, normally fetched dynamically or passed from UI
 
   const { error } = await supabase.from('appointments').insert({
     id: apptId,

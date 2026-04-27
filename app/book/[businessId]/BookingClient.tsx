@@ -32,13 +32,15 @@ export default function BookingClient({
   staff,
   bookedSlots,
   services = [],
-  pricingRules = []
+  pricingRules = [],
+  branchId
 }: {
   business: Business;
   staff: Staff[];
   bookedSlots: BookedSlot[];
   services?: Service[];
   pricingRules?: any[];
+  branchId: string;
 }) {
   const getToday = () => new Date().toLocaleDateString('sv-SE');
 
@@ -108,7 +110,8 @@ export default function BookingClient({
       date,
       time,
       duration: service.duration,
-      price: time ? getDynamicPrice(service.price, time).newPrice : service.price
+      price: time ? getDynamicPrice(service.price, time).newPrice : service.price,
+      branchId: branchId
     });
 
     setIsSubmitting(false);

@@ -13,7 +13,7 @@ import { useParams } from 'next/navigation';
 
 export default function BookingSettingsPage() {
     const { slug } = useParams();
-    const { currentBusiness, bookingSettings, fetchData, updateBookingSettings } = useStore();
+    const { currentBusiness, bookingSettings, fetchData, updateBookingSettings, branches = [] } = useStore();
     const [settings, setSettings] = useState<Partial<BookingSettings>>({
         isEnabled: true,
         requireDeposit: false,
@@ -130,6 +130,61 @@ export default function BookingSettingsPage() {
                             </motion.div>
                         )}
                     </div>
+
+                    {/* Branch Specific Links */}
+                    {settings.isEnabled && branches && branches.length > 0 && (
+                        <motion.div 
+                            initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
+                            className="bg-white border border-gray-100 p-8 md:p-10 rounded-[3rem] shadow-sm space-y-8"
+                        >
+                            <div className="flex items-center gap-4">
+                                <div className="w-12 h-12 rounded-2xl bg-indigo-50 text-indigo-600 flex items-center justify-center">
+                                    <Share2 size={24} />
+                                </div>
+                                <div>
+                                    <h3 className="text-xl font-black tracking-tight">Şube Özelinde Linkler</h3>
+                                    <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Her şubeniz için özel rezervasyon linki</p>
+                                </div>
+                            </div>
+
+                            <div className="space-y-3">
+                                {branches.map((branch: any) => {
+                                    const branchUrl = typeof window !== 'undefined' ? `${window.location.origin}/book/${currentBusiness?.id}?branch=${branch.id}` : '';
+                                    return (
+                                        <div key={branch.id} className="flex flex-col md:flex-row items-center gap-4 p-5 bg-gray-50 rounded-2xl border border-gray-100 group">
+                                            <div className="flex-1">
+                                                <p className="text-sm font-black text-gray-900 mb-1">{branch.name}</p>
+                                                <p className="text-[10px] font-bold text-indigo-500/70 truncate max-w-[300px]">{branchUrl}</p>
+                                            </div>
+                                            <div className="flex items-center gap-2 w-full md:w-auto">
+                                                <button 
+                                                    onClick={() => {
+                                                        navigator.clipboard.writeText(branchUrl);
+                                                        alert(`${branch.name} linki kopyalandı.`);
+                                                    }}
+                                                    className="flex-1 md:flex-none flex items-center justify-center gap-2 px-6 py-3 bg-white border border-gray-200 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-indigo-50 hover:text-indigo-600 transition-all text-gray-400"
+                                                >
+                                                    <Copy size={14} /> KOPYALA
+                                                </button>
+                                                <a 
+                                                    href={branchUrl} target="_blank" 
+                                                    className="p-3 bg-white border border-gray-200 rounded-xl text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 transition-all"
+                                                >
+                                                    <ExternalLink size={14} />
+                                                </a>
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                            <div className="p-4 bg-amber-50 rounded-2xl border border-amber-100/50">
+                                <p className="text-[10px] font-bold text-amber-700 leading-normal">
+                                    <AlertCircle className="inline-block w-3 h-3 mr-1 mb-0.5" />
+                                    Şube müdürleri bu linkleri kullanarak müşterilerden doğrudan kendi şubelerine randevu ve kapora alabilirler.
+                                </p>
+                            </div>
+                        </motion.div>
+                    )}
 
                     {/* Payment Settings */}
                     <div className="bg-white border border-gray-100 p-8 md:p-10 rounded-[3rem] shadow-sm space-y-10">

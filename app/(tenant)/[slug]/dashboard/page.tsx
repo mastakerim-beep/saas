@@ -6,7 +6,7 @@ import {
     Users, TrendingUp, DollarSign, Package, AlertCircle, 
     Star, Award, Calendar, ChevronRight, Activity, ShieldCheck, Clock,
     Sparkles, Zap, ArrowUpRight, MessageSquare, TrendingDown, Moon,
-    ArrowRight, Wallet, Target, Info, Plus, Edit2, CheckCircle2, FileCode
+    ArrowRight, Wallet, Target, Info, Plus, Edit2, CheckCircle2, FileCode, FileText
 } from "lucide-react";
 
 import { 
@@ -194,6 +194,10 @@ export default function Dashboard() {
                                 <Zap className="w-4 h-4" />
                                 <span className="text-[11px] font-black uppercase tracking-widest">Lab</span>
                             </button>
+                            <button className="h-12 px-6 bg-indigo-50 text-indigo-600 border border-indigo-100 rounded-2xl flex items-center justify-center gap-3 shadow-sm hover:shadow-md hover:scale-105 active:scale-95 transition-all">
+                                <FileText className="w-4 h-4" />
+                                <span className="text-[11px] font-black uppercase tracking-widest">Konsültasyon</span>
+                            </button>
                         </>
                     )}
 
@@ -202,6 +206,10 @@ export default function Dashboard() {
                              <button className="h-12 px-6 bg-orange-50 text-orange-600 border border-orange-100 rounded-2xl flex items-center justify-center gap-3 shadow-sm hover:shadow-md hover:scale-105 active:scale-95 transition-all">
                                 <Activity className="w-4 h-4" />
                                 <span className="text-[11px] font-black uppercase tracking-widest">Program</span>
+                            </button>
+                             <button className="h-12 px-6 bg-amber-50 text-amber-600 border border-amber-100 rounded-2xl flex items-center justify-center gap-3 shadow-sm hover:shadow-md hover:scale-105 active:scale-95 transition-all">
+                                <Users className="w-4 h-4" />
+                                <span className="text-[11px] font-black uppercase tracking-widest">Yeni Üye</span>
                             </button>
                         </>
                     )}

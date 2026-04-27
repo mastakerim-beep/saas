@@ -6,9 +6,16 @@ type Business = Database['public']['Tables']['businesses']['Row'];
 type Staff = Database['public']['Tables']['staff']['Row'];
 type Appointment = Database['public']['Tables']['appointments']['Row'];
 
-export default async function BookingPage({ params }: { params: { businessId: string } }) {
+export default async function BookingPage({ 
+  params, 
+  searchParams 
+}: { 
+  params: { businessId: string };
+  searchParams: { branch?: string };
+}) {
   const supabase = createServiceClient();
   const businessId = params.businessId;
+  const branchIdFromUrl = searchParams.branch;
 
   // Fetch Business Data
   const { data: business, error: bizError } = await supabase
@@ -18,22 +25,33 @@ export default async function BookingPage({ params }: { params: { businessId: st
     .single();
 
   if (bizError || !business) {
-    return notFound(); // Show 404 if business doesn't exist
+    return notFound(); 
   }
 
-  // Fetch Available Staff
+  // Fetch Branches to validate or get fallback
+  const { data: branches } = await supabase
+    .from('branches')
+    .select('id, name')
+    .eq('business_id', businessId)
+    .eq('status', 'Aktif');
+
+  const activeBranchId = branchIdFromUrl || branches?.[0]?.id || businessId;
+
+  // Fetch Available Staff for THIS branch
   const { data: staffData } = await supabase
     .from('staff')
     .select('*')
     .eq('business_id', businessId)
+    .eq('branch_id', activeBranchId)
     .eq('status', 'active');
 
-  // Fetch existing appointments to block slots (for today and next 7 days in a real app, but let's fetch all future for MVP)
+  // Fetch existing appointments for blocking
   const today = new Date().toLocaleDateString('sv-SE');
   const { data: apptData } = await supabase
     .from('appointments')
     .select('date, time, duration, staff_id')
     .eq('business_id', businessId)
+    .eq('branch_id', activeBranchId)
     .gte('date', today);
 
   // Fetch Dynamic Pricing Rules
@@ -43,17 +61,17 @@ export default async function BookingPage({ params }: { params: { businessId: st
     .eq('business_id', businessId)
     .eq('is_active', true);
 
+  // Fetch Public Services
+  const { data: servicesData } = await supabase
+    .from('services')
+    .select('name, duration, price')
+    .eq('business_id', businessId)
+    .eq('is_public', true);
+
   const staff = staffData || [];
   const bookedSlots = apptData || [];
   const pricingRules = pricingData || [];
-
-  // MVP: Hardcoded defaults for now, can be moved to a 'services' table later
-  const DEFAULT_SERVICES = [
-    { name: 'Bali Masajı', duration: 60, price: 3400 },
-    { name: 'İsveç Masajı', duration: 60, price: 2800 },
-    { name: 'VIP Hamam Ritüeli', duration: 45, price: 2100 },
-    { name: 'Medikal Cilt Bakımı', duration: 90, price: 4200 },
-  ];
+  const services = servicesData || [];
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col font-sans">
@@ -62,8 +80,9 @@ export default async function BookingPage({ params }: { params: { businessId: st
             business={business} 
             staff={staff} 
             bookedSlots={bookedSlots} 
-            services={DEFAULT_SERVICES}
+            services={services}
             pricingRules={pricingRules}
+            branchId={activeBranchId}
           />
       </div>
     </div>
