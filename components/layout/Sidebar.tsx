@@ -238,12 +238,40 @@ export default function Sidebar() {
                         <div className="space-y-1">
                             <SidebarItem isHovered={isHovered} pathname={pathname} href={getTenantLink('dashboard')} icon={LayoutDashboard} label="Genel Bakış" />
                             {can('move_appt') && <SidebarItem isHovered={isHovered} pathname={pathname} href={getTenantLink('calendar')} icon={Calendar} label="Takvim" />}
-                            {can('manage_customers') && <SidebarItem isHovered={isHovered} pathname={pathname} href={getTenantLink('customers')} icon={Users} label="Müşteriler" />}
+                            {can('manage_customers') && <SidebarItem isHovered={isHovered} pathname={pathname} href={getTenantLink('customers')} icon={Users} label={currentBusiness?.verticals?.includes('clinic') ? "Hastalar" : "Müşteriler"} />}
                             {can('manage_staff') && <SidebarItem isHovered={isHovered} pathname={pathname} href={getTenantLink('booking-settings')} icon={Globe} label="Randevu Portalı" colorClass="text-indigo-500" />}
                             {can('manage_staff') && <SidebarItem isHovered={isHovered} pathname={pathname} href={getTenantLink('staff')} icon={Briefcase} label="Ekip" />}
                         </div>
                     </div>
                 )}
+
+                {/* Vertical Specific Tools */}
+                {!isAdminView && currentBusiness?.verticals && (currentBusiness.verticals.includes('fitness') || currentBusiness.verticals.includes('clinic')) && (
+                    <div>
+                        {isHovered && (
+                            <p className="px-4 text-[10px] font-black text-emerald-500 dark:text-emerald-400 uppercase tracking-widest mb-4 opacity-50 overflow-hidden whitespace-nowrap">
+                                {currentBusiness.verticals.includes('clinic') ? "Klinik Yönetimi" : "Fitness Yönetimi"}
+                            </p>
+                        )}
+                        <div className="space-y-1">
+                            {currentBusiness.verticals.includes('fitness') && (
+                                <>
+                                    <SidebarItem isHovered={isHovered} pathname={pathname} href={getTenantLink('workouts')} icon={Activity} label="Antrenman Programları" colorClass="text-orange-500" />
+                                    <SidebarItem isHovered={isHovered} pathname={pathname} href={getTenantLink('measurements')} icon={TrendingUp} label="Vücut Ölçümleri" colorClass="text-orange-500" />
+                                    <SidebarItem isHovered={isHovered} pathname={pathname} href={getTenantLink('classes')} icon={Users} label="Grup Dersleri" colorClass="text-orange-500" />
+                                </>
+                            )}
+                            {currentBusiness.verticals.includes('clinic') && (
+                                <>
+                                    <SidebarItem isHovered={isHovered} pathname={pathname} href={getTenantLink('patient-records')} icon={FileText} label="Hasta Dosyaları" colorClass="text-emerald-500" />
+                                    <SidebarItem isHovered={isHovered} pathname={pathname} href={getTenantLink('prescriptions')} icon={FileCode} label="Reçeteler" colorClass="text-emerald-500" />
+                                    <SidebarItem isHovered={isHovered} pathname={pathname} href={getTenantLink('lab-results')} icon={Zap} label="Laboratuvar & Test" colorClass="text-emerald-500" />
+                                </>
+                            )}
+                        </div>
+                    </div>
+                )}
+
 
                 {/* Growth - Hidden for Admin */}
                 {!isAdminView && (

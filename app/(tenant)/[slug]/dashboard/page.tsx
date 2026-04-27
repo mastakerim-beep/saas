@@ -6,8 +6,9 @@ import {
     Users, TrendingUp, DollarSign, Package, AlertCircle, 
     Star, Award, Calendar, ChevronRight, Activity, ShieldCheck, Clock,
     Sparkles, Zap, ArrowUpRight, MessageSquare, TrendingDown, Moon,
-    ArrowRight, Wallet, Target, Info, Plus, Edit2, CheckCircle2
+    ArrowRight, Wallet, Target, Info, Plus, Edit2, CheckCircle2, FileCode
 } from "lucide-react";
+
 import { 
     AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, 
 } from 'recharts';
@@ -93,7 +94,7 @@ export default function Dashboard() {
         const last7Days = [];
         const daily: Record<string, number> = {};
         
-        payments.forEach(p => {
+        payments.forEach((p: any) => {
             const d = p.date;
             daily[d] = (daily[d] || 0) + p.totalAmount;
         });
@@ -183,6 +184,27 @@ export default function Dashboard() {
                         <Moon className="w-4 h-4 text-gray-400 group-hover:text-primary" />
                         <span className="text-[11px] font-black uppercase tracking-widest text-gray-600">Gün Sonu</span>
                     </button>
+                    {currentBusiness?.verticals?.includes('clinic') && (
+                        <>
+                             <button className="h-12 px-6 bg-emerald-50 text-emerald-600 border border-emerald-100 rounded-2xl flex items-center justify-center gap-3 shadow-sm hover:shadow-md hover:scale-105 active:scale-95 transition-all">
+                                <FileCode className="w-4 h-4" />
+                                <span className="text-[11px] font-black uppercase tracking-widest">Reçete</span>
+                            </button>
+                            <button className="h-12 px-6 bg-teal-50 text-teal-600 border border-teal-100 rounded-2xl flex items-center justify-center gap-3 shadow-sm hover:shadow-md hover:scale-105 active:scale-95 transition-all">
+                                <Zap className="w-4 h-4" />
+                                <span className="text-[11px] font-black uppercase tracking-widest">Lab</span>
+                            </button>
+                        </>
+                    )}
+
+                    {currentBusiness?.verticals?.includes('fitness') && (
+                        <>
+                             <button className="h-12 px-6 bg-orange-50 text-orange-600 border border-orange-100 rounded-2xl flex items-center justify-center gap-3 shadow-sm hover:shadow-md hover:scale-105 active:scale-95 transition-all">
+                                <Activity className="w-4 h-4" />
+                                <span className="text-[11px] font-black uppercase tracking-widest">Program</span>
+                            </button>
+                        </>
+                    )}
                     <button 
                         onClick={() => setIsQuickSaleOpen(true)}
                         className="h-12 px-6 bg-primary text-white rounded-2xl shadow-xl shadow-primary/20 flex items-center justify-center gap-3 hover:scale-105 active:scale-95 transition-all"
@@ -208,13 +230,20 @@ export default function Dashboard() {
                 </motion.div>
 
                 <motion.div variants={itemVariants} className="card-apple p-6 group bg-white/40 backdrop-blur-xl border-white/60">
-                    <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Bekleyen İşlem</p>
-                    <h3 className="text-3xl font-black text-gray-900 dark:text-white tracking-tighter">{pendingAppointments} <span className="text-lg font-bold text-gray-300 tracking-normal">Randevu</span></h3>
+                    <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">
+                        {currentBusiness?.verticals?.includes('clinic') ? 'Bekleyen Vizite' : 'Bekleyen İşlem'}
+                    </p>
+                    <h3 className="text-3xl font-black text-gray-900 dark:text-white tracking-tighter">
+                        {pendingAppointments} <span className="text-lg font-bold text-gray-300 tracking-normal">{currentBusiness?.verticals?.includes('clinic') ? 'Hasta' : 'Randevu'}</span>
+                    </h3>
                     <div className="mt-4 flex -space-x-2">
                         {[1,2,3].map(i => <div key={i} className="w-6 h-6 rounded-full bg-gray-100 border-2 border-white flex items-center justify-center text-[8px] font-black text-gray-400">?</div>)}
-                        <div className="pl-4 text-[10px] text-gray-400 font-bold flex items-center">Hazırlık Bekliyor</div>
+                        <div className="pl-4 text-[10px] text-gray-400 font-bold flex items-center">
+                            {currentBusiness?.verticals?.includes('clinic') ? 'Triyaj Bekliyor' : 'Hazırlık Bekliyor'}
+                        </div>
                     </div>
                 </motion.div>
+
 
                 <motion.div 
                     variants={itemVariants} 
@@ -317,7 +346,7 @@ export default function Dashboard() {
                    <motion.div variants={itemVariants} className="card-apple p-8 bg-white/40 backdrop-blur-xl border-white/60">
                         <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-6">Canlı Şube Hareketleri</h4>
                         <div className="space-y-5 max-h-[350px] overflow-y-auto no-scrollbar">
-                            {allLogs.slice(0, 10).map((log, i) => (
+                            {allLogs.slice(0, 10).map((log: any, i: number) => (
                                 <div key={i} className="flex gap-4 items-start border-b border-gray-50 pb-4 last:border-0">
                                     <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 ${log.action.includes('Randevu') ? 'bg-blue-50 text-blue-500' : 'bg-green-50 text-green-500'}`}>
                                         <Activity className="w-4 h-4" />
@@ -407,8 +436,9 @@ export default function Dashboard() {
                                 <div className="space-y-2">
                                     <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Kapasite Kullanımı</p>
                                     <div className="text-4xl font-black text-primary">%{capacity}</div>
-                                    <p className="text-xs text-gray-500 font-bold">Aktif {staffMembers.filter(s => s.status === 'active').length} uzman baz alındı.</p>
+                                    <p className="text-xs text-gray-500 font-bold">Aktif {staffMembers.filter((s: any) => s.status === 'active').length} uzman baz alındı.</p>
                                 </div>
+
                                 <div className="space-y-2">
                                     <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Hizmet/Ürün Dengesi</p>
                                     <div className="text-4xl font-black text-indigo-600">70/30</div>
