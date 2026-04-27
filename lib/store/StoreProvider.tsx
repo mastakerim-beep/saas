@@ -490,7 +490,9 @@ const StoreOrchestrator = ({ children }: { children: ReactNode }) => {
             login: authRef.current.login,
             logout: authRef.current.logout,
             fetchData,
-            fetchPublicData: async () => {},
+            fetchPublicData: async (manualSlug?: string) => {
+                await fetchData(undefined, undefined, true, undefined, undefined);
+            },
             isInitialized: authRef.current.isInitialized,
             updateBusinessStatus: authRef.current.updateBusinessStatus,
             deleteBusiness: authRef.current.deleteBusiness,

@@ -31,7 +31,7 @@ export const syncDb = async (
         localStorage.setItem('aura_last_resolved_biz_id', effectiveBizId);
     }
     
-    const { syncStatus, ...cleanData } = data;
+    const { syncStatus, ...cleanData } = data || {};
     const payload = toSnake(cleanData);
 
     const onStatusUpdate = (status: 'syncing' | 'synced' | 'error') => {

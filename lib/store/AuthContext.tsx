@@ -73,7 +73,23 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     };
 
     useEffect(() => {
-        // Handle all auth events in a single listener
+        // --- 1. Immediate Initial Check ---
+        const checkInitialSession = async () => {
+            try {
+                const { data: { session } } = await supabase.auth.getSession();
+                if (session?.user) {
+                    const appUser = await fetchAppUserProfile(session.user.id, session.user.email!);
+                    setCurrentUser(appUser);
+                }
+            } catch (err) {
+                console.error('🛡️ [Auth Trace] Initial session check failed:', err);
+            } finally {
+                // We don't necessarily set isInitialized here because the listener will also fire
+            }
+        };
+        checkInitialSession();
+
+        // --- 2. Auth State Listener ---
         const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
             console.log('🛡️ [Auth Trace] Event:', event, session?.user?.email);
             

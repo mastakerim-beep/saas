@@ -53,7 +53,8 @@ export const useAppointmentMethods = (deps: any) => {
             markAsModified(id);
             const okLocal = await dataRef.current.deleteAppointment(id);
             if (okLocal) {
-                const okRemote = await syncDb('appointments', 'delete', {}, id, activeBizIdRef.current);
+                const targetBizId = apt.businessId || activeBizIdRef.current;
+                const okRemote = await syncDb('appointments', 'delete', {}, id, targetBizId);
                 if (!okRemote) {
                     console.error("❌ Veritabanı silme işlemi başarısız. Geri alınıyor...");
                     dataRef.current.setAllAppointments((prev: any) => [...prev, apt]);
@@ -74,7 +75,8 @@ export const useAppointmentMethods = (deps: any) => {
                 return false;
             }
             dataRef.current.updateAppointment(id, updates);
-            const ok = await syncDb('appointments', 'update', updates, id, activeBizIdRef.current);
+            const targetBizId = prevState.businessId || activeBizIdRef.current;
+            const ok = await syncDb('appointments', 'update', updates, id, targetBizId);
             if (!ok && prevState) {
                 dataRef.current.updateAppointment(id, prevState);
                 return false;
@@ -93,7 +95,8 @@ export const useAppointmentMethods = (deps: any) => {
             const appt = dataRef.current.appointments.find((a: any) => a.id === id);
             const ok = await dataRef.current.updateAppointmentStatus(id, status);
             if (ok && appt) {
-                await syncDb('appointments', 'update', { status }, id, activeBizIdRef.current);
+                const targetBizId = appt.businessId || activeBizIdRef.current;
+                await syncDb('appointments', 'update', { status }, id, targetBizId);
                 if (appt.packageId) {
                     const pkg = dataRef.current.packages.find((p: any) => p.id === appt.packageId);
                     if (pkg) {

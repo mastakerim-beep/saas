@@ -24,12 +24,13 @@ export const fetchData = async (
     ];
 
     const isSaaS = currentUser?.role === 'SaaS_Owner';
+    const isGuest = !currentUser;
     
     // --- IDENTITY RESOLUTION ---
     let actualBizId = bizId;
     
-    // If SaaS and on a slug, but bizId is missing, resolve it NOW
-    if (isSaaS && !actualBizId && slug) {
+    // If Guest or SaaS and on a slug, but bizId is missing, resolve it NOW
+    if ((isSaaS || isGuest) && !actualBizId && slug) {
         try {
             console.log("🔍 [Aura Sync] Identity Warp: Resolving business ID from slug...");
             const { data: bData } = await supabase.from('businesses').select('id').eq('slug', slug).single();
@@ -43,10 +44,17 @@ export const fetchData = async (
     }
 
     const targetId = actualBizId || currentUser?.businessId;
-    const tablesToFetch = tables;
+    
+    // Public safe tables for Guest mode
+    const publicTables = [
+        'businesses', 'branches', 'services', 'staff', 
+        'booking_settings', 'membership_plans'
+    ];
+    const tablesToFetch = isGuest ? publicTables : tables;
 
     if (!targetId && !isSaaS) {
         console.warn("⚠️ Fetch aborted: No targetId and not SaaS");
+        setters.setSyncStatus('idle'); // Ensure UI unlock on abort
         return;
     }
 

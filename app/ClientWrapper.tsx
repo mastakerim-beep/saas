@@ -74,9 +74,14 @@ export default function ClientWrapper({ children }: { children: React.ReactNode 
     const [isChecking, setIsChecking] = useState(true);
     const [isMounted, setIsMounted] = useState(false);
 
-    const isLoginPath = pathname === "/login";
-    const isRootPath = pathname === "/";
-    const isSuperAdminPath = pathname.startsWith("/admin");
+    const normalizePath = (p: string) => p.replace(/\/+$/, '') || '/';
+    const normalizedPathname = normalizePath(pathname);
+
+    const isLoginPath = normalizedPathname.startsWith("/login");
+    const isRootPath = normalizedPathname === "/";
+    const isSuperAdminPath = normalizedPathname.startsWith("/admin");
+    const isPublicPath = normalizedPathname.match(/^\/[^/]+\/(book|portal|kiosk)(\/|$)/) || normalizedPathname === "/portal" || normalizedPathname === "/book";
+
     const isSaaSOwner = currentUser?.role === 'SaaS_Owner';
 
     const impersonatedBiz = useMemo(() => allBusinesses.find((b: any) => b.id === impersonatedBusinessId), [allBusinesses, impersonatedBusinessId]);
@@ -94,9 +99,18 @@ export default function ClientWrapper({ children }: { children: React.ReactNode 
         const timer = setTimeout(() => {
             if (!isInitialized) return;
 
+            // Allow public paths to bypass login
+            if (isPublicPath) {
+                setIsChecking(false);
+                return;
+            }
+
             if (!currentUser) {
                 if (!isLoginPath) {
-                    router.push("/login");
+                    const target = "/login";
+                    if (normalizedPathname !== target) {
+                        router.push(target);
+                    }
                 }
                 setIsChecking(false);
                 return;
@@ -104,27 +118,43 @@ export default function ClientWrapper({ children }: { children: React.ReactNode 
 
             if (currentUser) {
                 if (isSaaSOwner) {
+                    let target = "";
                     if (isLoginPath || isRootPath) {
-                        router.push("/admin");
-                    } else if (pathname === "/dashboard" || pathname === "/settings" || (isSuperAdminPath && pathname !== "/admin")) {
-                        router.push("/admin");
+                        target = "/admin";
+                    } else if (normalizedPathname === "/dashboard" || normalizedPathname === "/settings" || (isSuperAdminPath && normalizedPathname !== "/admin")) {
+                        target = "/admin";
                     }
+                    
+                    if (target && normalizedPathname !== target) {
+                        router.push(target);
+                    }
+
                     if (syncStatus === 'idle' || syncStatus === 'error') {
                         setIsChecking(false);
                     }
                 } else if (userBiz) {
                     const tenantPath = `/${userBiz.slug}`;
-                    const currentSlugInPath = pathname.split('/')[1];
-                    const isAnyBizSlugMatch = allBusinesses.some((b: any) => b.slug === currentSlugInPath);
+                    const currentSlugInPath = normalizedPathname.split('/')[1];
+                    // Normalize slug comparison (case-insensitive)
+                    const isAnyBizSlugMatch = allBusinesses.some((b: any) => b.slug?.toLowerCase() === currentSlugInPath?.toLowerCase());
 
                     if (isRootPath || isLoginPath) {
-                        router.push(`${tenantPath}/dashboard`);
-                    } else if (!isAnyBizSlugMatch && !pathname.includes("/api/")) {
-                        // Only force redirect if the path does NOT start with ANY valid business slug
-                        const subPath = pathname.replace(/^\//, '');
-                        const targetPath = subPath ? `${tenantPath}/${subPath}` : `${tenantPath}/dashboard`;
-                        router.push(targetPath);
+                        const target = `${tenantPath}/dashboard`;
+                        if (normalizedPathname !== target) {
+                            router.push(target);
+                        }
+                    } else if (!isAnyBizSlugMatch && !normalizedPathname.includes("/api/")) {
+                        // FIX: Instead of appending, we construct the path from the base tenant slug
+                        const pathParts = normalizedPathname.split('/').filter(Boolean);
+                        // If the first part is NOT a valid slug, we replace it or prepend
+                        const subPath = pathParts.length > 0 ? pathParts.slice(isAnyBizSlugMatch ? 1 : 0).join('/') : 'dashboard';
+                        const target = `${tenantPath}/${subPath || 'dashboard'}`;
+                        
+                        if (normalizedPathname !== target) {
+                            router.push(target);
+                        }
                     }
+                    
                     if (syncStatus === 'idle' || syncStatus === 'error') {
                         setIsChecking(false);
                     }
