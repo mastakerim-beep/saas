@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { supabase } from '@/lib/supabase';
 import { Phone, ArrowRight, Star, CreditCard, Sparkles, MapPin, Bell, User, Calendar as CalendarIcon, KeyRound, QrCode } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -9,32 +10,75 @@ export default function PortalClient({ business }: { business: any }) {
     const [loginIdentifier, setLoginIdentifier] = useState('');
     const [isLoading, setIsLoading] = useState(false);
 
-    // Mock Customer Data for Showcase
-    const mockCustomerData = {
-        name: "Selin Yılmaz",
-        points: 4250,
-        tier: "Gold VIP",
-        packages: [
-            { name: "Bali Masajı Paketi 10 Seans", remaining: 4, total: 10, expiry: "12 Aralık 2026", color: "from-amber-400 to-amber-600" },
-            { name: "Medikal Cilt Bakımı", remaining: 2, total: 5, expiry: "05 Eylül 2026", color: "from-indigo-400 to-indigo-600" }
-        ],
-        upcoming: {
-            service: "Bali Masajı",
-            date: "Yarın",
-            time: "14:30",
-            therapist: "Zehra Hanım",
-            ticketId: "TK-19034"
-        }
-    };
+    const [customerData, setCustomerData] = useState<any>(null);
+    const [customerPackages, setCustomerPackages] = useState<any[]>([]);
+    const [upcomingAppointment, setUpcomingAppointment] = useState<any>(null);
 
-    const handleLogin = (e: React.FormEvent) => {
+    const handleLogin = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!loginIdentifier) return;
         setIsLoading(true);
-        setTimeout(() => {
-            setIsLoading(false);
+        
+        try {
+            // Search by Phone or Ticket ID (reference_code or appt_ref)
+            const { data: customer, error: custError } = await (supabase as any)
+                .from('customers')
+                .select('*')
+                .or(`phone.eq.${loginIdentifier},reference_code.eq.${loginIdentifier}`)
+                .eq('business_id', business?.id)
+                .maybeSingle();
+
+            if (custError) throw custError;
+
+            let targetCustomer = customer;
+
+            // If not found by direct customer field, try searching via appointment ref
+            if (!targetCustomer) {
+                const { data: appt, error: apptError } = await (supabase as any)
+                    .from('appointments')
+                    .select('*, customers(*)')
+                    .eq('appt_ref', loginIdentifier)
+                    .eq('business_id', business?.id)
+                    .maybeSingle();
+                
+                if (appt?.customers) {
+                    targetCustomer = appt.customers;
+                }
+            }
+
+            if (!targetCustomer) {
+                alert('Müşteri kaydı bulunamadı. Lütfen telefon numaranızı veya bilet numaranızı kontrol edin.');
+                setIsLoading(false);
+                return;
+            }
+
+            // Fetch Packages
+            const { data: packages } = await (supabase as any)
+                .from('packages')
+                .select('*')
+                .eq('customer_id', targetCustomer.id)
+                .eq('status', 'active');
+
+            // Fetch Upcoming Appointment
+            const { data: upcomings } = await (supabase as any)
+                .from('appointments')
+                .select('*')
+                .eq('customer_id', targetCustomer.id)
+                .gte('date', new Date().toISOString().split('T')[0])
+                .order('date', { ascending: true })
+                .order('time', { ascending: true })
+                .limit(1);
+
+            setCustomerData(targetCustomer);
+            setCustomerPackages(packages || []);
+            setUpcomingAppointment(upcomings?.[0] || null);
             setIsAuthenticated(true);
-        }, 1500);
+        } catch (err) {
+            console.error('Portal Login Error:', err);
+            alert('Giriş yapılırken bir hata oluştu.');
+        } finally {
+            setIsLoading(false);
+        }
     };
 
     if (!isAuthenticated) {
@@ -89,7 +133,7 @@ export default function PortalClient({ business }: { business: any }) {
                 <div className="flex justify-between items-start relative z-10">
                     <div>
                         <p className="text-[10px] font-black uppercase tracking-widest text-white/50 mb-1">Hoş Geldiniz</p>
-                        <h2 className="text-2xl font-black">{mockCustomerData.name}</h2>
+                        <h2 className="text-2xl font-black">{customerData?.name}</h2>
                     </div>
                     <button className="w-10 h-10 bg-white/10 backdrop-blur-md rounded-2xl flex items-center justify-center relative">
                         <Bell className="w-5 h-5" />
@@ -104,10 +148,10 @@ export default function PortalClient({ business }: { business: any }) {
                     </div>
                     <div>
                         <p className="text-[10px] font-black uppercase tracking-widest text-amber-300 flex items-center gap-1">
-                            <Star className="w-3 h-3 fill-amber-300" /> {mockCustomerData.tier}
+                            <Star className="w-3 h-3 fill-amber-300" /> {customerData?.segment || 'Normal'}
                         </p>
                         <h3 className="text-4xl font-black tracking-tighter">
-                            {mockCustomerData.points.toLocaleString('tr-TR')} <span className="text-lg text-white/50 font-bold">Puan</span>
+                            {(customerData?.loyalty_points || 0).toLocaleString('tr-TR')} <span className="text-lg text-white/50 font-bold">Puan</span>
                         </h3>
                     </div>
                 </div>
@@ -116,51 +160,62 @@ export default function PortalClient({ business }: { business: any }) {
             <main className="px-6 -mt-8 relative z-20 space-y-6">
                 
                 {/* Upcoming Appointment */}
-                <div className="bg-white p-6 rounded-[2.5rem] shadow-xl shadow-indigo-900/5 group">
-                    <div className="flex justify-between items-center mb-6">
-                        <span className="text-[10px] font-black uppercase tracking-widest text-indigo-500 flex items-center gap-1 bg-indigo-50 px-3 py-1 rounded-full"><CalendarIcon className="w-3 h-3" /> Yaklaşan Randevu</span>
-                        <span className="text-[10px] font-black text-gray-400">{mockCustomerData.upcoming.date}</span>
-                    </div>
-                    <div className="flex items-center gap-4 mb-6">
-                        <div className="flex-1">
-                            <h3 className="text-lg font-black text-gray-900">{mockCustomerData.upcoming.service}</h3>
-                            <p className="text-xs font-semibold text-gray-500">{mockCustomerData.upcoming.time} • {mockCustomerData.upcoming.therapist}</p>
+                {upcomingAppointment ? (
+                    <div className="bg-white p-6 rounded-[2.5rem] shadow-xl shadow-indigo-900/5 group">
+                        <div className="flex justify-between items-center mb-6">
+                            <span className="text-[10px] font-black uppercase tracking-widest text-indigo-500 flex items-center gap-1 bg-indigo-50 px-3 py-1 rounded-full"><CalendarIcon className="w-3 h-3" /> Yaklaşan Randevu</span>
+                            <span className="text-[10px] font-black text-gray-400">{upcomingAppointment.date}</span>
                         </div>
-                        <div className="w-12 h-12 bg-gray-50 flex items-center justify-center rounded-2xl border border-gray-100 group-hover:scale-110 transition-transform cursor-pointer">
-                            <QrCode className="w-6 h-6 text-gray-900" />
+                        <div className="flex items-center gap-4 mb-6">
+                            <div className="flex-1">
+                                <h3 className="text-lg font-black text-gray-900">{upcomingAppointment.service}</h3>
+                                <p className="text-xs font-semibold text-gray-500">{upcomingAppointment.time} • {upcomingAppointment.staff_name || 'Terapist Seçilmedi'}</p>
+                            </div>
+                            <div className="w-12 h-12 bg-gray-50 flex items-center justify-center rounded-2xl border border-gray-100 group-hover:scale-110 transition-transform cursor-pointer">
+                                <QrCode className="w-6 h-6 text-gray-900" />
+                            </div>
+                        </div>
+                        <div className="flex gap-2">
+                            <button className="flex-1 bg-indigo-600 text-white font-black text-[11px] uppercase tracking-widest py-3 rounded-2xl hover:bg-indigo-700 transition">Detay</button>
+                            <button className="flex-1 bg-gray-50 text-gray-600 font-black text-[11px] uppercase tracking-widest py-3 rounded-2xl hover:bg-gray-100 transition">Yardım</button>
                         </div>
                     </div>
-                    <div className="flex gap-2">
-                        <button className="flex-1 bg-indigo-600 text-white font-black text-[11px] uppercase tracking-widest py-3 rounded-2xl hover:bg-indigo-700 transition">Detay</button>
-                        <button className="flex-1 bg-gray-50 text-gray-600 font-black text-[11px] uppercase tracking-widest py-3 rounded-2xl hover:bg-gray-100 transition">İptal/Ertele</button>
+                ) : (
+                    <div className="bg-white p-10 rounded-[2.5rem] shadow-xl text-center">
+                        <p className="text-gray-400 font-bold text-sm">Aktif randevunuz bulunmamaktadır.</p>
+                        <a href={`/book/${business?.id}`} className="inline-block mt-4 text-indigo-600 font-black text-xs uppercase tracking-widest">Hemen Randevu Al</a>
                     </div>
-                </div>
+                )}
 
                 {/* Active Packages */}
                 <div>
                     <h3 className="text-sm font-black text-gray-900 mb-4 px-2">Kullanılabilir Paketlerim</h3>
                     <div className="space-y-4">
-                        {mockCustomerData.packages.map((pkg, i) => (
-                            <div key={i} className={`bg-gradient-to-r ${pkg.color} p-6 rounded-[2.5rem] text-white relative overflow-hidden shadow-lg`}>
+                        {customerPackages.length > 0 ? customerPackages.map((pkg: any, i: number) => (
+                            <div key={i} className={`bg-gradient-to-r from-indigo-500 to-indigo-700 p-6 rounded-[2.5rem] text-white relative overflow-hidden shadow-lg`}>
                                 <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full blur-[30px]" />
                                 <div className="relative z-10 flex justify-between items-start mb-6">
                                     <div className="pr-10">
                                         <p className="font-black text-lg leading-tight">{pkg.name}</p>
-                                        <p className="text-[10px] font-bold text-white/70 uppercase tracking-widest mt-1">Son K.: {pkg.expiry}</p>
+                                        <p className="text-[10px] font-bold text-white/70 uppercase tracking-widest mt-1">Son K.: {pkg.expiry || 'Süresiz'}</p>
                                     </div>
                                     <CreditCard className="w-6 h-6 text-white/50" />
                                 </div>
                                 <div className="relative z-10">
                                     <div className="flex justify-between items-end mb-2">
                                         <p className="text-[10px] font-black uppercase tracking-widest text-white/70">Kalan Seans</p>
-                                        <p className="text-3xl font-black">{pkg.remaining}<span className="text-base text-white/50">/{pkg.total}</span></p>
+                                        <p className="text-3xl font-black">{pkg.total_sessions - pkg.used_sessions}<span className="text-base text-white/50">/{pkg.total_sessions}</span></p>
                                     </div>
                                     <div className="w-full bg-black/20 h-2 rounded-full overflow-hidden">
-                                        <div className="bg-white h-full rounded-full" style={{ width: `${(pkg.remaining / pkg.total) * 100}%` }} />
+                                        <div className="bg-white h-full rounded-full" style={{ width: `${((pkg.total_sessions - pkg.used_sessions) / pkg.total_sessions) * 100}%` }} />
                                     </div>
                                 </div>
                             </div>
-                        ))}
+                        )) : (
+                            <div className="bg-gray-100/50 border-2 border-dashed border-gray-200 p-8 rounded-[2.5rem] text-center">
+                                <p className="text-gray-400 text-xs font-bold uppercase tracking-widest">Henüz bir paketiniz yok</p>
+                            </div>
+                        )}
                     </div>
                 </div>
             </main>

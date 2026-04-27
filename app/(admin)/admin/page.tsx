@@ -3,19 +3,22 @@
 import { useStore } from '@/lib/store';
 import { 
     Globe, ShieldCheck, Activity, Terminal, 
-    Bell, Users, CreditCard, Sparkles, 
-    ArrowUpRight, TrendingUp, Zap, Server, 
-    Search, LayoutGrid, Database, LogOut,
-    ChevronRight, Info, AlertCircle, Heart,
-    PieChart as PieChartIcon, Power, Plus, RefreshCw, X, Settings as SettingsIcon
+    Bell, CreditCard, Zap, Server, 
+    Search, Database, LogOut,
+    ChevronRight, Plus, RefreshCw, X
 } from 'lucide-react';
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo } from 'react';
 import { 
     AreaChart, Area, XAxis, YAxis, CartesianGrid, 
-    Tooltip, ResponsiveContainer, BarChart, Bar,
-    PieChart, Pie, Cell 
+    Tooltip, ResponsiveContainer 
 } from 'recharts';
 import { motion, AnimatePresence } from 'framer-motion';
+
+// Modular components
+import { NavBtn, StatCard, MetricBox } from './components/BasicUi';
+import { TenantCard, EditBusinessModal } from './components/ManagementComponents';
+import { CreateBusinessModal } from './components/CreateBusinessModal';
+import { BroadcastForm } from './components/BroadcastForm';
 import { MigrationWizard } from '@/components/system/migration/MigrationWizard';
 
 type AdminTab = 'monitor' | 'tenants' | 'billing' | 'notifications' | 'announcements' | 'system' | 'migration';
@@ -23,9 +26,10 @@ type AdminTab = 'monitor' | 'tenants' | 'billing' | 'notifications' | 'announcem
 export default function SuperAdminPage() {
     const { 
         currentUser, allBusinesses, allPayments, allLogs, 
-        allNotifs, tenantModules, setImpersonatedBusinessId,
-        isImpersonating, logout, addBusiness, provisionBusinessUser, 
-        deleteBusiness, updateBusinessStatus, clearCatalog, fetchData 
+        allNotifs, setImpersonatedBusinessId,
+        logout, addBusiness, provisionBusinessUser, 
+        deleteBusiness, updateBusinessStatus, clearCatalog, fetchData,
+        updateAnyBusiness
     } = useStore();
 
     const [activeTab, setActiveTab] = useState<AdminTab>('monitor');
@@ -34,25 +38,9 @@ export default function SuperAdminPage() {
     const [isRefreshing, setIsRefreshing] = useState(false);
     const [isCreating, setIsCreating] = useState(false);
     const [isActionLoading, setIsActionLoading] = useState<string | null>(null);
+    const [editingBiz, setEditingBiz] = useState<any>(null);
     
-    // Form State for new business
-    const [newBiz, setNewBiz] = useState({
-        name: '',
-        slug: '',
-        mrr: 1500,
-        expiryDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-        plan: 'Basic',
-        taxId: '',
-        taxOffice: '',
-        billingAddress: '',
-        email: '',
-        password: '',
-        seatCount: 5,
-        isStaff: true,
-        verticals: ['spa'] as string[]
-    });
-    const [modalStep, setModalStep] = useState(1);
-
+    // --- ACTIONS ---
     const handleRefresh = async () => {
         setIsRefreshing(true);
         clearCatalog();
@@ -60,64 +48,56 @@ export default function SuperAdminPage() {
         setIsRefreshing(false);
     };
 
-    const handleCreateBusiness = async () => {
-        if (!newBiz.name || !newBiz.slug || !newBiz.email || !newBiz.password) {
-            return alert("Lütfen gerekli alanları doldurun.");
+    const handleCreateBusinessAction = async (newBizData: any) => {
+        if (!newBizData.name || !newBizData.slug || !newBizData.email || !newBizData.password) {
+            alert("Lütfen gerekli alanları doldurun.");
+            return false;
         }
 
-        if (isCreating) return;
+        if (isCreating) return false;
         setIsCreating(true);
 
         try {
             const bizData = {
-                name: newBiz.name,
-                slug: newBiz.slug.toLowerCase(),
-                maxUsers: newBiz.seatCount,
-                ownerName: newBiz.name + " Sahibi",
-                mrr: newBiz.mrr,
-                expiryDate: newBiz.expiryDate,
-                taxId: newBiz.taxId,
-                taxOffice: newBiz.taxOffice,
-                billingAddress: newBiz.billingAddress,
-                plan: newBiz.plan,
-                verticals: newBiz.verticals
+                name: newBizData.name,
+                slug: newBizData.slug.toLowerCase(),
+                maxUsers: newBizData.seatCount,
+                ownerName: newBizData.name + " Sahibi",
+                mrr: newBizData.mrr,
+                expiryDate: newBizData.expiryDate,
+                taxId: newBizData.taxId,
+                taxOffice: newBizData.taxOffice,
+                billingAddress: newBizData.billingAddress,
+                plan: newBizData.plan,
+                verticals: newBizData.verticals
             };
 
             const biz = await addBusiness(bizData);
 
             if (biz) {
                 await provisionBusinessUser({
-                    email: newBiz.email,
-                    password: newBiz.password,
+                    email: newBizData.email,
+                    password: newBizData.password,
                     name: "İşletme Sahibi",
                     businessId: biz.id,
-                    isStaff: newBiz.isStaff
+                    isStaff: newBizData.isStaff
                 } as any);
                 
                 alert("İşletme, ödeme planı ve yönetici hesabı başarıyla kuruldu!");
                 setShowCreateModal(false);
-                setModalStep(1);
-                setNewBiz({
-                    name: '', slug: '', mrr: 1500, plan: 'Basic',
-                    expiryDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-                    taxId: '', taxOffice: '', billingAddress: '',
-                    email: '', password: '', seatCount: 5, isStaff: true,
-                    verticals: ['spa']
-                });
                 await fetchData(undefined, undefined, true);
+                return true;
             }
         } catch (err: any) {
             alert("Hata oluştu: " + err.message);
         } finally {
             setIsCreating(false);
         }
+        return false;
     };
 
-    const handleDeleteBusiness = async (id: string, name: string) => {
-        if (!window.confirm(`${name} işletmesini kalıcı olarak silmek istediğinize emin misiniz? Bu işlem geri alınamaz.`)) {
-            return;
-        }
-
+    const handleDeleteBusinessAction = async (id: string, name: string) => {
+        if (!window.confirm(`${name} işletmesini kalıcı olarak silmek istediğinize emin misiniz?`)) return;
         setIsActionLoading(id);
         try {
             await deleteBusiness(id);
@@ -129,7 +109,7 @@ export default function SuperAdminPage() {
         }
     };
 
-    const handleToggleStatus = async (id: string, currentStatus: string) => {
+    const handleToggleStatusAction = async (id: string, currentStatus: string) => {
         const newStatus = currentStatus === 'active' ? 'inactive' : 'active';
         setIsActionLoading(id);
         try {
@@ -142,11 +122,7 @@ export default function SuperAdminPage() {
         }
     };
 
-    // Edit Modal State
-    const [editingBiz, setEditingBiz] = useState<any>(null);
-    const { updateAnyBusiness } = useStore();
-
-    const handleUpdateBusiness = async (id: string, updates: any) => {
+    const handleUpdateBusinessAction = async (id: string, updates: any) => {
         setIsActionLoading(id);
         try {
             await updateAnyBusiness(id, updates);
@@ -159,38 +135,25 @@ export default function SuperAdminPage() {
         }
     };
 
-    // GLOBAL STATS CALCULATIONS
+    // --- COMPUTATIONS ---
     const stats = useMemo(() => {
-        // SaaS Geliri: SaaS Org'a yapılan tüm ödemelerin toplamı
         const totalRev = allPayments.reduce((s: number, p: any) => s + (p.totalAmount || 0), 0);
-        
-        // Aktif Node'lar: Durumu Aktif veya active olan tüm işletmeler
         const activeTenants = allBusinesses.filter((b: any) => b.status === 'active' || b.status === 'Aktif').length;
-        
-        // Gerçek MRR: Tüm işletmelerin tanımlı aylık ücretlerinin (MRR) toplamı
         const mrr = allBusinesses.reduce((s: number, b: any) => s + (b.mrr || 0), 0);
-        
         const pendingNotifs = allNotifs.filter((n: any) => n.type === 'INTERNAL_REPORT').length;
-
         return { totalRev, activeTenants, mrr, pendingNotifs };
     }, [allPayments, allBusinesses, allNotifs]);
 
-    // CHART DATA: Global Revenue
     const chartData = useMemo(() => {
         const data: any[] = [];
         for (let i = 14; i >= 0; i--) {
             const date = new Date(Date.now() - i * 24 * 60 * 60 * 1000);
             const dateStr = date.toISOString().split('T')[0];
             const name = `${date.getDate().toString().padStart(2, '0')}/${(date.getMonth() + 1).toString().padStart(2, '0')}`;
-            
-            // O güne ait gerçek SaaS geliri
             const dayRev = allPayments
                 .filter((p: any) => (p.date || p.createdAt?.split('T')[0]) === dateStr)
                 .reduce((s: number, p: any) => s + (p.totalAmount || 0), 0);
-            
-            // Projeksiyon: Mevcut MRR'ın günlük ortalaması (Canlı hissi verir)
             const dailyMrrGoal = stats.mrr / 30;
-
             data.push({ name, revenue: dayRev, growth: dailyMrrGoal });
         }
         return data;
@@ -219,7 +182,7 @@ export default function SuperAdminPage() {
                 <div className="absolute bottom-[-10%] left-[-10%] w-[50%] h-[50%] bg-purple-500/5 blur-[120px] rounded-full" />
             </div>
 
-            {/* Top Navigation Bar: Clean & Sovereign */}
+            {/* Top Navigation Bar */}
             <div className="relative z-50 h-[84px] px-10 flex items-center justify-between border-b border-indigo-100/50 bg-white/80 backdrop-blur-2xl">
                 <div className="flex items-center gap-6">
                     <div className="w-12 h-12 bg-indigo-600 rounded-[1.25rem] flex items-center justify-center text-white shadow-2xl shadow-indigo-600/20 group hover:rotate-12 transition-all duration-500">
@@ -231,13 +194,8 @@ export default function SuperAdminPage() {
                             <span className="text-[9px] font-black text-indigo-500 uppercase tracking-[0.2em] flex items-center gap-1.5 bg-indigo-50 px-2 py-0.5 rounded-md">
                                 <Server size={10} /> V 5.0.0
                             </span>
-                            <span className="w-1 h-1 bg-slate-200 rounded-full" />
                             <span className="text-[9px] font-black text-emerald-600 uppercase tracking-[0.2em] flex items-center gap-1.5">
-                                <motion.div 
-                                    animate={{ scale: [1, 1.2, 1], opacity: [0.5, 1, 0.5] }}
-                                    transition={{ duration: 2, repeat: Infinity }}
-                                    className="w-1.5 h-1.5 bg-emerald-500 rounded-full" 
-                                /> SİSTEM CANLI
+                                <motion.div animate={{ scale: [1, 1.2, 1], opacity: [0.5, 1, 0.5] }} transition={{ duration: 2, repeat: Infinity }} className="w-1.5 h-1.5 bg-emerald-500 rounded-full" /> SİSTEM CANLI
                             </span>
                         </div>
                     </div>
@@ -247,12 +205,12 @@ export default function SuperAdminPage() {
                     <div className="hidden lg:flex items-center gap-8 text-[10px] font-black uppercase tracking-widest text-slate-400">
                         <div className="flex flex-col items-end">
                             <span className="text-slate-900 leading-none mb-1">₺{stats.mrr.toLocaleString()}</span>
-                            <span className="text-[8px] opacity-60">GÜNCEL MRR</span>
+                            <span className="text-[8px] opacity-60 uppercase">GÜNCEL MRR</span>
                         </div>
                         <div className="w-px h-8 bg-slate-100" />
                         <div className="flex flex-col items-end">
                             <span className="text-slate-900 leading-none mb-1">{allBusinesses.length}</span>
-                            <span className="text-[8px] opacity-60">TOPLAM NODE</span>
+                            <span className="text-[8px] opacity-60 uppercase">TOPLAM NODE</span>
                         </div>
                     </div>
 
@@ -262,12 +220,8 @@ export default function SuperAdminPage() {
                              <p className="text-[8px] font-bold text-indigo-500 uppercase tracking-widest">Sovereign Admin</p>
                          </div>
                          <button 
-                            onClick={(e) => {
-                                e.stopPropagation();
-                                if(confirm('Oturumu kapatmak istediğinize emin misiniz?')) logout();
-                            }}
+                            onClick={() => confirm('Çıkış yapılsın mı?') && logout()}
                             className="w-10 h-10 flex items-center justify-center text-slate-400 hover:text-rose-500 hover:bg-rose-50 rounded-xl transition-all"
-                            title="Güvenli Çıkış"
                          >
                              <LogOut size={20} />
                          </button>
@@ -289,24 +243,11 @@ export default function SuperAdminPage() {
                     
                     <button 
                         onClick={handleRefresh}
-                        className="mt-4 mx-2 px-4 py-3 rounded-xl border border-indigo-100 bg-white hover:bg-indigo-50 text-[10px] font-bold text-indigo-600 flex items-center justify-center gap-2 transition-all group"
+                        className="mt-4 mx-2 px-4 py-3 rounded-xl border border-indigo-100 bg-white hover:bg-indigo-50 text-[10px] font-bold text-indigo-600 flex items-center justify-center gap-2 transition-all"
                     >
-                        <RefreshCw size={14} className={isRefreshing ? 'animate-spin' : 'group-hover:rotate-180 transition-transform duration-500'} />
+                        <RefreshCw size={14} className={isRefreshing ? 'animate-spin' : ''} />
                         VERİLERİ YENİLE
                     </button>
-                    
-                    <div className="mt-auto p-6 bg-indigo-50 border border-indigo-100 rounded-3xl transition-all hover:shadow-lg hover:shadow-indigo-500/5">
-                        <div className="flex items-center gap-3 mb-3">
-                            <ShieldCheck className="text-indigo-600" size={16} />
-                            <span className="text-[9px] font-black text-slate-900 uppercase tracking-widest">Sistem Sağlığı</span>
-                        </div>
-                        <div className="space-y-2">
-                             <div className="h-1 bg-indigo-200 rounded-full overflow-hidden">
-                                 <motion.div initial={{ width: 0 }} animate={{ width: '92%' }} className="h-full bg-indigo-600" />
-                             </div>
-                             <p className="text-[8px] font-bold text-slate-500">CPU: 12% | RAM: 4.2GB / 32GB</p>
-                        </div>
-                    </div>
                 </div>
 
                 {/* Main Content Area */}
@@ -314,27 +255,17 @@ export default function SuperAdminPage() {
                     <AnimatePresence mode="wait">
                         {activeTab === 'monitor' && (
                             <motion.div key="monitor" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} className="space-y-8">
-                                {/* Global Insights */}
                                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                                     <StatCard title="Toplam Ağ Geliri" value={`₺${stats.totalRev.toLocaleString()}`} icon={CreditCard} trend="+12.4%" color="indigo" />
                                     <StatCard title="Aktif İşletme Sayısı" value={stats.activeTenants} icon={Globe} trend="+2 yeni" color="purple" />
                                     <StatCard title="Sistem Sorgulama" value={allLogs.length} icon={Database} trend="Stabil" color="blue" />
                                 </div>
 
-                                {/* Global Chart */}
-                                <div className="bg-white border border-indigo-100 rounded-[2.5rem] p-10 shadow-sm transition-all hover:shadow-xl hover:shadow-indigo-500/5">
+                                <div className="bg-white border border-indigo-100 rounded-[2.5rem] p-10 shadow-sm">
                                     <div className="flex justify-between items-start mb-10">
                                         <div>
                                             <h3 className="text-slate-900 text-xl font-black italic uppercase tracking-tighter">Ağ Büyüme Nabzı</h3>
-                                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">Küresel Gelir Akışı - Son 14 Gün</p>
-                                        </div>
-                                        <div className="flex gap-4">
-                                             <div className="flex items-center gap-2 text-[9px] font-black text-indigo-600">
-                                                 <div className="w-2 h-2 bg-indigo-600 rounded-full" /> GELİR
-                                             </div>
-                                             <div className="flex items-center gap-2 text-[9px] font-black text-purple-600">
-                                                 <div className="w-2 h-2 bg-purple-600 rounded-full" /> PROJEKSİYON
-                                             </div>
+                                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">Son 14 Gün</p>
                                         </div>
                                     </div>
                                     <div className="h-[350px] w-full">
@@ -350,7 +281,7 @@ export default function SuperAdminPage() {
                                                 <XAxis dataKey="name" axisLine={false} tickLine={false} fontSize={10} tick={{ fill: 'rgba(0,0,0,0.4)' }} />
                                                 <YAxis axisLine={false} tickLine={false} fontSize={10} tick={{ fill: 'rgba(0,0,0,0.4)' }} tickFormatter={(val) => `₺${val/1000}k`} />
                                                 <Tooltip 
-                                                    contentStyle={{ backgroundColor: 'rgba(255,255,255,0.95)', border: '1px solid #e2e8f0', borderRadius: '15px', backdropFilter: 'blur(10px)', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)' }}
+                                                    contentStyle={{ backgroundColor: 'rgba(255,255,255,0.95)', border: '1px solid #e2e8f0', borderRadius: '15px' }}
                                                     itemStyle={{ fontSize: '10px', fontWeight: '900', color: '#1e293b' }}
                                                 />
                                                 <Area type="monotone" dataKey="revenue" stroke="#4F46E5" strokeWidth={4} fillOpacity={1} fill="url(#colorRev)" />
@@ -360,49 +291,38 @@ export default function SuperAdminPage() {
                                     </div>
                                 </div>
 
-                                {/* Recent Pulse Stream */}
                                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 pb-10">
                                     <div className="bg-white border border-indigo-100 rounded-[2.5rem] p-8 shadow-sm">
                                         <h4 className="text-slate-900 text-xs font-black uppercase tracking-widest mb-6 flex items-center justify-between">
                                             <div className="flex items-center gap-3">
                                                 <Activity size={14} className="text-indigo-600" /> Küresel Sistem Akışı
                                             </div>
-                                            <span className="text-[8px] font-black text-indigo-500 bg-indigo-50 px-2 py-1 rounded-lg">CANLI BESLEME</span>
+                                            <span className="text-[8px] font-black text-indigo-500 bg-indigo-50 px-2 py-1 rounded-lg uppercase">CANLI</span>
                                         </h4>
                                         <div className="space-y-4 max-h-[400px] overflow-y-auto no-scrollbar pr-2">
-                                            {allLogs.length > 0 ? allLogs.slice(0, 15).map((log: any, i: number) => (
+                                            {allLogs.slice(0, 15).map((log: any, i: number) => (
                                                 <div key={i} className="flex gap-4 items-center group cursor-pointer hover:translate-x-1 transition-transform">
                                                     <div className="w-10 h-10 bg-slate-50 border border-indigo-50 rounded-2xl flex items-center justify-center text-indigo-600 group-hover:text-white group-hover:bg-indigo-600 transition-all">
-                                                        {log.action?.includes('Business') ? <Globe size={14} /> : <Database size={14} />}
+                                                        <Database size={14} />
                                                     </div>
-                                                    <div className="flex-1 min-w-0">
-                                                        <p className="text-[11px] font-black text-slate-700 truncate capitalize">{log.action || 'Sistem Olayı'}</p>
-                                                        <div className="flex items-center gap-2 mt-0.5">
-                                                            <span className="text-[8px] font-bold text-indigo-400 uppercase tracking-tighter">{log.user || 'Sistem'}</span>
-                                                            <span className="w-1 h-1 bg-slate-200 rounded-full" />
-                                                            <span className="text-[8px] font-bold text-slate-400 uppercase tracking-tighter">
-                                                                {new Date((log as any).date || (log as any).createdAt || Date.now()).toLocaleTimeString()}
-                                                            </span>
-                                                        </div>
+                                                    <div className="flex-1 min-w-0 text-left">
+                                                        <p className="text-[11px] font-black text-slate-700 truncate capitalize">{log.action || 'Olay'}</p>
+                                                        <p className="text-[8px] font-bold text-slate-400">{new Date(log.date || log.createdAt).toLocaleTimeString()}</p>
                                                     </div>
                                                     <ChevronRight size={14} className="text-slate-200" />
                                                 </div>
-                                            )) : (
-                                                <div className="text-center py-10">
-                                                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Henüz global log verisi yok</p>
-                                                </div>
-                                            )}
+                                            ))}
                                         </div>
                                     </div>
 
                                     <div className="bg-white border border-indigo-100 rounded-[2.5rem] p-8 shadow-sm">
                                         <h4 className="text-slate-900 text-xs font-black uppercase tracking-widest mb-6 flex items-center gap-3">
-                                            <Database size={14} className="text-purple-600" /> Sistem Metrikleri
+                                            <Zap size={14} className="text-purple-600" /> Sistem Metrikleri
                                         </h4>
                                         <div className="grid grid-cols-2 gap-4">
-                                            <MetricBox label="Aktif Oturumlar" value="1,244" trend="+4%" />
+                                            <MetricBox label="Aktif Oturumlar" value="1,244" trend="Nominal" />
                                             <MetricBox label="API Gecikme" value="28ms" trend="Stabil" />
-                                            <MetricBox label="DB Tepe İşlem" value="14.2k/s" trend="-2%" />
+                                            <MetricBox label="DB Tepe İşlem" value="14.2k/s" trend="Nominal" />
                                             <MetricBox label="Hata Oranı" value="0.04%" trend="Nominal" />
                                         </div>
                                     </div>
@@ -414,19 +334,19 @@ export default function SuperAdminPage() {
                             <motion.div key="tenants" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="space-y-6">
                                 <div className="flex justify-between items-center mb-8">
                                     <div className="relative group">
-                                        <Search className="absolute left-6 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-indigo-600 transition-colors" size={18} />
+                                        <Search className="absolute left-6 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
                                         <input 
-                                            placeholder="İşletme adı, slug veya ID ara..." 
+                                            placeholder="İşletme ara..." 
                                             value={searchQuery}
                                             onChange={e => setSearchQuery(e.target.value)}
-                                            className="bg-white border border-indigo-100 rounded-full py-5 pl-16 pr-8 w-96 text-sm font-black text-slate-900 outline-none focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 transition-all shadow-sm" 
+                                            className="bg-white border border-indigo-100 rounded-full py-5 pl-16 pr-8 w-96 text-sm font-black text-slate-900 outline-none shadow-sm" 
                                         />
                                     </div>
                                     <button 
                                         onClick={() => setShowCreateModal(true)}
-                                        className="bg-indigo-600 hover:bg-indigo-700 text-white font-black text-[10px] uppercase tracking-widest px-8 py-5 rounded-full shadow-2xl shadow-indigo-600/20 transition-all flex items-center gap-3"
+                                        className="bg-indigo-600 hover:bg-indigo-700 text-white font-black text-[10px] uppercase tracking-widest px-8 py-5 rounded-full shadow-2xl transition-all flex items-center gap-3"
                                     >
-                                        <Plus size={16} /> YENİ İŞLETME TANIMLA
+                                        <Plus size={16} /> YENİ İŞLETME
                                     </button>
                                 </div>
 
@@ -437,128 +357,50 @@ export default function SuperAdminPage() {
                                             biz={biz} 
                                             isLoading={isActionLoading === biz.id}
                                             onImpersonate={() => setImpersonatedBusinessId(biz.id)} 
-                                            onDelete={() => handleDeleteBusiness(biz.id, biz.name)}
-                                            onToggleStatus={() => handleToggleStatus(biz.id, biz.status)}
+                                            onDelete={() => handleDeleteBusinessAction(biz.id, biz.name)}
+                                            onToggleStatus={() => handleToggleStatusAction(biz.id, biz.status)}
                                             onEdit={() => setEditingBiz(biz)}
                                         />
                                     ))}
                                 </div>
                             </motion.div>
                         )}
+
                         {activeTab === 'billing' && (
                             <motion.div key="billing" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="space-y-6">
-                                <div className="bg-white border border-indigo-100 rounded-[2.5rem] p-10 shadow-sm">
-                                    <div className="flex items-center gap-4 mb-8">
-                                        <div className="w-14 h-14 bg-emerald-600 rounded-2xl flex items-center justify-center text-white shadow-2xl shadow-emerald-600/20">
-                                            <CreditCard size={28} />
-                                        </div>
-                                        <div>
-                                            <h2 className="text-slate-900 text-3xl font-black italic uppercase tracking-tighter">SaaS Muhasebe Merkezi</h2>
-                                            <p className="text-[10px] font-bold text-emerald-600 uppercase tracking-[0.3em] mt-1">İşletmelerin Abonelik ve Fatura Metrikleri</p>
-                                        </div>
-                                    </div>
-                                    
+                                <div className="bg-white border border-indigo-100 rounded-[2.5rem] p-10 shadow-sm text-left">
+                                    <h2 className="text-slate-900 text-3xl font-black italic uppercase tracking-tighter mb-8">SaaS Muhasebe</h2>
                                     <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
                                         <div className="p-6 rounded-2xl bg-slate-50 border border-slate-100">
-                                            <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">AYLIK KESİN GELİR (MRR)</p>
+                                            <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">MRR</p>
                                             <p className="text-3xl font-black text-slate-900">₺{stats.mrr.toLocaleString()}</p>
                                         </div>
                                         <div className="p-6 rounded-2xl bg-slate-50 border border-emerald-100/50">
-                                            <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">AURA ENTERPRISE PLAN</p>
+                                            <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">ENTERPRISE NODES</p>
                                             <p className="text-3xl font-black text-slate-900">{allBusinesses.filter((b: any) => b.plan === 'Aura Enterprise').length}</p>
                                         </div>
                                         <div className="p-6 rounded-2xl bg-slate-50 border border-slate-100">
-                                            <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">GÜNCEL FATURA TOPLAMI</p>
+                                            <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">TOPLAM FATURA</p>
                                             <p className="text-3xl font-black text-slate-900">₺{stats.totalRev.toLocaleString()}</p>
                                         </div>
-                                        <div className="p-6 rounded-2xl bg-slate-50 border border-rose-100/50 relative overflow-hidden">
-                                            <p className="text-[9px] font-black text-rose-400 uppercase tracking-widest mb-1 relative z-10">MÜHÜRLÜ İŞLETMELER</p>
-                                            <p className="text-3xl font-black text-rose-600 relative z-10">{allBusinesses.filter((b: any) => b.is_suspended).length}</p>
-                                            <div className="absolute top-0 right-0 w-20 h-20 bg-rose-50 rounded-bl-full" />
+                                        <div className="p-6 rounded-2xl bg-slate-50 border border-rose-100/50">
+                                            <p className="text-[9px] font-black text-rose-400 uppercase tracking-widest mb-1">MÜHÜRLÜ</p>
+                                            <p className="text-3xl font-black text-rose-600">{allBusinesses.filter((b: any) => b.is_suspended).length}</p>
                                         </div>
-                                    </div>
-
-                                    <div className="overflow-x-auto rounded-2xl border border-indigo-50">
-                                        <table className="w-full text-left border-collapse min-w-[800px]">
-                                            <thead>
-                                                <tr className="bg-indigo-50/50 border-b border-indigo-50">
-                                                    <th className="py-4 px-6 text-[9px] font-black tracking-widest uppercase text-slate-400">İşletme</th>
-                                                    <th className="py-4 px-6 text-[9px] font-black tracking-widest uppercase text-slate-400">Vergi No / Daire</th>
-                                                    <th className="py-4 px-6 text-[9px] font-black tracking-widest uppercase text-slate-400">Aktif Plan</th>
-                                                    <th className="py-4 px-6 text-[9px] font-black tracking-widest uppercase text-slate-400">Güncel MRR</th>
-                                                    <th className="py-4 px-6 text-[9px] font-black tracking-widest uppercase text-slate-400">Kalan Süre (Gün)</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody>
-                                                {filteredBusinesses.map((biz: any) => {
-                                                    const diff = biz.expiryDate ? Math.ceil((new Date(biz.expiryDate).getTime() - Date.now()) / (1000 * 60 * 60 * 24)) : null;
-                                                    const isOverdue = diff !== null && diff < 0;
-                                                    
-                                                    return (
-                                                        <tr key={biz.id} className="border-b border-indigo-50/30 hover:bg-slate-50/50 transition-colors">
-                                                            <td className="py-4 px-6">
-                                                                <div className="flex items-center gap-3">
-                                                                    <div className="w-8 h-8 rounded-xl bg-indigo-100 flex items-center justify-center text-indigo-600 font-bold text-xs">
-                                                                        {biz.name.charAt(0)}
-                                                                    </div>
-                                                                    <div>
-                                                                        <p className="text-sm font-bold text-slate-900">{biz.name}</p>
-                                                                        <p className="text-[9px] text-slate-400 font-bold uppercase">{biz.slug}</p>
-                                                                    </div>
-                                                                </div>
-                                                            </td>
-                                                            <td className="py-4 px-6">
-                                                                <p className="text-sm font-bold text-slate-700">{biz.taxId || 'Belirtilmedi'}</p>
-                                                                <p className="text-[9px] text-slate-400 font-bold uppercase">{biz.taxOffice || '-'}</p>
-                                                            </td>
-                                                            <td className="py-4 px-6">
-                                                                <span className={`px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest ${biz.plan === 'Aura Enterprise' ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-600'}`}>
-                                                                    {biz.plan || 'Basic'}
-                                                                </span>
-                                                            </td>
-                                                            <td className="py-4 px-6">
-                                                                <p className="text-sm font-black text-slate-900">₺{(biz.mrr || 1500).toLocaleString()}</p>
-                                                            </td>
-                                                            <td className="py-4 px-6">
-                                                                <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase ${isOverdue ? 'bg-rose-100 text-rose-600' : diff !== null && diff < 10 ? 'bg-amber-100 text-amber-600' : 'bg-indigo-50 text-indigo-600'}`}>
-                                                                    {diff !== null ? `${diff} Gün` : 'Sınırsız'}
-                                                                </span>
-                                                            </td>
-                                                        </tr>
-                                                    );
-                                                })}
-                                            </tbody>
-                                        </table>
                                     </div>
                                 </div>
                             </motion.div>
                         )}
+
                         {activeTab === 'notifications' && (
-                            <motion.div key="notifications" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6">
-                                <div className="bg-white border border-indigo-100 rounded-[2.5rem] p-10 shadow-sm">
-                                    <h2 className="text-slate-900 text-2xl font-black italic uppercase tracking-tighter mb-2">Dahili Sistem Akışı</h2>
-                                    <p className="text-[10px] font-bold text-indigo-600 uppercase tracking-[0.3em] mb-10">AI Tarafından Üretilen Gün Sonu Özetleri</p>
-                                    
+                            <motion.div key="notifications" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6 text-left">
+                                <div className="bg-white border border-indigo-100 rounded-[2.5rem] p-10 shadow-sm text-left">
+                                    <h2 className="text-slate-900 text-2xl font-black italic uppercase tracking-tighter mb-10">Dahili Raporlar</h2>
                                     <div className="space-y-6 pb-10">
                                         {allNotifs.filter((n: any) => n.type === 'INTERNAL_REPORT').map((n: any, i: number) => (
-                                            <div key={i} className="bg-slate-50 border border-indigo-50 rounded-[2rem] p-8 group hover:border-indigo-500/30 transition-all">
-                                                <div className="flex justify-between items-start mb-6">
-                                                    <div className="flex items-center gap-4">
-                                                        <div className="w-12 h-12 bg-white text-indigo-600 border border-indigo-100 rounded-2xl flex items-center justify-center">
-                                                            <Activity size={24} />
-                                                        </div>
-                                                        <div>
-                                                            <p className="text-slate-900 font-black text-lg">GÜNLÜK RAPOR - {n.sentAt?.split('T')[0]}</p>
-                                                            <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">İşletme ID: {n.customerId || 'GLOBAL'}</p>
-                                                        </div>
-                                                    </div>
-                                                    <button className="text-[10px] font-black text-indigo-600 p-2 px-4 rounded-xl border border-indigo-100 hover:bg-indigo-600 hover:text-white transition-all">
-                                                        DETAYLAR
-                                                    </button>
-                                                </div>
-                                                <div className="bg-white rounded-2xl p-6 font-mono text-[11px] text-slate-700 whitespace-pre-wrap leading-relaxed border border-indigo-50 shadow-inner">
-                                                    {n.content}
-                                                </div>
+                                            <div key={i} className="bg-slate-50 border border-indigo-50 rounded-[2rem] p-8">
+                                                <p className="text-slate-900 font-black text-lg uppercase">GÜNLÜK RAPOR - {n.sentAt?.split('T')[0]}</p>
+                                                <div className="bg-white rounded-2xl p-6 font-mono text-[11px] mt-4 border border-indigo-50 whitespace-pre-wrap">{n.content}</div>
                                             </div>
                                         ))}
                                     </div>
@@ -569,46 +411,23 @@ export default function SuperAdminPage() {
                         {activeTab === 'announcements' && (
                             <motion.div key="announcements" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6">
                                 <div className="bg-white border border-indigo-100 rounded-[2.5rem] p-10 shadow-sm">
-                                    <div className="flex items-center gap-4 mb-10">
-                                        <div className="w-14 h-14 bg-indigo-600 rounded-2xl flex items-center justify-center text-white shadow-2xl shadow-indigo-600/20">
-                                            <Bell size={28} />
-                                        </div>
-                                        <div>
-                                            <h2 className="text-slate-900 text-3xl font-black italic uppercase tracking-tighter">Küresel Yayın Komutası</h2>
-                                            <p className="text-[10px] font-bold text-indigo-600 uppercase tracking-[0.3em]">Tüm ağ düğümlerine mesaj ilet</p>
-                                        </div>
-                                    </div>
-
+                                    <h2 className="text-slate-900 text-2xl font-black italic uppercase tracking-tighter mb-10 text-left">Yayın Komutası</h2>
                                     <BroadcastForm />
                                 </div>
                             </motion.div>
                         )}
 
                         {activeTab === 'system' && (
-                            <motion.div key="system" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="h-[600px] bg-slate-900 rounded-[2.5rem] border border-indigo-100 overflow-hidden flex flex-col p-1 shadow-2xl">
-                                <div className="h-10 bg-white/5 rounded-t-[2.4rem] flex items-center px-6 gap-2 border-b border-white/5">
-                                    <div className="w-2.5 h-2.5 rounded-full bg-rose-500" />
-                                    <div className="w-2.5 h-2.5 rounded-full bg-amber-500" />
-                                    <div className="w-2.5 h-2.5 rounded-full bg-emerald-500" />
-                                    <span className="ml-4 text-[9px] font-black text-white/30 uppercase tracking-widest">Aura Sovereign Terminal - tty1</span>
-                                </div>
-                                <div className="flex-1 overflow-y-auto p-8 font-mono text-[12px] space-y-2 no-scrollbar">
-                                    <p className="text-emerald-400">{">"} aura build --production --elite</p>
-                                    <p className="text-slate-400">Compiling modules...</p>
-                                    <p className="text-slate-400">Checking sovereign key...</p>
-                                    <p className="text-indigo-400 font-bold">Authenticated: KERIM (SOVEREIGN_ADMIN)</p>
-                                    <p className="text-slate-400">Deploying tactical overlays to 14 nodes...</p>
-                                    <p className="text-emerald-400">SUCCESS: Aura Command Center is online.</p>
-                                    <div className="mt-8 flex gap-2 items-center">
-                                        <span className="text-emerald-400">root@sov-v4:~#</span>
-                                        <input className="bg-transparent border-none outline-none text-white w-full caret-indigo-500" autoFocus />
-                                    </div>
-                                </div>
+                            <motion.div key="system" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="h-[600px] bg-slate-900 rounded-[2.5rem] p-8 font-mono text-[12px] space-y-2 overflow-y-auto text-left">
+                                <p className="text-emerald-400">{">"} status check</p>
+                                <p className="text-slate-400">Nodes communicating...</p>
+                                <p className="text-indigo-400">Authenticated: {currentUser?.name}</p>
+                                <p className="text-emerald-400">Aura Command Center online.</p>
                             </motion.div>
                         )}
 
                         {activeTab === 'migration' && (
-                            <motion.div key="migration" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="space-y-6">
+                            <motion.div key="migration" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6">
                                 <MigrationWizard />
                             </motion.div>
                         )}
@@ -616,528 +435,19 @@ export default function SuperAdminPage() {
                 </div>
             </div>
 
-            <AnimatePresence>
-                {showCreateModal && (
-                    <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 backdrop-blur-md bg-slate-900/40 text-left">
-                        <motion.div 
-                            initial={{ scale: 0.9, opacity: 0 }}
-                            animate={{ scale: 1, opacity: 1 }}
-                            exit={{ scale: 0.9, opacity: 0 }}
-                            className="bg-white border border-indigo-100 rounded-[2.5rem] w-full max-w-xl overflow-hidden shadow-2xl"
-                        >
-                            <div className="p-10">
-                                <div className="flex justify-between items-center mb-10">
-                                    <div className="flex items-center gap-4">
-                                        <div className="w-12 h-12 bg-indigo-600 rounded-2xl flex items-center justify-center text-white font-black italic">
-                                            {modalStep}
-                                        </div>
-                                        <div>
-                                            <h2 className="text-slate-900 text-2xl font-black italic uppercase tracking-tighter">İşletme Kurulumu</h2>
-                                            <p className="text-[10px] font-bold text-indigo-600 uppercase tracking-widest mt-1">Aşama {modalStep} / 3</p>
-                                        </div>
-                                    </div>
-                                    <button onClick={() => setShowCreateModal(false)} className="w-10 h-10 bg-slate-50 rounded-full flex items-center justify-center text-slate-400 hover:bg-slate-100 transition-all">
-                                        <X size={20} />
-                                    </button>
-                                </div>
-
-                                <div className="min-h-[350px]">
-                                    {modalStep === 1 && (
-                                        <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="space-y-6">
-                                            <div className="space-y-2">
-                                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">İşletme Adı</label>
-                                                <input value={newBiz.name} onChange={e => setNewBiz({...newBiz, name: e.target.value})} placeholder="Örn: Aura Spa Merkezi" className="w-full bg-slate-50 border border-indigo-50 rounded-2xl py-4 px-6 text-slate-900 font-bold outline-none focus:border-indigo-500 transition-all shadow-inner" />
-                                            </div>
-                                            <div className="space-y-2">
-                                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Slug (URL)</label>
-                                                <input value={newBiz.slug} onChange={e => setNewBiz({...newBiz, slug: e.target.value})} placeholder="aura-spa" className="w-full bg-slate-50 border border-indigo-50 rounded-2xl py-4 px-6 text-slate-900 font-bold outline-none focus:border-indigo-500 transition-all shadow-inner" />
-                                            </div>
-                                            <div className="grid grid-cols-2 gap-4">
-                                                <div className="space-y-2">
-                                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Koltuk Sayısı</label>
-                                                    <input type="number" value={newBiz.seatCount} onChange={e => setNewBiz({...newBiz, seatCount: parseInt(e.target.value)})} className="w-full bg-slate-50 border border-indigo-50 rounded-2xl py-4 px-6 text-slate-900 font-bold outline-none focus:border-indigo-500 transition-all shadow-inner" />
-                                                </div>
-                                                <div className="space-y-2">
-                                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Plan</label>
-                                                    <select 
-                                                        value={newBiz.plan} 
-                                                        onChange={e => setNewBiz({...newBiz, plan: e.target.value})}
-                                                        className="w-full bg-slate-50 border border-indigo-50 rounded-2xl py-4 px-6 text-slate-900 font-bold outline-none focus:border-indigo-500 transition-all shadow-inner appearance-none"
-                                                    >
-                                                        <option value="Basic">Basic</option>
-                                                        <option value="Aura Enterprise">Aura Enterprise</option>
-                                                     </select>
-                                                </div>
-                                            </div>
-
-                                            <div className="space-y-4">
-                                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Aktif Dikey Projeler (Kingdoms)</label>
-                                                <div className="flex gap-3">
-                                                    {[
-                                                        { id: 'spa', label: 'SPA', color: 'bg-indigo-500' },
-                                                        { id: 'clinic', label: 'KLİNİK', color: 'bg-emerald-500' },
-                                                        { id: 'fitness', label: 'FITNESS', color: 'bg-amber-500' }
-                                                    ].map(v => (
-                                                        <button 
-                                                            key={v.id}
-                                                            onClick={() => {
-                                                                const next = newBiz.verticals.includes(v.id) 
-                                                                    ? newBiz.verticals.filter(x => x !== v.id)
-                                                                    : [...newBiz.verticals, v.id];
-                                                                if (next.length === 0) return; // En az bir dikey seçilmeli
-                                                                setNewBiz({ ...newBiz, verticals: next });
-                                                            }}
-                                                            className={`flex-1 py-3 px-4 rounded-xl border-2 transition-all flex flex-col items-center gap-2 ${
-                                                                newBiz.verticals.includes(v.id)
-                                                                ? 'border-indigo-600 bg-indigo-50/50'
-                                                                : 'border-slate-100 bg-white'
-                                                            }`}
-                                                        >
-                                                            <div className={`w-3 h-3 rounded-full ${v.color} ${newBiz.verticals.includes(v.id) ? 'scale-125' : 'opacity-40'}`} />
-                                                            <span className={`text-[9px] font-black tracking-widest ${newBiz.verticals.includes(v.id) ? 'text-indigo-950' : 'text-slate-400'}`}>{v.label}</span>
-                                                        </button>
-                                                    ))}
-                                                </div>
-                                            </div>
-
-                                            <button onClick={() => setModalStep(2)} className="w-full py-5 bg-slate-900 text-white rounded-2xl font-black text-[11px] uppercase tracking-widest mt-8">SONRAKİ ADIM: CARİ & FİNANS</button>
-                                        </motion.div>
-                                    )}
-
-                                    {modalStep === 2 && (
-                                        <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="space-y-6">
-                                            <div className="grid grid-cols-2 gap-4">
-                                                <div className="space-y-2">
-                                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Vergi Numarası</label>
-                                                    <input value={newBiz.taxId} onChange={e => setNewBiz({...newBiz, taxId: e.target.value})} placeholder="1234567890" className="w-full bg-slate-50 border border-indigo-50 rounded-2xl py-4 px-6 text-slate-900 font-bold outline-none focus:border-indigo-500 transition-all shadow-inner" />
-                                                </div>
-                                                <div className="space-y-2">
-                                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Vergi Dairesi</label>
-                                                    <input value={newBiz.taxOffice} onChange={e => setNewBiz({...newBiz, taxOffice: e.target.value})} placeholder="Ümraniye V.D." className="w-full bg-slate-50 border border-indigo-50 rounded-2xl py-4 px-6 text-slate-900 font-bold outline-none focus:border-indigo-500 transition-all shadow-inner" />
-                                                </div>
-                                            </div>
-                                            <div className="space-y-2">
-                                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Ücret (₺) / Aylık</label>
-                                                <input type="number" value={newBiz.mrr} onChange={e => setNewBiz({...newBiz, mrr: parseFloat(e.target.value)})} className="w-full bg-slate-50 border border-indigo-50 rounded-2xl py-4 px-6 text-slate-900 font-bold outline-none focus:border-indigo-500 transition-all shadow-inner" />
-                                            </div>
-                                            <div className="space-y-2">
-                                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Abonelik Bitiş Tarihi</label>
-                                                <input type="date" value={newBiz.expiryDate} onChange={e => setNewBiz({...newBiz, expiryDate: e.target.value})} className="w-full bg-slate-50 border border-indigo-50 rounded-2xl py-4 px-6 text-slate-900 font-bold outline-none focus:border-indigo-500 transition-all shadow-inner" />
-                                            </div>
-                                            <div className="flex gap-4 mt-8">
-                                                <button onClick={() => setModalStep(1)} className="flex-1 py-5 bg-slate-50 text-slate-400 rounded-2xl font-black text-[11px] uppercase tracking-widest">GERİ</button>
-                                                <button onClick={() => setModalStep(3)} className="flex-[2] py-5 bg-slate-900 text-white rounded-2xl font-black text-[11px] uppercase tracking-widest">SONRAKİ: YÖNETİCİ HESABI</button>
-                                            </div>
-                                        </motion.div>
-                                    )}
-
-                                    {modalStep === 3 && (
-                                        <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="space-y-6">
-                                            <div className="space-y-2">
-                                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">E-posta</label>
-                                                <input value={newBiz.email} onChange={e => setNewBiz({...newBiz, email: e.target.value})} placeholder="admin@isletme.com" className="w-full bg-slate-50 border border-indigo-50 rounded-2xl py-4 px-6 text-slate-900 font-bold outline-none focus:border-indigo-500 transition-all shadow-inner" />
-                                            </div>
-                                            <div className="space-y-2">
-                                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Geçici Şifre</label>
-                                                <input type="password" value={newBiz.password} onChange={e => setNewBiz({...newBiz, password: e.target.value})} placeholder="••••••••" className="w-full bg-slate-50 border border-indigo-50 rounded-2xl py-4 px-6 text-slate-900 font-bold outline-none focus:border-indigo-500 transition-all shadow-inner" />
-                                            </div>
-                                            <div className="flex items-center gap-4 bg-indigo-50 p-6 rounded-2xl border border-indigo-100">
-                                                <input type="checkbox" id="isStaff" checked={newBiz.isStaff} onChange={e => setNewBiz({...newBiz, isStaff: e.target.checked})} className="w-5 h-5 accent-indigo-600" />
-                                                <label htmlFor="isStaff" className="text-xs font-bold text-slate-700 leading-tight">İşletme sahibi aynı zamanda bir personel koltuğu kaplasın (Aktif Uzman olarak çalışacak)</label>
-                                            </div>
-                                            <div className="flex gap-4 mt-8">
-                                                <button onClick={() => setModalStep(2)} className="flex-1 py-5 bg-slate-50 text-slate-400 rounded-2xl font-black text-[11px] uppercase tracking-widest">GERİ</button>
-                                                <button onClick={handleCreateBusiness} disabled={isCreating} className="flex-[2] py-5 bg-indigo-600 text-white rounded-2xl font-black text-[11px] uppercase tracking-widest shadow-xl shadow-indigo-600/30">
-                                                    {isCreating ? 'İŞLENİYOR...' : 'SİSTEMİ KUR VE TAMAMLA ✓'}
-                                                </button>
-                                            </div>
-                                        </motion.div>
-                                    )}
-                                </div>
-                            </div>
-                        </motion.div>
-                    </div>
-                )}
-            </AnimatePresence>
+            <CreateBusinessModal 
+                isOpen={showCreateModal} 
+                onClose={() => setShowCreateModal(false)} 
+                onCreate={handleCreateBusinessAction} 
+                isCreating={isCreating} 
+            />
 
             <EditBusinessModal 
                 biz={editingBiz} 
                 onClose={() => setEditingBiz(null)} 
-                onUpdate={handleUpdateBusiness} 
+                onUpdate={handleUpdateBusinessAction} 
                 loading={!!isActionLoading}
             />
-        </div>
-    );
-}
-
-function BroadcastForm() {
-    const { broadcastAnnouncement } = useStore();
-    const [title, setTitle] = useState('');
-    const [content, setContent] = useState('');
-    const [type, setType] = useState<'info' | 'warning' | 'success' | 'danger'>('info');
-    const [loading, setLoading] = useState(false);
-
-    const handleBroadcast = async () => {
-        if (!title || !content) return alert("All fields are required.");
-        setLoading(true);
-        try {
-            await broadcastAnnouncement(title, content, type);
-            alert("BROADCAST TRANSMITTED SUCCESSFULLY");
-            setTitle('');
-            setContent('');
-        } catch (err) {
-            alert("TRANSMISSION FAILED");
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    return (
-        <div className="max-w-2xl space-y-8">
-            <div className="space-y-4">
-                <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest ml-1">Anons Başlığı</label>
-                <input 
-                    value={title}
-                    onChange={e => setTitle(e.target.value)}
-                    placeholder="Örn: Sistem Bakımı, Yeni Özellik Güncellemesi"
-                    className="w-full bg-slate-50 border border-indigo-50 rounded-2xl py-5 px-8 text-slate-900 font-black outline-none focus:border-indigo-500 transition-all shadow-inner"
-                />
-            </div>
-
-            <div className="space-y-4">
-                <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest ml-1">Yayın Tipi</label>
-                <div className="flex gap-3">
-                    {['info', 'warning', 'success', 'danger'].map((t: any) => (
-                        <button 
-                            key={t}
-                            onClick={() => setType(t)}
-                            className={`flex-1 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest border transition-all ${
-                                type === t 
-                                ? 'bg-indigo-600 border-indigo-600 text-white shadow-lg shadow-indigo-600/20' 
-                                : 'bg-white border-slate-100 text-gray-500'
-                            }`}
-                        >
-                            {t}
-                        </button>
-                    ))}
-                </div>
-            </div>
-
-            <div className="space-y-4">
-                <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest ml-1">Mesaj İçeriği</label>
-                <textarea 
-                    value={content}
-                    onChange={e => setContent(e.target.value)}
-                    rows={4}
-                    placeholder="Anonsun kısa açıklaması..."
-                    className="w-full bg-slate-50 border border-indigo-50 rounded-[2rem] py-5 px-8 text-slate-800 font-medium outline-none focus:border-indigo-500 transition-all shadow-inner"
-                />
-            </div>
-
-            <button 
-                onClick={handleBroadcast}
-                disabled={loading}
-                className="w-full py-6 bg-indigo-600 text-white rounded-[1.8rem] font-black text-[11px] uppercase tracking-[0.2em] shadow-xl shadow-indigo-600/40 hover:bg-indigo-700 active:scale-[0.98] transition-all disabled:opacity-50"
-            >
-                {loading ? 'YAYINLANIYOR...' : 'KÜRESEL YAYINI BAŞLAT ✓'}
-            </button>
-        </div>
-    );
-}
-
-function NavBtn({ id, active, onClick, icon: Icon, label, badge }: { id: AdminTab, active: AdminTab, onClick: (id: AdminTab) => void, icon: any, label: string, badge?: string }) {
-    const isActive = active === id;
-    return (
-        <button 
-            onClick={() => onClick(id)}
-            className={`
-                relative px-6 py-4 rounded-2xl flex items-center justify-between group transition-all duration-300
-                ${isActive ? 'bg-indigo-50 text-indigo-600' : 'text-slate-400 hover:text-indigo-600 hover:bg-slate-50'}
-            `}
-        >
-            <div className="flex items-center gap-4">
-                <Icon size={18} className={isActive ? 'text-indigo-600' : 'group-hover:text-indigo-600 transition-colors'} />
-                <span className="text-[11px] font-black uppercase tracking-widest">{label}</span>
-            </div>
-            {badge && (
-                <span className={`text-[9px] font-black px-2 py-0.5 rounded-md ${isActive ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-400'}`}>
-                    {badge}
-                </span>
-            )}
-            {isActive && <motion.div layoutId="nav-active" className="absolute left-1 w-1 h-8 bg-indigo-600 rounded-full" />}
-        </button>
-    );
-}
-
-function StatCard({ title, value, icon: Icon, trend, color }: { title: string, value: string | number, icon: any, trend: string, color: 'indigo' | 'purple' | 'blue' }) {
-    const bgMap: any = {
-        indigo: 'bg-indigo-600',
-        purple: 'bg-purple-600',
-        blue: 'bg-blue-600'
-    };
-    return (
-        <div className="bg-white border border-indigo-100 rounded-[2.5rem] p-8 relative overflow-hidden group hover:border-indigo-500/20 transition-all shadow-sm">
-            <div className="relative z-10 flex justify-between items-start">
-                <div className="space-y-2">
-                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{title}</p>
-                    <p className="text-3xl font-black text-slate-900 italic tracking-tighter">{value}</p>
-                    <div className="flex items-center gap-2">
-                         <span className="text-emerald-600 text-[10px] font-black">{trend}</span>
-                         <span className="text-[9px] font-bold text-slate-400 uppercase">Bu Dönem</span>
-                    </div>
-                </div>
-                <div className={`${bgMap[color]} p-3 rounded-2xl text-white shadow-2xl shadow-indigo-600/20 group-hover:scale-110 transition-transform`}>
-                    <Icon size={20} />
-                </div>
-            </div>
-            <div className={`absolute -right-8 -bottom-8 w-24 h-24 ${bgMap[color]} opacity-5 rounded-full group-hover:scale-150 transition-transform duration-700`} />
-        </div>
-    );
-}
-
-function MetricBox({ label, value, trend }: { label: string, value: string | number, trend: string }) {
-    return (
-        <div className="bg-slate-50 border border-indigo-50 rounded-2xl p-4 flex flex-col justify-between h-24 shadow-inner">
-            <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">{label}</p>
-            <div className="flex justify-between items-end">
-                <p className="text-xl font-bold text-slate-900 tracking-tight">{value}</p>
-                <span className={`text-[9px] font-black ${trend.includes('+') ? 'text-emerald-600' : trend === 'Stabil' || trend === 'Nominal' ? 'text-indigo-600' : 'text-rose-600'}`}>
-                    {trend}
-                </span>
-            </div>
-        </div>
-    );
-}
-
-function EditBusinessModal({ biz, onClose, onUpdate, loading }: { biz: any, onClose: () => void, onUpdate: (id: string, updates: any) => void, loading: boolean }) {
-    const [localBiz, setLocalBiz] = useState<any>(null);
-
-    useEffect(() => {
-        if (biz) setLocalBiz({ ...biz });
-    }, [biz]);
-
-    if (!biz || !localBiz) return null;
-
-    return (
-        <div className="fixed inset-0 z-[110] flex items-center justify-center p-6 backdrop-blur-md bg-slate-900/40 text-left">
-            <motion.div 
-                initial={{ scale: 0.9, opacity: 0 }}
-                animate={{ scale: 1, opacity: 1 }}
-                className="bg-white border border-indigo-100 rounded-[2.5rem] w-full max-w-xl overflow-hidden shadow-2xl"
-            >
-                <div className="p-10 space-y-8">
-                    <div className="flex justify-between items-center">
-                        <div>
-                            <h2 className="text-slate-900 text-2xl font-black italic uppercase tracking-tighter">İşletme Yönetimi</h2>
-                            <p className="text-[10px] font-bold text-indigo-600 uppercase tracking-widest mt-1">{biz.name}</p>
-                        </div>
-                        <button onClick={onClose} className="w-10 h-10 bg-slate-50 rounded-full flex items-center justify-center text-slate-400 hover:bg-slate-100 transition-all">
-                            <X size={20} />
-                        </button>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-6">
-                        <div className="space-y-4">
-                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Abonelik Planı</label>
-                            <select 
-                                value={localBiz.plan || 'Basic'} 
-                                onChange={e => setLocalBiz({...localBiz, plan: e.target.value})}
-                                className="w-full bg-slate-50 border border-indigo-50 rounded-2xl py-4 px-6 text-slate-900 font-bold outline-none focus:border-indigo-500 transition-all appearance-none"
-                            >
-                                <option value="Basic">Basic</option>
-                                <option value="Aura Enterprise">Aura Enterprise</option>
-                            </select>
-                        </div>
-                        <div className="space-y-4">
-                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Koltuk (Node) Limiti</label>
-                            <input 
-                                type="number" 
-                                value={localBiz.maxUsers || 5} 
-                                onChange={e => setLocalBiz({...localBiz, maxUsers: parseInt(e.target.value)})}
-                                className="w-full bg-slate-50 border border-indigo-50 rounded-2xl py-4 px-6 text-slate-900 font-bold outline-none focus:border-indigo-500 transition-all"
-                            />
-                        </div>
-                    </div>
-
-                    <div className="space-y-4">
-                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Tolerans Süresi (Grace Period)</label>
-                        <input 
-                            type="date" 
-                            value={localBiz.grace_period_until ? localBiz.grace_period_until.split('T')[0] : ''} 
-                            onChange={e => setLocalBiz({...localBiz, grace_period_until: e.target.value})}
-                            className="w-full bg-slate-50 border border-indigo-50 rounded-2xl py-4 px-6 text-slate-900 font-bold outline-none focus:border-indigo-500 transition-all"
-                        />
-                    </div>
-
-                    <div className="space-y-4">
-                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Aktif Dikey Projeler (Kingdoms)</label>
-                        <div className="flex gap-3">
-                            {[
-                                { id: 'spa', label: 'SPA', color: 'bg-indigo-500' },
-                                { id: 'clinic', label: 'KLİNİK', color: 'bg-emerald-500' },
-                                { id: 'fitness', label: 'FITNESS', color: 'bg-amber-500' }
-                            ].map(v => (
-                                <button 
-                                    key={v.id}
-                                    onClick={() => {
-                                        const currentVents = localBiz.verticals || ['spa'];
-                                        const next = currentVents.includes(v.id) 
-                                            ? currentVents.filter((x: string) => x !== v.id)
-                                            : [...currentVents, v.id];
-                                        if (next.length === 0) return;
-                                        setLocalBiz({ ...localBiz, verticals: next });
-                                    }}
-                                    className={`flex-1 py-3 px-4 rounded-xl border-2 transition-all flex flex-col items-center gap-2 ${
-                                        (localBiz.verticals || ['spa']).includes(v.id)
-                                        ? 'border-indigo-600 bg-indigo-50/50'
-                                        : 'border-slate-100 bg-white'
-                                    }`}
-                                >
-                                    <div className={`w-3 h-3 rounded-full ${v.color} ${(localBiz.verticals || ['spa']).includes(v.id) ? 'scale-125' : 'opacity-40'}`} />
-                                    <span className={`text-[9px] font-black tracking-widest ${(localBiz.verticals || ['spa']).includes(v.id) ? 'text-indigo-950' : 'text-slate-400'}`}>{v.label}</span>
-                                </button>
-                            ))}
-                        </div>
-                    </div>
-
-                    <div className="grid grid-cols-1 gap-6">
-                         <div className="flex items-center justify-between bg-rose-50 p-6 rounded-[2rem] border border-rose-100">
-                            <div>
-                                <p className="text-[11px] font-black text-rose-900 uppercase">HESABI ASKIYA AL</p>
-                                <p className="text-[9px] font-bold text-rose-400 uppercase tracking-wider">Sistem Mührünü Manuel Aktif Et</p>
-                            </div>
-                            <button 
-                                onClick={() => setLocalBiz({...localBiz, is_suspended: !localBiz.is_suspended})}
-                                className={`px-6 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${localBiz.is_suspended ? 'bg-rose-600 text-white' : 'bg-white text-rose-600 border border-rose-200'}`}
-                            >
-                                {localBiz.is_suspended ? 'ASKIYA ALINDI' : 'ASKIYA AL'}
-                            </button>
-                         </div>
-                    </div>
-
-                    <button 
-                        onClick={() => onUpdate(biz.id, { 
-                            plan: localBiz.plan, 
-                            maxUsers: localBiz.maxUsers, 
-                            grace_period_until: localBiz.grace_period_until, 
-                            is_suspended: localBiz.is_suspended,
-                            verticals: localBiz.verticals || ['spa']
-                        })}
-                        disabled={loading}
-                        className="w-full py-6 bg-indigo-600 text-white rounded-[1.8rem] font-black text-[11px] uppercase tracking-[0.2em] shadow-xl shadow-indigo-600/40 hover:bg-indigo-700 transition-all disabled:opacity-50"
-                    >
-                        {loading ? 'GÜNCELLENİYOR...' : 'DEĞİŞİKLİKLERİ KAYDET ✓'}
-                    </button>
-                </div>
-            </motion.div>
-        </div>
-    );
-}
-
-function TenantCard({ biz, onImpersonate, onDelete, onToggleStatus, onEdit, isLoading }: { biz: any, onImpersonate: () => void, onDelete: () => void, onToggleStatus: () => void, onEdit: () => void, isLoading: boolean }) {
-    const { renewSubscription } = useStore();
-    const isActive = biz.status === 'active' || biz.status === 'Aktif';
-    
-    // Day calculation
-    const daysLeft = useMemo(() => {
-        if (!biz.expiryDate) return null;
-        const diff = new Date(biz.expiryDate).getTime() - Date.now();
-        return Math.ceil(diff / (1000 * 60 * 60 * 24));
-    }, [biz.expiryDate]);
-
-    const isNearExpiry = daysLeft !== null && daysLeft < 5;
-    const isOverdue = daysLeft !== null && daysLeft < 0;
-
-    const handleRenew = async () => {
-        const days = prompt("Kaç gün eklemek istersiniz?", "30");
-        const amount = prompt("Tahsilat tutarı (TL)?", "1500");
-        if (days && amount) {
-            const ok = await renewSubscription(biz.id, parseInt(days), parseFloat(amount));
-            if (ok) alert("Abonelik başarıyla uzatıldı!");
-        }
-    };
-
-    return (
-        <div className="bg-white border border-indigo-100 rounded-[2.5rem] p-8 group hover:border-indigo-500/50 transition-all flex flex-col justify-between h-[420px] shadow-sm hover:shadow-xl relative overflow-hidden">
-            {isLoading && (
-                <div className="absolute inset-0 bg-white/60 backdrop-blur-[2px] z-20 flex items-center justify-center">
-                    <RefreshCw className="animate-spin text-indigo-600" size={24} />
-                </div>
-            )}
-            
-            {biz.isManualOverride && (
-                <div className="absolute top-4 right-20 bg-emerald-500 text-white text-[7px] font-black px-2 py-1 rounded-md rotate-12 shadow-lg">SOVEREIGN OVERRIDE</div>
-            )}
-
-            {biz.is_suspended && (
-                <div className="absolute top-4 right-20 bg-rose-600 text-white text-[8px] font-black px-3 py-1.5 rounded-lg -rotate-12 shadow-2xl z-20 border-2 border-rose-500">MÜHÜRLÜ</div>
-            )}
-
-            <div>
-                <div className="flex justify-between items-start mb-6">
-                    <div className="w-12 h-12 bg-indigo-50 rounded-2xl flex items-center justify-center text-indigo-600 text-xl font-black italic">
-                        {biz.name.charAt(0)}
-                    </div>
-                    <div className="flex gap-2">
-                        <button 
-                            onClick={onToggleStatus}
-                            className={`px-4 py-1.5 rounded-full text-[8px] font-black uppercase tracking-widest transition-all ${isActive ? 'bg-emerald-100 text-emerald-600 hover:bg-amber-100 hover:text-amber-600' : 'bg-amber-100 text-amber-600 hover:bg-emerald-100 hover:text-emerald-600'}`}
-                        >
-                            {isActive ? 'AKTİF' : 'PASİF'}
-                        </button>
-                        <button 
-                            onClick={onDelete}
-                            className="p-1.5 bg-rose-50 text-rose-500 rounded-lg hover:bg-rose-500 hover:text-white transition-all shadow-sm"
-                            title="İşletmeyi Sil"
-                        >
-                            <X size={14} />
-                        </button>
-                    </div>
-                </div>
-                
-                <h4 className="text-slate-900 text-xl font-black italic tracking-tighter line-clamp-1">{biz.name}</h4>
-                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em] mb-4">/{biz.slug}</p>
-                
-                <div className="grid grid-cols-2 gap-4 mb-4">
-                     <div className="flex flex-col">
-                         <span className="text-[8px] font-black text-slate-300 uppercase">PLAN</span>
-                         <span className="text-[10px] font-black text-indigo-600 uppercase truncate">{biz.plan || 'Basic'}</span>
-                     </div>
-                     <div className="flex flex-col">
-                         <span className="text-[8px] font-black text-slate-300 uppercase">KOLTUK</span>
-                         <span className="text-[10px] font-black text-slate-900 uppercase">{biz.maxUsers || 5} Node</span>
-                     </div>
-                </div>
-
-                <div className={`p-4 rounded-2xl border ${isOverdue ? 'bg-rose-50 border-rose-100' : isNearExpiry ? 'bg-amber-50 border-amber-100' : 'bg-slate-50 border-slate-100'}`}>
-                    <div className="flex justify-between items-center mb-1">
-                        <span className="text-[8px] font-black text-slate-400 uppercase">KALAN SÜRE</span>
-                        <span className={`text-[9px] font-black ${isOverdue ? 'text-rose-600' : isNearExpiry ? 'text-amber-600' : 'text-indigo-600'}`}>
-                            {daysLeft !== null ? (isOverdue ? `${Math.abs(daysLeft)} GÜN GEÇTİ` : `${daysLeft} GÜN`) : 'BELİRSİZ'}
-                        </span>
-                    </div>
-                    <div className="h-1 bg-white rounded-full overflow-hidden">
-                        <motion.div initial={{ width: 0 }} animate={{ width: daysLeft !== null ? `${Math.max(0, Math.min(100, (daysLeft / 30) * 100))}%` : '0%' }} className={`h-full ${isOverdue ? 'bg-rose-500' : isNearExpiry ? 'bg-amber-500' : 'bg-indigo-600'}`} />
-                    </div>
-                </div>
-            </div>
-            
-            <div className="space-y-2 mt-6">
-                <div className="flex gap-2">
-                    <button 
-                        onClick={onImpersonate}
-                        className="flex-1 py-4 bg-slate-900 text-white rounded-2xl font-black text-[9px] uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-indigo-600 transition-all"
-                    >
-                        <Zap size={12} className="fill-current" /> GOD MODE
-                    </button>
-                    <button 
-                        onClick={onEdit}
-                        className="flex-1 py-4 bg-white border border-slate-200 text-slate-900 rounded-2xl font-black text-[9px] uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-slate-50 transition-all"
-                    >
-                        <SettingsIcon size={12} /> YÖNET
-                    </button>
-                </div>
-            </div>
         </div>
     );
 }

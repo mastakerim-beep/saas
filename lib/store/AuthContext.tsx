@@ -43,20 +43,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             if (error || !data) {
                 const { data: byId } = await supabase.from('app_users').select('*').eq('id', authUserId).single();
                 if (!byId) {
-                    // --- SOVEREIGN OVERRIDE: If it's the owner, prevent Guest Lockout ---
-                    if (email === 'kerim@mail.com' || email.includes('admin') || email.includes('saas.com')) {
-                        console.warn('⚠️ profile missing but owner email detected. applying temporary admin rights.');
-                        return {
-                            id: authUserId,
-                            businessId: undefined,
-                            branchId: undefined,
-                            role: 'SaaS_Owner',
-                            name: 'SaaS Admin (Recovered)',
-                            email: email,
-                            permissions: ['*'],
-                            allowedBranches: []
-                        };
-                    }
                     return null;
                 }
                 return {
