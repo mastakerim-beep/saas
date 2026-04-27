@@ -115,7 +115,7 @@ const StoreOrchestrator = ({ children }: { children: ReactNode }) => {
                 // STICKY FALLBACK: If we have a slug but list is empty, don't clear the ID
                 id = lastResolvedBizIdRef.current;
             }
-        } else if (auth.currentUser?.businessId) {
+        } else if (auth.currentUser?.businessId && !isSaaS) {
             id = auth.currentUser.businessId;
         }
 
