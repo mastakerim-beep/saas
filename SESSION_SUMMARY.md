@@ -84,3 +84,16 @@ Bu oturumda "Imperial Global Expansion" sonrası ortaya çıkan veri senkronizas
 - **Git Push:** `fix: resolve Imperial oversight data sync and hydration shields` mesajıyla tüm değişiklikler ana repoya aktarıldı.
 
 **Motto:** *"En ince ayrıntısına kadar hâkimiyet."* - Sistem şu an küresel hiyerarşiyi tam kapasite desteklemektedir.
+
+---
+
+# Aura Spa ERP - Checkout & Komisyon Stabilizasyonu (27 Nisan 2026 Gece)
+
+Acil kod (Hotfix) operasyonu kapsamında işletme sahiplerinin (ve personellerin) tahsilat modülünde karşılaştığı "kaydet dönüyor, modal kapanmıyor" (Save button spinning indefinitely) hatası teşhis edilip çözülmüştür.
+
+## 🛠️ Checkout Hata Çözümü (Bugfix)
+- **Truthy Object Deception:** `processCheckout` fonksiyonunun veritabanı veya validasyon (Session kayıpları) hataları sonrası hata objesi (`{ success: false }`) dönmesine rağmen, arayüzde (SmartCheckout) bunun truthy kabul edilip işlemin başarılı sanılması hatası (`ok?.success` yazılarak) düzeltildi.
+- **Fail-Safe UI Feedback:** İşletme session kopmalarında (SaaS Admin giriş/çıkış geçişleri sırasında oluşan `!bizId`) sistemin sessizce `false` dönüp arayüzü sonsuz döngüde bırakması engellendi. Artık net olarak `İşletme kimliği bulunamadı (Session hatası, sayfayı yenileyin)` şeklinde hata fırlatıyor.
+- **Commission Engine Güvenliği:** Bir tahsilat yapıldığında personelin prim hesabını yapan `calculateCommission` motorunun, eğer sistem `commissionRules` dizisini o esnada yükleyemediyse `undefined` hatası verip siparişi patlatması engellendi. Motor artık null-safe `(data.commissionRules || [])` olarak çalışıyor.
+- Tüm bu kritik hatalar logda "kaydet dönüyor" şikayetini tamamen ortadan kaldırmıştır.
+

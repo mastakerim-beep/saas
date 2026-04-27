@@ -408,9 +408,9 @@ const StoreOrchestrator = ({ children }: { children: ReactNode }) => {
     }, [data.customers]);
 
     const calculateCommission = React.useCallback((staffId: string, serviceName: string, amount: number) => {
-        const rules = data.commissionRules.filter(r => r.staffId === staffId);
-        const specificRule = rules.find(r => r.serviceName === serviceName);
-        const generalRule = rules.find(r => r.serviceName === 'Tümü');
+        const rules = (data.commissionRules || []).filter((r: any) => r.staffId === staffId);
+        const specificRule = rules.find((r: any) => r.serviceName === serviceName);
+        const generalRule = rules.find((r: any) => r.serviceName === 'Tümü');
         const rule = specificRule || generalRule;
         if (!rule) return 0;
         return rule.type === 'percentage' ? (amount * rule.value) / 100 : rule.value;

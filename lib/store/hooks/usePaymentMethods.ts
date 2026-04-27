@@ -13,7 +13,7 @@ export const usePaymentMethods = (deps: any) => {
         processCheckout: async (paymentData: any, options: any = {}) => {
             const { installments, soldProducts, earnedPoints, tipAmount, pointsUsed, packageId } = options;
             const bizId = activeBizIdRef.current;
-            if (!bizId) return false;
+            if (!bizId) return { success: false, message: 'İşletme kimliği bulunamadı (Session hatası, sayfayı yenileyin).' };
             if (setSyncStatus) setSyncStatus('syncing');
             
             try {

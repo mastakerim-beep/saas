@@ -172,18 +172,21 @@ export default function SmartCheckout({ appointment, onClose, initialCustomerId,
             );
             
             // Sync appointment if service was changed
-            if (ok && appointment && (overrideService !== appointment.service || overridePrice !== appointment.price)) {
+            if (ok?.success && appointment && (overrideService !== appointment.service || overridePrice !== appointment.price)) {
                 await updateAppointment(appointment.id, {
                     service: overrideService,
                     price: overridePrice
                 });
             }
 
-            if (ok) {
+            if (ok?.success) {
                 setIsSuccess(true);
+            } else {
+                alert(ok?.message || ok?.error?.message || "Ödeme kaydedilirken bir hata oluştu.");
             }
-        } catch (error) {
+        } catch (error: any) {
             console.error(error);
+            alert(error?.message || "Ödeme kaydedilirken bir hata oluştu.");
         } finally {
             setIsSaving(false);
         }
