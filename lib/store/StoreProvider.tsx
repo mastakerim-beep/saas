@@ -678,7 +678,8 @@ const StoreOrchestrator = ({ children }: { children: ReactNode }) => {
             getCustomerPayments,
             getChurnRiskCustomers,
             getUpsellPotentialCustomers,
-            getBirthdaysToday
+            getBirthdaysToday,
+            setLocale: data.setLocale
         };
 
         stableMethodsRef.current = methods;
@@ -686,7 +687,8 @@ const StoreOrchestrator = ({ children }: { children: ReactNode }) => {
     }, [
         fetchData, markAsModified, biz.clearCatalog, can, addLog, addZReport, calculateCommission, determineChurnRisk, getTodayDate, getTodayPayments, 
         getCustomerPackages, getCustomerAppointments, getCustomerPayments, getChurnRiskCustomers, getUpsellPotentialCustomers, getBirthdaysToday,
-        appMethods, payMethods, custMethods, invMethods, staffMethods, finMethods, pkgMethods, supportMethods
+        appMethods, payMethods, custMethods, invMethods, staffMethods, finMethods, pkgMethods, supportMethods,
+        data.setLocale
     ]);
 
 
@@ -764,7 +766,8 @@ const StoreOrchestrator = ({ children }: { children: ReactNode }) => {
                 loyaltySettings: biz.loyaltySettings,
                 webhooks: biz.webhooks || [],
                 inventoryCategories: data.inventoryCategories || [],
-                isLicenseExpired
+                isLicenseExpired,
+                locale: data.locale,
             }}>
                 {systemLock.isLocked && <EmpireLockScreen reason={systemLock.reason} message={systemLock.message || ""} slug={slug} />}
                 <QuotaUpgradeModal 
