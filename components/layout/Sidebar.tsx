@@ -263,7 +263,7 @@ export default function Sidebar() {
                             )}
                             {currentBusiness.verticals.includes('clinic') && (
                                 <>
-                                    <SidebarItem isHovered={isHovered} pathname={pathname} href={getTenantLink('patient-records')} icon={FileText} label="Hasta Dosyaları" colorClass="text-emerald-500" />
+                                    <SidebarItem isHovered={isHovered} pathname={pathname} href={getTenantLink('medical-records')} icon={FileText} label="Hasta Dosyaları" colorClass="text-emerald-500" />
                                     <SidebarItem isHovered={isHovered} pathname={pathname} href={getTenantLink('prescriptions')} icon={FileCode} label="Reçeteler" colorClass="text-emerald-500" />
                                     <SidebarItem isHovered={isHovered} pathname={pathname} href={getTenantLink('lab-results')} icon={Zap} label="Laboratuvar & Test" colorClass="text-emerald-500" />
                                 </>

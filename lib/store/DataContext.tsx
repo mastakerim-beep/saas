@@ -134,6 +134,7 @@ export interface DataContextType {
     removeInventoryCategory: (id: string, deleteProducts: boolean) => Promise<void>;
     transferProduct: (productId: string, fromBranchId: string, toBranchId: string, amount: number, pricePerUnit?: number, transferType?: string) => Promise<boolean>;
     addPackageUsageHistory: (h: any) => void;
+    addLog: (action: string, customer: string, oldValue?: string, newValue?: string) => Promise<void>;
 }
 
 const DataContext = createContext<DataContextType | null>(null);
@@ -449,6 +450,30 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
         setPackageUsageHistory(prev => [newHistory, ...prev]);
     }, []);
 
+    const addLog = useCallback(async (action: string, customer: string, oldValue?: string, newValue?: string) => {
+        const newLog: any = {
+            id: crypto.randomUUID(),
+            date: new Date().toISOString(),
+            customerName: customer,
+            action,
+            oldValue: oldValue || null,
+            newValue: newValue || null,
+            user: 'Personel',
+            createdAt: new Date().toISOString()
+        };
+        setAllLogs(prev => [newLog, ...prev]);
+        // @ts-ignore
+        await syncDb('audit_logs', 'insert', {
+            date: newLog.date,
+            customer_name: customer,
+            action,
+            old_value: oldValue,
+            new_value: newValue,
+            user: 'Personel',
+            created_at: newLog.createdAt
+        });
+    }, []);
+
     const contextValue: DataContextType = useMemo(() => ({
         appointments, blocks, customers, debts, inventory, rooms, services, packages,
         membershipPlans, customerMemberships, staffMembers, allLogs, allNotifs, aiInsights, expenses,
@@ -472,7 +497,7 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
         removePackageDefinition, addQuote, updateQuote, deleteQuote, addBodyMap, updateBodyMap,
         addUsageNorm, updateUsageNorm, updateRoom, removeRoom, addRoom,
         addInventoryCategory, updateInventoryCategory, removeInventoryCategory,
-        transferProduct, addPackageUsageHistory,
+        transferProduct, addPackageUsageHistory, addLog,
         inventoryCategories, packageUsageHistory, setPackageUsageHistory
     }), [
         appointments, blocks, customers, debts, inventory, rooms, services, packages,

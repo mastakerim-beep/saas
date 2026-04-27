@@ -44,6 +44,19 @@ export default function GunSonuPage() {
     const toplamFark = nakitFark + kartFark + havaleFark;
     const hasInputs = nakitSayılan || kartSayılan || havaleSayılan;
 
+    const { allLogs } = useStore();
+    const müdahaleFarkı = useMemo(() => {
+        return allLogs.filter((l: any) => 
+            l.date.startsWith(todayStr) && 
+            l.action.includes('VETO')
+        ).reduce((acc: number, l: any) => {
+            const oldV = parseFloat(l.oldValue || '0');
+            const newV = parseFloat(l.newValue || '0');
+            if (isNaN(oldV) || isNaN(newV)) return acc;
+            return acc + (newV - oldV);
+        }, 0);
+    }, [allLogs, todayStr]);
+
     const verticalBreakdown = useMemo(() => {
         const breakdown: Record<string, number> = {};
         todayPayments.forEach(p => {
@@ -81,6 +94,7 @@ export default function GunSonuPage() {
             expectedHavale: havaleGercek,
             actualHavale: Number(havaleSayılan || 0),
             totalDifference: toplamFark,
+            interventionDelta: müdahaleFarkı,
             notes: note + (auditLogText ? `\n\n--- AI DENETIM RAPORU ---\n${auditLogText}` : '')
         });
         
@@ -257,6 +271,17 @@ export default function GunSonuPage() {
                                 <p className="text-[10px] font-black text-rose-400 uppercase tracking-widest mb-4 italic">HEDİYE EDİLEN</p>
                                 <div className="text-3xl font-black text-rose-900 tabular-nums italic">₺{toplamHediye.toLocaleString('tr-TR')}</div>
                                 <p className="mt-4 text-[9px] font-bold text-rose-300 uppercase tracking-tighter leading-tight">Bu tutar cirodan düşülmüş,<br/>ancak hizmet verilmiştir.</p>
+                            </div>
+                            <div className="group bg-amber-50/50 rounded-[2.5rem] p-8 border border-amber-100/50 transition-all hover:bg-white hover:border-amber-200 hover:shadow-2xl hover:shadow-amber-50/40">
+                                <div className="flex justify-between items-center mb-6">
+                                    <div className="p-3 bg-amber-100 text-amber-600 rounded-2xl shadow-sm"><ShieldAlert size={18} /></div>
+                                    <span className="text-[9px] font-black text-amber-600 bg-amber-100 px-2 py-0.5 rounded-full">VETO</span>
+                                </div>
+                                <p className="text-[10px] font-black text-amber-400 uppercase tracking-widest mb-4 italic">MÜDAHALE FARKI</p>
+                                <div className={`text-3xl font-black tabular-nums italic ${müdahaleFarkı >= 0 ? 'text-amber-900' : 'text-rose-600'}`}>
+                                    {müdahaleFarkı > 0 ? '+' : ''}{müdahaleFarkı.toLocaleString('tr-TR')} ₺
+                                </div>
+                                <p className="mt-4 text-[9px] font-bold text-amber-300 uppercase tracking-tighter leading-tight">Yönetici müdahalesi ile oluşan<br/>ciro düzeltme miktarı.</p>
                             </div>
                         </div>
 

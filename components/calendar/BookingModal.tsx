@@ -260,7 +260,13 @@ export default function BookingModal({ initialData, onClose, date, mode: initial
                             logMsg += ` | Personel Değişimi: ${oldStaff} -> ${newStaff}`;
                         }
                         
-                        await addLog(logMsg, initialData.id, `${oldDate} ${oldTime}`, `${selectedDate} ${selectedTime}`);
+                        // IF PRICE CHANGED: Log numeric data for turnover audit
+                        if (initialData.price !== updates.price) {
+                            await addLog("IMPERIAL_VETO_PRICE_ADJUSTMENT", initialData.id, initialData.price.toString(), updates.price.toString());
+                        } else {
+                            await addLog(logMsg, initialData.id, `${oldDate} ${oldTime}`, `${selectedDate} ${selectedTime}`);
+                        }
+                        
                         onClose();
                     } else {
                         alert("🔴 Hata: Güncelleme kaydedilemedi.");

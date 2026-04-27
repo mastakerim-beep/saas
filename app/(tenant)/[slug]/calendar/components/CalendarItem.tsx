@@ -2,8 +2,10 @@
 
 import { useState, useEffect } from 'react';
 import { useDraggable, useDroppable } from '@dnd-kit/core';
-import { ShieldCheck, Activity, Ban, Coffee, Trash2, Loader2, Clock, User, MapPin, XCircle, RefreshCcw, CheckCircle2 } from 'lucide-react';
+import { ShieldCheck, Activity, Ban, Coffee, Trash2, Loader2, Clock, User, MapPin, XCircle, RefreshCcw, CheckCircle2, ShieldAlert } from 'lucide-react';
 import { useStore, Appointment, CalendarBlock, AppointmentStatus, Branch, Room, Customer } from '@/lib/store';
+import ImperialVetoModal from '@/components/modals/ImperialVetoModal';
+import { format } from 'date-fns';
 
 const SLOT_MINUTES = 15;
 const SLOT_HEIGHT = 42;
@@ -27,7 +29,8 @@ interface CalendarItemProps {
 export default function CalendarItem({ 
     item, type, isCompact, onCheckout, onAction, onResizeStart, onResizeUpdate, onResizeEnd 
 }: CalendarItemProps) {
-    const { currentUser, deleteAppointment, updateAppointmentStatus, updateAppointment, updateBlock, removeBlock, rooms, packages, branches, currentBranch, customers } = useStore();
+    const { currentUser, deleteAppointment, updateAppointmentStatus, updateAppointment, updateBlock, removeBlock, rooms, packages, branches, currentBranch, customers, addLog } = useStore();
+    const [vetoAppt, setVetoAppt] = useState<Appointment | null>(null);
     
     const isAppt = type === 'appt';
     const appt = item as Appointment;
@@ -204,6 +207,21 @@ export default function CalendarItem({
     };
     const room = isAppt && appt.roomId ? rooms.find((r: Room) => r.id === appt.roomId) : null;
     const customer = isAppt ? customers.find((c: Customer) => c.id === appt.customerId) : null;
+    
+    const countVeto = async (reason: string) => {
+        if (!isAppt || !appt) return;
+
+        // Log the intervention with numeric values for turnover tracking
+        await addLog("IMPERIAL_VETO_PRICE", appt.customerName, appt.price.toString(), appt.price.toString()); // Initial log, updated after edit
+        
+        // Unlock it 
+        await updateAppointment(appt.id, { isSealed: false, status: 'arrived' });
+        
+        setVetoAppt(null);
+        onAction?.(appt); // Re-open the modal for editing
+    };
+
+    const isOwner = currentUser?.role === 'Business_Owner' || currentUser?.role === 'SaaS_Owner';
 
     return (
         <div 
@@ -241,6 +259,21 @@ export default function CalendarItem({
                     className="absolute top-1.5 right-1.5 p-1.5 bg-white/80 backdrop-blur-md rounded-lg shadow-sm hover:bg-red-50 text-red-300 hover:text-red-500 transition-all border border-gray-100/50 opacity-0 group-hover/item:opacity-100 z-40 cursor-pointer"
                 >
                     <Trash2 size={12} />
+                </button>
+            )}
+
+            {isAppt && isLocked && isOwner && (
+                <button 
+                    onPointerDown={(e) => e.stopPropagation()}
+                    onMouseDown={(e) => e.stopPropagation()}
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        setVetoAppt(appt);
+                    }}
+                    className="absolute top-1.5 right-10 p-1.5 bg-amber-500 text-white rounded-lg shadow-lg hover:bg-amber-600 transition-all z-40 opacity-0 group-hover/item:opacity-100"
+                    title="Imperial Veto"
+                >
+                    <ShieldAlert size={12} />
                 </button>
             )}
 
@@ -346,6 +379,12 @@ export default function CalendarItem({
                     <div className="w-8 h-1 bg-gray-200 rounded-full group-hover/resize:bg-indigo-400 transition-colors" />
                 </div>
             )}
+            <ImperialVetoModal 
+                isOpen={!!vetoAppt}
+                onClose={() => setVetoAppt(null)}
+                onConfirm={countVeto}
+                description={`Mühürlenen [${appt.apptRef}] referanslı randevuyu açıyorsunuz. Bu işlem sonucunda randevu 'İşlemde' durumuna dönecek ve fiyat dahil tüm veriler düzenlenebilir olacaktır. Tüm değişimler ciro takibine işlenecektir.`}
+            />
         </div>
     );
 }

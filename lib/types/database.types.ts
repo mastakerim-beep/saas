@@ -226,6 +226,7 @@ export interface Customer {
     communicationChoice: any;
     loyaltyPoints: number;
     tribute_score?: number;
+    vertical_data: any;
     createdAt?: string;
     updatedAt?: string;
 }
@@ -377,6 +378,7 @@ export interface Appointment {
     note?: any;
     draconian_status?: string;
     draconian_veto_reason?: any;
+    vertical_notes: any;
     createdAt?: string;
 }
 
