@@ -161,7 +161,7 @@ export default function CalendarPage() {
 
     const displayCount = viewMode === 'staff' ? staffToDisplay.length : roomsToDisplay.length;
     const isCompact = displayCount > 5;
-    const columnWidthClass = displayCount > 10 ? 'min-w-[120px]' : displayCount > 7 ? 'min-w-[150px]' : displayCount > 4 ? 'min-w-[200px]' : 'min-w-[280px]';
+    const columnWidthClass = displayCount > 10 ? 'min-w-[100px]' : displayCount > 7 ? 'min-w-[130px]' : displayCount > 4 ? 'min-w-[180px]' : 'min-w-[220px]';
 
     // ---- HANDLERS ----
     const handleDragStart = (event: any) => {
