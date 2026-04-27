@@ -222,7 +222,8 @@ const StoreOrchestrator = ({ children }: { children: ReactNode }) => {
             setWebhooks: biz.setWebhooks,
             setSystemAnnouncements: data.setSystemAnnouncements,
             setAllUsers: auth.setAllUsers,
-            setAllCommissionRules: data.setAllCommissionRules
+            setAllCommissionRules: data.setAllCommissionRules,
+            setInventoryTransfers: data.setInventoryTransfers
         };
 
         try {
@@ -747,6 +748,7 @@ const StoreOrchestrator = ({ children }: { children: ReactNode }) => {
                 rates: biz.allRates || [],
                 expenses: data.expenses || [],
                 zReports: data.zReports || [],
+                inventoryTransfers: data.inventoryTransfers || [],
                 settings: biz.settings,
                 allowedBranches: biz.branches || [],
                 bookingSettings: biz.bookingSettings,

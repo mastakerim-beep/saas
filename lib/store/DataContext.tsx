@@ -9,7 +9,7 @@ import {
     DynamicPricingRule, CustomerWallet, WalletTransaction, 
     ConsultationBodyMap, InventoryUsageNorm, CustomerMedia,
     PackageDefinition, CommissionRule, AppointmentStatus, Staff, Payment, InventoryCategory, PackageUsageHistory,
-    PaymentDefinition, BankAccount, ExpenseCategory, ReferralSource, ConsentFormTemplate, SystemAnnouncement, LoyaltySettings, Webhook
+    PaymentDefinition, BankAccount, ExpenseCategory, ReferralSource, ConsentFormTemplate, SystemAnnouncement, LoyaltySettings, Webhook, InventoryTransfer
 } from './types';
 import { syncDb } from './sync-db';
 
@@ -52,6 +52,7 @@ export interface DataContextType {
     systemAnnouncements: SystemAnnouncement[];
     loyaltySettings: LoyaltySettings | null;
     webhooks: Webhook[];
+    inventoryTransfers: InventoryTransfer[];
     locale: 'tr' | 'en';
 
     setAllAppointments: React.Dispatch<React.SetStateAction<Appointment[]>>;
@@ -92,6 +93,7 @@ export interface DataContextType {
     setSystemAnnouncements: React.Dispatch<React.SetStateAction<SystemAnnouncement[]>>;
     setLoyaltySettings: React.Dispatch<React.SetStateAction<LoyaltySettings | null>>;
     setWebhooks: React.Dispatch<React.SetStateAction<Webhook[]>>;
+    setInventoryTransfers: React.Dispatch<React.SetStateAction<InventoryTransfer[]>>;
     setLocale: (l: 'tr' | 'en') => void;
 
     // CRUD Methods
@@ -182,6 +184,7 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
     const [systemAnnouncements, setSystemAnnouncements] = useState<SystemAnnouncement[]>([]);
     const [loyaltySettings, setLoyaltySettings] = useState<LoyaltySettings | null>(null);
     const [webhooks, setWebhooks] = useState<Webhook[]>([]);
+    const [inventoryTransfers, setInventoryTransfers] = useState<InventoryTransfer[]>([]);
     const [locale, setLocale] = useState<'tr' | 'en'>('tr');
 
 
@@ -497,7 +500,7 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
         payments: allPayments,
         walletTransactions, bodyMaps, usageNorms, customerMedia, packageDefinitions, commissionRules,
         paymentDefinitions, bankAccounts, expenseCategories, referralSources, consentFormTemplates,
-        systemAnnouncements, loyaltySettings, webhooks,
+        systemAnnouncements, loyaltySettings, webhooks, inventoryTransfers,
         setAllAppointments, setAllBlocks, setAllCustomers, setAllDebts, setAllInventory,
         setAllRooms, setAllServices, setAllPackages, setMembershipPlans, setCustomerMemberships,
         setAllStaff, setAllLogs, setAllNotifs, setAiInsights, setAllExpenses, setZReports, setAllQuotes,
@@ -505,7 +508,7 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
         setBodyMaps, setUsageNorms, setAllCustomerMedia, setAllPackageDefinitions, setAllCommissionRules,
         setAllPayments, setAllInventoryCategories, addCustomerMedia, deleteCustomerMedia,
         setPaymentDefinitions, setBankAccounts, setExpenseCategories, setReferralSources,
-        setConsentFormTemplates, setSystemAnnouncements, setLoyaltySettings, setWebhooks,
+        setConsentFormTemplates, setSystemAnnouncements, setLoyaltySettings, setWebhooks, setInventoryTransfers,
         addCustomer, updateCustomer, deleteCustomer, addAppointment, updateAppointment, deleteAppointment,
         moveAppointment, updateAppointmentStatus, addBlock, updateBlock, removeBlock, addPackage,
         addMembershipPlan, assignMembership, addProduct, updateProduct, removeProduct, addExpense, addService,
@@ -524,7 +527,7 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
         allPayments, walletTransactions, bodyMaps, usageNorms, customerMedia,
         packageDefinitions, commissionRules, inventoryCategories, transferProduct, packageUsageHistory,
         paymentDefinitions, bankAccounts, expenseCategories, referralSources, consentFormTemplates,
-        systemAnnouncements, loyaltySettings, webhooks,
+        systemAnnouncements, loyaltySettings, webhooks, inventoryTransfers,
         locale
     ]);
 

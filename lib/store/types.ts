@@ -61,7 +61,25 @@ export type Expense = DB.Expense & {
     related_appointment_id?: string;
 };
 export type CustomerMedia = DB.CustomerMedia;
-export type ZReport = DB.ZReport & { aiSummary?: string; notes?: string; closedBy?: string; };
+export type ZReport = DB.ZReport & { 
+    aiSummary?: string; 
+    closureNotes?: string; 
+    closedByUserId?: string; 
+    closedBy?: string; 
+    intervention_delta?: number;
+};
+
+export interface InventoryTransfer {
+    id: string;
+    businessId: string;
+    productId: string;
+    fromBranchId: string;
+    toBranchId: string;
+    quantity: number;
+    pricePerUnit?: number;
+    transferType: 'free' | 'cost' | 'profit';
+    createdAt: string;
+}
 export type Quote = DB.Quote;
 export type LoyaltySettings = DB.LoyaltySettings;
 export type Webhook = DB.Webhook;

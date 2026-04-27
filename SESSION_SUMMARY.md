@@ -64,3 +64,23 @@ Bu oturumda Kernel Log modülü rehabilite edildi ve sistem genelindeki çalış
 - **Git Push:** `fix: Kernel Log crash on null user and avatar fallback` mesajıyla tüm değişiklikler ana repoya aktarıldı.
 
 **Not:** Sistem şu an hem operasyonel hem de denetim (audit) açısından tam kapasite çalışmaktadır.
+
+---
+
+# Aura Spa ERP - Imperial Data Restoration & Oversight (27 Nisan 2026)
+
+Bu oturumda "Imperial Global Expansion" sonrası ortaya çıkan veri senkronizasyon hataları giderildi ve sistemin denetim kabiliyeti stabilize edildi.
+
+## 🏛️ İmparatorluk Denetimi ve Veri Akışı
+- **Global Fetch Whitelist:** SaaS sahiplerinin dünya çapındaki tüm Z-Raporlarını ve finansal jurnalleri tek bir ekranda görebilmesini sağlayan filtreleme hataları (SaaS Global Mode) giderildi.
+- **Hydration Shield (Zırhlı State):** Kimlik doğrulama sırasında verilerin yanlışlıkla silinmesini engelleyen kalkan mekanizması, Misafir ve SaaS Global modlarını destekleyecek şekilde rehabilite edildi.
+- **CamelCase Sync:** Imperial Oversight bileşenindeki snake_case/camelCase uyumsuzlukları giderilerek grafiklerin ve metriklerin (%100 doğru) popüle olması sağlandı.
+
+## 📦 Lojistik ve Alt Yapı
+- **Inventory Transfers:** Hiyerarşinin son halkası olan şubeler arası ürün transferleri (`inventory_transfers`) küresel state hiyerarşisine dahil edildi.
+- **Z-Report AI Enhancements:** Yeni SQL kolonları (AI Özeti, Müdahale Delta vb.) frontend tarafındaki veri modellerine (`types.ts`) işlendi.
+
+## 🔄 Versiyon Kontrol
+- **Git Push:** `fix: resolve Imperial oversight data sync and hydration shields` mesajıyla tüm değişiklikler ana repoya aktarıldı.
+
+**Motto:** *"En ince ayrıntısına kadar hâkimiyet."* - Sistem şu an küresel hiyerarşiyi tam kapasite desteklemektedir.

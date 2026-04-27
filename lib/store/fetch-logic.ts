@@ -82,8 +82,8 @@ export const fetchData = async (
                     } else if (idToUse && !(table === 'businesses' && isSaaS && !bizId && !slug)) {
                         // Standard tenant filtering
                         if (table === 'businesses') q = q.eq('id', idToUse);
-                        else if ((table === 'audit_logs' || table === 'payments' || table === 'notification_logs') && isSaaS && !bizId) {
-                            // SaaS Global Dash: Do not filter by business_id for logs and SaaS payments
+                        else if ((table === 'audit_logs' || table === 'payments' || table === 'notification_logs' || table === 'z_reports') && isSaaS && !bizId) {
+                            // SaaS Global Dash: Do not filter by business_id for logs, payments and z_reports
                             q = q.order('created_at', { ascending: false }).limit(50);
                         } else {
                             q = q.eq('business_id', idToUse);
@@ -140,10 +140,15 @@ export const fetchData = async (
             return;
         }
 
-        // IDENTITY LOCK: Düşük olasılıklı olsa da, fetch tamamlandığında hâlâ bir targetId yoksa 
-        // ve SaaS sahibi değilsek, state'i yanlış verilerle (boşluklarla) kirletme.
-        if (!targetId && !isSaaS) {
-            console.warn("🛡️ [Aura Sync] Shielded State: Fetch finished but targetId lost. Aborting write.");
+        // IDENTITY LOCK: Ensure we only write state if we have a valid context.
+        // We allow writes if:
+        // 1. We are SaaS Owner (Global mode)
+        // 2. We have a targetId (Tenant mode)
+        // 3. We are a Guest (Public table fetch)
+        const isPublicFetch = isGuest && publicTables.every(pt => true); // Placeholder logic, Guest mode is already limited by tablesToFetch
+        
+        if (!targetId && !isSaaS && !isGuest) {
+            console.warn("🛡️ [Aura Sync] Shielded State: Fetch finished but targetId lost and not in public/SaaS mode. Aborting write.");
             return;
         }
         
@@ -243,6 +248,7 @@ export const fetchData = async (
         setters.setBodyMaps?.(dataMap.consultation_body_maps || []);
         setters.setUsageNorms?.(dataMap.inventory_usage_norms || []);
         setters.setLoyaltySettings?.(dataMap.loyalty_settings?.[0] || null);
+        setters.setInventoryTransfers?.(dataMap.inventory_transfers || []);
         setters.setWebhooks?.(dataMap.webhooks || []);
         setters.setAllNotifs?.(dataMap.notification_logs || []);
         setters.setAllBlocks?.(dataMap.calendar_blocks || []);

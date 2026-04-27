@@ -26,9 +26,9 @@ export function ImperialOversight({ businesses, logs, zReports }: { businesses: 
     const businessMetrics = useMemo(() => {
         return businesses.map(biz => {
             const bizZReports = zReports.filter(z => z.businessId === biz.id);
-            const totalDelta = bizZReports.reduce((s, z) => s + (z.intervention_delta || 0), 0);
+            const totalDelta = bizZReports.reduce((s, z) => s + (z.interventionDelta || 0), 0);
             const bizVetos = vetoLogs.filter(l => l.businessId === biz.id).length;
-            const totalCiro = bizZReports.reduce((s, z) => s + (z.expected_nakit + z.expected_kart + z.expected_havale), 0);
+            const totalCiro = bizZReports.reduce((s, z) => s + (z.expectedNakit + z.expectedKart + z.expectedHavale), 0);
             
             return {
                 name: biz.name,
@@ -42,7 +42,7 @@ export function ImperialOversight({ businesses, logs, zReports }: { businesses: 
     }, [businesses, zReports, vetoLogs]);
 
     const stats = useMemo(() => {
-        const totalDelta = zReports.reduce((s, z) => s + (z.intervention_delta || 0), 0);
+        const totalDelta = zReports.reduce((s, z) => s + (z.interventionDelta || 0), 0);
         const criticalSaps = businessMetrics.filter(m => m.riskRatio > 5).length;
         return { totalDelta, criticalSaps };
     }, [zReports, businessMetrics]);
