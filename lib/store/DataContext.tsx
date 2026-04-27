@@ -8,7 +8,8 @@ import {
     ZReport, Quote, TenantModule, MarketingRule, 
     DynamicPricingRule, CustomerWallet, WalletTransaction, 
     ConsultationBodyMap, InventoryUsageNorm, CustomerMedia,
-    PackageDefinition, CommissionRule, AppointmentStatus, Staff, Payment, InventoryCategory, PackageUsageHistory
+    PackageDefinition, CommissionRule, AppointmentStatus, Staff, Payment, InventoryCategory, PackageUsageHistory,
+    PaymentDefinition, BankAccount, ExpenseCategory, ReferralSource, ConsentFormTemplate, SystemAnnouncement, LoyaltySettings, Webhook
 } from './types';
 import { syncDb } from './sync-db';
 
@@ -43,6 +44,14 @@ export interface DataContextType {
     payments: Payment[];
     inventoryCategories: InventoryCategory[];
     packageUsageHistory: PackageUsageHistory[];
+    paymentDefinitions: PaymentDefinition[];
+    bankAccounts: BankAccount[];
+    expenseCategories: ExpenseCategory[];
+    referralSources: ReferralSource[];
+    consentFormTemplates: ConsentFormTemplate[];
+    systemAnnouncements: SystemAnnouncement[];
+    loyaltySettings: LoyaltySettings | null;
+    webhooks: Webhook[];
 
     setAllAppointments: React.Dispatch<React.SetStateAction<Appointment[]>>;
     setAllBlocks: React.Dispatch<React.SetStateAction<CalendarBlock[]>>;
@@ -74,6 +83,14 @@ export interface DataContextType {
     setAllPayments: React.Dispatch<React.SetStateAction<any[]>>;
     setAllInventoryCategories: React.Dispatch<React.SetStateAction<InventoryCategory[]>>;
     setPackageUsageHistory: React.Dispatch<React.SetStateAction<PackageUsageHistory[]>>;
+    setPaymentDefinitions: React.Dispatch<React.SetStateAction<PaymentDefinition[]>>;
+    setBankAccounts: React.Dispatch<React.SetStateAction<BankAccount[]>>;
+    setExpenseCategories: React.Dispatch<React.SetStateAction<ExpenseCategory[]>>;
+    setReferralSources: React.Dispatch<React.SetStateAction<ReferralSource[]>>;
+    setConsentFormTemplates: React.Dispatch<React.SetStateAction<ConsentFormTemplate[]>>;
+    setSystemAnnouncements: React.Dispatch<React.SetStateAction<SystemAnnouncement[]>>;
+    setLoyaltySettings: React.Dispatch<React.SetStateAction<LoyaltySettings | null>>;
+    setWebhooks: React.Dispatch<React.SetStateAction<Webhook[]>>;
 
     // CRUD Methods
     addCustomer: (c: any) => Customer;
@@ -152,6 +169,15 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
     const [allPayments, setAllPayments] = useState<any[]>([]);
     const [inventoryCategories, setAllInventoryCategories] = useState<InventoryCategory[]>([]);
     const [packageUsageHistory, setPackageUsageHistory] = useState<PackageUsageHistory[]>([]);
+    const [paymentDefinitions, setPaymentDefinitions] = useState<PaymentDefinition[]>([]);
+    const [bankAccounts, setBankAccounts] = useState<BankAccount[]>([]);
+    const [expenseCategories, setExpenseCategories] = useState<ExpenseCategory[]>([]);
+    const [referralSources, setReferralSources] = useState<ReferralSource[]>([]);
+    const [consentFormTemplates, setConsentFormTemplates] = useState<ConsentFormTemplate[]>([]);
+    const [systemAnnouncements, setSystemAnnouncements] = useState<SystemAnnouncement[]>([]);
+    const [loyaltySettings, setLoyaltySettings] = useState<LoyaltySettings | null>(null);
+    const [webhooks, setWebhooks] = useState<Webhook[]>([]);
+
 
     const addCustomer = useCallback((c: any) => {
         const newCustomer = { ...c, id: crypto.randomUUID(), createdAt: new Date().toISOString() };
@@ -429,12 +455,16 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
         zReports, quotes, tenantModules, marketingRules, pricingRules, wallets,
         payments: allPayments,
         walletTransactions, bodyMaps, usageNorms, customerMedia, packageDefinitions, commissionRules,
+        paymentDefinitions, bankAccounts, expenseCategories, referralSources, consentFormTemplates,
+        systemAnnouncements, loyaltySettings, webhooks,
         setAllAppointments, setAllBlocks, setAllCustomers, setAllDebts, setAllInventory,
         setAllRooms, setAllServices, setAllPackages, setMembershipPlans, setCustomerMemberships,
         setAllStaff, setAllLogs, setAllNotifs, setAiInsights, setAllExpenses, setZReports, setAllQuotes,
         setTenantModules, setMarketingRules, setPricingRules, setWallets, setWalletTransactions,
         setBodyMaps, setUsageNorms, setAllCustomerMedia, setAllPackageDefinitions, setAllCommissionRules,
         setAllPayments, setAllInventoryCategories, addCustomerMedia, deleteCustomerMedia,
+        setPaymentDefinitions, setBankAccounts, setExpenseCategories, setReferralSources,
+        setConsentFormTemplates, setSystemAnnouncements, setLoyaltySettings, setWebhooks,
         addCustomer, updateCustomer, deleteCustomer, addAppointment, updateAppointment, deleteAppointment,
         moveAppointment, updateAppointmentStatus, addBlock, updateBlock, removeBlock, addPackage,
         addMembershipPlan, assignMembership, addProduct, updateProduct, removeProduct, addExpense, addService,
@@ -449,8 +479,11 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
         membershipPlans, customerMemberships, staffMembers, allLogs, allNotifs, aiInsights, expenses,
         zReports, quotes, tenantModules, marketingRules, pricingRules, wallets,
         allPayments, walletTransactions, bodyMaps, usageNorms, customerMedia,
-        packageDefinitions, commissionRules, inventoryCategories, transferProduct, packageUsageHistory
+        packageDefinitions, commissionRules, inventoryCategories, transferProduct, packageUsageHistory,
+        paymentDefinitions, bankAccounts, expenseCategories, referralSources, consentFormTemplates,
+        systemAnnouncements, loyaltySettings, webhooks
     ]);
+
 
     return <DataContext.Provider value={contextValue}>{children}</DataContext.Provider>;
 };

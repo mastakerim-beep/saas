@@ -140,7 +140,9 @@ export const fetchData = async (
         }
         
         const branches = dataMap.branches || [];
-        setters.setBranches((prev: any[]) => JSON.stringify(prev) === JSON.stringify(branches) ? prev : branches);
+        if (setters.setBranches) {
+            setters.setBranches((prev: any[]) => JSON.stringify(prev) === JSON.stringify(branches) ? prev : branches);
+        }
         
         const rawAppointments = dataMap.appointments || [];
         // Mevcut randevulara apptRef ata (DB'de yoksa)
@@ -161,7 +163,9 @@ export const fetchData = async (
             }
             return a;
         });
-        setters.setAllAppointments((prev: any[]) => JSON.stringify(prev) === JSON.stringify(appointments) ? prev : appointments);
+        if (setters.setAllAppointments) {
+            setters.setAllAppointments((prev: any[]) => JSON.stringify(prev) === JSON.stringify(appointments) ? prev : appointments);
+        }
         
         const rawCustomers = dataMap.customers || [];
         // BUG FIX: Her müşteri için biriken listeyle üret — hepsi aynı kodu almasın
@@ -186,7 +190,9 @@ export const fetchData = async (
             }
             return c;
         });
-        setters.setAllCustomers((prev: any[]) => JSON.stringify(prev) === JSON.stringify(updatedCustomers) ? prev : updatedCustomers);
+        if (setters.setAllCustomers) {
+            setters.setAllCustomers((prev: any[]) => JSON.stringify(prev) === JSON.stringify(updatedCustomers) ? prev : updatedCustomers);
+        }
         
         const rawPayments = dataMap.payments || [];
         // Payment ref: UUID'den türetilmiş sabit kısa kod (her fetch'te değişmez)
@@ -194,44 +200,46 @@ export const fetchData = async (
             ...p, 
             referenceCode: p.referenceCode || (p.id ? p.id.substring(0, 8).toUpperCase() : generatePaymentRef())
         }));
-        setters.setAllPayments((prev: any[]) => JSON.stringify(prev) === JSON.stringify(paymentsWithRefs) ? prev : paymentsWithRefs);
+        if (setters.setAllPayments) {
+            setters.setAllPayments((prev: any[]) => JSON.stringify(prev) === JSON.stringify(paymentsWithRefs) ? prev : paymentsWithRefs);
+        }
 
-        setters.setMembershipPlans(dataMap.membership_plans || []);
-        setters.setCustomerMemberships(dataMap.customer_memberships || []);
-        setters.setAllDebts(dataMap.debts || []);
-        setters.setAllStaff(dataMap.staff || []);
-        setters.setAllInventory(dataMap.inventory || []);
-        setters.setAllRooms(dataMap.rooms || []);
-        setters.setAllExpenses(dataMap.expenses || []);
-        setters.setAllServices(dataMap.services || []);
-        setters.setAllPackageDefinitions(dataMap.package_definitions || []);
+        setters.setMembershipPlans?.(dataMap.membership_plans || []);
+        setters.setCustomerMemberships?.(dataMap.customer_memberships || []);
+        setters.setAllDebts?.(dataMap.debts || []);
+        setters.setAllStaff?.(dataMap.staff || []);
+        setters.setAllInventory?.(dataMap.inventory || []);
+        setters.setAllRooms?.(dataMap.rooms || []);
+        setters.setAllExpenses?.(dataMap.expenses || []);
+        setters.setAllServices?.(dataMap.services || []);
+        setters.setAllPackageDefinitions?.(dataMap.package_definitions || []);
         setters.setAllUsers?.(dataMap.app_users || []);
-        setters.setAllPackages(dataMap.packages || []);
+        setters.setAllPackages?.(dataMap.packages || []);
         setters.setAllCommissionRules?.(dataMap.commission_rules || []);
         console.log(`✅ Fetch Success - Staff: ${dataMap.staff?.length || 0}, Appts: ${dataMap.appointments?.length || 0}, Biz: ${dataMap.businesses?.length || 0}`);
         setters.setAllLogs?.(dataMap.audit_logs || []);
-        setters.setAllCustomerMedia(dataMap.customer_media || []);
-        setters.setZReports(dataMap.z_reports || []);
-        setters.setPaymentDefinitions(dataMap.payment_definitions || []);
-        setters.setBankAccounts(dataMap.bank_accounts || []);
-        setters.setExpenseCategories(dataMap.expense_categories || []);
-        setters.setReferralSources(dataMap.referral_sources || []);
-        setters.setConsentFormTemplates(dataMap.consent_form_templates || []);
-        setters.setAllQuotes(dataMap.quotes || []);
+        setters.setAllCustomerMedia?.(dataMap.customer_media || []);
+        setters.setZReports?.(dataMap.z_reports || []);
+        setters.setPaymentDefinitions?.(dataMap.payment_definitions || []);
+        setters.setBankAccounts?.(dataMap.bank_accounts || []);
+        setters.setExpenseCategories?.(dataMap.expense_categories || []);
+        setters.setReferralSources?.(dataMap.referral_sources || []);
+        setters.setConsentFormTemplates?.(dataMap.consent_form_templates || []);
+        setters.setAllQuotes?.(dataMap.quotes || []);
         setters.setSystemAnnouncements?.(dataMap.system_announcements || []);
-        setters.setTenantModules(dataMap.tenant_modules || []);
-        setters.setMarketingRules(dataMap.marketing_rules || []);
-        setters.setPricingRules(dataMap.dynamic_pricing_rules || []);
-        setters.setWallets(dataMap.customer_wallets || []);
-        setters.setWalletTransactions(dataMap.wallet_transactions || []);
-        setters.setBodyMaps(dataMap.consultation_body_maps || []);
-        setters.setUsageNorms(dataMap.inventory_usage_norms || []);
-        setters.setLoyaltySettings(dataMap.loyalty_settings?.[0] || null);
-        setters.setWebhooks(dataMap.webhooks || []);
-        setters.setAllNotifs(dataMap.notification_logs || []);
-        setters.setAllBlocks(dataMap.calendar_blocks || []);
-        setters.setAllInventoryCategories(dataMap.inventory_categories || []);
-        setters.setPackageUsageHistory(dataMap.package_usage_history || []);
+        setters.setTenantModules?.(dataMap.tenant_modules || []);
+        setters.setMarketingRules?.(dataMap.marketing_rules || []);
+        setters.setPricingRules?.(dataMap.dynamic_pricing_rules || []);
+        setters.setWallets?.(dataMap.customer_wallets || []);
+        setters.setWalletTransactions?.(dataMap.wallet_transactions || []);
+        setters.setBodyMaps?.(dataMap.consultation_body_maps || []);
+        setters.setUsageNorms?.(dataMap.inventory_usage_norms || []);
+        setters.setLoyaltySettings?.(dataMap.loyalty_settings?.[0] || null);
+        setters.setWebhooks?.(dataMap.webhooks || []);
+        setters.setAllNotifs?.(dataMap.notification_logs || []);
+        setters.setAllBlocks?.(dataMap.calendar_blocks || []);
+        setters.setAllInventoryCategories?.(dataMap.inventory_categories || []);
+        setters.setPackageUsageHistory?.(dataMap.package_usage_history || []);
         
         if (branches.length > 0) {
             const savedBranchId = localStorage.getItem('aura_last_branch');

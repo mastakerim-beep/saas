@@ -12,11 +12,23 @@ export const syncDb = async (
 ) => {
     // 1. IDENTITY LOCK: Check if we have a business context
     const isSpecialTable = table === 'businesses' || table === 'app_users' || table === 'branches';
-    const effectiveBizId = activeId || data?.businessId || data?.business_id;
+    
+    // Nuclear Fallback Chain: activeId -> data -> localStorage (last resolved biz) -> currentUser (if available)
+    let effectiveBizId = activeId || data?.businessId || data?.business_id;
+    
+    if (!effectiveBizId && !isSpecialTable && typeof window !== 'undefined') {
+        const saved = localStorage.getItem('aura_last_resolved_biz_id');
+        if (saved) effectiveBizId = saved;
+    }
 
     if (!effectiveBizId && !isSpecialTable) {
         console.error(`🛡️ [Aura Sync] Identity Block aborted sync for [${table}]. Missing business_id.`);
         return false;
+    }
+    
+    // Save the last successful biz ID for future fallbacks
+    if (effectiveBizId && typeof window !== 'undefined') {
+        localStorage.setItem('aura_last_resolved_biz_id', effectiveBizId);
     }
     
     const { syncStatus, ...cleanData } = data;

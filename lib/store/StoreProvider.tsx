@@ -140,6 +140,9 @@ const StoreOrchestrator = ({ children }: { children: ReactNode }) => {
     // Update ref in effect for consistency
     useEffect(() => {
         activeBizIdRef.current = activeBizId;
+        if (activeBizId && typeof window !== 'undefined') {
+            localStorage.setItem('aura_last_resolved_biz_id', activeBizId);
+        }
     }, [activeBizId]);
 
     const fetchData = React.useCallback(async (bizId?: string, user?: AppUser, force?: boolean, startDate?: string, endDate?: string) => {
@@ -216,7 +219,10 @@ const StoreOrchestrator = ({ children }: { children: ReactNode }) => {
             setAllInventoryCategories: data.setAllInventoryCategories,
             setLoyaltySettings: biz.setLoyaltySettings,
             setPackageUsageHistory: data.setPackageUsageHistory,
-            setWebhooks: biz.setWebhooks
+            setWebhooks: biz.setWebhooks,
+            setSystemAnnouncements: data.setSystemAnnouncements,
+            setAllUsers: auth.setAllUsers,
+            setAllCommissionRules: data.setAllCommissionRules
         };
 
         try {
@@ -675,7 +681,8 @@ const StoreOrchestrator = ({ children }: { children: ReactNode }) => {
         return methods;
     }, [
         fetchData, markAsModified, biz.clearCatalog, can, addLog, addZReport, calculateCommission, determineChurnRisk, getTodayDate, getTodayPayments, 
-        getCustomerPackages, getCustomerAppointments, getCustomerPayments, getChurnRiskCustomers, getUpsellPotentialCustomers, getBirthdaysToday
+        getCustomerPackages, getCustomerAppointments, getCustomerPayments, getChurnRiskCustomers, getUpsellPotentialCustomers, getBirthdaysToday,
+        appMethods, payMethods, custMethods, invMethods, staffMethods, finMethods, pkgMethods, supportMethods
     ]);
 
 
