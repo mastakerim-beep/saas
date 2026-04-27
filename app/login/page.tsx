@@ -30,13 +30,19 @@ export default function LoginPage() {
                 if (currentUser?.role === 'SaaS_Owner') {
                     router.push('/admin');
                 } else if (currentUser?.businessId) {
-                    // We don't have the slug here easily without a fetch, 
-                    // but StoreProvider will handle the redirect if we go to /
                     router.push('/dashboard'); 
                 }
             }
         }
     }, [currentUser, isInitialized, router]);
+
+    // Safety Fallback: Unlock form after 3 seconds anyway
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            setIsCheckingAuth(false);
+        }, 3000);
+        return () => clearTimeout(timer);
+    }, []);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
