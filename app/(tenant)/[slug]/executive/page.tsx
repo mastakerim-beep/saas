@@ -46,7 +46,8 @@ export default function ExecutiveDashboard() {
         expenses, allLogs, can, fetchData, systemAnnouncements,
         locale
     } = useStore();
-    const d = dictionary[locale as 'tr' | 'en'];
+    const safeLocale = (locale as 'tr' | 'en') || 'tr';
+    const d = dictionary[safeLocale] || dictionary.tr;
 
     const [exchangeRates, setExchangeRates] = useState<{from: string, to: string, rate: string}[]>([]);
 

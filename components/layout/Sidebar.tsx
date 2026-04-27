@@ -127,7 +127,10 @@ export default function Sidebar() {
     } = useStore();
     const [isHovered, setIsHovered] = useState(false);
     const [isMounted, setIsMounted] = useState(false);
-    const d = dictionary[locale as 'tr' | 'en'];
+    
+    // Safety check for dictionary access
+    const safeLocale = (locale as 'tr' | 'en') || 'tr';
+    const d = dictionary[safeLocale] || dictionary.tr;
 
     // Initial mount check to prevent hydration mismatch
     useEffect(() => {
