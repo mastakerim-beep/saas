@@ -148,13 +148,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     };
 
     const logout = async () => {
-        console.log('🚪 [Auth Trace] Initiating nuclear logout...');
-        // SHIELD: Mark not initialized immediately to break StoreProvider loops
-        setIsInitialized(false); 
+        // Immediate UI feedback
+        setIsInitialized(false);
+        setCurrentUser(null);
         
         try {
-            // Nuclear Option: Clear Supabase-related keys from localStorage manually
-            // This prevents the session from being restored on the next page load
+            // Background cleanup
             const keysToRemove = [];
             for (let i = 0; i < localStorage.length; i++) {
                 const key = localStorage.key(i);
@@ -163,21 +162,19 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
                 }
             }
             keysToRemove.forEach(k => localStorage.removeItem(k));
-            
-            // Clear other app-specific caches
             localStorage.removeItem('aura_business_catalog');
             localStorage.removeItem('aura_last_branch');
 
-            await supabase.auth.signOut();
-            setCurrentUser(null);
+            // Fire and forget signOut (don't let it block the redirect)
+            supabase.auth.signOut().catch(e => console.error('SignOut error:', e));
         } catch (err) {
             console.error('Logout error:', err);
         }
         
-        // Final fallback: redirect after a microscopic delay to let states settle
+        // Final fallback: redirect almost immediately
         setTimeout(() => {
             window.location.replace('/login');
-        }, 100);
+        }, 50);
     };
 
     // Placeholder Business Management methods

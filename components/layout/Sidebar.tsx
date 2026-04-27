@@ -372,7 +372,7 @@ export default function Sidebar() {
                             <button 
                                 onClick={(e) => {
                                     e.stopPropagation();
-                                    if(confirm('Oturumu kapatmak istediğinize emin misiniz?')) logout();
+                                    logout();
                                 }}
                                 className="p-2 hover:bg-red-50 text-gray-400 hover:text-red-500 rounded-xl transition-all"
                                 title="Çıkış Yap"
@@ -386,7 +386,7 @@ export default function Sidebar() {
                              <button 
                                 onClick={(e) => {
                                     e.stopPropagation();
-                                    if(confirm('Oturumu kapatmak istediğinize emin misiniz?')) logout();
+                                    logout();
                                 }}
                                 className="p-2 text-red-500 rounded-xl transition-all"
                             >

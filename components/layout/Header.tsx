@@ -248,7 +248,7 @@ export default function Header() {
                                         </button>
                                         <div className="h-px bg-gray-100 my-2 mx-2" />
                                         <button 
-                                            onClick={logout}
+                                            onClick={() => { setShowProfileMenu(false); logout(); }}
                                             className="w-full flex items-center gap-4 p-4 text-xs font-black text-red-500 hover:bg-red-50 rounded-3xl transition-all"
                                         >
                                             <LogOut className="w-5 h-5" /> Güvenli Çıkış
