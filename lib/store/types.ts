@@ -62,6 +62,24 @@ export type Expense = DB.Expense & {
     related_appointment_id?: string;
 };
 export type CustomerMedia = DB.CustomerMedia;
+export interface CustomerBiometric {
+    id: string;
+    businessId: string;
+    customerId: string;
+    weight?: number;
+    bodyFatPercent?: number;
+    muscleFatPercent?: number;
+    visceralFatLevel?: number;
+    basalMetabolism?: number;
+    wellnessAge?: number;
+    mobilityScore?: number;
+    balanceScore?: number;
+    strengthScore?: number;
+    muscleFatigueLevel?: 'High' | 'Medium' | 'Low';
+    source: string;
+    lastSyncAt: string;
+    createdAt: string;
+}
 export type ZReport = DB.ZReport & { 
     aiSummary?: string; 
     closureNotes?: string; 
@@ -193,6 +211,7 @@ export interface StoreState {
     bodyMaps: ConsultationBodyMap[];
     usageNorms: InventoryUsageNorm[];
     inventoryCategories: InventoryCategory[];
+    customerBiometrics: CustomerBiometric[];
     
     login: (email: string, pass: string) => Promise<AppUser | null>;
     logout: () => void;
@@ -317,6 +336,8 @@ export interface StoreState {
     getRecommendedStaff: (serviceId: string, customerId?: string) => Staff[];
     getEffectivePrice: (serviceId: string) => number;
     predictInventory: () => any[];
+    addBiometric: (b: Omit<CustomerBiometric, 'id' | 'businessId' | 'createdAt' | 'lastSyncAt'>) => Promise<void>;
+    updateBiometric: (id: string, updates: Partial<CustomerBiometric>) => Promise<void>;
 
     addBranch: (branch: Partial<Branch>) => Promise<void>;
     updateBranch: (id: string, branch: Partial<Branch>) => void;

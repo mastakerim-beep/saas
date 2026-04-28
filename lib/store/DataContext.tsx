@@ -7,7 +7,7 @@ import {
     CustomerMembership, AuditLog, NotificationLog, AiInsight, 
     ZReport, Quote, TenantModule, MarketingRule, 
     DynamicPricingRule, CustomerWallet, WalletTransaction, 
-    ConsultationBodyMap, InventoryUsageNorm, CustomerMedia,
+    ConsultationBodyMap, InventoryUsageNorm, CustomerMedia, CustomerBiometric,
     PackageDefinition, CommissionRule, AppointmentStatus, Staff, Payment, InventoryCategory, PackageUsageHistory,
     PaymentDefinition, BankAccount, ExpenseCategory, ReferralSource, ConsentFormTemplate, SystemAnnouncement, LoyaltySettings, Webhook, InventoryTransfer
 } from './types';
@@ -53,7 +53,10 @@ export interface DataContextType {
     loyaltySettings: LoyaltySettings | null;
     webhooks: Webhook[];
     inventoryTransfers: InventoryTransfer[];
+    customerBiometrics: CustomerBiometric[];
     locale: 'tr' | 'en';
+
+    setCustomerBiometrics: React.Dispatch<React.SetStateAction<CustomerBiometric[]>>;
 
     setAllAppointments: React.Dispatch<React.SetStateAction<Appointment[]>>;
     setAllBlocks: React.Dispatch<React.SetStateAction<CalendarBlock[]>>;
@@ -141,6 +144,8 @@ export interface DataContextType {
     addLog: (action: string, customer: string, oldValue?: string, newValue?: string) => Promise<void>;
     addMarketingRule: (rule: any) => Promise<void>;
     deleteMarketingRule: (id: string) => Promise<void>;
+    addBiometric: (b: any) => Promise<void>;
+    updateBiometric: (id: string, updates: Partial<CustomerBiometric>) => Promise<void>;
 }
 
 const DataContext = createContext<DataContextType | null>(null);
@@ -185,6 +190,7 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
     const [loyaltySettings, setLoyaltySettings] = useState<LoyaltySettings | null>(null);
     const [webhooks, setWebhooks] = useState<Webhook[]>([]);
     const [inventoryTransfers, setInventoryTransfers] = useState<InventoryTransfer[]>([]);
+    const [customerBiometrics, setCustomerBiometrics] = useState<CustomerBiometric[]>([]);
     const [locale, setLocale] = useState<'tr' | 'en'>('tr');
 
 
@@ -493,6 +499,17 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
         syncDb('marketing_rules', 'delete', {}, id);
     }, []);
 
+    const addBiometric = useCallback(async (b: any) => {
+        const newBio = { ...b, id: crypto.randomUUID(), createdAt: new Date().toISOString(), lastSyncAt: new Date().toISOString() };
+        setCustomerBiometrics(prev => [...prev, newBio]);
+        syncDb('customer_biometrics', 'insert', newBio);
+    }, []);
+
+    const updateBiometric = useCallback(async (id: string, updates: Partial<CustomerBiometric>) => {
+        setCustomerBiometrics(prev => prev.map(sb => sb.id === id ? { ...sb, ...updates, lastSyncAt: new Date().toISOString() } : sb));
+        syncDb('customer_biometrics', 'update', updates, id);
+    }, []);
+
     const contextValue: DataContextType = useMemo(() => ({
         appointments, blocks, customers, debts, inventory, rooms, services, packages,
         membershipPlans, customerMemberships, staffMembers, allLogs, allNotifs, aiInsights, expenses,
@@ -500,7 +517,7 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
         payments: allPayments,
         walletTransactions, bodyMaps, usageNorms, customerMedia, packageDefinitions, commissionRules,
         paymentDefinitions, bankAccounts, expenseCategories, referralSources, consentFormTemplates,
-        systemAnnouncements, loyaltySettings, webhooks, inventoryTransfers,
+        systemAnnouncements, loyaltySettings, webhooks, inventoryTransfers, customerBiometrics,
         setAllAppointments, setAllBlocks, setAllCustomers, setAllDebts, setAllInventory,
         setAllRooms, setAllServices, setAllPackages, setMembershipPlans, setCustomerMemberships,
         setAllStaff, setAllLogs, setAllNotifs, setAiInsights, setAllExpenses, setZReports, setAllQuotes,
@@ -509,6 +526,7 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
         setAllPayments, setAllInventoryCategories, addCustomerMedia, deleteCustomerMedia,
         setPaymentDefinitions, setBankAccounts, setExpenseCategories, setReferralSources,
         setConsentFormTemplates, setSystemAnnouncements, setLoyaltySettings, setWebhooks, setInventoryTransfers,
+        setCustomerBiometrics,
         addCustomer, updateCustomer, deleteCustomer, addAppointment, updateAppointment, deleteAppointment,
         moveAppointment, updateAppointmentStatus, addBlock, updateBlock, removeBlock, addPackage,
         addMembershipPlan, assignMembership, addProduct, updateProduct, removeProduct, addExpense, addService,
@@ -518,6 +536,7 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
         addInventoryCategory, updateInventoryCategory, removeInventoryCategory,
         transferProduct, addPackageUsageHistory, addLog,
         addMarketingRule, deleteMarketingRule,
+        addBiometric, updateBiometric,
         inventoryCategories, packageUsageHistory, setPackageUsageHistory,
         locale, setLocale
     }), [
@@ -528,7 +547,7 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
         packageDefinitions, commissionRules, inventoryCategories, transferProduct, packageUsageHistory,
         paymentDefinitions, bankAccounts, expenseCategories, referralSources, consentFormTemplates,
         systemAnnouncements, loyaltySettings, webhooks, inventoryTransfers,
-        locale
+        customerBiometrics, locale
     ]);
 
 

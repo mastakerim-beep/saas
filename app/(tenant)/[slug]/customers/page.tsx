@@ -7,7 +7,7 @@ import {
     User, CheckCircle, ArrowLeft, MessageCircle, Download, Clock, Tag, 
     MessageSquare, Search, X, Phone, Mail, Calendar, ChevronRight, ChevronLeft,
     Package as PackageIcon, Star, Banknote, CreditCard, Building2, Trash2, Crown,
-    Zap, Activity, Heart, Shield, RefreshCw, BarChart3, TrendingUp, Sparkles, MapPin,
+    Zap, Activity, Heart, Shield, RefreshCw, BarChart3, TrendingUp, Sparkles, MapPin, Gauge,
     ArrowUpRight, Info, Plus, FileText, Gift, Settings, AlertCircle, Edit2, Globe, Languages, Users, ArrowDownRight, Printer,
     Calendar as CalendarIcon, Bot, Target
 } from 'lucide-react';
@@ -146,6 +146,106 @@ function AddCustomerModal({ onClose, onSave }: { onClose: () => void; onSave: (c
     );
 }
 
+// ---- ADD BIOMETRIC MODAL ----
+function AddBiometricModal({ customerId, onClose, onSave }: { customerId: string; onClose: () => void; onSave: () => void }) {
+    const { addBiometric } = useStore();
+    const [form, setForm] = useState({ 
+        weight: 0, 
+        bodyFatPercent: 0, 
+        muscleFatPercent: 0, 
+        visceralFatLevel: 0,
+        basalMetabolism: 0,
+        wellnessAge: 0,
+        mobilityScore: 0,
+        balanceScore: 0,
+        strengthScore: 0,
+        source: 'Manuel'
+    });
+    const h = (k: string, v: number) => setForm(f => ({ ...f, [k]: v }));
+
+    return (
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="fixed inset-0 bg-black/60 backdrop-blur-md z-[2000] flex items-center justify-center p-4">
+            <motion.div initial={{ y: 20, scale: 0.95 }} animate={{ y: 0, scale: 1 }} className="bg-white rounded-[3rem] shadow-2xl w-full max-w-2xl overflow-hidden border border-white/20">
+                <div className="flex items-center justify-between px-10 pt-10 pb-6 border-b border-gray-50">
+                    <div>
+                        <h2 className="text-3xl font-black text-gray-900 tracking-tighter uppercase italic">Ölçüm Kaydı</h2>
+                        <p className="text-[10px] font-black text-amber-600 uppercase tracking-widest mt-1 italic">Manuel Biyometrik Veri Girişi</p>
+                    </div>
+                    <button onClick={onClose} className="w-12 h-12 flex items-center justify-center bg-gray-50 hover:bg-red-50 text-gray-400 hover:text-red-500 rounded-2xl transition-all"><X className="w-6 h-6" /></button>
+                </div>
+                
+                <div className="p-10 grid grid-cols-2 gap-8 max-h-[60vh] overflow-y-auto custom-scrollbar">
+                    <div className="space-y-4">
+                        <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Vücut Bileşimi</label>
+                        <div className="space-y-4 p-6 bg-gray-50 rounded-[2rem] border border-gray-100">
+                            <div>
+                                <p className="text-[9px] font-black text-gray-500 uppercase mb-2">Ağırlık (kg)</p>
+                                <input type="number" step="0.1" value={form.weight || ''} onChange={e => h('weight', Number(e.target.value))} className="w-full bg-white border border-gray-100 rounded-xl px-4 py-3 text-sm font-black outline-none focus:border-amber-400 transition-all" />
+                            </div>
+                            <div>
+                                <p className="text-[9px] font-black text-gray-500 uppercase mb-2">Yağ Oranı (%)</p>
+                                <input type="number" step="0.1" value={form.bodyFatPercent || ''} onChange={e => h('bodyFatPercent', Number(e.target.value))} className="w-full bg-white border border-gray-100 rounded-xl px-4 py-3 text-sm font-black outline-none focus:border-amber-400 transition-all" />
+                            </div>
+                            <div>
+                                <p className="text-[9px] font-black text-gray-500 uppercase mb-2">Kas Kütlesi (kg)</p>
+                                <input type="number" step="0.1" value={form.muscleFatPercent || ''} onChange={e => h('muscleFatPercent', Number(e.target.value))} className="w-full bg-white border border-gray-100 rounded-xl px-4 py-3 text-sm font-black outline-none focus:border-amber-400 transition-all" />
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="space-y-4">
+                        <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Metabolik Veriler</label>
+                        <div className="space-y-4 p-6 bg-amber-50/30 rounded-[2rem] border border-amber-50">
+                            <div>
+                                <p className="text-[9px] font-black text-amber-600 uppercase mb-2">İç Yağlanma (Level)</p>
+                                <input type="number" value={form.visceralFatLevel || ''} onChange={e => h('visceralFatLevel', Number(e.target.value))} className="w-full bg-white border border-amber-100 rounded-xl px-4 py-3 text-sm font-black outline-none focus:border-amber-400 transition-all" />
+                            </div>
+                            <div>
+                                <p className="text-[9px] font-black text-amber-600 uppercase mb-2">Bazal Meta. (kcal)</p>
+                                <input type="number" value={form.basalMetabolism || ''} onChange={e => h('basalMetabolism', Number(e.target.value))} className="w-full bg-white border border-amber-100 rounded-xl px-4 py-3 text-sm font-black outline-none focus:border-amber-400 transition-all" />
+                            </div>
+                            <div>
+                                <p className="text-[9px] font-black text-amber-600 uppercase mb-2">Metabolik Yaş</p>
+                                <input type="number" value={form.wellnessAge || ''} onChange={e => h('wellnessAge', Number(e.target.value))} className="w-full bg-white border border-amber-100 rounded-xl px-4 py-3 text-sm font-black outline-none focus:border-amber-400 transition-all" />
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="col-span-2 space-y-4">
+                        <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Fonksiyonel Skorlar (0-100)</label>
+                        <div className="grid grid-cols-3 gap-6 p-6 bg-black rounded-[2rem]">
+                            <div>
+                                <p className="text-[9px] font-black text-gray-400 uppercase mb-2">Mobilite</p>
+                                <input type="number" max="100" value={form.mobilityScore || ''} onChange={e => h('mobilityScore', Number(e.target.value))} className="w-full bg-white/10 border border-white/10 text-white rounded-xl px-4 py-3 text-sm font-black outline-none focus:border-amber-400 transition-all" />
+                            </div>
+                            <div>
+                                <p className="text-[9px] font-black text-gray-400 uppercase mb-2">Denge</p>
+                                <input type="number" max="100" value={form.balanceScore || ''} onChange={e => h('balanceScore', Number(e.target.value))} className="w-full bg-white/10 border border-white/10 text-white rounded-xl px-4 py-3 text-sm font-black outline-none focus:border-amber-400 transition-all" />
+                            </div>
+                            <div>
+                                <p className="text-[9px] font-black text-gray-400 uppercase mb-2">Güç</p>
+                                <input type="number" max="100" value={form.strengthScore || ''} onChange={e => h('strengthScore', Number(e.target.value))} className="w-full bg-white/10 border border-white/10 text-white rounded-xl px-4 py-3 text-sm font-black outline-none focus:border-amber-400 transition-all" />
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div className="px-10 pb-10 pt-4 flex gap-4">
+                    <button onClick={onClose} className="flex-1 py-4 bg-gray-50 text-gray-500 font-black uppercase tracking-widest rounded-2xl hover:bg-gray-100 transition-all">İptal</button>
+                    <button
+                        onClick={async () => { 
+                            await addBiometric({ ...form, customerId }); 
+                            onSave(); 
+                        }}
+                        className="flex-[2] py-4 bg-black text-white font-black uppercase tracking-widest rounded-2xl hover:bg-gray-800 shadow-xl shadow-black/20 transition-all">
+                        VERİLERİ KAYDET ✓
+                    </button>
+                </div>
+            </motion.div>
+        </motion.div>
+    );
+}
+
 // ---- CUSTOMER DETAIL: THE PROFESSIONAL SMART PORTRAIT ----
 function CustomerDetail({ customer, onClose }: { customer: Customer; onClose: () => void }) {
     const { 
@@ -166,7 +266,8 @@ function CustomerDetail({ customer, onClose }: { customer: Customer; onClose: ()
         getWallet,
         loadWallet,
         walletTransactions,
-        debts
+        debts,
+        customerBiometrics
     } = useStore();
     const [activeMenu, setActiveMenu] = useState('Detaylar');
     const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(true);
@@ -176,6 +277,7 @@ function CustomerDetail({ customer, onClose }: { customer: Customer; onClose: ()
     const [isSaving, setIsSaving] = useState(false);
     const [saveSuccess, setSaveSuccess] = useState(false);
     const [selectedSlot, setSelectedSlot] = useState<{staffId: string, time: string, customerId?: string} | null>(null);
+    const [showBioModal, setShowBioModal] = useState(false);
 
     const customerQuotes = quotes.filter((q: Quote) => q.customerId === customer.id);
 
@@ -223,6 +325,9 @@ function CustomerDetail({ customer, onClose }: { customer: Customer; onClose: ()
     const appts = getCustomerAppointments(customer.id).sort((a: Appointment, b: Appointment) => (b.date || '').localeCompare(a.date || ''));
     const payments = getCustomerPayments(customer.id);
     const totalSpent = payments.reduce((s: number, p: Payment) => s + (p.totalAmount || 0), 0);
+    const latestBio = (customerBiometrics || [])
+        .filter((b: any) => b.customerId === customer.id)
+        .sort((a: any, b: any) => (b.createdAt || '').localeCompare(a.createdAt || ''))[0];
 
     const statusLabels: Record<string, { label: string; cls: string; icon: any }> = {
         completed: { label: 'Tamamlandı', cls: 'bg-green-500/10 text-green-600 border-green-500/20', icon: CheckCircle },
@@ -241,6 +346,7 @@ function CustomerDetail({ customer, onClose }: { customer: Customer; onClose: ()
         { id: 'Randevu', label: 'Randevu', icon: Calendar },
         { id: 'Notlar', label: 'Notlar', icon: MessageSquare },
         { id: 'Dosya & Fotoğraf', label: 'Dosya & Fotoğraf', icon: Sparkles },
+        { id: 'wellness', label: 'Biyometrik & Wellness', icon: Activity },
         { id: 'Satış & Tahsilat', label: 'Satış & Tahsilat', icon: Banknote },
         { id: 'Faturalar', label: 'Faturalar', icon: FileText },
         { id: 'Puan', label: 'Cüzdan & Sadakat', icon: Star },
@@ -925,6 +1031,176 @@ function CustomerDetail({ customer, onClose }: { customer: Customer; onClose: ()
                                 </div>
                             </motion.div>
                         )}
+                        {activeMenu === 'wellness' && (
+                            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="space-y-8 pb-20">
+                                {/* Header / Sync Status */}
+                                <div className="bg-white rounded-[2.5rem] border border-gray-100 shadow-sm p-8 flex flex-col md:flex-row justify-between items-center gap-6">
+                                    <div className="flex items-center gap-6">
+                                        <div className="w-16 h-16 bg-gradient-to-br from-yellow-400 to-amber-600 rounded-2xl flex items-center justify-center shadow-lg shadow-amber-200">
+                                            <Activity className="w-8 h-8 text-white" />
+                                        </div>
+                                        <div>
+                                            <h3 className="text-2xl font-black italic tracking-tighter uppercase italic">Wellness & Biyometrik</h3>
+                                            <p className="text-[10px] font-black text-amber-600 uppercase tracking-widest mt-1">
+                                                {latestBio?.source === 'Manuel' ? 'Manuel Ölçüm Verileri' : 'Technogym Mywellness Entegrasyonu'}
+                                            </p>
+                                        </div>
+                                    </div>
+                                    <div className="flex gap-4">
+                                        <div className="px-6 py-3 bg-gray-50 rounded-xl border border-gray-100 flex flex-col items-center justify-center">
+                                            <p className="text-[8px] font-black text-gray-400 uppercase tracking-widest">Son Veri</p>
+                                            <p className="text-xs font-black text-gray-900">{latestBio ? new Date(latestBio.createdAt).toLocaleDateString('tr-TR') : 'Kayıt Yok'}</p>
+                                        </div>
+                                        <button 
+                                            onClick={() => setShowBioModal(true)}
+                                            className="px-8 py-3 bg-amber-500 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:scale-105 transition-all shadow-xl shadow-amber-500/20 flex items-center gap-3">
+                                            <Plus className="w-4 h-4" /> ÖLÇÜM EKLE
+                                        </button>
+                                        <button className="px-8 py-3 bg-black text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:scale-105 transition-all shadow-xl shadow-black/10 flex items-center gap-3">
+                                            <RefreshCw className="w-4 h-4" /> SYNC
+                                        </button>
+                                    </div>
+                                </div>
+
+                                {!latestBio ? (
+                                    <div className="bg-white border-2 border-dashed border-gray-100 rounded-[3rem] py-32 text-center flex flex-col items-center gap-6">
+                                        <div className="w-20 h-20 bg-gray-50 rounded-[2rem] flex items-center justify-center text-gray-300">
+                                            <Activity size={40} />
+                                        </div>
+                                        <div>
+                                            <p className="text-sm font-black text-gray-400 uppercase tracking-[0.2em]">Henüz Biyometrik Veri Girişi Yapılmamış</p>
+                                            <p className="text-[10px] font-bold text-gray-300 mt-2">Müşterinin vücut kompozisyonu ve fitness seviyesini takip etmek için ilk ölçümü ekleyin.</p>
+                                        </div>
+                                        <button 
+                                            onClick={() => setShowBioModal(true)}
+                                            className="px-10 py-4 bg-indigo-600 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-xl shadow-indigo-600/20 hover:scale-105 transition-all"
+                                        >
+                                            İLK ÖLÇÜMÜ KAYDET
+                                        </button>
+                                    </div>
+                                ) : (
+                                    <>
+                                        {/* Main Stats Grid */}
+                                        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+                                            {[
+                                                { label: 'Ağırlık', value: latestBio.weight || '---', unit: 'kg', icon: Target, color: 'indigo', status: 'normal' },
+                                                { label: 'Yağ %', value: latestBio.bodyFatPercent || '---', unit: '%', icon: Activity, color: 'amber', status: (latestBio.bodyFatPercent || 0) > 25 ? 'warning' : 'normal' },
+                                                { label: 'Kas Kütlesi', value: latestBio.muscleFatPercent || '---', unit: 'kg', icon: Zap, color: 'blue', status: 'good' },
+                                                { label: 'Meta. Yaş', value: latestBio.wellnessAge || '---', unit: 'yaş', icon: Heart, color: 'green', status: 'normal' },
+                                            ].map((stat, i) => (
+                                                <div key={i} className="bg-white rounded-[2rem] p-8 border border-gray-50 shadow-sm hover:shadow-md transition-all group">
+                                                    <div className="flex justify-between items-start mb-6">
+                                                        <div className={`p-3 rounded-xl bg-${stat.color}-50 text-${stat.color}-600 group-hover:scale-110 transition-transform`}>
+                                                            <stat.icon className="w-5 h-5" />
+                                                        </div>
+                                                        <span className={`text-[8px] font-black px-2 py-0.5 rounded-full uppercase ${
+                                                            stat.status === 'good' ? 'bg-green-100 text-green-600' : 
+                                                            stat.status === 'warning' ? 'bg-amber-100 text-amber-600' : 'bg-gray-100 text-gray-400'
+                                                        }`}>{stat.status}</span>
+                                                    </div>
+                                                    <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">{stat.label}</p>
+                                                    <div className="flex items-baseline gap-1">
+                                                        <span className="text-4xl font-black italic tracking-tighter text-gray-900">{stat.value}</span>
+                                                        <span className="text-sm font-black text-gray-400 uppercase italic">{stat.unit}</span>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+
+                                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                                            {/* Advanced Biometrics Panel */}
+                                            <div className="lg:col-span-2 bg-white rounded-[3rem] border border-gray-100 p-10 shadow-sm space-y-10">
+                                                <div className="flex justify-between items-center border-b border-gray-50 pb-6">
+                                                    <h4 className="text-xl font-black italic tracking-tighter uppercase italic">Detaylı Analiz</h4>
+                                                    <button className="text-[10px] font-black text-indigo-600 uppercase tracking-widest flex items-center gap-2">GEÇMİŞİ GÖR <ChevronRight className="w-4 h-4" /></button>
+                                                </div>
+                                                
+                                                <div className="grid grid-cols-2 gap-10">
+                                                    <div className="space-y-6">
+                                                        <div className="p-6 bg-gray-50/50 rounded-2xl flex justify-between items-center border border-gray-100">
+                                                            <div>
+                                                                <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1">İç Yağlanma</p>
+                                                                <p className="text-xl font-black italic tracking-tighter">Seviye {latestBio.visceralFatLevel || '---'}</p>
+                                                            </div>
+                                                            <div className="w-12 h-2 bg-gray-200 rounded-full overflow-hidden">
+                                                                <div className="h-full bg-green-500 w-3/5" style={{ width: `${(latestBio.visceralFatLevel || 0) * 10}%` }} />
+                                                            </div>
+                                                        </div>
+                                                        <div className="p-6 bg-gray-50/50 rounded-2xl flex justify-between items-center border border-gray-100">
+                                                            <div>
+                                                                <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1">Bazal Metabolizma</p>
+                                                                <p className="text-xl font-black italic tracking-tighter">{latestBio.basalMetabolism || '---'} kcal</p>
+                                                            </div>
+                                                        </div>
+                                                        <div className="p-6 bg-gray-50/50 rounded-2xl flex justify-between items-center border border-gray-100">
+                                                            <div>
+                                                                <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1">Veri Kaynağı</p>
+                                                                <p className="text-xl font-black italic tracking-tighter">{latestBio.source}</p>
+                                                            </div>
+                                                            <span className="text-[10px] font-black px-3 py-1 bg-indigo-100 text-indigo-600 rounded-lg">Doğrulanmış</span>
+                                                        </div>
+                                                    </div>
+
+                                                    <div className="flex flex-col justify-center items-center p-8 bg-indigo-50/30 rounded-[2.5rem] border border-indigo-50 relative overflow-hidden">
+                                                        <Bot className="w-24 h-24 text-indigo-100 absolute -bottom-4 -right-10 rotate-12" />
+                                                        <p className="text-[10px] font-black text-indigo-600 uppercase tracking-widest mb-4">Wellness Advisor</p>
+                                                        <div className="text-center space-y-4 relative z-10">
+                                                            <p className="text-sm font-bold text-gray-700 italic leading-snug">
+                                                                {(latestBio.bodyFatPercent || 0) > 20 
+                                                                    ? "Yağ oranı düşüşü için kardiyo ve diyet planı güncellenmelidir." 
+                                                                    : "Vücut analizi ideal seviyelerde. Mevcut rutini korumanız önerilir."}
+                                                            </p>
+                                                            <div className="h-[1px] bg-indigo-100 w-1/2 mx-auto" />
+                                                            <p className="text-[10px] font-black text-indigo-400 italic">YZ Önerilen Hizmet: Aura Detoks</p>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            {/* Wellness Scores */}
+                                            <div className="bg-black rounded-[3rem] p-10 text-white shadow-2xl relative overflow-hidden flex flex-col justify-between">
+                                                <div className="absolute top-0 right-0 p-10 opacity-10">
+                                                    <Shield size={160} />
+                                                </div>
+                                                <div className="relative z-10">
+                                                    <h4 className="text-xl font-black italic tracking-tighter uppercase italic mb-10">Fonksiyonel Skor</h4>
+                                                    <div className="space-y-8">
+                                                        {[
+                                                            { name: 'Mobilite', score: latestBio.mobilityScore || 0, color: 'yellow-400' },
+                                                            { name: 'Denge', score: latestBio.balanceScore || 0, color: 'cyan-400' },
+                                                            { name: 'Güç', score: latestBio.strengthScore || 0, color: 'rose-400' }
+                                                        ].map((s, i) => (
+                                                            <div key={i} className="space-y-2">
+                                                                <div className="flex justify-between items-center">
+                                                                    <span className="text-[10px] font-black uppercase tracking-widest text-gray-400">{s.name}</span>
+                                                                    <span className="text-[10px] font-black uppercase tracking-widest text-white">{s.score}/100</span>
+                                                                </div>
+                                                                <div className="h-2 bg-white/10 rounded-full overflow-hidden">
+                                                                    <motion.div 
+                                                                        initial={{ width: 0 }}
+                                                                        animate={{ width: `${s.score}%` }}
+                                                                        className={`h-full bg-${s.color} rounded-full`}
+                                                                    />
+                                                                </div>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                                <div className="mt-12 bg-white/5 border border-white/10 p-6 rounded-2xl flex items-center gap-4">
+                                                    <div className="w-10 h-10 bg-white/10 rounded-xl flex items-center justify-center text-white">
+                                                        <Zap className="w-5 h-5" />
+                                                    </div>
+                                                    <div>
+                                                        <p className="text-[10px] font-black uppercase tracking-widest text-gray-500">Wellness Seviyesi</p>
+                                                        <p className="text-lg font-black italic text-white uppercase italic tracking-tighter">İmparatorluk Standardı</p>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </>
+                                )}
+                            </motion.div>
+                        )}
                         {activeMenu === 'Satış & Tahsilat' && (
                             <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="space-y-6">
                                 <div className="bg-white rounded-[2.5rem] border border-gray-100 shadow-sm overflow-hidden">
@@ -1400,6 +1676,16 @@ function CustomerDetail({ customer, onClose }: { customer: Customer; onClose: ()
                     initialData={selectedSlot} 
                     date={new Date().toISOString().split('T')[0]} 
                     onClose={() => setSelectedSlot(null)} 
+                />
+            )}
+            {showBioModal && (
+                <AddBiometricModal 
+                    customerId={customer.id} 
+                    onClose={() => setShowBioModal(false)} 
+                    onSave={() => {
+                        setShowBioModal(false);
+                        addLog('Yeni Biyometrik Veri Eklendi', customer.name, 'Manuel ölçüm kaydı', 'Sistem üzerinden manuel veri girişi yapıldı.');
+                    }} 
                 />
             )}
         </motion.div>
