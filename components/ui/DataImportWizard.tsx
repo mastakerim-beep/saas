@@ -12,11 +12,39 @@ import { useStore } from '@/lib/store';
 
 interface DataImportWizardProps {
     onClose: () => void;
-    type: 'customers' | 'services' | 'staff' | 'products';
+    type: 'customers' | 'services' | 'staff' | 'products' | 'appointments';
 }
 
+// Simple Fuzzy Matching Helper (Levenshtein Distance-like)
+const getFuzzyMatchScore = (s1: string, s2: string) => {
+    if (!s1 || !s2) return 0;
+    s1 = s1.toLowerCase().trim();
+    s2 = s2.toLowerCase().trim();
+    if (s1 === s2) return 1;
+    
+    const longer = s1.length > s2.length ? s1 : s2;
+    const shorter = s1.length > s2.length ? s2 : s1;
+    
+    if (longer.length === 0) return 1;
+    
+    const editDistance = (a: string, b: string) => {
+        const matrix = Array.from({ length: a.length + 1 }, (_, i) => [i]);
+        for (let j = 1; j <= b.length; j++) matrix[0][j] = j;
+        
+        for (let i = 1; i <= a.length; i++) {
+            for (let j = 1; j <= b.length; j++) {
+                if (a[i - 1] === b[j - 1]) matrix[i][j] = matrix[i - 1][j - 1];
+                else matrix[i][j] = Math.min(matrix[i - 1][j - 1], matrix[i][j - 1], matrix[i - 1][j]) + 1;
+            }
+        }
+        return matrix[a.length][b.length];
+    };
+    
+    return (longer.length - editDistance(longer, shorter)) / longer.length;
+};
+
 export default function DataImportWizard({ onClose, type }: DataImportWizardProps) {
-    const { addCustomer, addService, addStaff, addProduct } = useStore();
+    const { addCustomer, addService, addStaff, addProduct, addAppointment, customers, staff, services: allServices, rooms } = useStore();
     const [step, setStep] = useState(1);
     const [file, setFile] = useState<File | null>(null);
     const [data, setData] = useState<any[]>([]);
@@ -51,6 +79,14 @@ export default function DataImportWizard({ onClose, type }: DataImportWizardProp
             { id: 'stock', label: 'Stok Adedi', required: true },
             { id: 'sku', label: 'Barkod/SKU', required: false },
             { id: 'category', label: 'Kategori', required: false }
+        ],
+        appointments: [
+            { id: 'customerName', label: 'Danışan Adı', required: true },
+            { id: 'service', label: 'Hizmet Adı', required: true },
+            { id: 'date', label: 'Tarih (Y-A-G)', required: true },
+            { id: 'time', label: 'Saat (S:D)', required: true },
+            { id: 'staffName', label: 'Personel Adı', required: false },
+            { id: 'price', label: 'Tutar', required: false }
         ]
     }[type];
 
@@ -105,6 +141,43 @@ export default function DataImportWizard({ onClose, type }: DataImportWizardProp
                 else if (type === 'services') await addService(item);
                 else if (type === 'staff') await addStaff(item);
                 else if (type === 'products') await addProduct(item);
+                else if (type === 'appointments') {
+                    // Smart matching with Fuzzy AI logic
+                    const findSmartMatch = (val: string, list: any[], key: string) => {
+                        if (!val) return null;
+                        let best = null;
+                        let maxScore = 0;
+                        for (const item of list) {
+                            const score = getFuzzyMatchScore(val, item[key]);
+                            if (score > maxScore) {
+                                maxScore = score;
+                                best = item;
+                            }
+                        }
+                        return maxScore > 0.8 ? best : null;
+                    };
+
+                    const customer = findSmartMatch(item.customerName, customers, 'name');
+                    const member = findSmartMatch(item.staffName, staff, 'name');
+                    const svc = findSmartMatch(item.service, allServices, 'name');
+                    
+                    const apptData = {
+                        ...item,
+                        customerId: customer?.id || null,
+                        staffId: member?.id || staff[0]?.id || null,
+                        serviceId: svc?.id || null,
+                        status: 'confirmed',
+                        price: item.price || svc?.price || 0,
+                        duration: svc?.duration || 60,
+                        // Correction logs
+                        _meta: {
+                            originalCustomerName: item.customerName,
+                            matchedCustomer: customer?.name,
+                            isFuzzyCorrection: customer?.name && customer.name.toLowerCase() !== item.customerName.toLowerCase()
+                        }
+                    };
+                    await addAppointment(apptData);
+                }
                 
                 success++;
             } catch (err) {
@@ -175,9 +248,9 @@ export default function DataImportWizard({ onClose, type }: DataImportWizardProp
                                     <div className="flex gap-4 text-slate-600 text-[10px] font-black uppercase tracking-[0.2em]">
                                         <span className="flex items-center gap-2"><Database size={12} /> Otomatik Eşleştirme</span>
                                         <span className="opacity-20">|</span>
-                                        <span className="flex items-center gap-2"><ShieldCheck size={12} /> Bütünlük Doğrulaması</span>
+                                        <span className="flex items-center gap-2"><Zap size={12} /> Yapay Zeka Desteği (Yazım Hataları)</span>
                                         <span className="opacity-20">|</span>
-                                        <span className="flex items-center gap-2"><Zap size={12} /> Yüksek Hızlı Senkron</span>
+                                        <span className="flex items-center gap-2"><ShieldCheck size={12} /> Bütünlük Doğrulaması</span>
                                     </div>
                                 </motion.div>
                             )}
