@@ -84,7 +84,7 @@ export const CreateBusinessModal = ({ isOpen, onClose, onCreate, isCreating }: a
                             <div>
                                 <h2 className="text-white text-3xl font-black italic uppercase tracking-tighter leading-none">İmparatorluk Kurulumu</h2>
                                 <p className="text-[10px] font-bold text-indigo-400 uppercase tracking-[0.3em] mt-2 flex items-center gap-2">
-                                    <Shield size={10} /> Sovereign Authorization Step {modalStep}
+                                    <Shield size={10} /> Sovereign Yetkilendirme Adımı {modalStep}
                                 </p>
                             </div>
                         </div>
@@ -136,7 +136,7 @@ export const CreateBusinessModal = ({ isOpen, onClose, onCreate, isCreating }: a
                                     </div>
 
                                     <div className="space-y-5">
-                                        <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Kingdom Verticals</label>
+                                        <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">İmparatorluk Sektörleri</label>
                                         <div className="flex gap-4">
                                             {[
                                                 { id: 'spa', label: 'SPA', color: 'bg-indigo-500' },
@@ -165,7 +165,7 @@ export const CreateBusinessModal = ({ isOpen, onClose, onCreate, isCreating }: a
                                         </div>
                                     </div>
 
-                                    <button onClick={() => setModalStep(2)} className="w-full py-6 bg-white text-black rounded-[1.8rem] font-black text-[12px] uppercase tracking-[0.2em] shadow-[0_0_30px_rgba(255,255,255,0.1)] hover:bg-indigo-50 transition-all mt-6">NEXT PHASE: FINANCIAL ASSETS</button>
+                                    <button onClick={() => setModalStep(2)} className="w-full py-6 bg-white text-black rounded-[1.8rem] font-black text-[12px] uppercase tracking-[0.2em] shadow-[0_0_30px_rgba(255,255,255,0.1)] hover:bg-indigo-50 transition-all mt-6">SONRAKİ AŞAMA: FİNANSAL VARLIKLAR</button>
                                 </motion.div>
                             )}
 
@@ -196,8 +196,8 @@ export const CreateBusinessModal = ({ isOpen, onClose, onCreate, isCreating }: a
                                         <input type="date" value={newBiz.expiryDate} onChange={e => setNewBiz({...newBiz, expiryDate: e.target.value})} className="w-full bg-white/[0.03] border border-white/10 rounded-2xl py-5 px-6 text-white font-bold outline-none focus:border-indigo-500 transition-all" />
                                     </div>
                                     <div className="flex gap-4 mt-12">
-                                        <button onClick={() => setModalStep(1)} className="flex-1 py-6 bg-slate-900 text-slate-400 rounded-3xl font-black text-[11px] uppercase tracking-widest border border-slate-800 hover:text-white transition-all">BACK</button>
-                                        <button onClick={() => setModalStep(3)} className="flex-[2] py-6 bg-indigo-600 text-white rounded-3xl font-black text-[11px] uppercase tracking-widest shadow-xl shadow-indigo-600/30 hover:bg-indigo-500 transition-all">NEXT: AUTHENTICATION MATRIX</button>
+                                        <button onClick={() => setModalStep(1)} className="flex-1 py-6 bg-slate-900 text-slate-400 rounded-3xl font-black text-[11px] uppercase tracking-widest border border-slate-800 hover:text-white transition-all">GERİ</button>
+                                        <button onClick={() => setModalStep(3)} className="flex-[2] py-6 bg-indigo-600 text-white rounded-3xl font-black text-[11px] uppercase tracking-widest shadow-xl shadow-indigo-600/30 hover:bg-indigo-500 transition-all">İLERİ: YETKİLENDİRME MATRİSİ</button>
                                     </div>
                                 </motion.div>
                             )}
@@ -215,20 +215,20 @@ export const CreateBusinessModal = ({ isOpen, onClose, onCreate, isCreating }: a
                                             {/* Main Owner */}
                                             <div className="bg-white/5 border border-white/10 p-8 rounded-[2.5rem] space-y-6 group">
                                                 <p className="text-[10px] font-black text-indigo-400 uppercase tracking-[0.2em] flex items-center gap-3">
-                                                    <div className="w-2 h-2 bg-indigo-400 rounded-full shadow-[0_0_10px_rgba(129,140,248,0.8)]" /> PRIMARY SOVEREIGN USER
+                                                    <div className="w-2 h-2 bg-indigo-400 rounded-full shadow-[0_0_10px_rgba(129,140,248,0.8)]" /> BİRİNCİL YÖNETİCİ KULLANICI (Sovereign)
                                                 </p>
                                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                                     <input 
                                                         value={newBiz.email} 
                                                         onChange={e => setNewBiz({...newBiz, email: e.target.value})} 
-                                                        placeholder="Sovereign E-mail" 
+                                                        placeholder="Yönetici E-postası" 
                                                         className="w-full bg-black/40 border border-white/5 rounded-2xl py-4 px-6 text-xs font-bold text-white outline-none focus:border-indigo-500 transition-all" 
                                                     />
                                                     <input 
                                                         type="password" 
                                                         value={newBiz.password} 
                                                         onChange={e => setNewBiz({...newBiz, password: e.target.value})} 
-                                                        placeholder="Access Key" 
+                                                        placeholder="Erişim Anahtarı (Şifre)" 
                                                         className="w-full bg-black/40 border border-white/5 rounded-2xl py-4 px-6 text-xs font-bold text-white outline-none focus:border-indigo-500 transition-all" 
                                                     />
                                                 </div>
@@ -253,7 +253,7 @@ export const CreateBusinessModal = ({ isOpen, onClose, onCreate, isCreating }: a
                                                         <X size={16} />
                                                     </button>
                                                     <p className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] flex items-center gap-3">
-                                                        <div className="w-2 h-2 bg-slate-700 rounded-full" /> COLLEAGUE NODE #{idx + 1}
+                                                        <div className="w-2 h-2 bg-slate-700 rounded-full" /> YARDIMCI KULLANICI DÜĞÜMÜ #{idx + 1}
                                                     </p>
                                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                                         <input 
@@ -263,7 +263,7 @@ export const CreateBusinessModal = ({ isOpen, onClose, onCreate, isCreating }: a
                                                                 next[idx].email = e.target.value;
                                                                 setNewBiz({ ...newBiz, extraUsers: next });
                                                             }} 
-                                                            placeholder="Node E-mail" 
+                                                            placeholder="Kullanıcı E-postası" 
                                                             className="w-full bg-black/40 border border-white/5 rounded-2xl py-4 px-6 text-xs font-bold text-white outline-none focus:border-indigo-500 transition-all" 
                                                         />
                                                         <input 
@@ -274,7 +274,7 @@ export const CreateBusinessModal = ({ isOpen, onClose, onCreate, isCreating }: a
                                                                 next[idx].password = e.target.value;
                                                                 setNewBiz({ ...newBiz, extraUsers: next });
                                                             }} 
-                                                            placeholder="Access Key" 
+                                                            placeholder="Erişim Anahtarı" 
                                                             className="w-full bg-black/40 border border-white/5 rounded-2xl py-4 px-6 text-xs font-bold text-white outline-none focus:border-indigo-500 transition-all" 
                                                         />
                                                     </div>
@@ -291,7 +291,7 @@ export const CreateBusinessModal = ({ isOpen, onClose, onCreate, isCreating }: a
                                                 <div className="w-6 h-6 bg-slate-900 rounded-lg flex items-center justify-center group-hover:bg-indigo-600 transition-all">
                                                     <Users size={12} className="text-slate-600 group-hover:text-white" />
                                                 </div>
-                                                INITIALIZE ADDITIONAL NODE
+                                                EK KULLANICI DÜĞÜMÜ TANIMLA
                                             </button>
                                         </div>
                                     </div>
@@ -303,13 +303,13 @@ export const CreateBusinessModal = ({ isOpen, onClose, onCreate, isCreating }: a
                                                 {newBiz.isStaff && <Check size={12} strokeWidth={4} className="text-white" />}
                                             </div>
                                         </div>
-                                        <label htmlFor="isStaff" className="text-[10px] font-bold text-slate-400 leading-tight uppercase tracking-widest select-none">Auth users will be deployed to Staff Matrix pool</label>
+                                        <label htmlFor="isStaff" className="text-[10px] font-bold text-slate-400 leading-tight uppercase tracking-widest select-none">Yetkili kullanıcılar otomatik olarak Personel havuzuna eklensin</label>
                                     </div>
 
                                     <div className="flex gap-4 mt-8">
-                                        <button onClick={() => setModalStep(2)} className="flex-1 py-6 bg-slate-900 text-slate-400 rounded-3xl font-black text-[11px] uppercase tracking-widest border border-slate-800 hover:text-white transition-all">BACK</button>
+                                        <button onClick={() => setModalStep(2)} className="flex-1 py-6 bg-slate-900 text-slate-400 rounded-3xl font-black text-[11px] uppercase tracking-widest border border-slate-800 hover:text-white transition-all">GERİ</button>
                                         <button onClick={handleSubmit} disabled={isCreating} className="flex-[2] py-6 bg-white text-black rounded-[2rem] font-black text-[12px] uppercase tracking-[0.2em] shadow-xl hover:bg-indigo-50 transition-all">
-                                            {isCreating ? 'INITIALIZING...' : 'FINALIZE & DEPLOY INFRASTRUCTURE ✓'}
+                                            {isCreating ? 'YÜKLENİYOR...' : 'TAMAMLA VE ALTYAPIYI DAĞIT ✓'}
                                         </button>
                                     </div>
                                 </motion.div>
