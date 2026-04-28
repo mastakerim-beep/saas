@@ -146,8 +146,8 @@ export default function DataImportWizard({ onClose, type }: DataImportWizardProp
                                 ))}
                             </div>
                             <div>
-                                <h2 className="text-white text-4xl font-black italic uppercase tracking-tighter leading-none">Data Ingester</h2>
-                                <p className="text-[10px] font-bold text-indigo-400 uppercase tracking-[0.4em] mt-3">Imperial Integration Phase {step}</p>
+                                <h2 className="text-white text-4xl font-black italic uppercase tracking-tighter leading-none">Veri Aktarıcı</h2>
+                                <p className="text-[10px] font-bold text-indigo-400 uppercase tracking-[0.4em] mt-3">Imperial Entegrasyon Aşaması {step}</p>
                             </div>
                         </div>
                         <button onClick={onClose} className="w-14 h-14 bg-white/5 hover:bg-white/10 rounded-3xl flex items-center justify-center text-slate-400 transition-all border border-white/5 group">
@@ -168,16 +168,16 @@ export default function DataImportWizard({ onClose, type }: DataImportWizardProp
                                             <div className="w-24 h-24 bg-indigo-600/10 rounded-[2.5rem] flex items-center justify-center mx-auto mb-8 shadow-inner group-hover:scale-110 group-hover:shadow-[0_0_30px_rgba(79,70,229,0.3)] transition-all duration-500">
                                                 <Upload className="w-10 h-10 text-indigo-400" />
                                             </div>
-                                            <h3 className="text-white text-2xl font-black italic uppercase tracking-tight mb-2">Upload Data Source</h3>
-                                            <p className="text-slate-500 text-xs font-bold uppercase tracking-widest leading-relaxed">Drag & Drop Excel or CSV here<br/>Imperial support for .xlsx, .xls</p>
+                                            <h3 className="text-white text-2xl font-black italic uppercase tracking-tight mb-2">Veri Kaynağını Yükle</h3>
+                                            <p className="text-slate-500 text-xs font-bold uppercase tracking-widest leading-relaxed">Excel veya CSV dosyasını buraya sürükleyin<br/>Imperial desteği: .xlsx, .xls, .csv</p>
                                         </div>
                                     </div>
                                     <div className="flex gap-4 text-slate-600 text-[10px] font-black uppercase tracking-[0.2em]">
-                                        <span className="flex items-center gap-2"><Database size={12} /> Auto-Mapping</span>
+                                        <span className="flex items-center gap-2"><Database size={12} /> Otomatik Eşleştirme</span>
                                         <span className="opacity-20">|</span>
-                                        <span className="flex items-center gap-2"><ShieldCheck size={12} /> Integrity Verification</span>
+                                        <span className="flex items-center gap-2"><ShieldCheck size={12} /> Bütünlük Doğrulaması</span>
                                         <span className="opacity-20">|</span>
-                                        <span className="flex items-center gap-2"><Zap size={12} /> High Speed Fusion</span>
+                                        <span className="flex items-center gap-2"><Zap size={12} /> Yüksek Hızlı Senkron</span>
                                     </div>
                                 </motion.div>
                             )}
@@ -191,13 +191,13 @@ export default function DataImportWizard({ onClose, type }: DataImportWizardProp
                                         <div className="bg-white/[0.02] border border-white/5 rounded-[3rem] p-10 space-y-6">
                                             <div className="flex items-center gap-3 mb-4">
                                                 <Settings2 className="text-indigo-400" size={20} />
-                                                <h4 className="text-white text-xs font-black uppercase tracking-widest italic">Fusion Matrix (Field Mapping)</h4>
+                                                <h4 className="text-white text-xs font-black uppercase tracking-widest italic">Aktarım Matrisi (Alan Eşleştirme)</h4>
                                             </div>
                                             <div className="space-y-4 max-h-[400px] overflow-y-auto pr-4 no-scrollbar">
                                                 {headers.map(header => (
                                                     <div key={header} className="group p-4 bg-white/[0.02] hover:bg-white/[0.05] border border-white/5 rounded-2xl flex items-center justify-between transition-all">
                                                         <div className="flex flex-col">
-                                                            <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Excel Column</span>
+                                                            <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Excel Sütunu</span>
                                                             <span className="text-xs font-bold text-white italic">{header}</span>
                                                         </div>
                                                         <ArrowRight size={14} className="text-slate-700 group-hover:text-indigo-400 transition-colors" />
@@ -207,7 +207,7 @@ export default function DataImportWizard({ onClose, type }: DataImportWizardProp
                                                                 onChange={(e) => setMapping({ ...mapping, [header]: e.target.value })}
                                                                 className="w-full bg-slate-900/50 border border-white/10 rounded-xl py-3 px-4 text-[10px] font-black text-indigo-300 uppercase tracking-widest outline-none focus:border-indigo-500 transition-all cursor-pointer"
                                                             >
-                                                                <option value="">-- Ignore --</option>
+                                                                <option value="">-- Yoksay --</option>
                                                                 {systemFields.map(f => (
                                                                     <option key={f.id} value={f.id} className="bg-[#0f111a]">{f.label} {f.required ? '*' : ''}</option>
                                                                 ))}
@@ -222,7 +222,7 @@ export default function DataImportWizard({ onClose, type }: DataImportWizardProp
                                             <div className="bg-white/[0.02] border border-white/5 rounded-[3rem] p-10 h-1/2 overflow-hidden">
                                                 <div className="flex items-center gap-3 mb-6">
                                                     <Search className="text-indigo-400" size={20} />
-                                                    <h4 className="text-white text-xs font-black uppercase tracking-widest italic">Data Inspection Preview</h4>
+                                                    <h4 className="text-white text-xs font-black uppercase tracking-widest italic">Veri Önizleme & Denetim</h4>
                                                 </div>
                                                 <div className="overflow-auto max-h-[300px] rounded-2xl border border-white/5 bg-black/40 no-scrollbar">
                                                     <table className="w-full text-[10px] font-bold text-slate-400 text-left border-collapse">
@@ -249,9 +249,9 @@ export default function DataImportWizard({ onClose, type }: DataImportWizardProp
                                                 className="w-full py-8 bg-white text-black rounded-[2.5rem] font-black text-sm uppercase tracking-[0.3em] shadow-2xl hover:scale-[1.02] active:scale-95 transition-all flex items-center justify-center gap-4 group"
                                             >
                                                 {isImporting ? <RefreshCw className="animate-spin" size={20} /> : <Zap size={20} className="group-hover:text-indigo-600" />}
-                                                INITIATE FUSION PROCESS
+                                                AKTARIM SÜRECİNİ BAŞLAT
                                             </button>
-                                            <button onClick={() => setStep(1)} className="w-full py-6 bg-slate-900/50 text-slate-500 rounded-[2rem] font-black text-[10px] uppercase tracking-widest border border-white/5 hover:text-slate-300 transition-all">ABORT CONNECTION</button>
+                                            <button onClick={() => setStep(1)} className="w-full py-6 bg-slate-900/50 text-slate-500 rounded-[2rem] font-black text-[10px] uppercase tracking-widest border border-white/5 hover:text-slate-300 transition-all">İPTAL ET / GERİ DÖN</button>
                                         </div>
                                     </div>
                                 </motion.div>
@@ -273,18 +273,18 @@ export default function DataImportWizard({ onClose, type }: DataImportWizardProp
                                     </div>
 
                                     <div className="text-center space-y-4">
-                                        <h3 className="text-white text-4xl font-black italic uppercase tracking-tighter italic">Fusion Complete</h3>
-                                        <p className="text-slate-500 text-xs font-black uppercase tracking-[0.4em]">Node Synchronization Report</p>
+                                        <h3 className="text-white text-4xl font-black italic uppercase tracking-tighter italic">Aktarım Tamamlandı</h3>
+                                        <p className="text-slate-500 text-xs font-black uppercase tracking-[0.4em]">Sistem Senkronizasyon Raporu</p>
                                     </div>
 
                                     <div className="flex gap-8">
                                         <div className="bg-white/[0.02] border border-white/5 rounded-3xl p-10 w-48 text-center space-y-2">
                                             <p className="text-4xl font-black text-green-500">{results.success}</p>
-                                            <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Successful Nodes</p>
+                                            <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Başarılı Kayıtlar</p>
                                         </div>
                                         <div className="bg-white/[0.02] border border-white/5 rounded-3xl p-10 w-48 text-center space-y-2">
                                             <p className="text-4xl font-black text-rose-500">{results.failed}</p>
-                                            <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Failed Packets</p>
+                                            <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Hatalı Paketler</p>
                                         </div>
                                     </div>
 
@@ -292,7 +292,7 @@ export default function DataImportWizard({ onClose, type }: DataImportWizardProp
                                         onClick={onClose}
                                         className="py-6 px-16 bg-indigo-600 text-white rounded-[2rem] font-black text-xs uppercase tracking-[0.3em] shadow-xl shadow-indigo-600/20 hover:scale-105 active:scale-95 transition-all"
                                     >
-                                        RETURN TO COMMAND CENTER
+                                        KONTROL MERKEZİNE DÖN
                                     </button>
                                 </motion.div>
                             )}
