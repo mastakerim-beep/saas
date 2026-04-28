@@ -35,12 +35,12 @@ export default function MeasurementsPage() {
     });
 
     const selectedCustomer = useMemo(() => 
-        customers.find(c => c.id === selectedCustomerId), 
+        customers.find((c: any) => c.id === selectedCustomerId), 
     [customers, selectedCustomerId]);
 
     const filteredCustomers = useMemo(() => {
         if (!searchQuery) return [];
-        return customers.filter(c => 
+        return customers.filter((c: any) => 
             c.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
             c.phone?.includes(searchQuery)
         ).slice(0, 5);
@@ -163,7 +163,7 @@ export default function MeasurementsPage() {
                                     initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 10 }}
                                     className="absolute top-full mt-2 w-full bg-white rounded-3xl shadow-2xl border border-gray-50 overflow-hidden z-50 p-2"
                                 >
-                                    {filteredCustomers.map(c => (
+                                    {filteredCustomers.map((c: any) => (
                                         <button 
                                             key={c.id} 
                                             onClick={() => { setSelectedCustomerId(c.id); setSearchQuery(''); }}
