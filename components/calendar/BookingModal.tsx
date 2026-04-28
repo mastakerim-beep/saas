@@ -617,6 +617,16 @@ export default function BookingModal({ initialData, onClose, date, mode: initial
                                                 </div>
                                             </div>
 
+                                            <div className="space-y-3 px-2">
+                                                <label className="text-[9px] font-black text-indigo-400 uppercase tracking-widest ml-1">Randevu Notu / Özel İstekler</label>
+                                                <textarea 
+                                                    value={note}
+                                                    onChange={e => setNote(e.target.value)}
+                                                    placeholder="Müşterinin özel tercihlerini veya randevu detaylarını buraya not edin..."
+                                                    className="w-full bg-white border border-indigo-50 rounded-[2rem] px-8 py-6 text-sm font-bold text-gray-900 outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/5 transition-all shadow-sm min-h-[120px] resize-none placeholder:text-gray-300"
+                                                />
+                                            </div>
+
                                             {/* Package Balance Info */}
                                             {customerPackages.length > 0 && (
                                                 <div className="bg-amber-50 rounded-[2rem] p-6 border border-amber-100 animate-in fade-in slide-in-from-right-4 duration-500">
@@ -763,28 +773,24 @@ export default function BookingModal({ initialData, onClose, date, mode: initial
                                                 </div>
                                             </div>
 
-                                            <div className="space-y-3">
-                                                <label className="text-[9px] font-black text-gray-400 uppercase tracking-widest ml-1">Randevu Notu</label>
-                                                <textarea 
-                                                    value={note}
-                                                    onChange={e => setNote(e.target.value)}
-                                                    placeholder="Randevu notlarınızı veya özel isteklerinizi buraya ekleyebilirsiniz..."
-                                                    className="w-full bg-white border border-gray-100 rounded-2xl px-6 py-5 text-sm font-bold text-gray-900 outline-none focus:border-primary transition-all shadow-inner min-h-[100px] resize-none"
-                                                />
+                                            <div className="pt-10 border-t border-dashed border-gray-100">
+                                                <div className="flex items-center gap-3 mb-6 px-1">
+                                                    <div className="w-8 h-8 bg-indigo-50 rounded-lg flex items-center justify-center text-indigo-600"><Search size={16} /></div>
+                                                    <h3 className="text-[10px] font-black text-indigo-400 uppercase tracking-widest">İnteraktif Konsültasyon (Masaj Odak Noktaları)</h3>
+                                                </div>
+                                                <div className="bg-gray-50/50 rounded-[3rem] p-6 border border-gray-100">
+                                                    <BodyMap selectedRegions={selectedRegions} onToggleRegion={toggleRegion} />
+                                                </div>
                                             </div>
 
                                             <button 
                                                 onClick={addToBasket}
-                                                className="w-full py-5 bg-white hover:bg-primary hover:text-white text-primary rounded-[2rem] text-[10px] font-black uppercase tracking-widest border border-primary/20 shadow-sm hover:shadow-xl hover:shadow-primary/20 transition-all duration-300 flex items-center justify-center gap-3 group"
+                                                className="w-full py-6 mt-10 bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-700 hover:to-indigo-800 text-white rounded-[2rem] text-[11px] font-black uppercase tracking-[0.2em] shadow-xl shadow-indigo-200 hover:shadow-indigo-300 transition-all duration-300 flex items-center justify-center gap-4 group"
                                             >
-                                                <Plus className="w-5 h-5 text-primary group-hover:text-white group-hover:rotate-90 transition-all" /> 
-                                                SEPETE EKLE & DEVAM ET
+                                                <Plus className="w-5 h-5 text-white group-hover:rotate-90 transition-all" /> 
+                                                HİZMETİ SEPETE EKLE & DEVAM ET
                                             </button>
                                         </div>
-                                    </div>
-
-                                    <div className="space-y-6">
-                                        <BodyMap selectedRegions={selectedRegions} onToggleRegion={toggleRegion} />
                                     </div>
                                 </div>
                             )
