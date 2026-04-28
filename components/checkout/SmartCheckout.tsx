@@ -291,8 +291,13 @@ export default function SmartCheckout({ appointment, onClose, initialCustomerId,
     }
 
     return (
-        <div className="fixed inset-0 bg-background/80 backdrop-blur-md z-[900] flex items-center justify-center p-4 md:p-6 font-sans">
-            <motion.div initial={{ y: 50, opacity: 0 }} animate={{ y: 0, opacity: 1 }} className="modal-premium w-full max-w-7xl h-[95vh] md:h-[90vh] flex flex-col overflow-hidden">
+        <div className="fixed inset-0 bg-indigo-950/40 backdrop-blur-xl z-[900] flex items-center justify-center p-4 md:p-6 font-sans">
+            <motion.div 
+                initial={{ y: 100, opacity: 0, scale: 0.95 }} 
+                animate={{ y: 0, opacity: 1, scale: 1 }} 
+                exit={{ y: 100, opacity: 0, scale: 0.95 }}
+                className="modal-premium w-full max-w-7xl h-[95vh] flex flex-col shadow-[0_150px_200px_-50px_rgba(0,0,0,0.4)]"
+            >
                 
                 {/* PIN Modal Overlay */}
                 <AnimatePresence>
@@ -322,21 +327,25 @@ export default function SmartCheckout({ appointment, onClose, initialCustomerId,
                     )}
                 </AnimatePresence>
 
-                <div className="p-8 border-b border-indigo-50 flex justify-between items-center bg-white/80 backdrop-blur-sm">
-                    <div className="flex items-center gap-6">
-                        <div className="w-16 h-16 bg-gradient-to-br from-indigo-600 to-purple-700 rounded-[1.5rem] flex items-center justify-center text-white font-black text-2xl shadow-xl">
+                <div className="p-8 border-b border-indigo-100/50 flex justify-between items-center bg-white/40 backdrop-blur-md sticky top-0 z-20">
+                    <div className="flex items-center gap-8">
+                        <motion.div 
+                            whileHover={{ scale: 1.05, rotate: 5 }}
+                            className="w-20 h-20 bg-gradient-to-br from-indigo-600 to-purple-700 rounded-[2rem] flex items-center justify-center text-white font-black text-3xl shadow-[0_20px_40px_rgba(79,70,229,0.3)]"
+                        >
                             {customer?.name.charAt(0)}
-                        </div>
+                        </motion.div>
                         <div>
-                            <h2 className="text-2xl font-black text-gray-900 tracking-tighter uppercase italic">{customer?.name}</h2>
-                            <div className="flex gap-4 mt-1 text-[10px] font-black text-gray-400 uppercase tracking-widest">
-                                <span>{customer?.phone}</span>
-                                <span className={`px-3 py-1 rounded-full italic ${customer?.segment === 'VIP' ? 'bg-amber-100 text-amber-600' : 'bg-gray-100 text-gray-500'}`}>{customer?.segment} SEGMENT</span>
+                            <span className="text-[10px] font-black text-indigo-500 uppercase tracking-[0.4em] mb-1 block">YENİ TAHSİLAT</span>
+                            <h2 className="text-3xl font-black text-slate-900 tracking-tighter uppercase italic leading-none">{customer?.name}</h2>
+                            <div className="flex gap-4 mt-2.5 text-[9px] font-black text-slate-400 uppercase tracking-widest">
+                                <span className="flex items-center gap-1.5"><Calendar size={12} /> {new Date().toLocaleDateString('tr-TR')}</span>
+                                <span className={`px-4 py-1.5 rounded-full italic ${customer?.segment === 'VIP' ? 'bg-amber-100 text-amber-600 border border-amber-200' : 'bg-slate-100 text-slate-500 border border-slate-200'}`}>{customer?.segment} SEGMENT</span>
                             </div>
                         </div>
                     </div>
-                    <button onClick={onClose} className="p-4 hover:bg-white rounded-[1.2rem] transition border border-gray-100 group bg-gray-50/50">
-                        <X className="w-6 h-6 text-gray-400 group-hover:text-red-500 transition-colors" />
+                    <button onClick={onClose} className="w-14 h-14 flex items-center justify-center hover:bg-rose-50 rounded-2xl transition-all border border-slate-100 group">
+                        <X className="w-6 h-6 text-slate-300 group-hover:text-rose-500 transition-colors" />
                     </button>
                 </div>
 
@@ -462,23 +471,27 @@ export default function SmartCheckout({ appointment, onClose, initialCustomerId,
                                  
                                  <div className="grid grid-cols-1 gap-4">
                                     {methods.map((m, idx) => (
-                                        <div key={idx} className="flex gap-4 items-center">
-                                            <div className="flex-1 bg-gray-50/50 p-4 rounded-[1.5rem] border border-gray-100 shadow-sm flex flex-col gap-3 group focus-within:border-indigo-600 transition-all">
+                                        <div key={idx} className="flex gap-4 items-center animate-[fadeIn_0.3s_ease]">
+                                            <div className="flex-1 tactile-card p-6 border-indigo-100/50 flex flex-col gap-4 group focus-within:border-indigo-600 focus-within:glow-indigo transition-all">
                                                 <div className="flex justify-between items-center w-full">
-                                                    <div className="flex items-center gap-3">
-                                                        <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center text-gray-400 group-hover:bg-indigo-600 group-hover:text-white transition-all shadow-sm">
-                                                            {m.method === 'kredi-karti' ? <CreditCard size={20} /> : m.method === 'havale' ? <Landmark size={20} /> : <Banknote size={20} />}
+                                                    <div className="flex items-center gap-4">
+                                                        <div className="w-12 h-12 bg-indigo-50 rounded-2xl flex items-center justify-center text-indigo-400 group-hover:bg-indigo-600 group-hover:text-white transition-all shadow-inner">
+                                                            {m.method === 'kredi-karti' ? <CreditCard size={24} /> : m.method === 'havale' ? <Landmark size={24} /> : <Banknote size={24} />}
                                                         </div>
-                                                        <span className="text-[10px] font-black uppercase tracking-widest text-gray-500 tracking-wider">
-                                                            {m.method === 'kredi-karti' ? 'KREDİ KARTI' : m.method === 'havale' ? 'HAVALE' : 'NAKİT'}
-                                                        </span>
+                                                        <div>
+                                                            <span className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 block mb-0.5">
+                                                                {m.method === 'kredi-karti' ? 'KREDİ KARTI' : m.method === 'havale' ? 'BANKA TRANSFERİ' : 'NAKİT ÖDEME'}
+                                                            </span>
+                                                            <span className="text-[8px] font-bold text-emerald-500 uppercase">Aktif Kanal</span>
+                                                        </div>
                                                     </div>
-                                                    <div className="flex items-center gap-2">
-                                                        <span className="text-gray-300 font-black text-sm">₺</span>
+                                                    <div className="flex items-center gap-3">
+                                                        <span className="text-slate-300 font-black text-xl leading-none">₺</span>
                                                         <input 
                                                             type="number" value={m.amount || ''} 
                                                             onChange={e => updateMethod(idx, 'amount', Number(e.target.value))}
-                                                            className="bg-transparent text-right font-black text-2xl italic tracking-tighter text-gray-900 w-24 outline-none"
+                                                            className="bg-transparent text-right font-black text-4xl italic tracking-tighter text-slate-900 w-36 outline-none"
+                                                            autoFocus={idx > 0}
                                                         />
                                                     </div>
                                                 </div>
@@ -754,25 +767,29 @@ export default function SmartCheckout({ appointment, onClose, initialCustomerId,
                                                 className={`w-full md:w-32 bg-white/5 border-2 rounded-[1.5rem] pl-8 pr-4 py-4 text-xs font-black text-white outline-none transition-all placeholder:text-white/20 ${[100,250,500].includes(tip) ? 'border-white/10' : tip > 0 ? 'border-amber-400 shadow-[0_10px_30px_rgba(251,191,36,0.3)]' : 'border-white/10 focus:border-white/30'}`}
                                             />
                                         </div>
-                                    </div>
                                 </div>
                             </div>
+                        </div>
                         </div>
                     </div>
 
                     {/* Right Panel - Premium Receipt */}
-                    <div className="w-full lg:w-[450px] bg-[#FDFDFD] flex flex-col border-l border-gray-100 p-10 relative">
+                    <div className="w-full lg:w-[480px] receipt-gradient flex flex-col border-l border-indigo-100/50 p-10 relative">
                         <div className="flex-1 overflow-y-auto no-scrollbar">
                             <div className="text-center mb-12">
-                                <Sparkles className="mx-auto w-10 h-10 text-indigo-600 mb-4" />
-                                <h2 className="text-4xl font-black text-gray-900 tracking-tighter italic uppercase mb-1 leading-none">AURA SPA</h2>
-                                <p className="text-[10px] font-black text-gray-400 uppercase tracking-[0.4em]">Tahsilat Fişi</p>
+                                <motion.div animate={{ scale: [1, 1.1, 1] }} transition={{ duration: 4, repeat: Infinity }} className="mx-auto w-12 h-12 bg-indigo-600 rounded-2xl flex items-center justify-center text-white shadow-xl shadow-indigo-200 mb-6">
+                                    <Sparkles size={24} />
+                                </motion.div>
+                                <h2 className="text-5xl font-black text-slate-900 tracking-tighter italic uppercase mb-1 leading-none">AURA ERP</h2>
+                                <p className="text-[9px] font-black text-indigo-400 uppercase tracking-[0.5em] mt-2">Empire Command Billing</p>
                             </div>
 
-                            <div className="bg-white rounded-[3rem] shadow-2xl shadow-indigo-100/50 border border-gray-50 p-10 space-y-8 relative overflow-hidden">
-                                <div className="space-y-1">
-                                    <div className="flex justify-between font-black text-gray-400 text-[10px] uppercase tracking-widest"><span>Açıklama</span><span>Tutar</span></div>
-                                    <div className="h-px bg-gray-50 w-full" />
+                            <div className="bg-white rounded-[3.5rem] shadow-2xl shadow-indigo-200/40 border border-indigo-50/50 p-12 space-y-10 relative overflow-hidden group">
+                                <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-50/20 rounded-full -translate-y-1/2 translate-x-1/2 group-hover:scale-110 transition-transform duration-700" />
+                                
+                                <div className="space-y-2">
+                                    <div className="flex justify-between font-black text-slate-400 text-[9px] uppercase tracking-[0.3em]"><span>Hizmet / Ürün</span><span>Birim Fiyat</span></div>
+                                    <div className="h-px bg-slate-100 w-full" />
                                 </div>
                                 
                                 <div className="space-y-4">
