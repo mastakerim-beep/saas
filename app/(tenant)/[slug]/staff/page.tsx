@@ -1,18 +1,20 @@
 "use client";
 
-import { useState, useMemo } from 'react';
-import { useStore, Staff, CommissionRule } from '@/lib/store';
+import React, { useState, useMemo } from 'react';
+import { useStore, Staff, CommissionRule, AppUser, Branch } from '@/lib/store';
 import { 
     Users, TrendingUp, Award, ChevronRight, Settings2, 
     Plus, Trash2, Percent, Banknote, UserCog, Calendar, 
     ShieldCheck, X, Save, RefreshCcw, AlertCircle,
     BarChart3, Star, Clock, Target, ZapOff, CheckCircle2,
     PhoneCall, Mail, Building2, ChevronDown, Edit3, ToggleLeft, ToggleRight,
-    Filter, Zap
+    Filter, Zap, Fingerprint
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, PieChart, Pie } from 'recharts';
 import ExportDropdown from '@/components/ui/ExportDropdown';
+import DataImportWizard from '@/components/ui/DataImportWizard';
+import { Appointment, Payment, Service } from '@/lib/store';
 
 // ─── HELPERS ──────────────────────────────────────────────────────────────────
 const DAYS = ['Pazar', 'Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma', 'Cumartesi'];
@@ -33,29 +35,29 @@ function getAvatarColor(name: string) {
 }
 
 // ─── STAFF PROFILE SLIDE-OVER ─────────────────────────────────────────────────
-function StaffProfilePanel({ staff, onClose, onEdit }: { staff: any, onClose: () => void, onEdit: () => void }) {
+function StaffProfilePanel({ staff, onClose, onEdit }: { staff: Staff, onClose: () => void, onEdit: () => void }) {
     const { appointments, payments, services, updateStaff } = useStore();
     
-    const staffAppts = appointments.filter(a => a.staffId === staff.id);
-    const completedAppts = staffAppts.filter(a => a.status === 'completed');
-    const todayAppts = staffAppts.filter(a => a.date === TODAY_STR);
-    const noShowCount = staffAppts.filter(a => a.status === 'no-show').length;
+    const staffAppts = appointments.filter((a: Appointment) => a.staffId === staff.id);
+    const completedAppts = staffAppts.filter((a: Appointment) => a.status === 'completed');
+    const todayAppts = staffAppts.filter((a: Appointment) => a.date === TODAY_STR);
+    const noShowCount = staffAppts.filter((a: Appointment) => a.status === 'no-show').length;
     const noShowRate = staffAppts.length > 0 ? ((noShowCount / staffAppts.length) * 100).toFixed(0) : '0';
-    const totalRevenue = completedAppts.reduce((s, a) => s + (a.price || 0), 0);
+    const totalRevenue = completedAppts.reduce((s: number, a: Appointment) => s + (a.price || 0), 0);
 
     // Loyal customers: unique customers who booked this staff > 1 time
     const customerCounts: Record<string, number> = {};
-    staffAppts.forEach(a => { 
+    staffAppts.forEach((a: Appointment) => { 
         if (a.customerId) {
             customerCounts[a.customerId] = (customerCounts[a.customerId] || 0) + 1; 
         }
     });
-    const loyalCustomers = Object.values(customerCounts).filter((c: any) => c > 1).length;
+    const loyalCustomers = Object.values(customerCounts).filter((c: number) => c > 1).length;
     
     // Weekly chart data
     const weeklyData = DAYS.map((day, i) => ({
         day: day.substring(0, 3),
-        count: appointments.filter(a => a.staffId === staff.id && new Date(a.date).getDay() === i).length,
+        count: appointments.filter((a: Appointment) => a.staffId === staff.id && new Date(a.date).getDay() === i).length,
     }));
 
     return (
@@ -156,7 +158,11 @@ function StaffProfilePanel({ staff, onClose, onEdit }: { staff: any, onClose: ()
                                         <Pie
                                             data={(() => {
                                                 const counts: Record<string, number> = {};
-                                                completedAppts.forEach(a => counts[a.service] = (counts[a.service] || 0) + 1);
+                                                completedAppts.forEach((a: Appointment) => {
+                                                    if (a.service) {
+                                                        counts[a.service] = (counts[a.service] || 0) + 1;
+                                                    }
+                                                });
                                                 return Object.entries(counts).map(([name, value]) => ({ name, value }));
                                             })()}
                                             dataKey="value"
@@ -167,7 +173,7 @@ function StaffProfilePanel({ staff, onClose, onEdit }: { staff: any, onClose: ()
                                             outerRadius={45}
                                             paddingAngle={5}
                                         >
-                                            {completedAppts.map((_, i) => (
+                                            {completedAppts.map((_: Appointment, i: number) => (
                                                 <Cell key={i} fill={['#6366f1', '#10b981', '#f59e0b', '#ef4444'][i % 4]} />
                                             ))}
                                         </Pie>
@@ -264,17 +270,17 @@ function StaffProfilePanel({ staff, onClose, onEdit }: { staff: any, onClose: ()
 // ─── STAFF EDIT MODAL ─────────────────────────────────────────────────────────
 function StaffEditModal({ staff, onClose }: { staff?: Staff, onClose: () => void }) {
     const { addStaff, updateStaff, updateStaffPermissions, allUsers, branches, can, provisionStaffUser } = useStore();
+    const [step, setStep] = useState(1);
     const [formData, setFormData] = useState<Partial<Staff>>(staff || {
         name: '', role: 'Uzman', status: 'active',
         weeklyOffDay: 1, staffType: 'Terapist',
         isVisibleOnCalendar: true, sortOrder: 0
     });
 
-    const linkedUser = allUsers.find(u => u.staffId === staff?.id || (u.name === staff?.name && !u.staffId));
-    
-    // Varsayılan yetkiler (Yeni kullanıcılar için Resepsiyonist baz alınır)
+    const linkedUser = allUsers.find((u: AppUser) => u.staffId === staff?.id || (u.name === staff?.name && !u.staffId));
     const RECEPTIONIST_PERMS = ['view_cash', 'move_appt', 'manage_customers'];
     const [perms, setPerms] = useState<string[]>(linkedUser?.permissions || RECEPTIONIST_PERMS);
+    const [authData, setAuthData] = useState({ email: '', password: '' });
 
     const PERM_GROUPS = [
         {
@@ -292,225 +298,205 @@ function StaffEditModal({ staff, onClose }: { staff?: Staff, onClose: () => void
                 { id: 'delete_appt', label: 'Randevu Silme ⚠️' },
                 { id: 'move_appt', label: 'Randevu Taşıma' },
                 { id: 'manage_customers', label: 'Müşteri Kayıt Düzenle' },
-                { id: 'export_data', label: 'Verileri Dışa Aktar (Excel)' },
             ]
         },
         {
-            title: 'Sistem & Stok', color: 'rose',
+            title: 'Sistem Control', color: 'rose',
             perms: [
                 { id: 'manage_inventory', label: 'Stok / Ürün Yönetimi' },
-                { id: 'manage_staff', label: 'Takvime Personel Ekle/Sil' },
-                { id: 'manage_users', label: 'Sistem Girişlerini Yönet ⚠️' },
-                { id: 'manage_business_settings', label: 'İşletme Ayarlarını Yönet ⚠️' },
-                { id: 'view_audit_logs', label: 'Güvenlik Loglarını Gör' },
+                { id: 'manage_staff', label: 'Ekip Yönetimi' },
+                { id: 'manage_users', label: 'Erişim Yetkileri ⚠️' },
+                { id: 'view_audit_logs', label: 'Güvenlik Logları' },
             ]
         }
     ];
 
     const applyTemplate = (role: 'manager' | 'receptionist' | 'accountant') => {
         const templates = {
-            manager: ['view_cash', 'view_historical_finance', 'manage_expenses', 'edit_prices', 'delete_appt', 'move_appt', 'manage_customers', 'export_data', 'manage_inventory', 'manage_staff', 'manage_users', 'manage_business_settings', 'view_audit_logs'],
+            manager: ['view_cash', 'view_historical_finance', 'manage_expenses', 'edit_prices', 'delete_appt', 'move_appt', 'manage_customers', 'manage_inventory', 'manage_staff', 'manage_users', 'view_audit_logs'],
             receptionist: ['view_cash', 'move_appt', 'manage_customers', 'manage_staff'],
-            accountant: ['view_cash', 'view_historical_finance', 'manage_expenses', 'export_data']
+            accountant: ['view_cash', 'view_historical_finance', 'manage_expenses']
         };
         setPerms(templates[role]);
     };
 
-    const togglePerm = (id: string) =>
-        setPerms(prev => prev.includes(id) ? prev.filter(p => p !== id) : [...prev, id]);
-
-    const handleSave = () => {
+    const handleSave = async () => {
         if (staff) {
             updateStaff(staff.id, formData);
             if (linkedUser) updateStaffPermissions(linkedUser.id, perms);
         } else {
-            addStaff(formData as Omit<Staff, 'id' | 'businessId' | 'branchId'>);
+            const newStaff = await addStaff(formData as Omit<Staff, 'id' | 'businessId' | 'branchId'>);
+            if (authData.email && authData.password && newStaff) {
+                await provisionStaffUser({
+                    email: authData.email,
+                    password: authData.password,
+                    name: formData.name!,
+                    staffId: newStaff.id,
+                    permissions: perms
+                });
+            }
         }
         onClose();
     };
 
-    const field = (label: string, el: React.ReactNode) => (
-        <div className="space-y-2">
-            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">{label}</label>
-            {el}
-        </div>
-    );
+    const steps = [
+        { id: 1, label: 'Kimlik', icon: <UserCog size={14} /> },
+        { id: 2, label: 'Operasyon', icon: <Calendar size={14} /> },
+        { id: 3, label: 'Erişim', icon: <ShieldCheck size={14} /> }
+    ];
 
     return (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-md z-[300] flex items-center justify-center p-4 animate-[fadeIn_0.2s_ease]">
+        <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-xl z-[300] flex items-center justify-center p-4">
             <motion.div
                 initial={{ scale: 0.95, opacity: 0, y: 20 }}
                 animate={{ scale: 1, opacity: 1, y: 0 }}
-                exit={{ scale: 0.95, opacity: 0, y: 20 }}
-                className="bg-white rounded-[3rem] shadow-2xl w-full max-w-2xl overflow-hidden flex flex-col max-h-[90vh]"
+                className="bg-[#0f111a] border border-white/5 rounded-[3rem] w-full max-w-2xl overflow-hidden shadow-[0_32px_64px_-12px_rgba(0,0,0,0.8)] relative"
             >
-                {/* Header */}
-                <div className="p-8 border-b border-gray-50 flex justify-between items-center bg-gray-50/30">
-                    <div>
-                        <h2 className="text-2xl font-black text-gray-900 leading-none mb-1">
-                            {staff ? 'Personel Düzenle' : 'Yeni Personel'}
-                        </h2>
-                        <p className="text-[10px] text-gray-400 font-black uppercase tracking-widest">Profil, takvim ayarları ve sistem izinleri</p>
-                    </div>
-                    <button onClick={onClose} className="p-2.5 hover:bg-gray-100 rounded-2xl transition text-gray-400"><X /></button>
-                </div>
-
-                <div className="p-8 overflow-y-auto flex-1 space-y-8">
-                    {/* Profile */}
-                    <div>
-                        <p className="text-[10px] font-black text-indigo-500 uppercase tracking-widest mb-4">Temel Bilgiler</p>
-                        <div className="grid grid-cols-2 gap-4">
-                            {field('Ad Soyad',
-                                <input value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} placeholder="Ayşe Kaya"
-                                    className="w-full bg-gray-50 border-2 border-transparent focus:border-indigo-500 rounded-2xl px-5 py-4 font-bold text-sm outline-none transition-all" />
-                            )}
-                            {field('Unvan / Rol',
-                                <input value={formData.role} onChange={e => setFormData({...formData, role: e.target.value})} placeholder="Masaj Uzmanı"
-                                    className="w-full bg-gray-50 border-2 border-transparent focus:border-indigo-500 rounded-2xl px-5 py-4 font-bold text-sm outline-none transition-all" />
-                            )}
-                            {field('Personel Tipi',
-                                <select value={formData.staffType} onChange={e => setFormData({...formData, staffType: e.target.value as any})}
-                                    className="w-full bg-gray-50 border-2 border-transparent focus:border-indigo-500 rounded-2xl px-5 py-4 font-bold text-sm outline-none appearance-none">
-                                    <option value="Terapist">Terapist</option>
-                                    <option value="Satış Tem.">Satış Tem.</option>
-                                    <option value="Diğer">Diğer</option>
-                                </select>
-                            )}
-                            {field('İzin Günü',
-                                <select value={formData.weeklyOffDay} onChange={e => setFormData({...formData, weeklyOffDay: Number(e.target.value)})}
-                                    className="w-full bg-gray-50 border-2 border-transparent focus:border-indigo-500 rounded-2xl px-5 py-4 font-bold text-sm outline-none appearance-none">
-                                    {DAYS.map((d, i) => <option key={i} value={i}>{d}</option>)}
-                                </select>
-                            )}
-                            {field('Şube Ataması',
-                                <select value={(formData as any).branchId || ''} onChange={e => setFormData({...formData, branchId: e.target.value})}
-                                    className="w-full bg-gray-50 border-2 border-transparent focus:border-indigo-500 rounded-2xl px-5 py-4 font-bold text-sm outline-none appearance-none">
-                                    <option value="">— Şube Seçin —</option>
-                                    {branches.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
-                                </select>
-                            )}
-                            {field('Durum',
-                                <select value={formData.status} onChange={e => setFormData({...formData, status: e.target.value as any})}
-                                    className="w-full bg-gray-50 border-2 border-transparent focus:border-indigo-500 rounded-2xl px-5 py-4 font-bold text-sm outline-none appearance-none">
-                                    <option value="Aktif">Aktif</option>
-                                    <option value="Ayrıldı">Ayrıldı / Pasif</option>
-                                    <option value="İzinli">Geçici İzinli</option>
-                                </select>
-                            )}
-                        </div>
-                        
-                        <div className="grid grid-cols-2 gap-4 mt-4">
-                            {/* Calendar visibility toggle */}
-                            <div className="flex items-center justify-between p-4 bg-gray-50 rounded-2xl col-span-2">
-                                <div className="flex items-center gap-3">
-                                    <Calendar className="w-5 h-5 text-gray-400" />
-                                    <div>
-                                        <p className="text-sm font-black text-gray-700">Takvimde Göster</p>
-                                        <p className="text-[10px] text-gray-400 font-bold">Bu personel takvimde görünür olsun mu?</p>
-                                    </div>
-                                </div>
-                                <button
-                                    onClick={() => setFormData({...formData, isVisibleOnCalendar: !formData.isVisibleOnCalendar})}
-                                    className={`w-14 h-7 rounded-full transition-all relative flex-shrink-0 ${formData.isVisibleOnCalendar ? 'bg-indigo-600' : 'bg-gray-200'}`}
-                                >
-                                    <div className={`absolute top-1 w-5 h-5 bg-white rounded-full shadow transition-all ${formData.isVisibleOnCalendar ? 'left-8' : 'left-1'}`} />
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* Permissions & Provisioning */}
-                    <div>
-                        {can('manage_users') && (
-                            <div className="flex items-center justify-between mb-4">
-                                <p className="text-[10px] font-black text-rose-500 uppercase tracking-widest">Sistem Erişimi & İzinler</p>
-                                <div className="flex items-center gap-2">
-                                    <div className="flex bg-gray-100 rounded-full p-1 mr-4">
-                                        <button onClick={() => applyTemplate('manager')} className="text-[8px] font-black px-3 py-1 hover:bg-white rounded-full transition-all">MÜDÜR</button>
-                                        <button onClick={() => applyTemplate('receptionist')} className="text-[8px] font-black px-3 py-1 hover:bg-white rounded-full transition-all">RESEPSİYON</button>
-                                        <button onClick={() => applyTemplate('accountant')} className="text-[8px] font-black px-3 py-1 hover:bg-white rounded-full transition-all">MUHASEBE</button>
-                                    </div>
-                                    <span className="text-[9px] font-black bg-gray-100 text-gray-400 px-3 py-1 rounded-full uppercase tracking-widest">
-                                        {(useStore().allUsers.length)} / {(useStore().currentBusiness?.maxUsers || 5)} Koltuk Dolu
-                                    </span>
-                                </div>
-                            </div>
-                        )}
-
-                        {!linkedUser && can('manage_users') && (
-                            <div className="bg-indigo-50/50 border-2 border-dashed border-indigo-100 rounded-[2rem] p-8 text-center space-y-4 mb-8">
-                                <div className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center mx-auto shadow-sm">
-                                    <ShieldCheck className="w-6 h-6 text-indigo-500" />
-                                </div>
-                                <div>
-                                    <p className="text-sm font-black text-gray-900 leading-tight">Sistem Girişi Tanımla</p>
-                                    <p className="text-xs text-gray-500 font-bold mt-1">Aşağıdaki yetkilerle bir kullanıcı oluşturulacaktır.</p>
-                                </div>
-                                <div className="grid grid-cols-2 gap-3 max-w-sm mx-auto pt-2">
-                                    <input 
-                                        type="email" 
-                                        id="provision_email"
-                                        placeholder="E-posta Adresi" 
-                                        className="w-full bg-white border-2 border-transparent focus:border-indigo-500 rounded-xl px-4 py-3 font-bold text-xs outline-none transition-all"
-                                    />
-                                    <input 
-                                        type="password" 
-                                        id="provision_password"
-                                        placeholder="Şifre Belirleyin" 
-                                        className="w-full bg-white border-2 border-transparent focus:border-indigo-500 rounded-xl px-4 py-3 font-bold text-xs outline-none transition-all"
-                                    />
-                                    <button 
-                                        onClick={async () => {
-                                            const email = (document.getElementById('provision_email') as HTMLInputElement).value;
-                                            const password = (document.getElementById('provision_password') as HTMLInputElement).value;
-                                            if (!email || !password) return alert('Lütfen email ve şifre girin.');
-                                            
-                                            const res = await provisionStaffUser({
-                                                email, password, name: formData.name!, staffId: staff!.id, permissions: perms
-                                            });
-                                            if (res.error) alert(res.error);
-                                            else {
-                                                alert('Başarıyla oluşturuldu!');
-                                                onClose();
-                                            }
-                                        }}
-                                        className="col-span-2 bg-indigo-600 text-white py-3 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-200"
-                                    >
-                                        GİRİŞ YETKİSİ OLUŞTUR (1 KOLTUK)
-                                    </button>
-                                </div>
-                            </div>
-                        )}
-
-                        {/* Always show permission checkboxes */}
-                        <div className="grid grid-cols-3 gap-4">
-                            {PERM_GROUPS.map(group => (
-                                <div key={group.title} className="space-y-2">
-                                    <p className={`text-[9px] font-black uppercase tracking-widest text-${group.color}-500 px-1`}>{group.title}</p>
-                                    {group.perms.map(opt => (
-                                        <label key={opt.id} className="flex items-center gap-2.5 p-3 bg-gray-50 rounded-xl cursor-pointer hover:bg-indigo-50 group transition-colors">
-                                            <div className={`w-5 h-5 rounded-lg border-2 flex items-center justify-center flex-shrink-0 transition-all ${
-                                                perms.includes(opt.id) 
-                                                    ? 'bg-indigo-600 border-indigo-600' 
-                                                    : 'border-gray-200 group-hover:border-indigo-300'
+                <div className="p-12">
+                    {/* Header with Steps */}
+                    <div className="flex justify-between items-start mb-12">
+                        <div className="space-y-4">
+                            <div className="flex items-center gap-2">
+                                {steps.map((s: { id: number, label: string, icon: React.ReactNode }, idx: number) => (
+                                    <React.Fragment key={s.id}>
+                                        <div className={`flex items-center gap-2 transition-all duration-500`}>
+                                            <div className={`w-8 h-8 rounded-full flex items-center justify-center text-[10px] font-black border-2 ${
+                                                step >= s.id ? 'bg-indigo-600 border-indigo-400 text-white shadow-[0_0_15px_rgba(79,70,229,0.5)]' : 'bg-slate-900 border-slate-800 text-slate-500'
                                             }`}>
-                                                {perms.includes(opt.id) && <CheckCircle2 className="w-3 h-3 text-white" />}
+                                                {step > s.id ? <CheckCircle2 size={12} strokeWidth={4} /> : s.icon}
                                             </div>
-                                            <input type="checkbox" checked={perms.includes(opt.id)} onChange={() => togglePerm(opt.id)} className="sr-only" />
-                                            <span className="text-[10px] font-black text-gray-600 group-hover:text-indigo-600 leading-tight">{opt.label}</span>
-                                        </label>
-                                    ))}
-                                </div>
-                            ))}
+                                            <span className={`text-[10px] font-black uppercase tracking-widest hidden md:block ${step >= s.id ? 'text-white' : 'text-slate-600'}`}>{s.label}</span>
+                                        </div>
+                                        {idx < steps.length - 1 && (
+                                            <div className={`h-[2px] w-8 rounded-full transition-all duration-500 ${step > s.id ? 'bg-indigo-600' : 'bg-slate-800'}`} />
+                                        )}
+                                    </React.Fragment>
+                                ))}
+                            </div>
+                            <div>
+                                <h2 className="text-white text-3xl font-black italic uppercase tracking-tighter leading-none">Node Deployment</h2>
+                                <p className="text-[10px] font-bold text-indigo-400 uppercase tracking-[0.3em] mt-3">Auth Matrix Phase {step}</p>
+                            </div>
                         </div>
+                        <button onClick={onClose} className="w-12 h-12 bg-white/5 hover:bg-white/10 rounded-2xl flex items-center justify-center text-slate-400 transition-all border border-white/5 group">
+                            <X size={20} className="group-hover:rotate-90 transition-transform duration-300" />
+                        </button>
                     </div>
-                </div>
 
-                <div className="p-8 border-t border-gray-50 bg-gray-50/30 flex gap-4">
-                    <button onClick={onClose} className="px-8 py-5 rounded-3xl font-black text-sm border-2 border-gray-100 text-gray-400 hover:bg-gray-50 transition-all">İptal</button>
-                    <button onClick={handleSave} className="flex-1 bg-primary text-white py-5 rounded-3xl font-black text-sm shadow-xl shadow-primary/20 hover:bg-primary/90 transition-all flex items-center justify-center gap-3">
-                        <Save className="w-5 h-5 text-white/80" /> {staff ? 'DEĞİŞİKLİKLERİ KAYDET' : 'PERSONEL OLUŞTUR'}
-                    </button>
+                    <div className="min-h-[400px]">
+                        <AnimatePresence mode="wait">
+                            {step === 1 && (
+                                <motion.div key="st1" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-6">
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div className="space-y-2">
+                                            <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Ad Soyad</label>
+                                            <input value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} className="w-full bg-white/5 border border-white/10 rounded-2xl py-4 px-6 text-white font-bold outline-none focus:border-indigo-500 transition-all" />
+                                        </div>
+                                        <div className="space-y-2">
+                                            <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Unvan</label>
+                                            <input value={formData.role} onChange={e => setFormData({...formData, role: e.target.value})} className="w-full bg-white/5 border border-white/10 rounded-2xl py-4 px-6 text-white font-bold outline-none focus:border-indigo-500 transition-all" />
+                                        </div>
+                                        <div className="space-y-2">
+                                            <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Personel Tipi</label>
+                                            <select value={formData.staffType} onChange={e => setFormData({...formData, staffType: e.target.value as any})} className="w-full bg-white/5 border border-white/10 rounded-2xl py-4 px-6 text-white font-bold outline-none appearance-none cursor-pointer">
+                                                <option value="Terapist" className="bg-[#0f111a]">Terapist</option>
+                                                <option value="Satış Tem." className="bg-[#0f111a]">Satış Tem.</option>
+                                                <option value="Diğer" className="bg-[#0f111a]">Diğer</option>
+                                            </select>
+                                        </div>
+                                        <div className="space-y-2">
+                                            <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">İzin Günü</label>
+                                            <select value={formData.weeklyOffDay} onChange={e => setFormData({...formData, weeklyOffDay: Number(e.target.value)})} className="w-full bg-white/5 border border-white/10 rounded-2xl py-4 px-6 text-white font-bold outline-none appearance-none cursor-pointer">
+                                                {DAYS.map((d, i) => <option key={i} value={i} className="bg-[#0f111a]">{d}</option>)}
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <button onClick={() => setStep(2)} className="w-full py-5 bg-white text-black rounded-[1.8rem] font-black text-[12px] uppercase tracking-[0.2em] shadow-xl hover:bg-slate-100 transition-all mt-8">NEXT PHASE: OPERATIONAL PARAMETERS</button>
+                                </motion.div>
+                            )}
+
+                            {step === 2 && (
+                                <motion.div key="st2" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-6">
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div className="space-y-2 col-span-2">
+                                            <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Şube Ataması</label>
+                                            <select value={(formData as any).branchId || ''} onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setFormData({...formData, branchId: e.target.value})} className="w-full bg-white/5 border border-white/10 rounded-2xl py-4 px-6 text-white font-bold outline-none appearance-none cursor-pointer">
+                                                <option value="" className="bg-[#0f111a]">— Şube Seçin —</option>
+                                                {branches.map((b: Branch) => <option key={b.id} value={b.id} className="bg-[#0f111a]">{b.name}</option>)}
+                                            </select>
+                                        </div>
+                                        <div className="flex items-center justify-between p-6 bg-white/5 border border-white/10 rounded-2xl col-span-2">
+                                            <div className="flex items-center gap-4">
+                                                <div className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all ${formData.isVisibleOnCalendar ? 'bg-indigo-600/20 text-indigo-400' : 'bg-slate-800 text-slate-600'}`}>
+                                                    <Calendar size={20} />
+                                                </div>
+                                                <div>
+                                                    <p className="text-[11px] font-black text-white uppercase tracking-wider">Takvim Görünürlüğü</p>
+                                                    <p className="text-[9px] text-slate-500 font-bold uppercase tracking-widest mt-0.5">Sovereign Booking Pool Access</p>
+                                                </div>
+                                            </div>
+                                            <button onClick={() => setFormData({...formData, isVisibleOnCalendar: !formData.isVisibleOnCalendar})} className={`w-14 h-7 rounded-full transition-all relative ${formData.isVisibleOnCalendar ? 'bg-indigo-600' : 'bg-slate-800'}`}>
+                                                <div className={`absolute top-1 w-5 h-5 bg-white rounded-full shadow transition-all ${formData.isVisibleOnCalendar ? 'left-8' : 'left-1'}`} />
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <div className="flex gap-4 mt-8">
+                                        <button onClick={() => setStep(1)} className="flex-1 py-5 bg-slate-900 text-slate-400 rounded-3xl font-black text-[11px] uppercase tracking-widest border border-slate-800 transition-all">BACK</button>
+                                        <button onClick={() => setStep(3)} className="flex-[2] py-5 bg-indigo-600 text-white rounded-3xl font-black text-[11px] uppercase tracking-widest shadow-xl shadow-indigo-600/30 hover:bg-indigo-500 transition-all">NEXT: SECURITY MATRIX</button>
+                                    </div>
+                                </motion.div>
+                            )}
+
+                            {step === 3 && (
+                                <motion.div key="st3" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-6">
+                                    {!linkedUser && (
+                                        <div className="bg-indigo-600/10 border border-indigo-500/20 p-8 rounded-[2.5rem] space-y-6 group">
+                                            <p className="text-[10px] font-black text-indigo-400 uppercase tracking-[0.2em] flex items-center gap-3">
+                                                <Fingerprint size={14} /> NEW AUTHENTICATION NODE
+                                            </p>
+                                            <div className="grid grid-cols-2 gap-4">
+                                                <input value={authData.email} onChange={e => setAuthData({...authData, email: e.target.value})} placeholder="Node E-mail" className="w-full bg-black/40 border border-white/5 rounded-2xl py-4 px-6 text-xs font-bold text-white outline-none focus:border-indigo-500 transition-all" />
+                                                <input type="password" value={authData.password} onChange={e => setAuthData({...authData, password: e.target.value})} placeholder="Access Key" className="w-full bg-black/40 border border-white/5 rounded-2xl py-4 px-6 text-xs font-bold text-white outline-none focus:border-indigo-500 transition-all" />
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    <div className="space-y-4">
+                                        <div className="flex justify-between items-center bg-white/5 p-2 rounded-full pl-6">
+                                            <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Permission Templates</p>
+                                            <div className="flex gap-2">
+                                                {(['manager', 'receptionist', 'accountant'] as const).map((r) => (
+                                                    <button key={r} onClick={() => applyTemplate(r)} className="text-[8px] font-black px-4 py-2 bg-indigo-600/10 text-indigo-400 hover:bg-indigo-600/20 rounded-full transition-all uppercase tracking-widest">{r}</button>
+                                                ))}
+                                            </div>
+                                        </div>
+
+                                        <div className="grid grid-cols-3 gap-3 max-h-[250px] overflow-y-auto pr-2 no-scrollbar">
+                                            {PERM_GROUPS.map(group => (
+                                                <div key={group.title} className="space-y-2">
+                                                    <p className="text-[8px] font-black text-slate-600 uppercase tracking-widest px-2">{group.title}</p>
+                                                    {group.perms.map(opt => (
+                                                        <label key={opt.id} className={`flex items-center gap-2 p-3 rounded-xl border transition-all cursor-pointer ${perms.includes(opt.id) ? 'bg-indigo-600/10 border-indigo-500/30 text-white' : 'bg-white/[0.02] border-white/5 text-slate-500 hover:bg-white/5'}`}>
+                                                            <div className={`w-4 h-4 rounded-md flex items-center justify-center border-2 transition-all ${perms.includes(opt.id) ? 'bg-indigo-600 border-indigo-400' : 'bg-slate-900 border-slate-800'}`}>
+                                                                {perms.includes(opt.id) && <CheckCircle2 size={10} strokeWidth={4} />}
+                                                            </div>
+                                                            <input type="checkbox" className="sr-only" checked={perms.includes(opt.id)} onChange={() => setPerms(prev => prev.includes(opt.id) ? prev.filter(p => p !== opt.id) : [...prev, opt.id])} />
+                                                            <span className="text-[9px] font-black leading-tight">{opt.label}</span>
+                                                        </label>
+                                                    ))}
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+
+                                    <div className="flex gap-4 mt-8">
+                                        <button onClick={() => setStep(2)} className="flex-1 py-6 bg-slate-900 text-slate-400 rounded-3xl font-black text-[11px] uppercase tracking-widest border border-slate-800 transition-all">BACK</button>
+                                        <button onClick={handleSave} className="flex-[2] py-6 bg-white text-black rounded-[2rem] font-black text-[12px] uppercase tracking-[0.2em] shadow-xl hover:bg-slate-100 transition-all">DEPLOY & FINALIZE ✓</button>
+                                    </div>
+                                </motion.div>
+                            )}
+                        </AnimatePresence>
+                    </div>
                 </div>
             </motion.div>
         </div>
@@ -550,18 +536,18 @@ function CommissionRuleForm() {
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-5 relative z-10">
                     <div className="space-y-2">
                         <label className="text-[10px] font-black uppercase text-indigo-200 tracking-widest">Personel Seçimi</label>
-                        <select value={staffId} onChange={e => setStaffId(e.target.value)}
+                        <select value={staffId} onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setStaffId(e.target.value)}
                             className="w-full bg-white/10 border-2 border-white/20 rounded-2xl px-5 py-4 text-sm font-bold text-white appearance-none focus:bg-white/20 focus:outline-none transition-all">
                             <option value="" className="text-black">— Tüm Personel —</option>
-                            {staffMembers.map(s => <option key={s.id} value={s.id} className="text-black">{s.name}</option>)}
+                            {staffMembers.map((s: Staff) => <option key={s.id} value={s.id} className="text-black">{s.name}</option>)}
                         </select>
                     </div>
                     <div className="space-y-2">
                         <label className="text-[10px] font-black uppercase text-indigo-200 tracking-widest">Hizmet Kapsamı</label>
-                        <select value={serviceName} onChange={e => setServiceName(e.target.value)}
+                        <select value={serviceName} onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setServiceName(e.target.value)}
                             className="w-full bg-white/10 border-2 border-white/20 rounded-2xl px-5 py-4 text-sm font-bold text-white appearance-none focus:bg-white/20 focus:outline-none transition-all">
                             <option value="" className="text-black">— Tüm Hizmetler —</option>
-                            {services.map(s => <option key={s.id} value={s.name} className="text-black">{s.name}</option>)}
+                            {services.map((s: Service) => <option key={s.id} value={s.name} className="text-black">{s.name}</option>)}
                         </select>
                     </div>
                     <div className="space-y-2">
@@ -602,10 +588,10 @@ function CommissionRuleForm() {
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-50">
-                            {commissionRules.map(rule => (
+                            {commissionRules.map((rule: CommissionRule) => (
                                 <tr key={rule.id} className="hover:bg-indigo-50/20 transition-colors group">
                                     <td className="p-8">
-                                        <p className="font-black text-gray-900">{rule.staffId ? staffMembers.find(s => s.id === rule.staffId)?.name || 'Bilinmiyor' : 'Tüm Ekip'}</p>
+                                        <p className="font-black text-gray-900">{rule.staffId ? staffMembers.find((s: Staff) => s.id === rule.staffId)?.name || 'Bilinmiyor' : 'Tüm Ekip'}</p>
                                         <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest italic">{rule.serviceName || 'Tüm Hizmetlerde Geçerli'}</p>
                                     </td>
                                     <td className="p-8 text-center">
@@ -639,52 +625,53 @@ export default function StaffPage() {
     const [selectedStaff, setSelectedStaff] = useState<Staff | null>(null);
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
     const [isProfileOpen, setIsProfileOpen] = useState(false);
+    const [showImport, setShowImport] = useState(false);
     const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'İzinli'>('all');
     const [perfFilter, setPerfFilter] = useState<'all' | 'month' | 'today'>('all');
     const [sortBy, setSortBy] = useState<'revenue' | 'appointments' | 'commission'>('revenue');
 
-    const filterAppts = (appts: typeof appointments) => {
-        if (perfFilter === 'today') return appts.filter(a => a.date === TODAY_STR);
+    const filterAppts = (appts: Appointment[]) => {
+        if (perfFilter === 'today') return appts.filter((a: Appointment) => a.date === TODAY_STR);
         if (perfFilter === 'month') {
             const monthStr = TODAY_STR.substring(0, 7);
-            return appts.filter(a => a.date.startsWith(monthStr));
+            return appts.filter((a: Appointment) => a.date.startsWith(monthStr));
         }
         return appts;
     };
 
-    const staffPerformance = useMemo(() => staffMembers.map(staff => {
-        const filtered = filterAppts(appointments.filter(a => a.staffId === staff.id));
-        const completed = filtered.filter(a => a.status === 'completed');
-        const noShow = filtered.filter(a => a.status === 'no-show').length;
-        const revenue = completed.reduce((s, a) => s + (a.price || 0), 0);
-        const commission = completed.reduce((s, a) => s + calculateCommission(staff.name, a.service, a.price, a.packageId), 0);
+    const staffPerformance = useMemo(() => staffMembers.map((staff: Staff) => {
+        const filtered = filterAppts(appointments.filter((a: Appointment) => a.staffId === staff.id));
+        const completed = filtered.filter((a: Appointment) => a.status === 'completed');
+        const noShow = filtered.filter((a: Appointment) => a.status === 'no-show').length;
+        const revenue = completed.reduce((s: number, a: Appointment) => s + (a.price || 0), 0);
+        const commission = completed.reduce((s: number, a: Appointment) => s + calculateCommission(staff.name, a.service, a.price, a.packageId), 0);
         const noShowRate = filtered.length > 0 ? (noShow / filtered.length) * 100 : 0;
         
         const customerCounts: Record<string, number> = {};
-        filtered.forEach(a => { 
+        filtered.forEach((a: Appointment) => { 
             if (a.customerId) {
                 customerCounts[a.customerId] = (customerCounts[a.customerId] || 0) + 1; 
             }
         });
-        const loyalCustomers = Object.values(customerCounts).filter((c: any) => c > 1).length;
+        const loyalCustomers = Object.values(customerCounts).filter((c: number) => c > 1).length;
 
         return {
             ...staff,
             serviceCount: completed.length,
             revenue, commission, noShowRate, loyalCustomers,
-            todayAppts: appointments.filter(a => a.staffId === staff.id && a.date === TODAY_STR).length,
+            todayAppts: appointments.filter((a: Appointment) => a.staffId === staff.id && a.date === TODAY_STR).length,
         };
-    }).sort((a, b) => {
+    }).sort((a: any, b: any) => {
         if (sortBy === 'revenue') return b.revenue - a.revenue;
         if (sortBy === 'appointments') return b.serviceCount - a.serviceCount;
         return b.commission - a.commission;
     }), [staffMembers, appointments, perfFilter, sortBy]);
 
-    const totalRevenue = staffPerformance.reduce((s, st) => s + st.revenue, 0);
-    const totalCommission = staffPerformance.reduce((s, st) => s + st.commission, 0);
-    const totalAppts = staffPerformance.reduce((s, st) => s + st.serviceCount, 0);
+    const totalRevenue = staffPerformance.reduce((s: number, st: any) => s + st.revenue, 0);
+    const totalCommission = staffPerformance.reduce((s: number, st: any) => s + st.commission, 0);
+    const totalAppts = staffPerformance.reduce((s: number, st: any) => s + st.serviceCount, 0);
 
-    const filteredStaff = staffMembers.filter(s => statusFilter === 'all' || s.status === statusFilter);
+    const filteredStaff = staffMembers.filter((s: Staff) => statusFilter === 'all' || s.status === statusFilter);
 
     const openProfile = (staff: Staff) => {
         setSelectedStaff(staff);
@@ -717,12 +704,20 @@ export default function StaffPage() {
                         ))}
                     </div>
                 </div>
-                {can('manage_staff') && (
-                    <button onClick={() => openEdit()}
-                        className="bg-primary text-white px-8 py-5 rounded-[2rem] font-black text-sm shadow-xl shadow-primary/20 hover:scale-105 active:scale-95 transition-all flex items-center gap-3">
-                        <Plus className="w-5 h-5" /> YENİ PERSONEL
-                    </button>
-                )}
+                <div className="flex gap-3">
+                    {can('manage_staff') && (
+                        <button onClick={() => setShowImport(true)}
+                            className="bg-white border-2 border-gray-100 text-gray-500 px-8 py-5 rounded-[2rem] font-black text-sm shadow-sm hover:bg-gray-50 active:scale-95 transition-all flex items-center gap-3">
+                            <RefreshCcw className="w-5 h-5" /> İÇE AKTAR
+                        </button>
+                    )}
+                    {can('manage_staff') && (
+                        <button onClick={() => openEdit()}
+                            className="bg-primary text-white px-8 py-5 rounded-[2rem] font-black text-sm shadow-xl shadow-primary/20 hover:scale-105 active:scale-95 transition-all flex items-center gap-3">
+                            <Plus className="w-5 h-5" /> YENİ PERSONEL
+                        </button>
+                    )}
+                </div>
             </div>
 
             {/* ── PERFORMANCE VIEW ── */}
@@ -731,7 +726,7 @@ export default function StaffPage() {
                     {/* KPIs */}
                     <div className="grid grid-cols-4 gap-5 mb-10">
                         {[
-                            { label: 'Ekip Büyüklüğü', val: staffMembers.length, sub: `${staffMembers.filter(s => s.status === 'active').length} aktif`, icon: Users, color: 'bg-indigo-50 text-indigo-600' },
+                            { label: 'Ekip Büyüklüğü', val: staffMembers.length, sub: `${staffMembers.filter((s: Staff) => s.status === 'active').length} aktif`, icon: Users, color: 'bg-indigo-50 text-indigo-600' },
                             { label: 'Toplam Ciro', val: `₺${totalRevenue.toLocaleString('tr-TR')}`, sub: 'Tamamlanan randevular', icon: TrendingUp, color: 'bg-emerald-50 text-emerald-600' },
                             { label: 'Toplam Prim', val: `₺${totalCommission.toLocaleString('tr-TR')}`, sub: `${commissionRules.length} aktif kural`, icon: Award, color: 'bg-indigo-50 text-indigo-600' },
                             { label: 'Tamamlanan', val: totalAppts, sub: 'Randevu', icon: CheckCircle2, color: 'bg-purple-50 text-purple-600' },
@@ -814,7 +809,7 @@ export default function StaffPage() {
                             </span>
                         </div>
                         <div className="divide-y divide-gray-50">
-                            {staffPerformance.map((staff, idx) => (
+                            {staffPerformance.map((staff: any, idx: number) => (
                                 <div key={staff.id}
                                     onClick={() => openProfile(staff as any)}
                                     className="p-8 flex items-center gap-6 hover:bg-indigo-50/20 transition-colors cursor-pointer group">
@@ -877,14 +872,14 @@ export default function StaffPage() {
                         {['all', 'active', 'İzinli', 'Ayrıldı'].map(f => (
                             <button key={f} onClick={() => setStatusFilter(f as any)}
                                 className={`px-5 py-2.5 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all border-2 whitespace-nowrap ${statusFilter === f ? 'bg-primary text-white border-primary shadow-lg shadow-primary/20' : 'border-gray-100 text-gray-400 hover:border-gray-300'}`}>
-                                {f === 'all' ? 'Tümü' : f === 'Ayrıldı' ? 'Arşiv (Ayrılanlar)' : f} {f !== 'all' && `(${staffMembers.filter(s => s.status === f).length})`}
+                                {f === 'all' ? 'Tümü' : f === 'Ayrıldı' ? 'Arşiv (Ayrılanlar)' : f} {f !== 'all' && `(${staffMembers.filter((s: Staff) => s.status === f).length})`}
                             </button>
                         ))}
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
-                        {filteredStaff.map((staff: any) => {
-                            const todayAppts = appointments.filter(a => a.staffId === staff.id && a.date === TODAY_STR);
+                        {filteredStaff.map((staff: Staff) => {
+                            const todayAppts = appointments.filter((a: Appointment) => a.staffId === staff.id && a.date === TODAY_STR);
                             const isOffToday = staff.weeklyOffDay === TODAY_DAY;
                             return (
                                 <div key={staff.id}
@@ -1002,6 +997,12 @@ export default function StaffPage() {
                     />
                 )}
             </AnimatePresence>
+            {showImport && (
+                <DataImportWizard 
+                    type="staff" 
+                    onClose={() => setShowImport(false)} 
+                />
+            )}
         </div>
     );
 }

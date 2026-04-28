@@ -39,6 +39,7 @@ export interface Staff extends DB.Staff {
     isVisibleOnCalendar: boolean;
     sortOrder: number;
     maxDiscount: number; // Yüzde olarak (0-100)
+    syncStatus?: 'idle' | 'syncing' | 'error';
 }
 export type PaymentDefinition = DB.PaymentDefinition;
 export type BankAccount = DB.BankAccount;

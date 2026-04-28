@@ -14,7 +14,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import CatalogSettingsView from "@/components/system/CatalogSettingsView";
 import AnnouncementsSettingsView from "@/components/system/AnnouncementsSettingsView";
 import PinGate from "@/components/security/PinGate";
-import { MigrationWizard } from "@/components/system/migration/MigrationWizard";
+import DataImportWizard from "@/components/ui/DataImportWizard";
 
 const DAYS = ['Pazar', 'Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma', 'Cumartesi'];
 
@@ -315,7 +315,18 @@ export default function SystemSettingsPage() {
                                 <SecuritySettingsView />
                             )}
                             { activeTab === 'migration' && (
-                                <MigrationWizard />
+                                <div className="space-y-8">
+                                    <div className="bg-amber-50 border border-amber-200 p-8 rounded-[2.5rem] flex items-center gap-6">
+                                        <div className="w-16 h-16 bg-amber-500 rounded-3xl flex items-center justify-center text-white shadow-lg">
+                                            <Database size={32} />
+                                        </div>
+                                        <div>
+                                            <h3 className="text-xl font-black text-amber-900 uppercase italic tracking-tighter">GELİŞMİŞ VERİ AKTARIMI</h3>
+                                            <p className="text-xs font-medium text-amber-700 max-w-md">Eski sisteminizdeki müşteri, personel ve hizmet verilerini Imperial formatına dönüştürerek tek seferde içe aktarın.</p>
+                                        </div>
+                                    </div>
+                                    <DataImportWizard type="services" onClose={() => setActiveTab('catalog')} />
+                                </div>
                             )}
                         </motion.div>
                     </AnimatePresence>

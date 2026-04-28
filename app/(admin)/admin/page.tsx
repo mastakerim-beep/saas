@@ -7,7 +7,7 @@ import {
     Search, Database, LogOut,
     ChevronRight, Plus, RefreshCw, X, ShieldAlert
 } from 'lucide-react';
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { 
     AreaChart, Area, XAxis, YAxis, CartesianGrid, 
     Tooltip, ResponsiveContainer 
@@ -21,6 +21,7 @@ import { CreateBusinessModal } from './components/CreateBusinessModal';
 import { BroadcastForm } from './components/BroadcastForm';
 import { MigrationWizard } from '@/components/system/migration/MigrationWizard';
 import { ImperialOversight } from './components/ImperialOversight';
+import DataImportWizard from '@/components/ui/DataImportWizard';
 
 type AdminTab = 'monitor' | 'tenants' | 'billing' | 'oversight' | 'notifications' | 'announcements' | 'system' | 'migration';
 
@@ -40,7 +41,15 @@ export default function SuperAdminPage() {
     const [isCreating, setIsCreating] = useState(false);
     const [isActionLoading, setIsActionLoading] = useState<string | null>(null);
     const [editingBiz, setEditingBiz] = useState<any>(null);
+    const [showImporter, setShowImporter] = useState(false);
     
+    // --- INITIALIZATION ---
+    useEffect(() => {
+        if (currentUser?.role === 'SaaS_Owner') {
+            fetchData(undefined, undefined, true);
+        }
+    }, [currentUser, fetchData]);
+
     // --- ACTIONS ---
     const handleRefresh = async () => {
         setIsRefreshing(true);
@@ -76,6 +85,7 @@ export default function SuperAdminPage() {
             const biz = await addBusiness(bizData);
 
             if (biz) {
+                // Provision Main Owner
                 await provisionBusinessUser({
                     email: newBizData.email,
                     password: newBizData.password,
@@ -83,8 +93,23 @@ export default function SuperAdminPage() {
                     businessId: biz.id,
                     isStaff: newBizData.isStaff
                 } as any);
+
+                // Provision Extra Users
+                if (newBizData.extraUsers && newBizData.extraUsers.length > 0) {
+                    for (const user of newBizData.extraUsers) {
+                        if (user.email && user.password) {
+                            await provisionBusinessUser({
+                                email: user.email,
+                                password: user.password,
+                                name: user.name || "Ek Kullanıcı",
+                                businessId: biz.id,
+                                isStaff: newBizData.isStaff
+                            } as any);
+                        }
+                    }
+                }
                 
-                alert("İşletme, ödeme planı ve yönetici hesabı başarıyla kuruldu!");
+                alert("İşletme, ödeme planı ve tüm kullanıcı hesapları başarıyla kuruldu!");
                 setShowCreateModal(false);
                 await fetchData(undefined, undefined, true);
                 return true;
@@ -435,14 +460,38 @@ export default function SuperAdminPage() {
                         )}
 
                         {activeTab === 'migration' && (
-                            <motion.div key="migration" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6">
+                            <div className="space-y-10">
+                                <div className="bg-white border border-indigo-100 rounded-[3rem] p-16 shadow-xl relative overflow-hidden">
+                                    <div className="absolute top-0 right-0 p-12 opacity-5 pointer-events-none">
+                                        <Database size={200} className="text-indigo-600" />
+                                    </div>
+                                    <div className="relative z-10 max-w-2xl">
+                                        <h2 className="text-slate-900 text-4xl font-black italic uppercase tracking-tighter mb-4">Imperial Data Fusion</h2>
+                                        <p className="text-slate-500 font-medium mb-12 leading-relaxed">
+                                            Harici sistemlerden veri göçü sağlamak için yüksek performanslı "Data Ingester" modülünü kullanın. 
+                                            Excel, CSV ve SQL dökümlerini Imperial standartlarına otomatik olarak eşleyerek sisteme dahil eder.
+                                        </p>
+                                        <div className="flex gap-4">
+                                            <button 
+                                                onClick={() => setShowImporter(true)}
+                                                className="px-10 py-6 bg-indigo-600 text-white rounded-[2rem] font-black text-xs uppercase tracking-[0.2em] shadow-2xl shadow-indigo-600/30 hover:scale-105 active:scale-95 transition-all flex items-center gap-4"
+                                            >
+                                                <Zap size={20} /> YENİ AKTARIM BAŞLAT
+                                            </button>
+                                            <button className="px-10 py-6 bg-slate-100 text-slate-500 rounded-[2rem] font-black text-xs uppercase tracking-[0.2em] hover:bg-slate-200 transition-all flex items-center gap-4">
+                                                <Terminal size={20} /> LOGLARI İNCELE
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
                                 <MigrationWizard />
-                            </motion.div>
+                            </div>
                         )}
                     </AnimatePresence>
                 </div>
             </div>
 
+            {showImporter && <DataImportWizard type="customers" onClose={() => setShowImporter(false)} />}
             <CreateBusinessModal 
                 isOpen={showCreateModal} 
                 onClose={() => setShowCreateModal(false)} 

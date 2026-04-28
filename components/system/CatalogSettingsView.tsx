@@ -10,6 +10,7 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 import PinGate from '@/components/security/PinGate';
 import { seedCatalogData } from '@/lib/store/seed-data';
+import DataImportWizard from '@/components/ui/DataImportWizard';
 
 type TabType = 'hizmetler' | 'paketler' | 'urunler';
 
@@ -24,6 +25,7 @@ export default function CatalogSettingsView({ query }: { query: string }) {
     const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
     const [editingItem, setEditingItem] = useState<any>(null);
     const [isAdding, setIsAdding] = useState(false);
+    const [showImport, setShowImport] = useState(false);
     const [newCategoryName, setNewCategoryName] = useState('');
     const [showNewCatInput, setShowNewCatInput] = useState(false);
     
@@ -175,6 +177,12 @@ export default function CatalogSettingsView({ query }: { query: string }) {
                             className="pl-12 pr-6 py-4 bg-white border border-indigo-50 rounded-[2rem] text-sm font-bold w-64 focus:ring-4 focus:ring-indigo-500/5 focus:border-indigo-200 outline-none transition-all shadow-sm"
                         />
                     </div>
+                    <button 
+                        onClick={() => setShowImport(true)}
+                        className="bg-white border boundary-indigo-50 text-indigo-400 px-6 py-4 rounded-[1.8rem] font-bold text-[9px] uppercase tracking-widest hover:bg-indigo-50 transition-all flex items-center gap-2"
+                    >
+                        <Zap size={14} /> İÇE AKTAR
+                    </button>
                     <button 
                         onClick={async () => {
                             if (confirm('Katalog verileri örnek verilerle doldurulacak. Onaylıyor musunuz?')) {
@@ -539,6 +547,12 @@ export default function CatalogSettingsView({ query }: { query: string }) {
                     );
                 })}
             </div>
+            {showImport && (
+                <DataImportWizard 
+                    type={activeTab === 'urunler' ? 'products' : 'services'} 
+                    onClose={() => setShowImport(false)} 
+                />
+            )}
         </div>
     );
 }

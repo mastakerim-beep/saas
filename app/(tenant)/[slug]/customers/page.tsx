@@ -18,6 +18,7 @@ import 'jspdf-autotable';
 import ExportDropdown from '@/components/ui/ExportDropdown';
 import { format } from 'date-fns';
 import { tr } from 'date-fns/locale';
+import DataImportWizard from '@/components/ui/DataImportWizard';
 
 // ---- COMPONENTS ----
 
@@ -1418,6 +1419,7 @@ export default function CustomersPage() {
     } = useStore();
     const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
     const [showModal, setShowModal] = useState(false);
+    const [showImport, setShowImport] = useState(false);
     const [search, setSearch] = useState('');
     const [activeStack, setActiveStack] = useState('Hepsi');
     const [dateRange, setDateRange] = useState({ 
@@ -1514,6 +1516,12 @@ export default function CustomersPage() {
                         )}
                     </div>
 
+                    <button 
+                        onClick={() => setShowImport(true)}
+                        className="px-6 py-4 bg-white border border-gray-100 text-gray-500 rounded-[2.5rem] font-black text-[10px] uppercase tracking-widest flex items-center gap-2 hover:bg-indigo-50 hover:text-indigo-600 transition-all shadow-sm"
+                    >
+                        <Download className="w-4 h-4 rotate-180" /> İÇE AKTAR
+                    </button>
                     <ExportDropdown 
                         data={filtered}
                         filename="Aura_Musteri_Listesi"
@@ -1665,6 +1673,15 @@ export default function CustomersPage() {
                     )}
                 </AnimatePresence>
             </div>
+
+            <AnimatePresence>
+                {showImport && (
+                    <DataImportWizard 
+                        type="customers" 
+                        onClose={() => setShowImport(false)} 
+                    />
+                )}
+            </AnimatePresence>
         </div>
     );
 }
