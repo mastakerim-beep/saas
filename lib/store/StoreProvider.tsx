@@ -223,7 +223,8 @@ const StoreOrchestrator = ({ children }: { children: ReactNode }) => {
             setSystemAnnouncements: data.setSystemAnnouncements,
             setAllUsers: auth.setAllUsers,
             setAllCommissionRules: data.setAllCommissionRules,
-            setInventoryTransfers: data.setInventoryTransfers
+            setInventoryTransfers: data.setInventoryTransfers,
+            setCustomerBiometrics: data.setCustomerBiometrics
         };
 
         try {

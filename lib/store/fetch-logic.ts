@@ -25,12 +25,18 @@ export const fetchData = async (
     
     // If Guest or SaaS and on a slug, but bizId is missing, resolve it NOW
     if ((isSaaS || isGuest) && !actualBizId && slug) {
+        // Try local cache first from stored businesses if available
+        // Note: setters usually don't provide the current state, but we can try to resolve it from the DB
         try {
-            console.log("🔍 [Aura Sync] Identity Warp: Resolving business ID from slug...");
-            const { data: bData } = await supabase.from('businesses').select('id').eq('slug', slug).single();
+            console.log(`🔍 [Aura Sync] Identity Warp: Resolving business ID for slug "${slug}"...`);
+            const { data: bData, error: bError } = await supabase.from('businesses').select('id').eq('slug', slug).maybeSingle();
             if (bData?.id) {
                 actualBizId = bData.id;
                 console.log("✅ [Aura Sync] Identity Locked:", actualBizId);
+            } else if (bError) {
+                console.error("❌ Identity Resolution Error:", bError);
+            } else {
+                console.warn("⚠️ Identity Resolution: Slug not found in DB");
             }
         } catch (e) {
             console.error("Failed to resolve identity from slug:", e);
@@ -38,6 +44,7 @@ export const fetchData = async (
     }
 
     const targetId = actualBizId || currentUser?.businessId;
+    const isGlobalSaaSFetch = isSaaS && !targetId && !slug;
     
     // Public safe tables for Guest mode
     const publicTables = [
@@ -58,15 +65,12 @@ export const fetchData = async (
         'inventory_categories', 'inventory_transfers', 'package_usage_history', 'customer_biometrics'
     ];
 
-    let tablesToFetch = isGuest ? publicTables : [...coreTables, ...fullTables];
-
-    if (!targetId && !isSaaS) {
-        console.warn("⚠️ Fetch aborted: No targetId and not SaaS");
-        setters.setSyncStatus('idle'); // Ensure UI unlock on abort
+    // CRITICAL GUARD: If we have no targetId and not doing a global SaaS fetch, abort or we'll get empty data
+    if (!targetId && !isSaaS && !isGuest) {
+        console.warn("⚠️ Fetch aborted: No targetId resolved and user is not SaaS/Guest");
+        setters.setSyncStatus('idle');
         return;
     }
-
-    if (signal?.aborted) return;
 
     console.time("Aura Fetch Speed");
     setters.setSyncStatus('syncing');
@@ -84,16 +88,30 @@ export const fetchData = async (
                     let q = supabase.from(table).select('*');
                     if (signal) q = q.abortSignal(signal);
                     
-                    const idToUse = bizId || targetId;
+                    const idToUse = targetId;
                     
                     // TARGETED SCALE FETCH: 
-                    if (table === 'businesses' && isSaaS && !bizId && slug) {
+                    if (table === 'businesses' && isSaaS && !idToUse && slug) {
                         q = q.eq('slug', slug);
-                    } else if (idToUse && !(table === 'businesses' && isSaaS && !bizId && !slug)) {
-                        if (table === 'businesses') q = q.eq('id', idToUse);
-                        else {
+                    } else if (idToUse) {
+                        // All tenant-specific tables must use the business_id filter
+                        if (table === 'businesses') {
+                            q = q.eq('id', idToUse);
+                        } else {
                             q = q.eq('business_id', idToUse);
                         }
+                    } else if (isSaaS && !slug) {
+                        // Global SaaS fetch - no filters, but limit results for safety
+                        if (['businesses', 'app_users'].includes(table)) {
+                            q = q.limit(1000);
+                        } else {
+                            // Don't fetch bulk operational data without a tenant context
+                            console.log(`Skipping bulk fetch for ${table} in global SaaS mode`);
+                            return [];
+                        }
+                    } else if (!isGuest) {
+                        // If not SaaS/Guest and no ID, RLS will block anyway, but let's be explicit
+                        return [];
                     }
 
                     // LIMIT HEAVY TABLES
@@ -126,7 +144,7 @@ export const fetchData = async (
         // APPLY CORE DATA IMMEDIATELY
         if (dataMap.businesses) {
             const businesses = dataMap.businesses;
-            const isGlobalFetch = isSaaS && !bizId && !slug;
+            const isGlobalFetch = isSaaS && !targetId && !slug;
             if (isGlobalFetch) {
                 setters.setAllBusinesses(businesses.sort((a: any, b: any) => (a.name || '').localeCompare(b.name || '')));
             } else if (businesses.length > 0) {
@@ -141,9 +159,12 @@ export const fetchData = async (
                 });
             }
             
-            const targetBusiness = businesses.find((b: any) => b.id === targetId);
+            // Re-detect target biz from fetched data if it wasn't resolved before
+            const finalBizId = targetId || businesses[0]?.id;
+            const targetBusiness = businesses.find((b: any) => b.id === finalBizId) || businesses[0];
+            
             if (targetBusiness) {
-                setters.setCurrentTenant((prev: any) => JSON.stringify(prev) === JSON.stringify(targetBusiness) ? prev : targetBusiness);
+                setters.setCurrentTenant?.((prev: any) => JSON.stringify(prev) === JSON.stringify(targetBusiness) ? prev : targetBusiness);
             }
         }
 
