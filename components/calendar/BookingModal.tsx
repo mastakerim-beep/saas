@@ -224,7 +224,6 @@ export default function BookingModal({ initialData, onClose, date, mode: initial
         }
 
         setError(null);
-
         setIsSaving(true);
 
         try {
@@ -246,27 +245,6 @@ export default function BookingModal({ initialData, onClose, date, mode: initial
                     
                     const success = await updateAppointment(initialData.id, updates);
                     if (success) {
-                        // Audit Log
-                        const oldDate = initialData.date;
-                        const oldTime = initialData.time;
-                        const oldStaff = initialData.staffName;
-                        const newStaff = updates.staffName;
-                        
-                        let logMsg = `Randevu Güncellendi: ${initialData.customerName}`;
-                        if (oldDate !== selectedDate || oldTime !== selectedTime) {
-                            logMsg += ` | Zaman Değişimi: ${oldDate} ${oldTime} -> ${selectedDate} ${selectedTime}`;
-                        }
-                        if (oldStaff !== newStaff) {
-                            logMsg += ` | Personel Değişimi: ${oldStaff} -> ${newStaff}`;
-                        }
-                        
-                        // IF PRICE CHANGED: Log numeric data for turnover audit
-                        if (initialData.price !== updates.price) {
-                            await addLog("IMPERIAL_VETO_PRICE_ADJUSTMENT", initialData.id, initialData.price.toString(), updates.price.toString());
-                        } else {
-                            await addLog(logMsg, initialData.id, `${oldDate} ${oldTime}`, `${selectedDate} ${selectedTime}`);
-                        }
-                        
                         onClose();
                     } else {
                         alert("🔴 Hata: Güncelleme kaydedilemedi.");
@@ -287,7 +265,6 @@ export default function BookingModal({ initialData, onClose, date, mode: initial
                     }];
 
                     let allSuccess = true;
-                    // Group Booking Logic: Repeat for group count if enabled
                     const repeats = isGroupMode ? groupCount : 1;
                     const gid = isGroupMode ? currentGroupId : undefined;
 
@@ -316,19 +293,13 @@ export default function BookingModal({ initialData, onClose, date, mode: initial
                                 additionalStaff: item.additionalStaff || [],
                                 groupId: gid
                             });
-
                             if (!success) {
                                 allSuccess = false;
-                                alert("🔴 KRİTİK HATA: Veritabanı senkronizasyonu başarısız oldu.");
                                 break;
                             }
                         }
-                        if (!allSuccess) break;
                     }
-                    
-                    if (allSuccess) {
-                        onClose();
-                    }
+                    if (allSuccess) onClose();
                 }
             } else {
                 const res = await addBlock({
@@ -340,7 +311,6 @@ export default function BookingModal({ initialData, onClose, date, mode: initial
                     reason: blockReason
                 });
                 if (res !== false) onClose();
-                else setError("🚫 Bloke işlemi kaydedilemedi.");
             }
         } catch (error: any) {
             console.error("Booking save error:", error);
@@ -351,29 +321,14 @@ export default function BookingModal({ initialData, onClose, date, mode: initial
     };
 
     return (
-        <div className="fixed inset-0 bg-indigo-950/40 backdrop-blur-xl z-[900] flex items-center justify-center p-4 antialiased animate-[fadeIn_0.3s_ease]">
-            <div className="modal-premium w-full max-w-4xl max-h-[95vh] overflow-hidden animate-[slideUp_0.4s_ease] border-indigo-100 shadow-2xl flex flex-col !bg-white">
+        <div className="fixed inset-0 bg-indigo-950/40 backdrop-blur-xl z-[900] flex items-center justify-center p-4 antialiased">
+            <div className="modal-premium w-full max-w-4xl max-h-[95vh] overflow-hidden border-indigo-100 shadow-2xl flex flex-col !bg-white">
                 {/* Header */}
                 <div className="p-8 border-b border-indigo-50 bg-gradient-to-br from-white to-indigo-50/20 flex justify-between items-center flex-shrink-0">
                     <div className="flex bg-indigo-50/50 p-1.5 rounded-2xl border border-indigo-100/50 shadow-inner">
-                        <button 
-                            onClick={() => { setMode('appt'); setIsGroupMode(false); }} 
-                            className={`px-10 py-3 rounded-xl text-[10px] font-black uppercase tracking-[0.2em] transition-all duration-300 ${mode === 'appt' && !isGroupMode ? 'bg-primary text-white shadow-xl shadow-primary/20 scale-105' : 'text-indigo-400 hover:text-primary hover:bg-white'}`}
-                        >
-                            Randevu
-                        </button>
-                        <button 
-                            onClick={() => { setMode('appt'); setIsGroupMode(true); }} 
-                            className={`px-10 py-3 rounded-xl text-[10px] font-black uppercase tracking-[0.2em] transition-all duration-300 ${mode === 'appt' && isGroupMode ? 'bg-indigo-600 text-white shadow-xl shadow-indigo-300 scale-105' : 'text-indigo-400 hover:text-primary hover:bg-white'}`}
-                        >
-                            Grup/Çift
-                        </button>
-                        <button 
-                            onClick={() => { setMode('block'); setIsGroupMode(false); }} 
-                            className={`px-10 py-3 rounded-xl text-[10px] font-black uppercase tracking-[0.2em] transition-all duration-300 ${mode === 'block' ? 'bg-primary text-white shadow-xl shadow-primary/20 scale-105' : 'text-indigo-400 hover:text-primary hover:bg-white'}`}
-                        >
-                            Bloke Et
-                        </button>
+                        <button onClick={() => { setMode('appt'); setIsGroupMode(false); }} className={`px-10 py-3 rounded-xl text-[10px] font-black uppercase tracking-[0.2em] transition-all duration-300 ${mode === 'appt' && !isGroupMode ? 'bg-primary text-white shadow-xl shadow-primary/20 scale-105' : 'text-indigo-400 hover:text-primary hover:bg-white'}`}>Randevu</button>
+                        <button onClick={() => { setMode('appt'); setIsGroupMode(true); }} className={`px-10 py-3 rounded-xl text-[10px] font-black uppercase tracking-[0.2em] transition-all duration-300 ${mode === 'appt' && isGroupMode ? 'bg-indigo-600 text-white shadow-xl shadow-indigo-300 scale-105' : 'text-indigo-400 hover:text-primary hover:bg-white'}`}>Grup/Çift</button>
+                        <button onClick={() => { setMode('block'); setIsGroupMode(false); }} className={`px-10 py-3 rounded-xl text-[10px] font-black uppercase tracking-[0.2em] transition-all duration-300 ${mode === 'block' ? 'bg-primary text-white shadow-xl shadow-primary/20 scale-105' : 'text-indigo-400 hover:text-primary hover:bg-white'}`}>Bloke Et</button>
                     </div>
                     <button onClick={onClose} className="p-3 hover:bg-red-50 rounded-2xl transition-all text-gray-300 hover:text-red-500 hover:rotate-90">
                         <X className="w-6 h-6" />
@@ -384,415 +339,143 @@ export default function BookingModal({ initialData, onClose, date, mode: initial
                     <div className="max-w-4xl mx-auto">
                         <AnimatePresence>
                             {error && (
-                                <motion.div 
-                                    initial={{ height: 0, opacity: 0, marginBottom: 0 }}
-                                    animate={{ height: 'auto', opacity: 1, marginBottom: 24 }}
-                                    exit={{ height: 0, opacity: 0, marginBottom: 0 }}
-                                    className="bg-red-50 border border-red-100 rounded-2xl p-5 flex items-center justify-between group overflow-hidden"
-                                >
+                                <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="bg-red-50 border border-red-100 rounded-2xl p-5 mb-6 flex items-center justify-between">
                                     <div className="flex items-center gap-4">
-                                        <div className="w-10 h-10 rounded-xl bg-red-500 text-white flex items-center justify-center shadow-lg shadow-red-200">
-                                            <X size={20} />
-                                        </div>
+                                        <div className="w-10 h-10 rounded-xl bg-red-500 text-white flex items-center justify-center shadow-lg shadow-red-200"><X size={20} /></div>
                                         <p className="text-sm font-black text-red-900 uppercase italic">{error}</p>
                                     </div>
-                                    <button onClick={() => setError(null)} className="p-2 hover:bg-red-100 rounded-xl transition-all">
-                                        <X size={16} className="text-red-400" />
-                                    </button>
+                                    <button onClick={() => setError(null)} className="p-2 hover:bg-red-100 rounded-xl transition-all"><X size={16} className="text-red-400" /></button>
                                 </motion.div>
                             )}
                         </AnimatePresence>
+
                         {mode === 'appt' ? (
                             selectedStep === 'customer' ? (
                                 <div className="space-y-8">
-                                        <div className="text-center mb-4">
-                                            <h3 className="text-2xl font-black text-gray-900 tracking-tight italic uppercase">Müşteri Seçimi</h3>
-                                            <p className="text-[11px] font-black text-gray-400 uppercase tracking-[0.2em] mt-1">İşleme başlamak için müşteri belirleyin</p>
-                                        </div>
-
-                                        <div className="relative group max-w-2xl mx-auto">
-                                            <div className="absolute inset-y-0 left-0 pl-6 flex items-center pointer-events-none">
-                                                <Search className="w-6 h-6 text-indigo-300 group-focus-within:text-indigo-600 transition-colors duration-300" />
-                                            </div>
-                                            <input 
-                                                autoFocus
-                                                value={search} 
-                                                onChange={e => setSearch(e.target.value)} 
-                                                placeholder="İsim veya telefon numarası ile ara..." 
-                                                className="w-full bg-indigo-50/30 border-2 border-indigo-50/50 focus:border-indigo-200 focus:bg-white rounded-[2.5rem] pl-16 pr-8 py-6 text-gray-900 font-black text-base outline-none transition-all shadow-sm placeholder:text-indigo-200"
-                                            />
-                                            {search && (
-                                                <button onClick={() => setSearch('')} className="absolute inset-y-0 right-6 flex items-center text-indigo-300 hover:text-indigo-600 transition-colors">
-                                                    <X size={20} />
-                                                </button>
-                                            )}
-                                        </div>
-
-                                        <div className="flex flex-col gap-6">
-                                            <div className="flex items-center justify-between px-4">
-                                                <h4 className="text-[10px] font-black text-indigo-400 uppercase tracking-[0.25em]">
-                                                    {search.length > 0 ? `Arama Sonuçları (${filtered.length})` : 'Son Kayıtlar'}
-                                                </h4>
-                                                {!isQuickAdding && (
-                                                    <button 
-                                                        onClick={() => setIsQuickAdding(true)}
-                                                        className="flex items-center gap-2 px-6 py-2.5 bg-indigo-600 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-indigo-700 hover:shadow-xl hover:shadow-indigo-200 transition-all active:scale-95"
-                                                    >
-                                                        <Plus size={14} />
-                                                        Yeni Müşteri
-                                                    </button>
-                                                )}
-                                            </div>
-
-                                            <AnimatePresence mode="wait">
-                                                {isQuickAdding ? (
-                                                    <motion.div 
-                                                        initial={{ opacity: 0, y: 20, scale: 0.95 }}
-                                                        animate={{ opacity: 1, y: 0, scale: 1 }}
-                                                        exit={{ opacity: 0, scale: 0.95 }}
-                                                        className="p-1"
-                                                    >
-                                                        <div className="bg-gradient-to-br from-indigo-600 via-indigo-700 to-purple-800 p-1 rounded-[3rem] shadow-2xl shadow-indigo-200">
-                                                            <div className="bg-white/10 backdrop-blur-md p-10 rounded-[2.8rem] space-y-6">
-                                                                <div className="flex items-center justify-between mb-2">
-                                                                    <div className="flex items-center gap-4 text-white">
-                                                                        <div className="w-12 h-12 rounded-2xl bg-white/20 flex items-center justify-center">
-                                                                            <Plus className="w-6 h-6" />
-                                                                        </div>
-                                                                        <div>
-                                                                            <h4 className="text-lg font-black uppercase italic tracking-tight">Hızlı Müşteri Kaydı</h4>
-                                                                            <p className="text-[10px] font-bold text-white/60 uppercase tracking-widest">Sadece isim ve telefon yeterli</p>
-                                                                        </div>
-                                                                    </div>
-                                                                    <button 
-                                                                        onClick={() => setIsQuickAdding(false)}
-                                                                        className="p-3 bg-white/10 hover:bg-white/20 rounded-2xl text-white transition-all"
-                                                                    >
-                                                                        <X size={20} />
-                                                                    </button>
-                                                                </div>
-
-                                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                                                    <div className="space-y-2">
-                                                                        <label className="text-[9px] font-black text-white/50 uppercase tracking-widest ml-1">Adı Soyadı</label>
-                                                                        <input 
-                                                                            value={quickName} 
-                                                                            onChange={e => setQuickName(e.target.value)} 
-                                                                            placeholder="Örn: Ahmet Yılmaz" 
-                                                                            className="w-full bg-white/10 border border-white/20 rounded-2xl px-6 py-5 text-white font-black text-sm outline-none placeholder:text-white/30 focus:bg-white/20 transition-all"
-                                                                        />
-                                                                    </div>
-                                                                    <div className="space-y-2">
-                                                                        <label className="text-[9px] font-black text-white/50 uppercase tracking-widest ml-1">Telefon Numarası</label>
-                                                                        <input 
-                                                                            value={quickPhone} 
-                                                                            onChange={e => setQuickPhone(e.target.value)} 
-                                                                            placeholder="05xx xxx xx xx" 
-                                                                            className="w-full bg-white/10 border border-white/20 rounded-2xl px-6 py-5 text-white font-black text-sm outline-none placeholder:text-white/30 focus:bg-white/20 transition-all"
-                                                                        />
-                                                                    </div>
-                                                                </div>
-
-                                                                <button 
-                                                                    onClick={handleQuickAdd}
-                                                                    className="w-full py-6 bg-white text-indigo-700 rounded-2xl font-black text-xs uppercase tracking-[0.3em] shadow-xl hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-3"
-                                                                >
-                                                                    KAYDET VE DEVAM ET
-                                                                    <ChevronRight size={16} />
-                                                                </button>
-                                                            </div>
-                                                        </div>
-                                                    </motion.div>
-                                                ) : (
-                                                    <motion.div 
-                                                        initial={{ opacity: 0 }}
-                                                        animate={{ opacity: 1 }}
-                                                        className="grid grid-cols-1 md:grid-cols-2 gap-4"
-                                                    >
-                                                        {filtered.length > 0 ? (
-                                                            filtered.slice(0, 8).map((c: Customer) => (
-                                                                <div key={c.id} onClick={() => { setSelectedCustId(c.id); setSelectedStep('details'); }} className="p-6 bg-white rounded-[2rem] cursor-pointer hover:bg-indigo-50/50 transition-all border border-indigo-100/40 hover:border-indigo-200 flex items-center gap-5 group shadow-sm hover:shadow-xl hover:shadow-indigo-100/20 relative overflow-hidden">
-                                                                    <div className="w-16 h-16 rounded-[1.25rem] bg-indigo-50 text-indigo-400 font-black text-xl flex items-center justify-center group-hover:bg-indigo-600 group-hover:text-white group-hover:scale-110 group-hover:rotate-3 transition-all duration-500 border border-indigo-100/50 group-hover:border-transparent">
-                                                                        {c.name.charAt(0).toUpperCase()}
-                                                                    </div>
-                                                                    <div className="flex-1">
-                                                                        <div className="flex items-center gap-2 mb-1.5">
-                                                                            <p className="font-black text-lg text-gray-900 leading-none tracking-tight">{c.name?.toUpperCase() || 'İSİMSİZ MÜŞTERİ'}</p>
-                                                                            {packages.some((p: Package) => p.customerId === c.id && p.usedSessions < p.totalSessions) && (
-                                                                                <div className="px-2 py-0.5 bg-amber-100/50 border border-amber-200 rounded-md text-[8px] font-black text-amber-600 uppercase tracking-tighter">Paketli</div>
-                                                                            )}
-                                                                        </div>
-                                                                        <p className="text-[11px] text-indigo-300 font-black uppercase tracking-[0.15em]">{c.phone || 'Telefon Yok'}</p>
-                                                                    </div>
-                                                                    <div className="w-10 h-10 rounded-full bg-indigo-50/50 flex items-center justify-center group-hover:bg-indigo-600 group-hover:text-white transition-all transform group-hover:translate-x-1">
-                                                                        <ChevronRight className="w-6 h-6" />
-                                                                    </div>
-                                                                </div>
-                                                            ))
-                                                        ) : (
-                                                            <div className="col-span-full py-20 bg-indigo-50/20 rounded-[3rem] border-2 border-dashed border-indigo-100 flex flex-col items-center justify-center text-center px-10">
-                                                                <div className="w-20 h-20 rounded-3xl bg-white text-indigo-200 flex items-center justify-center mb-6 shadow-sm">
-                                                                    <Search size={40} />
-                                                                </div>
-                                                                <h4 className="text-xl font-black text-indigo-900 uppercase italic tracking-tight mb-2">Müşteri Bulunamadı</h4>
-                                                                <p className="text-sm font-bold text-indigo-300 uppercase tracking-widest max-w-xs mb-8">"{search}" ile eşleşen bir kayıt bulamadık. Yeni bir müşteri oluşturmak ister misiniz?</p>
-                                                                <button 
-                                                                    onClick={() => {
-                                                                        setQuickName(search);
-                                                                        setIsQuickAdding(true);
-                                                                    }}
-                                                                    className="px-10 py-5 bg-indigo-600 text-white rounded-[2rem] font-black text-xs uppercase tracking-[0.2em] shadow-xl shadow-indigo-100 hover:bg-indigo-700 hover:scale-105 active:scale-95 transition-all flex items-center gap-4"
-                                                                >
-                                                                    <Plus size={20} />
-                                                                    YENİ MÜŞTERİ KAYDET
-                                                                </button>
-                                                            </div>
-                                                        )}
-                                                    </motion.div>
-                                                )}
-                                            </AnimatePresence>
-                                        </div>
+                                    <div className="text-center mb-4">
+                                        <h3 className="text-2xl font-black text-gray-900 tracking-tight italic uppercase">Müşteri Seçimi</h3>
+                                        <p className="text-[11px] font-black text-gray-400 uppercase tracking-[0.2em] mt-1">İşleme başlamak için müşteri belirleyin</p>
                                     </div>
-                                ) : (
-                                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
-                                    <div className="space-y-8">
-                                        {/* Basket Summary */}
-                                        {basket.length > 0 && (
-                                            <div className="space-y-4 animate-in fade-in slide-in-from-top-4">
-                                                <div className="flex items-center justify-between px-1">
-                                                    <p className="text-[10px] font-black text-primary uppercase tracking-widest">Randevu Sepeti ({basket.length})</p>
-                                                    <button onClick={() => setBasket([])} className="text-[9px] font-black text-red-400 uppercase tracking-tighter hover:text-red-600 transition-colors">Sepeti Temizle</button>
+                                    <div className="relative group max-w-2xl mx-auto">
+                                        <div className="absolute inset-y-0 left-0 pl-6 flex items-center pointer-events-none"><Search className="w-6 h-6 text-indigo-300" /></div>
+                                        <input autoFocus value={search} onChange={e => setSearch(e.target.value)} placeholder="İsim veya telefon numarası ile ara..." className="w-full bg-indigo-50/30 border-2 border-indigo-50/50 focus:border-indigo-200 focus:bg-white rounded-[2.5rem] pl-16 pr-8 py-6 text-gray-900 font-black text-base outline-none transition-all shadow-sm" />
+                                    </div>
+                                    
+                                    <AnimatePresence mode="wait">
+                                        {isQuickAdding ? (
+                                            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="bg-gradient-to-br from-indigo-600 to-purple-700 p-8 rounded-[3rem] text-white">
+                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                                                    <input value={quickName} onChange={e => setQuickName(e.target.value)} placeholder="İsim Soyisim" className="bg-white/10 border border-white/20 rounded-2xl px-6 py-4 text-white placeholder:text-white/40 outline-none" />
+                                                    <input value={quickPhone} onChange={e => setQuickPhone(e.target.value)} placeholder="Telefon" className="bg-white/10 border border-white/20 rounded-2xl px-6 py-4 text-white placeholder:text-white/40 outline-none" />
                                                 </div>
-                                                <div className="flex flex-wrap gap-2.5">
-                                                    {basket.map((item, idx) => (
-                                                        <div key={idx} className="bg-white rounded-2xl p-4 border border-gray-100 flex items-center gap-4 shadow-sm border-l-4 border-l-primary">
-                                                            <div className="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center text-primary"><Sparkles className="w-4 h-4" /></div>
-                                                            <div>
-                                                                <p className="text-[11px] font-black text-gray-900 uppercase tracking-tight">{item.service}</p>
-                                                                <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest opacity-70">{item.staffName} • {item.regions.length} Bölge</p>
-                                                            </div>
-                                                            <button onClick={() => setBasket(prev => prev.filter((_, i) => i !== idx))} className="ml-2 text-gray-300 hover:text-red-500 transition-all hover:scale-110">
-                                                                <X className="w-4 h-4" />
-                                                            </button>
+                                                <button onClick={handleQuickAdd} className="w-full py-5 bg-white text-indigo-700 rounded-2xl font-black uppercase tracking-widest">KAYDET VE DEVAM ET</button>
+                                            </motion.div>
+                                        ) : (
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                {filtered.slice(0, 8).map((c: Customer) => (
+                                                    <div key={c.id} onClick={() => { setSelectedCustId(c.id); setSelectedStep('details'); }} className="p-6 bg-white rounded-[2rem] cursor-pointer hover:bg-indigo-50/50 transition-all border border-indigo-100/40 flex items-center gap-5">
+                                                        <div className="w-16 h-16 rounded-2xl bg-indigo-50 text-indigo-600 font-black text-xl flex items-center justify-center">{c.name.charAt(0).toUpperCase()}</div>
+                                                        <div className="flex-1">
+                                                            <p className="font-black text-lg text-gray-900 leading-none">{c.name.toUpperCase()}</p>
+                                                            <p className="text-[11px] text-indigo-300 font-black uppercase mt-1">{c.phone}</p>
                                                         </div>
-                                                    ))}
-                                                </div>
+                                                        <ChevronRight className="text-indigo-200" />
+                                                    </div>
+                                                ))}
+                                                <button onClick={() => setIsQuickAdding(true)} className="p-6 border-2 border-dashed border-indigo-100 rounded-[2rem] flex flex-col items-center justify-center gap-2 text-indigo-300 hover:border-indigo-300 hover:text-indigo-500 transition-all">
+                                                    <Plus /> <span className="text-[10px] font-black uppercase tracking-widest">Yeni Ekle</span>
+                                                </button>
                                             </div>
                                         )}
-
-                                        <div className="bg-indigo-50/30 p-10 rounded-[2.5rem] border border-indigo-100/50 shadow-inner space-y-10">
-                                            <div className="flex items-center justify-between px-2 bg-white/50 p-6 rounded-3xl border border-indigo-100/50 shadow-sm mb-6">
-                                                <div className="flex items-center gap-4">
-                                                    <div className="w-12 h-12 rounded-2xl bg-indigo-600 text-white flex items-center justify-center shadow-lg shadow-indigo-100">
-                                                        <User className="w-6 h-6" />
-                                                    </div>
-                                                    <div>
-                                                        <p className="text-[10px] font-black text-indigo-400 uppercase tracking-[0.2em] leading-none mb-1.5">Müşteri</p>
-                                                        <h4 className="text-lg font-black text-gray-900 tracking-tight italic uppercase leading-none">{customer?.name}</h4>
-                                                    </div>
-                                                </div>
-                                                <div className="text-right">
-                                                    <div className="flex flex-col gap-2">
-                                                        <input 
-                                                            type="date" 
-                                                            value={selectedDate} 
-                                                            onChange={e => setSelectedDate(e.target.value)}
-                                                            className="text-[11px] font-black text-primary uppercase tracking-widest bg-indigo-50/50 border border-indigo-100 rounded-xl px-4 py-1.5 outline-none focus:border-primary transition-all text-center"
-                                                        />
-                                                        <div className="relative">
-                                                            <select 
-                                                                value={selectedTime}
-                                                                onChange={e => setSelectedTime(e.target.value)}
-                                                                className="w-full text-2xl font-black text-primary/80 tracking-tighter italic leading-none bg-transparent outline-none appearance-none cursor-pointer pr-6 text-right"
-                                                            >
-                                                                {slots.map((s: string) => {
-                                                                    const duration = overrideDuration || services.find((svc: Service) => svc.name === currentService)?.duration || 60;
-                                                                    const isFull = checkConflict(currentStaffId, currentRoomId, selectedDate, s, duration, initialMode === 'edit' ? initialData.id : undefined);
-                                                                    return <option key={s} value={s} className={isFull ? 'text-red-400 font-bold' : ''}>{s} {isFull ? ' (ÇAKIŞMA)' : ''}</option>
-                                                                })}
-                                                            </select>
-                                                            <ChevronDown size={14} className="absolute right-0 top-1/2 -translate-y-1/2 text-primary/40 pointer-events-none" />
+                                    </AnimatePresence>
+                                </div>
+                            ) : (
+                                <>
+                                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
+                                        {/* Sol Sütun */}
+                                        <div className="space-y-8">
+                                            <div className="bg-indigo-50/30 p-10 rounded-[2.5rem] border border-indigo-100/50 space-y-8">
+                                                <div className="flex items-center justify-between bg-white/80 p-6 rounded-3xl border border-indigo-100/50 shadow-sm">
+                                                    <div className="flex items-center gap-4">
+                                                        <div className="w-12 h-12 rounded-2xl bg-indigo-600 text-white flex items-center justify-center shadow-lg"><User size={24} /></div>
+                                                        <div>
+                                                            <p className="text-[10px] font-black text-indigo-400 uppercase tracking-widest mb-1.5">Müşteri</p>
+                                                            <h4 className="text-lg font-black text-gray-900 tracking-tight italic uppercase">{customer?.name}</h4>
                                                         </div>
                                                     </div>
+                                                    <div className="text-right">
+                                                        <input type="date" value={selectedDate} onChange={e => setSelectedDate(e.target.value)} className="text-[11px] font-black text-primary uppercase bg-white border border-indigo-100 rounded-xl px-4 py-1.5 outline-none mb-2 block w-full" />
+                                                        <select value={selectedTime} onChange={e => setSelectedTime(e.target.value)} className="text-2xl font-black text-primary/80 tracking-tighter italic bg-transparent outline-none appearance-none pr-6 text-right">
+                                                            {slots.map(s => <option key={s} value={s}>{s}</option>)}
+                                                        </select>
+                                                    </div>
+                                                </div>
+
+                                                <div className="space-y-3">
+                                                    <label className="text-[9px] font-black text-indigo-400 uppercase tracking-widest">Randevu Notu</label>
+                                                    <textarea value={note} onChange={e => setNote(e.target.value)} placeholder="Özel istekler..." className="w-full bg-white border border-indigo-50 rounded-[2rem] px-8 py-6 text-sm font-bold text-gray-900 outline-none focus:border-indigo-500 transition-all min-h-[120px] resize-none" />
+                                                </div>
+
+                                                <div className="space-y-4">
+                                                    <label className="text-[9px] font-black text-gray-400 uppercase tracking-widest">Uygulanacak Hizmet</label>
+                                                    <select value={currentService} onChange={e => {
+                                                        const s = services.find((svc: Service) => svc.name === e.target.value);
+                                                        setCurrentService(e.target.value);
+                                                        if(s) setPrice(s.price);
+                                                    }} className="w-full bg-white border border-gray-100 rounded-2xl px-6 py-5 text-sm font-black text-gray-900 outline-none focus:border-primary transition-all shadow-sm">
+                                                        {activeServices.map((s: Service) => <option key={s.id} value={s.name}>{s.name} (₺{s.price})</option>)}
+                                                    </select>
+                                                    <input type="number" value={price} onChange={e => setPrice(Number(e.target.value))} className="w-full bg-white border border-gray-100 rounded-2xl px-6 py-5 text-sm font-black text-gray-900 outline-none focus:border-primary transition-all shadow-sm" placeholder="Fiyat" />
                                                 </div>
                                             </div>
+                                        </div>
 
-                                            <div className="space-y-3 px-2">
-                                                <label className="text-[9px] font-black text-indigo-400 uppercase tracking-widest ml-1">Randevu Notu / Özel İstekler</label>
-                                                <textarea 
-                                                    value={note}
-                                                    onChange={e => setNote(e.target.value)}
-                                                    placeholder="Müşterinin özel tercihlerini veya randevu detaylarını buraya not edin..."
-                                                    className="w-full bg-white border border-indigo-50 rounded-[2rem] px-8 py-6 text-sm font-bold text-gray-900 outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/5 transition-all shadow-sm min-h-[120px] resize-none placeholder:text-gray-300"
-                                                />
-                                            </div>
+                                        {/* Sağ Sütun */}
+                                        <div className="space-y-8">
+                                            <div className="bg-indigo-50/20 p-8 rounded-[2.5rem] border border-indigo-100/30 space-y-8">
+                                                <div className="space-y-4">
+                                                    <label className="text-[9px] font-black text-indigo-400 uppercase tracking-widest">Uzman Seçimi</label>
+                                                    <select value={currentStaffId} onChange={e => setCurrentStaffId(e.target.value)} className="w-full bg-white border border-indigo-100 rounded-2xl px-6 py-5 text-sm font-black text-gray-900 outline-none shadow-sm">
+                                                        {staffMembers.map((s: Staff) => <option key={s.id} value={s.id}>{s.name}</option>)}
+                                                    </select>
+                                                </div>
 
-                                            {/* Package Balance Info */}
-                                            {customerPackages.length > 0 && (
-                                                <div className="bg-amber-50 rounded-[2rem] p-6 border border-amber-100 animate-in fade-in slide-in-from-right-4 duration-500">
-                                                    <div className="flex items-center gap-3 mb-4">
-                                                        <div className="p-2 bg-amber-500 text-white rounded-xl shadow-lg shadow-amber-200">
-                                                            <PackageIcon className="w-4 h-4" />
-                                                        </div>
-                                                        <p className="text-[10px] font-black text-amber-600 uppercase tracking-widest">Müşterinin Aktif Paketleri</p>
-                                                    </div>
-                                                    <div className="space-y-2">
-                                                        {customerPackages.map((pkg: Package) => (
-                                                            <div key={pkg.id} className="flex justify-between items-center bg-white/80 p-3 rounded-xl border border-amber-100/50">
-                                                                <span className="text-[11px] font-black text-gray-900 uppercase tracking-tight">{pkg.name}</span>
-                                                                <span className="px-3 py-1 bg-amber-500 text-white rounded-lg text-[10px] font-black uppercase tracking-widest">
-                                                                    {pkg.totalSessions - pkg.usedSessions} / {pkg.totalSessions} Seans Kaldı
-                                                                </span>
-                                                            </div>
+                                                <div className="space-y-4">
+                                                    <label className="text-[9px] font-black text-indigo-400 uppercase tracking-widest">Oda Seçimi</label>
+                                                    <div className="flex flex-wrap gap-2.5">
+                                                        {rooms.map(room => (
+                                                            <button key={room.id} onClick={() => setCurrentRoomId(room.id)} className={`px-6 py-3 rounded-2xl text-[10px] font-black uppercase transition-all ${currentRoomId === room.id ? 'bg-primary text-white shadow-xl' : 'bg-white border border-gray-100 text-indigo-400'}`}>{room.name}</button>
                                                         ))}
                                                     </div>
                                                 </div>
-                                            )}
 
-                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                                <div className="space-y-2">
-                                                    <label className="text-[9px] font-black text-gray-400 uppercase tracking-widest ml-1">Uygulanacak Hizmet</label>
-                                                    <div className="relative group">
-                                                        <select value={currentService} onChange={e => {
-                                                            const s = services.find((svc: Service) => svc.name === e.target.value);
-                                                            setCurrentService(e.target.value);
-                                                            if(s) {
-                                                                setPrice(s.price);
-                                                                setOverrideDuration(s.duration);
-                                                            }
-                                                        }} className="w-full bg-white border border-gray-100 rounded-2xl px-6 py-5 text-sm font-black text-gray-900 outline-none focus:border-primary transition-all appearance-none shadow-sm group-hover:shadow-md">
-                                                            {activeServices.map((s: Service) => <option key={s.id} value={s.name}>{s.name} (₺{s.price})</option>)}
-                                                        </select>
-                                                        <ChevronDown className="w-4 h-4 absolute right-6 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
-                                                    </div>
-                                                </div>
-                                                <div className="space-y-2">
-                                                    <label className="text-[9px] font-black text-gray-400 uppercase tracking-widest ml-1">Hizmet Bedeli (₺)</label>
-                                                    <div className="relative group">
-                                                        <input 
-                                                            type="number"
-                                                            value={price}
-                                                            onChange={e => setPrice(Number(e.target.value))}
-                                                            className="w-full bg-white border border-gray-100 rounded-2xl px-6 py-5 text-sm font-black text-gray-900 outline-none focus:border-primary transition-all shadow-sm group-hover:shadow-md"
-                                                        />
-                                                        <Banknote className="w-4 h-4 absolute right-6 top-1/2 -translate-y-1/2 text-emerald-400 pointer-events-none" />
-                                                    </div>
-                                                </div>
-                                                <div className="space-y-4 pt-4 border-t border-gray-50">
-                                                    <label className="text-[9px] font-black text-gray-400 uppercase tracking-widest ml-1 flex items-center justify-between">
-                                                        <span>Uzman / Terapist (1)</span>
-                                                        {services.find((s: Service) => s.name === currentService)?.requiredStaffCount === 2 && (
-                                                            <span className="text-purple-600 animate-pulse">ÇİFT TERAPİST GEREKLİ</span>
-                                                        )}
-                                                    </label>
-                                                    <div className="relative group">
-                                                        <select value={currentStaffId} onChange={e => setCurrentStaffId(e.target.value)} className="w-full bg-white border border-gray-100 rounded-2xl px-6 py-5 text-sm font-black text-gray-900 outline-none focus:border-primary transition-all appearance-none shadow-sm group-hover:shadow-md">
-                                                            {staffMembers.map((s: Staff) => <option key={s.id} value={s.id}>{s.name}</option>)}
-                                                        </select>
-                                                        <ChevronDown className="w-4 h-4 absolute right-6 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
-                                                    </div>
-
-                                                    {(services.find((s: Service) => s.name === currentService)?.requiredStaffCount === 2) && (
-                                                        <div className="animate-in fade-in slide-in-from-top-2 duration-300">
-                                                            <label className="text-[9px] font-black text-purple-600 uppercase tracking-widest ml-1">Uzman / Terapist (2)</label>
-                                                            <div className="relative group mt-2">
-                                                                <select 
-                                                                    value={secondStaffId} 
-                                                                    onChange={e => setSecondStaffId(e.target.value)} 
-                                                                    className="w-full bg-purple-50/50 border border-purple-100 rounded-2xl px-6 py-5 text-sm font-black text-purple-900 outline-none focus:border-purple-300 transition-all appearance-none shadow-sm group-hover:shadow-md"
-                                                                >
-                                                                    <option value="">Seçiniz...</option>
-                                                                    {staffMembers.filter((s: Staff) => s.id !== currentStaffId).map((s: Staff) => <option key={s.id} value={s.id}>{s.name}</option>)}
-                                                                </select>
-                                                                <ChevronDown className="w-4 h-4 absolute right-6 top-1/2 -translate-y-1/2 text-purple-400 pointer-events-none" />
-                                                            </div>
-                                                        </div>
-                                                    )}
-                                                </div>
-                                                <div className="space-y-2">
-                                                    <label className="text-[9px] font-black text-indigo-400 uppercase tracking-widest ml-1 italic">Müşteri Tavsiye Kaynağı</label>
-                                                    <div className="relative group">
-                                                        <select value={referralSource} onChange={e => setReferralSource(e.target.value)} className="w-full bg-indigo-50/50 border border-indigo-100 rounded-2xl px-6 py-5 text-sm font-black text-indigo-900 outline-none focus:border-primary transition-all appearance-none shadow-sm group-hover:shadow-md italic">
-                                                            {['Direkt', 'Instagram', 'Google', 'Tavsiye', 'TikTok', 'WhatsApp', 'Dışarıdan Geçerken'].map(s => <option key={s} value={s}>{s}</option>)}
-                                                        </select>
-                                                        <Sparkles className="w-4 h-4 absolute right-6 top-1/2 -translate-y-1/2 text-indigo-300 pointer-events-none" />
+                                                <div className="flex items-center gap-4 bg-white/80 p-6 rounded-[2rem] border border-indigo-100/50 shadow-sm">
+                                                    <div className="flex-1">
+                                                        <p className="text-[9px] font-black text-indigo-400 uppercase tracking-widest mb-1">Final Süre</p>
+                                                        <div className="flex items-center gap-2"><Clock size={16} className="text-primary" /><span className="text-sm font-black text-gray-900 italic">{overrideDuration || services.find((s: Service) => s.name === currentService)?.duration || 0} DK</span></div>
                                                     </div>
                                                 </div>
                                             </div>
 
-                                            <div className="space-y-4">
-                                                <p className="text-[10px] font-black text-indigo-400 uppercase tracking-widest ml-1">Oda Seçimi (Opsiyonel)</p>
-                                                <div className="flex flex-wrap gap-2.5">
-                                                    {rooms.map((room: Room) => {
-                                                        const duration = overrideDuration || services.find((svc: Service) => svc.name === currentService)?.duration || 60;
-                                                        const isRoomFull = checkConflict('', room.id, selectedDate, selectedTime, duration, initialMode === 'edit' ? initialData.id : undefined);
-                                                        
-                                                        return (
-                                                            <button 
-                                                                key={room.id} 
-                                                                onClick={() => !isRoomFull && setCurrentRoomId(room.id === currentRoomId ? null : room.id)} 
-                                                                className={`px-6 py-3.5 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all duration-300 border-2 relative ${
-                                                                    currentRoomId === room.id 
-                                                                    ? 'bg-purple-600 border-purple-600 text-white shadow-xl shadow-purple-200 scale-105' 
-                                                                    : isRoomFull 
-                                                                        ? 'bg-gray-100 border-gray-200 text-gray-300 cursor-not-allowed grayscale' 
-                                                                        : 'bg-white border-gray-100 text-indigo-400 hover:border-purple-200 shadow-sm'
-                                                                }`}
-                                                                title={isRoomFull ? 'Bu oda seçilen saatte dolu' : ''}
-                                                            >
-                                                                {room.name}
-                                                                {isRoomFull && <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[7px] px-1.5 py-0.5 rounded-full ring-2 ring-white">DOLU</span>}
-                                                            </button>
-                                                        );
-                                                    })}
-                                                </div>
-                                            </div>
-
-                                            <div className="flex items-center gap-4 bg-white p-6 rounded-[2rem] border border-indigo-100 shadow-sm">
-                                                <div className="flex-1">
-                                                    <p className="text-[9px] font-black text-indigo-400 uppercase tracking-widest mb-1.5 opacity-60">Tanımlı Süre</p>
-                                                    <div className="flex items-center gap-2">
-                                                        <Clock className="w-4 h-4 text-indigo-600 animate-pulse" />
-                                                        <span className="text-sm font-black text-gray-900 uppercase tracking-tight italic">{overrideDuration || services.find((s: Service) => s.name === currentService)?.duration || 0} Dakika</span>
-                                                    </div>
-                                                </div>
-                                                <div className="w-px h-10 bg-indigo-50" />
-                                                <div className="flex-1 pl-4">
-                                                    <p className="text-[9px] font-black text-indigo-400 uppercase tracking-widest mb-1.5 opacity-60">Yaklaşık Bitiş</p>
-                                                    <p className="text-sm font-black text-primary uppercase tracking-tight italic">
-                                                        {(() => {
-                                                            const start = selectedTime;
-                                                            const dur = overrideDuration || services.find((s: Service) => s.name === currentService)?.duration || 0;
-                                                            const [h, m] = start.split(':').map(Number);
-                                                            const endTotal = h * 60 + m + dur;
-                                                            const endH = endTotal >= 1440 ? Math.floor((endTotal % 1440) / 60) : Math.floor(endTotal / 60);
-                                                            const endM = endTotal % 60;
-                                                            return `${endH.toString().padStart(2, '0')}:${endM.toString().padStart(2, '0')}`;
-                                                        })()}
-                                                    </p>
-                                                </div>
-                                            </div>
-
-                                            <div className="pt-10 border-t border-dashed border-gray-100">
-                                                <div className="flex items-center gap-3 mb-6 px-1">
-                                                    <div className="w-8 h-8 bg-indigo-50 rounded-lg flex items-center justify-center text-indigo-600"><Search size={16} /></div>
-                                                    <h3 className="text-[10px] font-black text-indigo-400 uppercase tracking-widest">İnteraktif Konsültasyon (Masaj Odak Noktaları)</h3>
-                                                </div>
-                                                <div className="bg-gray-50/50 rounded-[3rem] p-6 border border-gray-100">
-                                                    <BodyMap selectedRegions={selectedRegions} onToggleRegion={toggleRegion} />
-                                                </div>
-                                            </div>
-
-                                            <button 
-                                                onClick={addToBasket}
-                                                className="w-full py-6 mt-10 bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-700 hover:to-indigo-800 text-white rounded-[2rem] text-[11px] font-black uppercase tracking-[0.2em] shadow-xl shadow-indigo-200 hover:shadow-indigo-300 transition-all duration-300 flex items-center justify-center gap-4 group"
-                                            >
-                                                <Plus className="w-5 h-5 text-white group-hover:rotate-90 transition-all" /> 
-                                                HİZMETİ SEPETE EKLE & DEVAM ET
+                                            <button onClick={addToBasket} className="w-full py-8 bg-slate-900 text-white rounded-[2.5rem] text-[11px] font-black uppercase tracking-[0.3em] shadow-xl hover:bg-slate-800 transition-all flex items-center justify-center gap-4 group">
+                                                <Plus className="group-hover:rotate-90 transition-all" /> YENİ KALEM EKLE
                                             </button>
                                         </div>
                                     </div>
-                                </div>
+
+                                    {/* Full Width Section */}
+                                    <div className="mt-12 pt-12 border-t border-dashed border-gray-100">
+                                        <div className="text-center mb-10">
+                                            <h3 className="text-2xl font-black text-gray-900 uppercase italic tracking-tighter">Aura Atlas İndeksi</h3>
+                                            <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Masaj Odak Noktaları</p>
+                                        </div>
+                                        <div className="bg-indigo-50/30 rounded-[4rem] p-12 border border-indigo-100/40">
+                                            <div className="max-w-3xl mx-auto">
+                                                <BodyMap selectedRegions={selectedRegions} onToggleRegion={toggleRegion} />
+                                            </div>
+                                        </div>
+                                    </div>
+                                </>
                             )
                         ) : (
                             <div className="space-y-8 max-w-xl mx-auto py-10">
@@ -802,10 +485,7 @@ export default function BookingModal({ initialData, onClose, date, mode: initial
                                 </div>
                                 <div className="grid grid-cols-2 gap-4">
                                     {['Toplantı', 'Mola', 'Eğitim', 'Özel'].map(r => (
-                                        <button key={r} onClick={() => setBlockReason(r)}
-                                            className={`p-6 rounded-[2rem] border-2 font-black text-xs uppercase transition-all duration-300 ${blockReason === r ? 'bg-primary text-white border-primary shadow-xl shadow-primary/20 scale-105' : 'bg-gray-50 border-transparent text-gray-400 hover:bg-white hover:border-gray-100'}`}>
-                                            {r}
-                                        </button>
+                                        <button key={r} onClick={() => setBlockReason(r)} className={`p-8 rounded-[2.5rem] border-2 font-black uppercase transition-all ${blockReason === r ? 'bg-primary text-white border-primary shadow-xl' : 'bg-gray-50 border-transparent text-gray-300 hover:bg-white'}`}>{r}</button>
                                     ))}
                                 </div>
                             </div>
@@ -814,13 +494,9 @@ export default function BookingModal({ initialData, onClose, date, mode: initial
                 </div>
 
                 <div className="p-10 bg-indigo-50/50 border-t border-indigo-100 flex-shrink-0">
-                    <button
-                        onClick={handleSave}
-                        disabled={isSaving || (mode === 'appt' && !selectedCustId && basket.length === 0)}
-                        className="w-full py-6 bg-primary text-white rounded-[2.5rem] font-black text-sm uppercase tracking-[0.3em] shadow-2xl shadow-primary/30 transition-all hover:bg-indigo-700 active:scale-[0.98] disabled:opacity-50 flex items-center justify-center gap-4"
-                    >
-                        {isSaving ? <Loader2 className="w-6 h-6 animate-spin" /> : <ShieldCheck className="w-6 h-6" />}
-                        {isSaving ? 'İşlem Yapılıyor...' : (initialMode === 'edit' ? 'Değişiklikleri Kaydet' : 'Takvime İşle')}
+                    <button onClick={handleSave} disabled={isSaving || (mode === 'appt' && !selectedCustId && basket.length === 0)} className="w-full py-6 bg-primary text-white rounded-[2.5rem] font-black text-sm uppercase tracking-[0.3em] shadow-2xl transition-all hover:bg-indigo-700 disabled:opacity-50 flex items-center justify-center gap-4">
+                        {isSaving ? <Loader2 className="animate-spin" /> : <ShieldCheck />}
+                        {isSaving ? 'İşlem Yapılıyor...' : 'Takvime İşle'}
                     </button>
                 </div>
             </div>
