@@ -1,10 +1,24 @@
 -- Agent Notification & Action Pipeline
 -- Ajanların bulgularını bildirim sistemine ve WhatsApp kuyruğuna bağlar.
 
--- 1. Bildirim Tablosuna Ajan Kaynağı Ekle
-ALTER TABLE public.notifications 
-ADD COLUMN IF NOT EXISTS trigger_source TEXT DEFAULT 'SYSTEM', -- 'SYSTEM', 'AI_AGENT', 'MANUAL'
-ADD COLUMN IF NOT EXISTS agent_id TEXT;
+-- 1. Bildirim Tablosunu Oluştur (Eğer yoksa)
+CREATE TABLE IF NOT EXISTS public.notifications (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    business_id UUID REFERENCES public.businesses(id) ON DELETE CASCADE,
+    title TEXT NOT NULL,
+    message TEXT NOT NULL,
+    type TEXT DEFAULT 'info', -- 'info', 'warning', 'error', 'success'
+    is_read BOOLEAN DEFAULT false,
+    trigger_source TEXT DEFAULT 'SYSTEM', -- 'SYSTEM', 'AI_AGENT', 'MANUAL'
+    agent_id TEXT,
+    created_at TIMESTAMPTZ DEFAULT now()
+);
+
+-- RLS Ayarları
+ALTER TABLE public.notifications ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Users can see their own business notifications" ON public.notifications;
+CREATE POLICY "Users can see their own business notifications" ON public.notifications
+    FOR ALL USING (business_id = (SELECT business_id FROM public.app_users WHERE id = auth.uid()));
 
 -- 2. WhatsApp Gönderim Kuyruğu (Opsiyonel/Altyapı)
 CREATE TABLE IF NOT EXISTS public.whatsapp_queue (
