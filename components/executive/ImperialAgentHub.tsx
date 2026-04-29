@@ -120,7 +120,6 @@ export default function ImperialAgentHub() {
                     </button>
                 </div>
             </div>
-            </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
                 {/* Agent Cards */}
