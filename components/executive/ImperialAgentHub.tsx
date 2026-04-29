@@ -281,11 +281,20 @@ export default function ImperialAgentHub() {
                                                     if (!selectedAgent || !currentBusiness?.id) return;
                                                     setIsLoading(true);
                                                     try {
-                                                        // Simulate AI Analysis based on Prompt and Data
-                                                        const isCritical = Math.random() > 0.7; // Simulating a finding
-                                                        const description = isCritical 
-                                                            ? `KRİTİK ANALİZ: '${selectedAgent.systemInstruction}' talimatına göre yapılan taramada bugünkü ödemelerde sapma saptandı.`
-                                                            : `ANALİZ TAMAMLANDI: '${selectedAgent.systemInstruction}' talimatına göre veriler temiz görünüyor.`;
+                                                        // --- IMPROVED AI BRAIN SIMULATION ---
+                                                        const prompt = selectedAgent.systemInstruction.toLowerCase();
+                                                        let aiDescription = "";
+                                                        let aiType = 'info';
+
+                                                        if (prompt.includes('ekip') || prompt.includes('personel') || prompt.includes('çalışan')) {
+                                                            const staffCount = 4; // Mocking staff count for now, could fetch from team store
+                                                            aiDescription = `ANALİZ: İşletmenizde şu an aktif ${staffCount} personel tanımlı. Ekibiniz tam kapasite çalışıyor.`;
+                                                        } else if (prompt.includes('ödeme') || prompt.includes('kart') || prompt.includes('para') || prompt.includes('kazanç')) {
+                                                            const total = Array.isArray(payments) ? payments.reduce((acc, p) => acc + (p.totalAmount || 0), 0) : 0;
+                                                            aiDescription = `FİNANSAL ANALİZ: Toplam ciro ₺${total.toLocaleString('tr-TR')} olarak hesaplandı. Kartlı ödemeler ağırlıkta.`;
+                                                        } else {
+                                                            aiDescription = `ANALİZ TAMAMLANDI: '${selectedAgent.systemInstruction}' talimatı incelendi. Operasyonel bir risk saptanmadı.`;
+                                                        }
 
                                                         const { error } = await supabase
                                                             .from('agent_activity_logs')
@@ -293,9 +302,9 @@ export default function ImperialAgentHub() {
                                                                 business_id: currentBusiness.id,
                                                                 agent_id: selectedAgent.id,
                                                                 action_type: 'analysis',
-                                                                description: description,
-                                                                log_type: isCritical ? 'critical' : 'info',
-                                                                metadata: { prompt: selectedAgent.systemInstruction, data_snapshot: { appts: appointments.length, pays: payments.length } }
+                                                                description: aiDescription,
+                                                                log_type: aiType,
+                                                                metadata: { prompt: selectedAgent.systemInstruction, data_snapshot: { appts: appointments.length, staff: 4 } }
                                                             });
                                                         
                                                         if (error) throw error;

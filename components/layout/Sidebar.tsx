@@ -206,7 +206,7 @@ export default function Sidebar() {
                                 {currentBusiness?.name || 'Aura Kingdom'}
                             </h1>
                             <div className="flex items-center gap-1.5 mt-1.5 overflow-x-auto no-scrollbar pb-0.5">
-                                {(currentBusiness?.verticals || ['spa']).map((v: string) => (
+                                {Array.isArray(currentBusiness?.verticals) && currentBusiness.verticals.map((v: string) => (
                                     <span key={v} className={`text-[8px] font-black tracking-widest uppercase px-1.5 py-0.5 rounded-md border ${
                                         v === 'spa' ? 'bg-indigo-50 border-indigo-100 text-indigo-500' :
                                         v === 'clinic' ? 'bg-emerald-50 border-emerald-100 text-emerald-600' :

@@ -157,7 +157,7 @@ export default function Header() {
                                     <p className="text-sm font-black text-gray-900 leading-tight">Şu an: <span className="text-primary">{currentBranch?.name || 'Tüm Şubeler'}</span></p>
                                 </div>
                                 <div className="space-y-1.5 px-1 py-1">
-                                    {branches.map((br: any) => (
+                                    {Array.isArray(branches) && branches.map((br: any) => (
                                         <button 
                                             key={br.id}
                                             onClick={() => {
