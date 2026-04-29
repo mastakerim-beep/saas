@@ -18,6 +18,8 @@ CREATE TABLE IF NOT EXISTS public.ai_token_logs (
 -- 3. RLS Güvenlik Politikaları
 ALTER TABLE public.ai_token_logs ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "İşletmeler kendi token loglarını görebilir" ON public.ai_token_logs;
+
 CREATE POLICY "İşletmeler kendi token loglarını görebilir"
 ON public.ai_token_logs FOR SELECT
 USING (business_id = get_my_business_id() OR get_my_role() = 'SaaS_Owner');
