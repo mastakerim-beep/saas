@@ -111,6 +111,12 @@ const StoreOrchestrator = ({ children }: { children: ReactNode }) => {
     const activeBizId = useMemo(() => {
         let id: string | undefined = undefined;
         const isSaaS = auth.currentUser?.role === 'SaaS_Owner';
+        const isAdminPath = pathname.startsWith('/admin');
+
+        // SaaS Owners on admin paths should NOT have an activeBizId to ensure global fetch
+        if (isSaaS && isAdminPath && !auth.impersonatedBusinessId) {
+            return undefined;
+        }
 
         if (auth.impersonatedBusinessId) {
             id = auth.impersonatedBusinessId;
@@ -128,14 +134,13 @@ const StoreOrchestrator = ({ children }: { children: ReactNode }) => {
         }
 
         // STICKY IDENTITY CACHE (Hydration Guard)
-        // If we are on a slug but data is still loading, do not revert to NULL
         if (!id && slug && lastResolvedBizIdRef.current) {
              id = lastResolvedBizIdRef.current;
         }
 
         if (id) lastResolvedBizIdRef.current = id;
         return id;
-    }, [auth.impersonatedBusinessId, auth.currentUser?.businessId, auth.currentUser?.role, slug, biz.allBusinesses]);
+    }, [auth.impersonatedBusinessId, auth.currentUser?.businessId, auth.currentUser?.role, slug, biz.allBusinesses, pathname]);
 
     // Update ref in effect for consistency
     useEffect(() => {
