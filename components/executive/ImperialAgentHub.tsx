@@ -16,20 +16,32 @@ export default function ImperialAgentHub() {
     } = useStore();
 
     const [dbAgents, setDbAgents] = useState<any[]>([]);
+    const [agentLogs, setAgentLogs] = useState<any[]>([]);
     const [isLoading, setIsLoading] = useState(true);
 
-    // Fetch agents from DB
+    // Fetch agents and logs from DB
     const fetchAgents = useCallback(async () => {
         if (!currentBusiness?.id) return;
         setIsLoading(true);
         try {
-            const { data, error } = await supabase
+            // 1. Fetch Agents
+            const { data: agents, error: aError } = await supabase
                 .from('imperial_agents')
                 .select('*')
                 .eq('business_id', currentBusiness.id);
-            if (data) setDbAgents(data);
+            if (agents) setDbAgents(agents);
+
+            // 2. Fetch Recent Logs
+            const { data: logs, error: lError } = await supabase
+                .from('agent_activity_logs')
+                .select('*')
+                .eq('business_id', currentBusiness.id)
+                .order('created_at', { ascending: false })
+                .limit(20);
+            if (logs) setAgentLogs(logs);
+
         } catch (err) {
-            console.error('Failed to fetch agents:', err);
+            console.error('Failed to fetch agent data:', err);
         } finally {
             setIsLoading(false);
         }
@@ -74,6 +86,8 @@ export default function ImperialAgentHub() {
 
         return baseAgents.map(ba => {
             const dbA = dbAgents.find(d => d.agent_id === ba.id);
+            const specificLogs = agentLogs.filter(l => l.agent_id === ba.id).slice(0, 5);
+
             return {
                 ...ba,
                 role: dbA?.role || 'Sistem Ajani',
@@ -82,13 +96,15 @@ export default function ImperialAgentHub() {
                 stats: { 
                     tasks: ba.id === 'concierge' ? recentAppts.length : ba.id === 'guardian' ? recentPayments.length : ba.id === 'commander' ? safeRooms.length : (safePayments.length + safeExpenses.length),
                     accuracy: ba.id === 'concierge' ? '%99.2' : ba.id === 'guardian' ? `₺${totalIncome.toLocaleString('tr-TR')}` : ba.id === 'commander' ? `%${occupancy} Doluluk` : 'Güvenli',
-                    lastAction: ba.id === 'concierge' ? (lastAppt ? `${lastAppt.customerName} randevusu işlendi` : 'Hazır') : (lastPay ? `${lastPay.customerName} tahsilatı yapıldı` : 'Analiz ediliyor')
+                    lastAction: specificLogs[0]?.description || (ba.id === 'concierge' ? (lastAppt ? `${lastAppt.customerName} randevusu işlendi` : 'Hazır') : 'Analiz ediliyor')
                 },
-                logs: ba.id === 'concierge' ? safeAppointments.slice(0, 3).map(a => `${a.customerName} - ${a.service}`) : safePayments.slice(0, 3).map(p => `${p.customerName} - ₺${p.totalAmount}`),
+                logs: specificLogs.length > 0 
+                    ? specificLogs.map(l => l.description) 
+                    : (ba.id === 'concierge' ? safeAppointments.slice(0, 3).map(a => `${a.customerName} - ${a.service}`) : safePayments.slice(0, 3).map(p => `${p.customerName} - ₺${p.totalAmount}`)),
                 systemInstruction: dbA?.system_instruction || ''
             };
         });
-    }, [appointments, payments, rooms, expenses, dbAgents]);
+    }, [appointments, payments, rooms, expenses, dbAgents, agentLogs]);
 
     const [selectedAgentId, setSelectedAgentId] = useState<string | null>(null);
     const [showNewAgentModal, setShowNewAgentModal] = useState(false);
