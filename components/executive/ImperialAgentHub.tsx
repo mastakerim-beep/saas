@@ -76,7 +76,7 @@ export default function ImperialAgentHub() {
         const apptsToday = safeAppointments.filter((a: Appointment) => a.date === todayStr);
         const occupancy = safeRooms.length > 0 ? Math.round((apptsToday.length / (safeRooms.length * 8)) * 100) : 0;
 
-        // Base Agents defined by the system
+        // 1. Core system agents (with icons)
         const baseAgents = [
             { id: 'concierge', name: 'Imperial Concierge', icon: <MessageSquare size={24} />, color: 'bg-indigo-600' },
             { id: 'guardian', name: 'Revenue Guardian', icon: <TrendingUp size={24} />, color: 'bg-emerald-600' },
@@ -84,24 +84,47 @@ export default function ImperialAgentHub() {
             { id: 'audit', name: 'Imperial Audit', icon: <ShieldCheck size={24} />, color: 'bg-rose-600' }
         ];
 
-        return baseAgents.map(ba => {
-            const dbA = dbAgents.find(d => d.agent_id === ba.id);
-            const specificLogs = agentLogs.filter(l => l.agent_id === ba.id).slice(0, 5);
+        // 2. Combine with DB agents to show EVERYTHING
+        const allAgentsCombined = [...dbAgents];
+        
+        // Ensure base agents are always represented even if not in DB yet
+        baseAgents.forEach(ba => {
+            if (!allAgentsCombined.find(d => d.agent_id === ba.id)) {
+                allAgentsCombined.push({ 
+                    agent_id: ba.id, 
+                    name: ba.name, 
+                    role: 'Sistem Ajani', 
+                    approval_mode: 'manual', 
+                    system_instruction: '' 
+                });
+            }
+        });
+
+        return allAgentsCombined.map(dbA => {
+            const baseInfo = baseAgents.find(ba => ba.id === dbA.agent_id) || { 
+                icon: <Bot size={24} />, 
+                color: 'bg-slate-600' 
+            };
+            
+            const specificLogs = agentLogs.filter(l => l.agent_id === dbA.agent_id).slice(0, 5);
 
             return {
-                ...ba,
-                role: dbA?.role || 'Sistem Ajani',
-                status: dbA?.approval_mode === 'auto' ? 'active' : 'monitoring',
-                description: dbA?.system_instruction || 'Talimat bekliyor...',
+                id: dbA.agent_id,
+                name: dbA.name,
+                icon: baseInfo.icon,
+                color: baseInfo.color,
+                role: dbA.role || 'Özel Ajan',
+                status: dbA.approval_mode === 'auto' ? 'active' : 'monitoring',
+                description: dbA.system_instruction || 'Talimat bekliyor...',
                 stats: { 
-                    tasks: ba.id === 'concierge' ? recentAppts.length : ba.id === 'guardian' ? recentPayments.length : ba.id === 'commander' ? safeRooms.length : (safePayments.length + safeExpenses.length),
-                    accuracy: ba.id === 'concierge' ? '%99.2' : ba.id === 'guardian' ? `₺${totalIncome.toLocaleString('tr-TR')}` : ba.id === 'commander' ? `%${occupancy} Doluluk` : 'Güvenli',
-                    lastAction: specificLogs[0]?.description || (ba.id === 'concierge' ? (lastAppt ? `${lastAppt.customerName} randevusu işlendi` : 'Hazır') : 'Analiz ediliyor')
+                    tasks: dbA.agent_id === 'concierge' ? recentAppts.length : dbA.agent_id === 'guardian' ? recentPayments.length : dbA.agent_id === 'commander' ? safeRooms.length : (safePayments.length + safeExpenses.length),
+                    accuracy: dbA.agent_id === 'concierge' ? '%99.2' : dbA.agent_id === 'guardian' ? `₺${totalIncome.toLocaleString('tr-TR')}` : dbA.agent_id === 'commander' ? `%${occupancy} Doluluk` : 'Güvenli',
+                    lastAction: specificLogs[0]?.description || 'Sistem beklemede'
                 },
                 logs: specificLogs.length > 0 
                     ? specificLogs.map(l => l.description) 
-                    : (ba.id === 'concierge' ? safeAppointments.slice(0, 3).map(a => `${a.customerName} - ${a.service}`) : safePayments.slice(0, 3).map(p => `${p.customerName} - ₺${p.totalAmount}`)),
-                systemInstruction: dbA?.system_instruction || ''
+                    : (dbA.agent_id === 'concierge' ? safeAppointments.slice(0, 3).map(a => `${a.customerName} - ${a.service}`) : safePayments.slice(0, 3).map(p => `${p.customerName} - ₺${p.totalAmount}`)),
+                systemInstruction: dbA.system_instruction || ''
             };
         });
     }, [appointments, payments, rooms, expenses, dbAgents, agentLogs]);
