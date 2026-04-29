@@ -103,3 +103,10 @@
  ✓ Compiled in 35ms (56 modules)
  POST /api/ai/agent-brain 200 in 3748ms
  ✓ Compiled in 39ms
+ ✓ Compiled in 643ms (203 modules)
+   Reload env: .env.local
+ ✓ Compiled in 61ms (203 modules)
+   Reload env: .env.development.local
+   Reload env: .env.local
+   Reload env: .env
+ ✓ Compiled in 428ms (203 modules)
