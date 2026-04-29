@@ -43,3 +43,12 @@ END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
 COMMENT ON TABLE public.ai_token_logs IS 'AI kullanım kredisi hareket kayıtları.';
+
+-- 5. Fonksiyon: Token Yükle (Ödeme sonrası çalışır)
+CREATE OR REPLACE FUNCTION public.add_ai_tokens(p_business_id UUID, p_amount INTEGER, p_reason TEXT)
+RETURNS VOID AS 3782
+BEGIN
+    UPDATE public.businesses SET ai_tokens = COALESCE(ai_tokens, 0) + p_amount WHERE id = p_business_id;
+    INSERT INTO public.ai_token_logs (business_id, amount, reason) VALUES (p_business_id, p_amount, p_reason);
+END;
+3782 LANGUAGE plpgsql SECURITY DEFINER;
