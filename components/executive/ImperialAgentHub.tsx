@@ -483,7 +483,11 @@ function TokenPurchaseModal({ onClose, onSuccess, businessId }: { onClose: () =>
     const [isProcessing, setIsProcessing] = useState(false);
 
     const handlePurchase = async (pkg: any) => {
-        if (!businessId) return;
+        if (!businessId) {
+            console.error("Market Error: businessId is missing!");
+            return;
+        }
+        console.log(`Market: Starting purchase for ${pkg.name} (${pkg.tokens} tokens)...`);
         setIsProcessing(true);
         try {
             // Simulate Payment Success
@@ -493,12 +497,19 @@ function TokenPurchaseModal({ onClose, onSuccess, businessId }: { onClose: () =>
                 p_reason: `Paket Satın Alımı: ${pkg.name}`
             });
             
-            if (error) throw error;
+            if (error) {
+                console.error("Market RPC Error:", error);
+                throw error;
+            }
+            
+            console.log("Market: Purchase successful!");
             alert(`Tebrikler! ${pkg.tokens} Imperial Token hesabınıza tanımlandı. İmparatorluğunuzun zekası yükseliyor! 🏛️✨`);
             onSuccess();
         } catch (err: any) {
-            alert("Ödeme hatası: " + err.message);
+            console.error("Market Final Catch:", err);
+            alert("Ödeme hatası: " + (err.message || "Bilinmeyen bir hata oluştu. Lütfen SQL fonksiyonunu kontrol edin."));
         } finally {
+            console.log("Market: Process finished.");
             setIsProcessing(false);
         }
     };
