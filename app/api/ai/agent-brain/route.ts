@@ -4,12 +4,13 @@ export async function POST(req: Request) {
     try {
         const { prompt, dataContext, agentName } = await req.json();
         
-        // 1. Get API Key (Base64 Shielded)
-        const shieldedKey = "QUl6YVN5RGVGUjNLQ01FNjRBTEtLRW1ram82U2pfWGQ3alVKMjJZ";
-        const apiKey = process.env.GEMINI_API_KEY || Buffer.from(shieldedKey, 'base64').toString('ascii');
+        // 1. Get API Key ONLY from environment variables (Total Security)
+        const apiKey = process.env.GEMINI_API_KEY;
 
         if (!apiKey) {
-            return NextResponse.json({ error: 'AI Bağlantı Hatası: İmparatorluk anahtarı doğrulanamadı.' }, { status: 500 });
+            return NextResponse.json({ 
+                error: 'AI Bağlantı Hatası: API Anahtarı bulunamadı. Lütfen .env.local dosyanıza GEMINI_API_KEY ekleyin ve sunucuyu restart edin.' 
+            }, { status: 500 });
         }
         
         const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=${apiKey}`;
@@ -43,7 +44,7 @@ export async function POST(req: Request) {
 
         return NextResponse.json({ analysis: text });
     } catch (error: any) {
-        console.error("[AI-AGENT] RAW FATAL ERROR:", error);
+        console.error("[AI-AGENT] FATAL ERROR:", error);
         return NextResponse.json({ 
             error: error.message,
             analysis: `Kritik Bağlantı Hatası: ${error.message}` 
