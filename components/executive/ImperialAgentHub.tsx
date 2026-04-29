@@ -298,7 +298,23 @@ export default function ImperialAgentHub() {
                                                     if (!selectedAgent || !currentBusiness?.id) return;
                                                     setIsLoading(true);
                                                     try {
-                                                        // --- REAL GEMINI AI CALL ---
+                                                        // --- DETAILED LIVE CONTEXT COMPUTATION ---
+                                                        const last7Days = new Date();
+                                                        last7Days.setDate(last7Days.getDate() - 7);
+                                                        
+                                                        const recentRevenue = payments
+                                                            .filter(p => new Date(p.date || '') >= last7Days)
+                                                            .reduce((acc, p) => acc + (p.totalAmount || 0), 0);
+                                                        
+                                                        const topServices = Object.entries(
+                                                            appointments.reduce((acc: any, curr) => {
+                                                                acc[curr.service] = (acc[curr.service] || 0) + 1;
+                                                                return acc;
+                                                            }, {})
+                                                        ).sort((a: any, b: any) => b[1] - a[1]).slice(0, 3);
+
+                                                        const pendingPayments = appointments.filter(a => a.status === 'completed' && !a.is_paid).length;
+
                                                         const response = await fetch('/api/ai/agent-brain', {
                                                             method: 'POST',
                                                             headers: { 'Content-Type': 'application/json' },
@@ -307,11 +323,16 @@ export default function ImperialAgentHub() {
                                                                 agentName: selectedAgent.name,
                                                                 dataContext: {
                                                                     businessName: currentBusiness.name,
-                                                                    appointments: appointments.length,
-                                                                    payments: payments.length,
-                                                                    totalRevenue: payments.reduce((acc, p) => acc + (p.totalAmount || 0), 0),
-                                                                    staffCount: Array.isArray(staff) ? staff.length : 0,
-                                                                    customerCount: customers.length,
+                                                                    currentTime: new Date().toLocaleString('tr-TR'),
+                                                                    summary: {
+                                                                        totalAppointments: appointments.length,
+                                                                        totalCustomers: customers.length,
+                                                                        totalStaff: staff.length,
+                                                                        revenueLast7Days: recentRevenue,
+                                                                        top3Services: topServices,
+                                                                        pendingPaymentAlerts: pendingPayments,
+                                                                        roomCount: rooms.length
+                                                                    },
                                                                     lastActions: selectedAgent.logs
                                                                 }
                                                             })
