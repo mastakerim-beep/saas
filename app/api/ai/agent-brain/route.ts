@@ -4,7 +4,7 @@ export async function POST(req: Request) {
     try {
         const { prompt, dataContext, agentName } = await req.json();
         
-        // 1. Get API Key ONLY from environment variables (Total Security)
+        // Use the official environment variable name
         const apiKey = process.env.GEMINI_API_KEY;
 
         if (!apiKey) {
@@ -13,7 +13,8 @@ export async function POST(req: Request) {
             }, { status: 500 });
         }
         
-        const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=${apiKey}`;
+        // Using the most stable model identifier
+        const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
 
         const systemPrompt = `
             Sen bir İmparatorluk Ajanısın (${agentName}). 
@@ -33,7 +34,9 @@ export async function POST(req: Request) {
         const rawData = await response.json();
         
         if (!response.ok) {
-            throw new Error(`Google API Hatası (${response.status}): ${JSON.stringify(rawData.error)}`);
+            // Log the error for internal debugging but return a clean message
+            console.error("Gemini API Error details:", rawData.error);
+            throw new Error(`Google API Hatası: ${rawData.error?.message || 'Bağlantı reddedildi.'}`);
         }
 
         const text = rawData.candidates?.[0]?.content?.parts?.[0]?.text;
@@ -44,7 +47,7 @@ export async function POST(req: Request) {
 
         return NextResponse.json({ analysis: text });
     } catch (error: any) {
-        console.error("[AI-AGENT] FATAL ERROR:", error);
+        console.error("[AI-AGENT] ERROR:", error.message);
         return NextResponse.json({ 
             error: error.message,
             analysis: `Kritik Bağlantı Hatası: ${error.message}` 
