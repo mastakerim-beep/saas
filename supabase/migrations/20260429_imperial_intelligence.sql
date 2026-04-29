@@ -13,6 +13,7 @@ ADD COLUMN IF NOT EXISTS autonomy_score FLOAT DEFAULT 0.0;
 ALTER TABLE public.agent_activity_logs
 ADD COLUMN IF NOT EXISTS log_type TEXT DEFAULT 'info', -- 'info', 'warning', 'critical', 'action'
 ADD COLUMN IF NOT EXISTS raw_ai_response JSONB,
+ADD COLUMN IF NOT EXISTS metadata JSONB DEFAULT '{}'::jsonb,
 ADD COLUMN IF NOT EXISTS is_vetoed BOOLEAN DEFAULT false;
 
 -- 3. Örnek: Mevcut ajanlara temel talimatlarını yükle (Prompt Enjeksiyonu)
