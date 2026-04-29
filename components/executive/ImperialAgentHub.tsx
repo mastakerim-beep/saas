@@ -4,7 +4,7 @@ import React, { useState, useMemo } from 'react';
 import { 
     Bot, Sparkles, Activity, ShieldCheck, Zap, 
     MessageSquare, TrendingUp, Users, Settings, 
-    Play, Pause, RefreshCw, ChevronRight, AlertCircle
+    Play, Pause, RefreshCw, ChevronRight, AlertCircle, X
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useStore, Appointment, Payment, Expense, Room } from '@/lib/store';
@@ -95,6 +95,7 @@ export default function ImperialAgentHub() {
     });
 
     const [selectedAgentId, setSelectedAgentId] = useState<string | null>(null);
+    const [showNewAgentModal, setShowNewAgentModal] = useState(false);
 
     const toggleAgent = (id: string) => {
         setAgentStatus(prev => ({ ...prev, [id]: prev[id] === 'active' ? 'paused' : 'active' }));
@@ -111,10 +112,14 @@ export default function ImperialAgentHub() {
                     <p className="text-[10px] font-black text-indigo-500 uppercase tracking-[0.4em] mt-1">Otonom İşletme Komuta Katmanı</p>
                 </div>
                 <div className="flex gap-4">
-                    <button className="flex items-center gap-2 px-6 py-3 bg-indigo-600 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-xl shadow-indigo-100">
+                    <button 
+                        onClick={() => setShowNewAgentModal(true)}
+                        className="flex items-center gap-2 px-6 py-3 bg-indigo-600 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-xl shadow-indigo-100"
+                    >
                         <Plus className="w-4 h-4" /> YENİ AJAN TANIMLA
                     </button>
                 </div>
+            </div>
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
@@ -222,10 +227,72 @@ export default function ImperialAgentHub() {
                     </AnimatePresence>
                 </div>
             </div>
+
+            <AnimatePresence>
+                {showNewAgentModal && (
+                    <NewAgentModal 
+                        onClose={() => setShowNewAgentModal(false)} 
+                        onSave={(agent) => {
+                            console.log("Saving new agent:", agent);
+                            alert("Yeni ajan başarıyla tanımlandı ve eğitim süreci başlatıldı.");
+                        }}
+                    />
+                )}
+            </AnimatePresence>
         </div>
     );
 }
 
-function Plus({ className }: { className?: string }) {
-    return <RefreshCw className={className} />; // Placeholder icon
+function NewAgentModal({ onClose, onSave }: { onClose: () => void, onSave: (agent: any) => void }) {
+    const [name, setName] = useState('');
+    const [role, setRole] = useState('');
+    const [desc, setDesc] = useState('');
+    const [mode, setMode] = useState('manual');
+
+    return (
+        <div className="fixed inset-0 bg-indigo-950/40 backdrop-blur-md z-[100] flex items-center justify-center p-4">
+            <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="bg-white rounded-[3rem] p-12 max-w-xl w-full shadow-2xl border border-indigo-100">
+                <div className="flex justify-between items-center mb-10">
+                    <h3 className="text-3xl font-black italic uppercase tracking-tighter text-indigo-950">Yeni Ajan Tanımla</h3>
+                    <button onClick={onClose} className="p-3 hover:bg-slate-50 rounded-full text-slate-400"><X size={24} /></button>
+                </div>
+                
+                <div className="space-y-8">
+                    <div>
+                        <label className="text-[10px] font-black uppercase text-indigo-400 tracking-widest block mb-3">Ajan İsmi</label>
+                        <input value={name} onChange={e => setName(e.target.value)} placeholder="Örn: Loyalty Strategist" className="w-full bg-slate-50 border border-slate-100 rounded-2xl px-6 py-4 text-sm font-bold outline-none focus:border-indigo-500 transition-all text-indigo-950" />
+                    </div>
+
+                    <div>
+                        <label className="text-[10px] font-black uppercase text-indigo-400 tracking-widest block mb-3">Uzmanlık Alanı</label>
+                        <input value={role} onChange={e => setRole(e.target.value)} placeholder="Örn: Sadakat Programı Yönetimi" className="w-full bg-slate-50 border border-slate-100 rounded-2xl px-6 py-4 text-sm font-bold outline-none focus:border-indigo-500 transition-all text-indigo-950" />
+                    </div>
+                    
+                    <div>
+                        <label className="text-[10px] font-black uppercase text-indigo-400 tracking-widest block mb-3">Çalışma Modu</label>
+                        <div className="grid grid-cols-2 gap-4">
+                            <button onClick={() => setMode('manual')} className={`py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest border-2 transition-all ${mode === 'manual' ? 'bg-indigo-600 border-indigo-600 text-white' : 'bg-white border-slate-100 text-slate-400'}`}>Onay Bekle</button>
+                            <button onClick={() => setMode('auto')} className={`py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest border-2 transition-all ${mode === 'auto' ? 'bg-emerald-600 border-emerald-600 text-white' : 'bg-white border-slate-100 text-slate-400'}`}>Otopilot</button>
+                        </div>
+                    </div>
+                    
+                    <div>
+                        <label className="text-[10px] font-black uppercase text-indigo-400 tracking-widest block mb-3">Ajan Talimatı (Prompt)</label>
+                        <textarea value={desc} onChange={e => setDesc(e.target.value)} placeholder="Ajanın temel görevini tanımlayın..." className="w-full bg-slate-50 border border-slate-100 rounded-2xl px-6 py-4 text-sm font-bold outline-none h-32 resize-none text-indigo-950" />
+                    </div>
+                    
+                    <button 
+                        onClick={() => {
+                            if (!name || !role) return;
+                            onSave({ name, role, description: desc, mode });
+                            onClose();
+                        }}
+                        className="w-full py-6 bg-indigo-950 text-white rounded-3xl font-black uppercase tracking-[0.2em] shadow-2xl hover:scale-[1.02] active:scale-95 transition-all mt-4"
+                    >
+                        AJANI DEVREYE AL
+                    </button>
+                </div>
+            </motion.div>
+        </div>
+    );
 }

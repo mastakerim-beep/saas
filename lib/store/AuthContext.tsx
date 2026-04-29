@@ -148,8 +148,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     };
 
     const logout = async () => {
-        // Immediate UI feedback
-        setIsInitialized(false);
+        // Clear user state but keep initialization true to allow routing
         setCurrentUser(null);
         
         try {
@@ -165,16 +164,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             localStorage.removeItem('aura_business_catalog');
             localStorage.removeItem('aura_last_branch');
 
-            // Fire and forget signOut (don't let it block the redirect)
-            supabase.auth.signOut().catch(e => console.error('SignOut error:', e));
+            // Sign out from Supabase
+            await supabase.auth.signOut();
         } catch (err) {
             console.error('Logout error:', err);
-        }
-        
-        // Final fallback: redirect almost immediately
-        setTimeout(() => {
+        } finally {
+            // Force hard redirect to clear all states and memory
             window.location.replace('/login');
-        }, 50);
+        }
     };
 
     // Placeholder Business Management methods

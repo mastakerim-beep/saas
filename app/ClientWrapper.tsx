@@ -242,6 +242,15 @@ export default function ClientWrapper({ children }: { children: React.ReactNode 
         );
     }
 
+    // If no user and not a public path, don't render layout (wait for redirect)
+    if (!currentUser && !isPublicPath && !isLoginPath) {
+        return (
+            <div className={`${inter.className} flex h-screen w-full items-center justify-center bg-[#020210] text-white font-black animate-pulse uppercase tracking-[0.3em] text-[10px]`}>
+                Güvenli Oturum Kapatılıyor...
+            </div>
+        );
+    }
+
     // Default: Regular business user panel OR Impersonation View OR Super Admin View
     return (
         <LicenseGuard>
