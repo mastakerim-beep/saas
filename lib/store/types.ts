@@ -5,7 +5,7 @@
 
 import * as DB from '@/lib/types/database.types';
 
-export type Business = DB.Business;
+export type Business = DB.Business & { ai_tokens?: number };
 export interface Branch extends DB.Branch {
     timezone?: string; // e.g. "Europe/Istanbul", "Europe/London", "America/New_York"
 }
