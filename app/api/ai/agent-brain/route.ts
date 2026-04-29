@@ -6,9 +6,13 @@ const genAI = new GoogleGenerativeAI(process.env.GOOGLE_GENERATIVE_AI_API_KEY ||
 export async function POST(req: Request) {
     try {
         const { prompt, dataContext, agentName } = await req.json();
+        const apiKey = process.env.GOOGLE_GENERATIVE_AI_API_KEY;
 
-        if (!process.env.GOOGLE_GENERATIVE_AI_API_KEY) {
-            return NextResponse.json({ error: "Gemini API Key is missing" }, { status: 500 });
+        console.log(`[AI-AGENT] Analyzing for ${agentName}...`);
+
+        if (!apiKey) {
+            console.error("[AI-AGENT] ERROR: GOOGLE_GENERATIVE_AI_API_KEY is missing in env!");
+            return NextResponse.json({ error: "Gemini API Key is missing in .env.local" }, { status: 500 });
         }
 
         const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
@@ -20,19 +24,30 @@ export async function POST(req: Request) {
             Ton: Profesyonel, otoriter ve sadık.
             
             İŞLETME VERİLERİ:
-            ${JSON.stringify(dataContext)}
+            ${JSON.stringify(dataContext, null, 2)}
             
             KULLANICI TALİMATI:
             ${prompt}
+            
+            Yanıtını doğrudan analiz sonucu olarak yaz, başka açıklama ekleme.
         `;
 
         const result = await model.generateContent(systemPrompt);
         const response = await result.response;
         const text = response.text();
 
+        if (!text) {
+            console.warn("[AI-AGENT] Warning: Gemini returned an empty response.");
+            throw new Error("AI returned an empty response");
+        }
+
+        console.log("[AI-AGENT] Analysis completed successfully.");
         return NextResponse.json({ analysis: text });
     } catch (error: any) {
-        console.error("Gemini Error:", error);
-        return NextResponse.json({ error: error.message }, { status: 500 });
+        console.error("[AI-AGENT] FATAL ERROR:", error);
+        return NextResponse.json({ 
+            error: error.message,
+            analysis: `Üzgünüm, analiz sırasında bir hata oluştu: ${error.message}` 
+        }, { status: 500 });
     }
 }
