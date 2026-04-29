@@ -6,7 +6,7 @@ export async function POST(req: Request) {
         
         // SDK yerine ham fetch ile doğrudan bağlantı deniyoruz
         const apiKey = "AIzaSyAYSBzKffur6mfAV_0DKebWB5LOTZlZUBc";
-        const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
+        const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=${apiKey}`;
 
         const systemPrompt = `
             Sen bir İmparatorluk Ajanısın (${agentName}). 
