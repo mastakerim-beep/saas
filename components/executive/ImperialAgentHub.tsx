@@ -146,6 +146,22 @@ export default function ImperialAgentHub() {
         }
     };
 
+    const deleteAgent = async (id: string) => {
+        if (!currentBusiness?.id || !confirm("Bu ajanı İmparatorluk ağından kalıcı olarak silmek istediğinize emin misiniz?")) return;
+        try {
+            const { error } = await supabase
+                .from('imperial_agents')
+                .delete()
+                .eq('business_id', currentBusiness.id)
+                .eq('agent_id', id);
+            if (error) throw error;
+            setSelectedAgentId(null);
+            fetchAgents();
+        } catch (err) {
+            console.error('Delete error:', err);
+        }
+    };
+
     const selectedAgent = agentsData.find(a => a.id === selectedAgentId);
 
     const handleSaveNewAgent = async (newAgent: any) => {
@@ -275,26 +291,30 @@ export default function ImperialAgentHub() {
                                             </div>
                                         </div>
 
-                                        <div className="pt-8 border-t border-white/10">
+                                        <div className="pt-8 border-t border-white/10 space-y-4">
                                             <button 
                                                 onClick={async () => {
                                                     if (!selectedAgent || !currentBusiness?.id) return;
                                                     setIsLoading(true);
                                                     try {
-                                                        // --- IMPROVED AI BRAIN SIMULATION ---
-                                                        const prompt = selectedAgent.systemInstruction.toLowerCase();
-                                                        let aiDescription = "";
-                                                        let aiType = 'info';
-
-                                                        if (prompt.includes('ekip') || prompt.includes('personel') || prompt.includes('çalışan')) {
-                                                            const staffCount = 4; // Mocking staff count for now, could fetch from team store
-                                                            aiDescription = `ANALİZ: İşletmenizde şu an aktif ${staffCount} personel tanımlı. Ekibiniz tam kapasite çalışıyor.`;
-                                                        } else if (prompt.includes('ödeme') || prompt.includes('kart') || prompt.includes('para') || prompt.includes('kazanç')) {
-                                                            const total = Array.isArray(payments) ? payments.reduce((acc, p) => acc + (p.totalAmount || 0), 0) : 0;
-                                                            aiDescription = `FİNANSAL ANALİZ: Toplam ciro ₺${total.toLocaleString('tr-TR')} olarak hesaplandı. Kartlı ödemeler ağırlıkta.`;
-                                                        } else {
-                                                            aiDescription = `ANALİZ TAMAMLANDI: '${selectedAgent.systemInstruction}' talimatı incelendi. Operasyonel bir risk saptanmadı.`;
-                                                        }
+                                                        // --- REAL GEMINI AI CALL ---
+                                                        const response = await fetch('/api/ai/agent-brain', {
+                                                            method: 'POST',
+                                                            headers: { 'Content-Type': 'application/json' },
+                                                            body: JSON.stringify({
+                                                                prompt: selectedAgent.systemInstruction,
+                                                                agentName: selectedAgent.name,
+                                                                dataContext: {
+                                                                    appointments: appointments.length,
+                                                                    payments: payments.length,
+                                                                    totalRevenue: payments.reduce((acc, p) => acc + (p.totalAmount || 0), 0),
+                                                                    lastActions: selectedAgent.logs
+                                                                }
+                                                            })
+                                                        });
+                                                        
+                                                        const data = await response.json();
+                                                        const aiDescription = data.analysis || `ANALİZ HATASI: AI yanıt veremedi.`;
 
                                                         const { error } = await supabase
                                                             .from('agent_activity_logs')
@@ -302,16 +322,17 @@ export default function ImperialAgentHub() {
                                                                 business_id: currentBusiness.id,
                                                                 agent_id: selectedAgent.id,
                                                                 action_type: 'analysis',
-                                                                description: aiDescription,
-                                                                log_type: aiType,
-                                                                metadata: { prompt: selectedAgent.systemInstruction, data_snapshot: { appts: appointments.length, staff: 4 } }
+                                                                description: aiDescription.substring(0, 500),
+                                                                log_type: aiDescription.toLowerCase().includes('kritik') ? 'critical' : 'info',
+                                                                metadata: { prompt: selectedAgent.systemInstruction, ai_raw: aiDescription }
                                                             });
                                                         
                                                         if (error) throw error;
-                                                        alert("İmparatorluk Zekası verileri taradı: " + (aiType === 'critical' ? "⚠️ Kritik bulgu saptandı!" : "✅ Analiz tamamlandı."));
+                                                        alert("İmparatorluk Zekası Yanıtladı: \n\n" + aiDescription);
                                                         fetchAgents();
                                                     } catch (err) {
                                                         console.error('Analysis error:', err);
+                                                        alert("AI Bağlantı Hatası: Lütfen Gemini API anahtarınızı kontrol edin.");
                                                     } finally {
                                                         setIsLoading(false);
                                                     }
@@ -319,7 +340,14 @@ export default function ImperialAgentHub() {
                                                 className="w-full py-4 bg-white text-indigo-950 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:scale-105 active:scale-95 transition-all flex items-center justify-center gap-2"
                                             >
                                                 {isLoading ? <RefreshCw className="animate-spin w-3 h-3" /> : <Sparkles className="w-3 h-3" />}
-                                                ANALİZİ BAŞLAT (DÜŞÜN)
+                                                ANALİZİ BAŞLAT (GEMINI AI)
+                                            </button>
+
+                                            <button 
+                                                onClick={() => deleteAgent(selectedAgent.id)}
+                                                className="w-full py-4 bg-transparent border border-rose-500/30 text-rose-500 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-rose-500 hover:text-white transition-all"
+                                            >
+                                                AJANI TERHİS ET (SİL)
                                             </button>
                                         </div>
                                     </div>
