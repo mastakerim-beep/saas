@@ -20,9 +20,7 @@ ALTER TABLE public.ai_token_logs ENABLE ROW LEVEL SECURITY;
 
 CREATE POLICY "İşletmeler kendi token loglarını görebilir"
 ON public.ai_token_logs FOR SELECT
-USING (auth.uid() IN (
-    SELECT profile_id FROM public.business_profiles WHERE business_id = ai_token_logs.business_id
-));
+USING (business_id = get_my_business_id() OR get_my_role() = 'SaaS_Owner');
 
 -- 4. Fonksiyon: Token Harca
 CREATE OR REPLACE FUNCTION public.spend_ai_token(p_business_id UUID, p_reason TEXT)
