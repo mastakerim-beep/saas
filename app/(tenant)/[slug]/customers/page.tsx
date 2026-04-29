@@ -543,7 +543,16 @@ function CustomerDetail({ customer, onClose }: { customer: Customer; onClose: ()
                                             <div key={stat.label} className="bg-white p-4 rounded-3xl border border-gray-100 shadow-sm text-center">
                                                 <p className="text-xl font-black italic text-gray-900">{stat.count}</p>
                                                 <p className="text-[8px] font-black text-gray-400 uppercase tracking-widest mb-2">{stat.label}</p>
-                                                <button className={`w-full py-1.5 ${stat.bg} ${stat.color} rounded-lg text-[8px] font-black uppercase tracking-tighter`}>+ Yeni</button>
+                                                <button 
+                                                    onClick={() => {
+                                                        if (stat.label === 'Randevu') setSelectedSlot({ staffId: staffMembers[0]?.id || '', time: '09:00', customerId: customer.id });
+                                                        if (stat.label === 'Satış') addLog('Satış Ekranına Yönlendirme', customer.name, 'Hızlı buton tetiklendi', 'Hızlı satış butonu tıklandı.');
+                                                        if (stat.label === 'Teklif') addQuote({ customerId: customer.id, title: 'Yeni Teklif', items: [], total: 0 });
+                                                    }}
+                                                    className={`w-full py-1.5 ${stat.bg} ${stat.color} rounded-lg text-[8px] font-black uppercase tracking-tighter`}
+                                                >
+                                                    + Yeni
+                                                </button>
                                             </div>
                                         ))}
                                     </div>

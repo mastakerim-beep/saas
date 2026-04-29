@@ -3,7 +3,7 @@
 import React, { useState, useMemo } from 'react';
 import { 
     X, Search, Plus, Sparkles, ChevronRight, 
-    ShieldCheck, Loader2, Banknote, ChevronDown, Package as PackageIcon, Clock, User
+    ShieldCheck, Loader2, Banknote, ChevronDown, Package as PackageIcon, Clock, User, ShoppingBag
 } from 'lucide-react';
 import { useStore, Customer, Service, Staff, Room, Package, Appointment, CalendarBlock } from '@/lib/store';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -460,6 +460,31 @@ export default function BookingModal({ initialData, onClose, date, mode: initial
                                             <button onClick={addToBasket} className="w-full py-8 bg-slate-900 text-white rounded-[2.5rem] text-[11px] font-black uppercase tracking-[0.3em] shadow-xl hover:bg-slate-800 transition-all flex items-center justify-center gap-4 group">
                                                 <Plus className="group-hover:rotate-90 transition-all" /> YENİ KALEM EKLE
                                             </button>
+
+                                            {/* Basket Display */}
+                                            {basket.length > 0 && (
+                                                <div className="pt-8 space-y-4 border-t border-dashed border-indigo-100">
+                                                    <h3 className="text-[10px] font-black text-indigo-600 uppercase tracking-widest flex items-center gap-2">
+                                                        <ShoppingBag size={14} /> EKLENEN HİZMETLER ({basket.length})
+                                                    </h3>
+                                                    <div className="space-y-3">
+                                                        {basket.map((item, idx) => (
+                                                            <div key={idx} className="bg-indigo-50/50 border border-indigo-100 rounded-2xl p-5 flex justify-between items-center group animate-[fadeIn_0.3s_ease]">
+                                                                <div className="flex items-center gap-4">
+                                                                    <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center text-indigo-600 shadow-sm font-black text-xs">{idx + 1}</div>
+                                                                    <div>
+                                                                        <p className="text-xs font-black text-gray-900 uppercase tracking-tight">{item.service}</p>
+                                                                        <p className="text-[10px] text-indigo-400 font-bold uppercase tracking-widest">{item.staffName} • {item.duration} dk</p>
+                                                                    </div>
+                                                                </div>
+                                                                <button onClick={() => setBasket(prev => prev.filter((_, i) => i !== idx))} className="w-8 h-8 bg-white text-red-400 hover:bg-red-500 hover:text-white rounded-lg transition-all flex items-center justify-center shadow-sm">
+                                                                    <X size={14} />
+                                                                </button>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                            )}
                                         </div>
                                     </div>
 
