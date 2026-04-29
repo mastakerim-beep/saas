@@ -189,9 +189,24 @@ export default function ImperialAgentHub() {
     return (
         <div className="space-y-8 animate-[fadeIn_0.5s_ease]">
             <div className="flex justify-between items-center bg-white/50 backdrop-blur-xl p-8 rounded-[3rem] border border-white/50 shadow-sm">
-                <div>
-                    <h2 className="text-3xl font-black italic tracking-tighter uppercase text-indigo-950">Imperial Ajan Merkezi</h2>
-                    <p className="text-[10px] font-black text-indigo-500 uppercase tracking-[0.4em] mt-1">Otonom İşletme Komuta Katmanı</p>
+                <div className="flex items-center gap-6">
+                    <div>
+                        <h2 className="text-3xl font-black italic tracking-tighter uppercase text-indigo-950">Imperial Ajan Merkezi</h2>
+                        <p className="text-[10px] font-black text-indigo-500 uppercase tracking-[0.4em] mt-1">Otonom İşletme Komuta Katmanı</p>
+                    </div>
+                    
+                    {/* Live Token Counter */}
+                    <div className="flex items-center gap-3 px-6 py-3 bg-indigo-50 border border-indigo-100 rounded-2xl shadow-inner">
+                        <div className="w-8 h-8 bg-indigo-600 rounded-full flex items-center justify-center text-white shadow-lg">
+                            <Sparkles size={16} />
+                        </div>
+                        <div>
+                            <p className="text-[8px] font-black text-indigo-400 uppercase tracking-widest">Kalan Kredi</p>
+                            <p className="text-sm font-black text-indigo-950">
+                                {settings?.ai_tokens ?? currentBusiness?.ai_tokens ?? 0} <span className="text-[10px] opacity-40 ml-1 italic font-medium">Imperial Token</span>
+                            </p>
+                        </div>
+                    </div>
                 </div>
                 <div className="flex gap-4">
                     <button 
@@ -296,6 +311,21 @@ export default function ImperialAgentHub() {
                                             <button 
                                                 onClick={async () => {
                                                     if (!selectedAgent || !currentBusiness?.id) return;
+                                                    
+                                                    // 1. TOKEN CHECK
+                                                    const { data: businessData } = await supabase
+                                                        .from('businesses')
+                                                        .select('ai_tokens')
+                                                        .eq('id', currentBusiness.id)
+                                                        .single();
+                                                    
+                                                    const tokens = businessData?.ai_tokens || 0;
+                                                    
+                                                    if (tokens <= 0) {
+                                                        alert("❌ YETERSİZ KREDİ: İmparatorluk Zekası için krediniz tükenmiştir. Lütfen kredi yükleyin.");
+                                                        return;
+                                                    }
+
                                                     setIsLoading(true);
                                                     try {
                                                         // --- DETAILED LIVE CONTEXT COMPUTATION ---
@@ -341,6 +371,7 @@ export default function ImperialAgentHub() {
                                                         const data = await response.json();
                                                         const aiDescription = data.analysis || `ANALİZ HATASI: AI yanıt veremedi.`;
 
+                                                        // 2. LOG THE ACTION
                                                         const { error } = await supabase
                                                             .from('agent_activity_logs')
                                                             .insert({
@@ -352,12 +383,20 @@ export default function ImperialAgentHub() {
                                                                 metadata: { prompt: selectedAgent.systemInstruction, ai_raw: aiDescription }
                                                             });
                                                         
+                                                        // 3. SPEND THE TOKEN (RPC CALL)
+                                                        if (!error) {
+                                                            await supabase.rpc('spend_ai_token', { 
+                                                                p_business_id: currentBusiness.id, 
+                                                                p_reason: `Analiz: ${selectedAgent.name}` 
+                                                            });
+                                                        }
+
                                                         if (error) throw error;
                                                         alert("İmparatorluk Zekası Yanıtladı: \n\n" + aiDescription);
                                                         fetchAgents();
                                                     } catch (err) {
                                                         console.error('Analysis error:', err);
-                                                        alert("AI Bağlantı Hatası: Lütfen Gemini API anahtarınızı kontrol edin.");
+                                                        alert("AI Bağlantı Hatası: Lütfen bağlantınızı veya kredinizi kontrol edin.");
                                                     } finally {
                                                         setIsLoading(false);
                                                     }
