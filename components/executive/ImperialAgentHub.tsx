@@ -4,32 +4,44 @@ import React, { useState, useMemo } from 'react';
 import { 
     Bot, Sparkles, Activity, ShieldCheck, Zap, 
     MessageSquare, TrendingUp, Users, Settings, 
-    Play, Pause, RefreshCw, ChevronRight, AlertCircle, X
+    Play, Pause, RefreshCw, ChevronRight, AlertCircle, X,
+    Plus
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useStore, Appointment, Payment, Expense, Room } from '@/lib/store';
 
 export default function ImperialAgentHub() {
     const { 
-        appointments, payments, customers, 
-        expenses, rooms, settings 
+        appointments = [], payments = [], customers = [], 
+        expenses = [], rooms = [], settings 
     } = useStore();
 
     const agentsData = useMemo(() => {
+        // Safety check to prevent crashes if store data is not yet an array
+        const safeAppointments = Array.isArray(appointments) ? appointments : [];
+        const safePayments = Array.isArray(payments) ? payments : [];
+        const safeExpenses = Array.isArray(expenses) ? expenses : [];
+        const safeRooms = Array.isArray(rooms) ? rooms : [];
+
         const last7Days = new Date();
         last7Days.setDate(last7Days.getDate() - 7);
 
-        const recentAppts = appointments.filter((a: Appointment) => new Date(a.date) >= last7Days);
-        const recentPayments = payments.filter((p: Payment) => new Date(p.date) >= last7Days);
+        const recentAppts = safeAppointments.filter((a: Appointment) => a.date && new Date(a.date) >= last7Days);
+        const recentPayments = safePayments.filter((p: Payment) => p.date && new Date(p.date) >= last7Days);
         const totalIncome = recentPayments.reduce((acc: number, p: Payment) => acc + (p.totalAmount || 0), 0);
         
-        const lastAppt = [...appointments].sort((a: Appointment, b: Appointment) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime())[0];
-        const lastPay = [...payments].sort((a: Payment, b: Payment) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime())[0];
+        const lastAppt = [...safeAppointments].sort((a: Appointment, b: Appointment) => 
+            new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime()
+        )[0];
+        
+        const lastPay = [...safePayments].sort((a: Payment, b: Payment) => 
+            new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime()
+        )[0];
 
         // Occupancy calculation
         const todayStr = new Date().toISOString().split('T')[0];
-        const apptsToday = appointments.filter((a: Appointment) => a.date === todayStr);
-        const occupancy = rooms.length > 0 ? Math.round((apptsToday.length / (rooms.length * 8)) * 100) : 0;
+        const apptsToday = safeAppointments.filter((a: Appointment) => a.date === todayStr);
+        const occupancy = safeRooms.length > 0 ? Math.round((apptsToday.length / (safeRooms.length * 8)) * 100) : 0;
 
         return [
             { 
@@ -41,7 +53,7 @@ export default function ImperialAgentHub() {
                 icon: <MessageSquare size={24} />,
                 color: 'bg-indigo-600',
                 stats: { tasks: recentAppts.length, accuracy: '%99.2', lastAction: lastAppt ? `${lastAppt.customerName} için ${lastAppt.service} randevusu işlendi` : 'Sistem beklemede' },
-                logs: appointments.slice(0, 3).map((a: Appointment) => `${a.customerName} - ${a.service} randevusu oluşturuldu`)
+                logs: safeAppointments.slice(0, 3).map((a: Appointment) => `${a.customerName} - ${a.service} randevusu oluşturuldu`)
             },
             { 
                 id: 'guardian', 
@@ -52,7 +64,7 @@ export default function ImperialAgentHub() {
                 icon: <TrendingUp size={24} />,
                 color: 'bg-emerald-600',
                 stats: { tasks: recentPayments.length, accuracy: `₺${totalIncome.toLocaleString('tr-TR')}`, lastAction: lastPay ? `${lastPay.customerName} cüzdanına ₺${lastPay.totalAmount} yüklendi` : 'Kampanya analizi aktif' },
-                logs: payments.slice(0, 3).map((p: Payment) => `${p.customerName} ₺${p.totalAmount} tahsilat yapıldı`)
+                logs: safePayments.slice(0, 3).map((p: Payment) => `${p.customerName} ₺${p.totalAmount} tahsilat yapıldı`)
             },
             { 
                 id: 'commander', 
@@ -62,7 +74,7 @@ export default function ImperialAgentHub() {
                 description: 'İşletme verimliliğini gerçek zamanlı izler ve darboğazları raporlar.',
                 icon: <Zap size={24} />,
                 color: 'bg-amber-600',
-                stats: { tasks: rooms.length, accuracy: `%${occupancy} Doluluk`, lastAction: `Günlük doluluk oranı %${occupancy} olarak ölçüldü` },
+                stats: { tasks: safeRooms.length, accuracy: `%${occupancy} Doluluk`, lastAction: `Günlük doluluk oranı %${occupancy} olarak ölçüldü` },
                 logs: [
                     'Oda kullanım raporu oluşturuldu',
                     'Personel verimlilik analizi tamamlandı',
@@ -77,7 +89,7 @@ export default function ImperialAgentHub() {
                 description: 'Tüm finansal hareketleri ve yetki kullanımlarını denetler.',
                 icon: <ShieldCheck size={24} />,
                 color: 'bg-rose-600',
-                stats: { tasks: payments.length + expenses.length, accuracy: 'Secure', lastAction: 'Draconian Veto katmanı aktif ve denetliyor' },
+                stats: { tasks: safePayments.length + safeExpenses.length, accuracy: 'Secure', lastAction: 'Draconian Veto katmanı aktif ve denetliyor' },
                 logs: [
                     'Tüm işlemler blokzincir mühürlendi',
                     'Şüpheli işlem taraması: Temiz',
