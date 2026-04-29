@@ -106,11 +106,10 @@ export default function ClientWrapper({ children }: { children: React.ReactNode 
             }
 
             if (!currentUser) {
-                if (!isLoginPath) {
+                if (!isLoginPath && !isPublicPath) {
                     const target = "/login";
-                    if (normalizedPathname !== target) {
-                        router.push(target);
-                    }
+                    console.log("🛡️ [Auth Trace] No user, redirecting to login...");
+                    router.replace(target);
                 }
                 setIsChecking(false);
                 return;

@@ -96,7 +96,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             if (session?.user) {
                 try {
                     const appUser = await fetchAppUserProfile(session.user.id, session.user.email!);
-                    setCurrentUser(appUser);
+                    if (!appUser) {
+                        // CRITICAL: If session exists but profile is missing, force sign out to prevent loops
+                        console.error('🛡️ [Auth Trace] Profile missing for session. Forcing SignOut.');
+                        await supabase.auth.signOut();
+                        setCurrentUser(null);
+                    } else {
+                        setCurrentUser(appUser);
+                    }
                 } catch (err) {
                     console.error('Profile fetch error:', err);
                 } finally {
