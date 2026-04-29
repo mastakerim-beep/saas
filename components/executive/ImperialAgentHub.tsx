@@ -305,9 +305,12 @@ export default function ImperialAgentHub() {
                                                                 prompt: selectedAgent.systemInstruction,
                                                                 agentName: selectedAgent.name,
                                                                 dataContext: {
+                                                                    businessName: currentBusiness.name,
                                                                     appointments: appointments.length,
                                                                     payments: payments.length,
                                                                     totalRevenue: payments.reduce((acc, p) => acc + (p.totalAmount || 0), 0),
+                                                                    staffCount: 5, // Mocking for now, can be fetched from store
+                                                                    customerCount: customers.length,
                                                                     lastActions: selectedAgent.logs
                                                                 }
                                                             })
