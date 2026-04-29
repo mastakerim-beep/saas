@@ -1,14 +1,13 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { NextResponse } from "next/server";
 
-const genAI = new GoogleGenerativeAI(process.env.GOOGLE_GENERATIVE_AI_API_KEY || "");
-
 export async function POST(req: Request) {
     try {
         const { prompt, dataContext, agentName } = await req.json();
         
-        // Hardcoded key to bypass env issues
+        // Hardcoded key for instant fix
         const apiKey = "AIzaSyAYSBzKffur6mfAV_0DKebWB5LOTZlZUBc";
+        const genAI = new GoogleGenerativeAI(apiKey);
         console.log(`[AI-DEBUG] Using hardcoded API Key.`);
 
         if (!apiKey) {
