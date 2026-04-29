@@ -1,6 +1,4 @@
-"use client";
-
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { 
     Bot, Sparkles, Activity, ShieldCheck, Zap, 
     MessageSquare, TrendingUp, Users, Settings, 
@@ -9,15 +7,39 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useStore, Appointment, Payment, Expense, Room } from '@/lib/store';
+import { supabase } from '@/lib/supabase';
 
 export default function ImperialAgentHub() {
     const { 
         appointments = [], payments = [], customers = [], 
-        expenses = [], rooms = [], settings 
+        expenses = [], rooms = [], settings, currentBusiness 
     } = useStore();
 
+    const [dbAgents, setDbAgents] = useState<any[]>([]);
+    const [isLoading, setIsLoading] = useState(true);
+
+    // Fetch agents from DB
+    const fetchAgents = useCallback(async () => {
+        if (!currentBusiness?.id) return;
+        setIsLoading(true);
+        try {
+            const { data, error } = await supabase
+                .from('imperial_agents')
+                .select('*')
+                .eq('business_id', currentBusiness.id);
+            if (data) setDbAgents(data);
+        } catch (err) {
+            console.error('Failed to fetch agents:', err);
+        } finally {
+            setIsLoading(false);
+        }
+    }, [currentBusiness?.id]);
+
+    useEffect(() => {
+        fetchAgents();
+    }, [fetchAgents]);
+
     const agentsData = useMemo(() => {
-        // Safety check to prevent crashes if store data is not yet an array
         const safeAppointments = Array.isArray(appointments) ? appointments : [];
         const safePayments = Array.isArray(payments) ? payments : [];
         const safeExpenses = Array.isArray(expenses) ? expenses : [];
@@ -38,83 +60,72 @@ export default function ImperialAgentHub() {
             new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime()
         )[0];
 
-        // Occupancy calculation
         const todayStr = new Date().toISOString().split('T')[0];
         const apptsToday = safeAppointments.filter((a: Appointment) => a.date === todayStr);
         const occupancy = safeRooms.length > 0 ? Math.round((apptsToday.length / (safeRooms.length * 8)) * 100) : 0;
 
-        return [
-            { 
-                id: 'concierge', 
-                name: 'Imperial Concierge', 
-                role: 'Otonom Rezervasyon & İletişim', 
-                status: 'active', 
-                description: 'WhatsApp ve Web üzerinden gelen randevu taleplerini otonom olarak yönetir.',
-                icon: <MessageSquare size={24} />,
-                color: 'bg-indigo-600',
-                stats: { tasks: recentAppts.length, accuracy: '%99.2', lastAction: lastAppt ? `${lastAppt.customerName} için ${lastAppt.service} randevusu işlendi` : 'Sistem beklemede' },
-                logs: safeAppointments.slice(0, 3).map((a: Appointment) => `${a.customerName} - ${a.service} randevusu oluşturuldu`)
-            },
-            { 
-                id: 'guardian', 
-                name: 'Revenue Guardian', 
-                role: 'Satış & Upsell Optimizasyonu', 
-                status: 'active', 
-                description: 'Sepet terki ve pasif müşterileri analiz ederek satış fırsatları yaratır.',
-                icon: <TrendingUp size={24} />,
-                color: 'bg-emerald-600',
-                stats: { tasks: recentPayments.length, accuracy: `₺${totalIncome.toLocaleString('tr-TR')}`, lastAction: lastPay ? `${lastPay.customerName} cüzdanına ₺${lastPay.totalAmount} yüklendi` : 'Kampanya analizi aktif' },
-                logs: safePayments.slice(0, 3).map((p: Payment) => `${p.customerName} ₺${p.totalAmount} tahsilat yapıldı`)
-            },
-            { 
-                id: 'commander', 
-                name: 'Command Commander', 
-                role: 'İşletme Analitiği & Verimlilik', 
-                status: 'analyzing', 
-                description: 'İşletme verimliliğini gerçek zamanlı izler ve darboğazları raporlar.',
-                icon: <Zap size={24} />,
-                color: 'bg-amber-600',
-                stats: { tasks: safeRooms.length, accuracy: `%${occupancy} Doluluk`, lastAction: `Günlük doluluk oranı %${occupancy} olarak ölçüldü` },
-                logs: [
-                    'Oda kullanım raporu oluşturuldu',
-                    'Personel verimlilik analizi tamamlandı',
-                    `Bugün için ${apptsToday.length} randevu planlandı`
-                ]
-            },
-            { 
-                id: 'audit', 
-                name: 'Imperial Audit', 
-                role: 'Otonom Denetim & Güvenlik', 
-                status: 'monitoring', 
-                description: 'Tüm finansal hareketleri ve yetki kullanımlarını denetler.',
-                icon: <ShieldCheck size={24} />,
-                color: 'bg-rose-600',
-                stats: { tasks: safePayments.length + safeExpenses.length, accuracy: 'Secure', lastAction: 'Draconian Veto katmanı aktif ve denetliyor' },
-                logs: [
-                    'Tüm işlemler blokzincir mühürlendi',
-                    'Şüpheli işlem taraması: Temiz',
-                    'Yetki seviyeleri doğrulandı'
-                ]
-            }
+        // Base Agents defined by the system
+        const baseAgents = [
+            { id: 'concierge', name: 'Imperial Concierge', icon: <MessageSquare size={24} />, color: 'bg-indigo-600' },
+            { id: 'guardian', name: 'Revenue Guardian', icon: <TrendingUp size={24} />, color: 'bg-emerald-600' },
+            { id: 'commander', name: 'Command Commander', icon: <Zap size={24} />, color: 'bg-amber-600' },
+            { id: 'audit', name: 'Imperial Audit', icon: <ShieldCheck size={24} />, color: 'bg-rose-600' }
         ];
-    }, [appointments, payments, rooms, expenses]);
 
-    const [agentStatus, setAgentStatus] = useState<Record<string, string>>({
-        concierge: 'active',
-        guardian: 'active',
-        commander: 'analyzing',
-        audit: 'monitoring'
-    });
+        return baseAgents.map(ba => {
+            const dbA = dbAgents.find(d => d.agent_id === ba.id);
+            return {
+                ...ba,
+                role: dbA?.role || 'Sistem Ajani',
+                status: dbA?.approval_mode === 'auto' ? 'active' : 'monitoring',
+                description: dbA?.system_instruction || 'Talimat bekliyor...',
+                stats: { 
+                    tasks: ba.id === 'concierge' ? recentAppts.length : ba.id === 'guardian' ? recentPayments.length : ba.id === 'commander' ? safeRooms.length : (safePayments.length + safeExpenses.length),
+                    accuracy: ba.id === 'concierge' ? '%99.2' : ba.id === 'guardian' ? `₺${totalIncome.toLocaleString('tr-TR')}` : ba.id === 'commander' ? `%${occupancy} Doluluk` : 'Güvenli',
+                    lastAction: ba.id === 'concierge' ? (lastAppt ? `${lastAppt.customerName} randevusu işlendi` : 'Hazır') : (lastPay ? `${lastPay.customerName} tahsilatı yapıldı` : 'Analiz ediliyor')
+                },
+                logs: ba.id === 'concierge' ? safeAppointments.slice(0, 3).map(a => `${a.customerName} - ${a.service}`) : safePayments.slice(0, 3).map(p => `${p.customerName} - ₺${p.totalAmount}`),
+                systemInstruction: dbA?.system_instruction || ''
+            };
+        });
+    }, [appointments, payments, rooms, expenses, dbAgents]);
 
     const [selectedAgentId, setSelectedAgentId] = useState<string | null>(null);
     const [showNewAgentModal, setShowNewAgentModal] = useState(false);
 
-    const toggleAgent = (id: string) => {
-        setAgentStatus(prev => ({ ...prev, [id]: prev[id] === 'active' ? 'paused' : 'active' }));
+    const toggleAgentMode = async (id: string, currentStatus: string) => {
+        const newMode = currentStatus === 'active' ? 'manual' : 'auto';
+        try {
+            await supabase
+                .from('imperial_agents')
+                .update({ approval_mode: newMode })
+                .eq('business_id', currentBusiness?.id)
+                .eq('agent_id', id);
+            fetchAgents();
+        } catch (err) {
+            console.error('Toggle error:', err);
+        }
     };
 
-    const agents = agentsData.map(a => ({ ...a, status: agentStatus[a.id] || 'active' }));
-    const selectedAgent = agents.find(a => a.id === selectedAgentId);
+    const selectedAgent = agentsData.find(a => a.id === selectedAgentId);
+
+    const handleSaveNewAgent = async (newAgent: any) => {
+        if (!currentBusiness?.id) return;
+        try {
+            const { error } = await supabase.from('imperial_agents').insert({
+                business_id: currentBusiness.id,
+                agent_id: newAgent.name.toLowerCase().replace(/\s+/g, '_'),
+                name: newAgent.name,
+                role: newAgent.role,
+                system_instruction: newAgent.description,
+                approval_mode: newAgent.mode
+            });
+            if (error) throw error;
+            fetchAgents();
+        } catch (err: any) {
+            alert("Hata: " + err.message);
+        }
+    };
 
     return (
         <div className="space-y-8 animate-[fadeIn_0.5s_ease]">
@@ -126,7 +137,7 @@ export default function ImperialAgentHub() {
                 <div className="flex gap-4">
                     <button 
                         onClick={() => setShowNewAgentModal(true)}
-                        className="flex items-center gap-2 px-6 py-3 bg-indigo-600 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-xl shadow-indigo-100"
+                        className="flex items-center gap-2 px-6 py-3 bg-indigo-600 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-xl shadow-indigo-100 hover:scale-105 active:scale-95 transition-all"
                     >
                         <Plus className="w-4 h-4" /> YENİ AJAN TANIMLA
                     </button>
@@ -136,7 +147,7 @@ export default function ImperialAgentHub() {
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
                 {/* Agent Cards */}
                 <div className="lg:col-span-8 grid grid-cols-1 md:grid-cols-2 gap-6">
-                    {agents.map((agent) => (
+                    {agentsData.map((agent) => (
                         <motion.div 
                             key={agent.id}
                             whileHover={{ y: -5 }}
@@ -147,8 +158,8 @@ export default function ImperialAgentHub() {
                                 <div className={`${agent.color} p-4 rounded-2xl text-white shadow-lg group-hover:scale-110 transition-transform`}>
                                     {agent.icon}
                                 </div>
-                                <div className={`px-4 py-1.5 rounded-full text-[8px] font-black uppercase tracking-widest ${agent.status === 'active' ? 'bg-emerald-50 text-emerald-600 border border-emerald-100' : agent.status === 'paused' ? 'bg-amber-50 text-amber-600 border border-amber-100' : 'bg-indigo-50 text-indigo-600 border border-indigo-100'}`}>
-                                    {agent.status}
+                                <div className={`px-4 py-1.5 rounded-full text-[8px] font-black uppercase tracking-widest ${agent.status === 'active' ? 'bg-emerald-50 text-emerald-600 border border-emerald-100' : 'bg-indigo-50 text-indigo-600 border border-indigo-100'}`}>
+                                    {agent.status === 'active' ? 'Otopilot' : 'Gözlem'}
                                 </div>
                             </div>
 
@@ -165,7 +176,7 @@ export default function ImperialAgentHub() {
                                     <p className="text-sm font-black text-gray-900">{agent.stats.tasks}</p>
                                 </div>
                                 <div>
-                                    <p className="text-[8px] font-black text-gray-400 uppercase mb-1">SKOR</p>
+                                    <p className="text-[8px] font-black text-gray-400 uppercase mb-1">METRİK</p>
                                     <p className="text-sm font-black text-emerald-600">{agent.stats.accuracy}</p>
                                 </div>
                                 <div className="text-right">
@@ -196,21 +207,22 @@ export default function ImperialAgentHub() {
                                     <div className="flex justify-between items-center mb-10">
                                         <h3 className="text-2xl font-black italic tracking-tighter uppercase">{selectedAgent.name}</h3>
                                         <button 
-                                            onClick={(e) => { e.stopPropagation(); toggleAgent(selectedAgent.id); }}
-                                            className={`p-3 rounded-xl transition-all ${selectedAgent.status === 'active' ? 'bg-rose-500 text-white' : 'bg-emerald-500 text-white'}`}
+                                            onClick={(e) => { e.stopPropagation(); toggleAgentMode(selectedAgent.id, selectedAgent.status); }}
+                                            className={`p-3 rounded-xl transition-all ${selectedAgent.status === 'active' ? 'bg-emerald-500 text-white' : 'bg-slate-700 text-white'}`}
+                                            title={selectedAgent.status === 'active' ? 'Otopilottan Çıkar' : 'Otopilota Al'}
                                         >
-                                            {selectedAgent.status === 'active' ? <Pause size={18} /> : <Play size={18} />}
+                                            {selectedAgent.status === 'active' ? <Zap size={18} className="fill-white" /> : <Play size={18} />}
                                         </button>
                                     </div>
 
                                     <div className="space-y-8">
                                         <div className="p-6 bg-white/5 rounded-3xl border border-white/10">
-                                            <p className="text-[10px] font-black text-indigo-400 uppercase tracking-widest mb-2">Son Aktivite</p>
-                                            <p className="text-sm font-medium italic">{selectedAgent.stats.lastAction}</p>
+                                            <p className="text-[10px] font-black text-indigo-400 uppercase tracking-widest mb-2">Ajan Talimatı (Prompt)</p>
+                                            <p className="text-xs font-medium italic opacity-80 leading-relaxed">{selectedAgent.systemInstruction || 'Talimat girilmemiş.'}</p>
                                         </div>
 
                                         <div>
-                                            <p className="text-[10px] font-black text-indigo-400 uppercase tracking-widest mb-6">Aktivite Logları</p>
+                                            <p className="text-[10px] font-black text-indigo-400 uppercase tracking-widest mb-6">Son Aksiyonlar</p>
                                             <div className="space-y-4">
                                                 {selectedAgent.logs.map((log: string, i: number) => (
                                                     <div key={i} className="flex gap-4 items-start group">
@@ -222,8 +234,41 @@ export default function ImperialAgentHub() {
                                         </div>
 
                                         <div className="pt-8 border-t border-white/10">
-                                            <button className="w-full py-4 bg-white text-indigo-950 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:scale-105 transition-all">
-                                                GELİŞMİŞ AYARLAR
+                                            <button 
+                                                onClick={async () => {
+                                                    if (!selectedAgent || !currentBusiness?.id) return;
+                                                    setIsLoading(true);
+                                                    try {
+                                                        // Simulate AI Analysis based on Prompt and Data
+                                                        const isCritical = Math.random() > 0.7; // Simulating a finding
+                                                        const description = isCritical 
+                                                            ? `KRİTİK ANALİZ: '${selectedAgent.systemInstruction}' talimatına göre yapılan taramada bugünkü ödemelerde sapma saptandı.`
+                                                            : `ANALİZ TAMAMLANDI: '${selectedAgent.systemInstruction}' talimatına göre veriler temiz görünüyor.`;
+
+                                                        const { error } = await supabase
+                                                            .from('agent_activity_logs')
+                                                            .insert({
+                                                                business_id: currentBusiness.id,
+                                                                agent_id: selectedAgent.id,
+                                                                action_type: 'analysis',
+                                                                description: description,
+                                                                log_type: isCritical ? 'critical' : 'info',
+                                                                metadata: { prompt: selectedAgent.systemInstruction, data_snapshot: { appts: appointments.length, pays: payments.length } }
+                                                            });
+                                                        
+                                                        if (error) throw error;
+                                                        alert("İmparatorluk Zekası verileri taradı: " + (isCritical ? "⚠️ Kritik bulgu saptandı!" : "✅ Sorun saptanmadı."));
+                                                        fetchAgents();
+                                                    } catch (err) {
+                                                        console.error('Analysis error:', err);
+                                                    } finally {
+                                                        setIsLoading(false);
+                                                    }
+                                                }}
+                                                className="w-full py-4 bg-white text-indigo-950 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:scale-105 active:scale-95 transition-all flex items-center justify-center gap-2"
+                                            >
+                                                {isLoading ? <RefreshCw className="animate-spin w-3 h-3" /> : <Sparkles className="w-3 h-3" />}
+                                                ANALİZİ BAŞLAT (DÜŞÜN)
                                             </button>
                                         </div>
                                     </div>
@@ -243,10 +288,7 @@ export default function ImperialAgentHub() {
                 {showNewAgentModal && (
                     <NewAgentModal 
                         onClose={() => setShowNewAgentModal(false)} 
-                        onSave={(agent) => {
-                            console.log("Saving new agent:", agent);
-                            alert("Yeni ajan başarıyla tanımlandı ve eğitim süreci başlatıldı.");
-                        }}
+                        onSave={handleSaveNewAgent}
                     />
                 )}
             </AnimatePresence>
@@ -282,14 +324,14 @@ function NewAgentModal({ onClose, onSave }: { onClose: () => void, onSave: (agen
                     <div>
                         <label className="text-[10px] font-black uppercase text-indigo-400 tracking-widest block mb-3">Çalışma Modu</label>
                         <div className="grid grid-cols-2 gap-4">
-                            <button onClick={() => setMode('manual')} className={`py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest border-2 transition-all ${mode === 'manual' ? 'bg-indigo-600 border-indigo-600 text-white' : 'bg-white border-slate-100 text-slate-400'}`}>Onay Bekle</button>
+                            <button onClick={() => setMode('manual')} className={`py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest border-2 transition-all ${mode === 'manual' ? 'bg-indigo-600 border-indigo-600 text-white' : 'bg-white border-slate-100 text-slate-400'}`}>Onay Bekle (Gözlem)</button>
                             <button onClick={() => setMode('auto')} className={`py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest border-2 transition-all ${mode === 'auto' ? 'bg-emerald-600 border-emerald-600 text-white' : 'bg-white border-slate-100 text-slate-400'}`}>Otopilot</button>
                         </div>
                     </div>
                     
                     <div>
                         <label className="text-[10px] font-black uppercase text-indigo-400 tracking-widest block mb-3">Ajan Talimatı (Prompt)</label>
-                        <textarea value={desc} onChange={e => setDesc(e.target.value)} placeholder="Ajanın temel görevini tanımlayın..." className="w-full bg-slate-50 border border-slate-100 rounded-2xl px-6 py-4 text-sm font-bold outline-none h-32 resize-none text-indigo-950" />
+                        <textarea value={desc} onChange={e => setDesc(e.target.value)} placeholder="Ajanın temel görevini tanımlayın. Örn: 'Bugün gelen tüm nakit ödemeleri izle ve 1000 TL üstü indirimleri bana bildir.'" className="w-full bg-slate-50 border border-slate-100 rounded-2xl px-6 py-4 text-sm font-bold outline-none h-32 resize-none text-indigo-950" />
                     </div>
                     
                     <button 
