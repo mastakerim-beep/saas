@@ -128,18 +128,21 @@ export default function ImperialAgentHub() {
     const handleSaveNewAgent = async (newAgent: any) => {
         if (!currentBusiness?.id) return;
         try {
-            const { error } = await supabase.from('imperial_agents').insert({
+            const uniqueId = `${newAgent.name.toLowerCase().replace(/\s+/g, '_')}_${Math.random().toString(36).substring(2, 6)}`;
+            const { error } = await supabase.from('imperial_agents').upsert({
                 business_id: currentBusiness.id,
-                agent_id: newAgent.name.toLowerCase().replace(/\s+/g, '_'),
+                agent_id: uniqueId,
                 name: newAgent.name,
                 role: newAgent.role,
                 system_instruction: newAgent.description,
                 approval_mode: newAgent.mode
-            });
+            }, { onConflict: 'business_id, agent_id' });
+            
             if (error) throw error;
             fetchAgents();
+            alert("Yeni ajan başarıyla İmparatorluk ağına dahil edildi!");
         } catch (err: any) {
-            alert("Hata: " + err.message);
+            alert("Kayıt hatası: " + err.message);
         }
     };
 
