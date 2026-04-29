@@ -4,8 +4,13 @@ export async function POST(req: Request) {
     try {
         const { prompt, dataContext, agentName } = await req.json();
         
-        // SDK yerine ham fetch ile doğrudan bağlantı deniyoruz
-        const apiKey = "AIzaSyAYSBzKffur6mfAV_0DKebWB5LOTZlZUBc";
+        // 1. Get API Key from environment variable (SAFER)
+        const apiKey = process.env.GEMINI_API_KEY;
+
+        if (!apiKey) {
+            return NextResponse.json({ error: 'AI Bağlantı Hatası: API Anahtarı eksik. Lütfen .env.local dosyasını kontrol edin.' }, { status: 500 });
+        }
+        
         const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=${apiKey}`;
 
         const systemPrompt = `
