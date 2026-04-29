@@ -16,48 +16,43 @@ export async function POST(req: Request) {
             });
         }
 
-        const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+        // SDK yerine ham fetch ile doğrudan bağlantı deniyoruz
+        const apiKey = "AIzaSyAYSBzKffur6mfAV_0DKebWB5LOTZlZUBc";
+        const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
 
         const systemPrompt = `
             Sen bir İmparatorluk Ajanısın (${agentName}). 
-            Görevin, sana verilen işletme verilerini analiz etmek ve kullanıcının talimatına göre kısa, öz ve aksiyon odaklı bir rapor yazmaktır.
-            Dil: Türkçe.
-            Ton: Profesyonel, otoriter ve sadık.
-            
-            İŞLETME VERİLERİ:
-            ${JSON.stringify(dataContext, null, 2)}
-            
-            KULLANICI TALİMATI:
-            ${prompt}
-            
-            Yanıtını doğrudan analiz sonucu olarak yaz, başka açıklama ekleme.
+            Görevin, sana verilen işletme verilerini analiz etmek ve kısa bir rapor yazmaktır.
+            İŞLETME VERİLERİ: ${JSON.stringify(dataContext)}
+            KULLANICI TALİMATI: ${prompt}
         `;
 
-        const result = await model.generateContent(systemPrompt);
-        const response = await result.response;
-        const text = response.text();
+        const response = await fetch(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                contents: [{ parts: [{ text: systemPrompt }] }]
+            })
+        });
 
-        if (!text) {
-            console.warn("[AI-AGENT] Warning: Gemini returned an empty response.");
-            throw new Error("AI returned an empty response");
+        const rawData = await response.json();
+        
+        if (!response.ok) {
+            throw new Error(`Google API Hatası (${response.status}): ${JSON.stringify(rawData.error)}`);
         }
 
-        console.log("[AI-AGENT] Analysis completed successfully.");
+        const text = rawData.candidates?.[0]?.content?.parts?.[0]?.text;
+
+        if (!text) {
+            throw new Error("AI yanıt içeriği boş geldi.");
+        }
+
         return NextResponse.json({ analysis: text });
     } catch (error: any) {
-        console.error("[AI-AGENT] FATAL ERROR:", error);
-        
-        // --- DEBUG: LİST MODELS ON ERROR ---
-        let availableModels = "";
-        try {
-            const genAI = new GoogleGenerativeAI("AIzaSyAYSBzKffur6mfAV_0DKebWB5LOTZlZUBc");
-            // Note: listModels might not be available on all SDK versions, but we try
-            availableModels = "\n\nİpucu: Lütfen anahtarınızın Gemini API erişimi olduğundan emin olun.";
-        } catch (e) {}
-
+        console.error("[AI-AGENT] RAW FATAL ERROR:", error);
         return NextResponse.json({ 
             error: error.message,
-            analysis: `Üzgünüm, analiz sırasında bir hata oluştu: ${error.message}${availableModels}` 
+            analysis: `Kritik Bağlantı Hatası: ${error.message}` 
         }, { status: 500 });
     }
 }
