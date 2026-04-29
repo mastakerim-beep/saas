@@ -12,7 +12,8 @@ import { supabase } from '@/lib/supabase';
 export default function ImperialAgentHub() {
     const { 
         appointments = [], payments = [], customers = [], 
-        expenses = [], rooms = [], settings, currentBusiness 
+        expenses = [], rooms = [], settings, currentBusiness,
+        staff = []
     } = useStore();
 
     const [dbAgents, setDbAgents] = useState<any[]>([]);
@@ -309,7 +310,7 @@ export default function ImperialAgentHub() {
                                                                     appointments: appointments.length,
                                                                     payments: payments.length,
                                                                     totalRevenue: payments.reduce((acc, p) => acc + (p.totalAmount || 0), 0),
-                                                                    staffCount: 5, // Mocking for now, can be fetched from store
+                                                                    staffCount: Array.isArray(staff) ? staff.length : 0,
                                                                     customerCount: customers.length,
                                                                     lastActions: selectedAgent.logs
                                                                 }
