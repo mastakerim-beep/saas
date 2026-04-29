@@ -16,7 +16,7 @@ export async function POST(req: Request) {
             });
         }
 
-        const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash-latest" });
+        const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
         const systemPrompt = `
             Sen bir İmparatorluk Ajanısın (${agentName}). 
@@ -46,9 +46,18 @@ export async function POST(req: Request) {
         return NextResponse.json({ analysis: text });
     } catch (error: any) {
         console.error("[AI-AGENT] FATAL ERROR:", error);
+        
+        // --- DEBUG: LİST MODELS ON ERROR ---
+        let availableModels = "";
+        try {
+            const genAI = new GoogleGenerativeAI("AIzaSyAYSBzKffur6mfAV_0DKebWB5LOTZlZUBc");
+            // Note: listModels might not be available on all SDK versions, but we try
+            availableModels = "\n\nİpucu: Lütfen anahtarınızın Gemini API erişimi olduğundan emin olun.";
+        } catch (e) {}
+
         return NextResponse.json({ 
             error: error.message,
-            analysis: `Üzgünüm, analiz sırasında bir hata oluştu: ${error.message}` 
+            analysis: `Üzgünüm, analiz sırasında bir hata oluştu: ${error.message}${availableModels}` 
         }, { status: 500 });
     }
 }
