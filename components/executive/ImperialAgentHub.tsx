@@ -337,79 +337,91 @@ export default function ImperialAgentHub() {
                                                     }
 
                                                     setIsLoading(true);
-                                                    try {
-                                                        // --- DETAILED LIVE CONTEXT COMPUTATION ---
-                                                        const last7Days = new Date();
-                                                        last7Days.setDate(last7Days.getDate() - 7);
-                                                        
-                                                        const recentRevenue = payments
-                                                            .filter(p => new Date(p.date || '') >= last7Days)
-                                                            .reduce((acc, p) => acc + (p.totalAmount || 0), 0);
-                                                        
-                                                        const topServices = Object.entries(
-                                                            appointments.reduce((acc: any, curr) => {
-                                                                acc[curr.service] = (acc[curr.service] || 0) + 1;
-                                                                return acc;
-                                                            }, {})
-                                                        ).sort((a: any, b: any) => b[1] - a[1]).slice(0, 3);
+                                                        try {
+                                                            // --- DETAILED LIVE CONTEXT COMPUTATION ---
+                                                            console.log("AI: Computing context...");
+                                                            const last7Days = new Date();
+                                                            last7Days.setDate(last7Days.getDate() - 7);
+                                                            
+                                                            const recentRevenue = payments
+                                                                .filter(p => new Date(p.date || '') >= last7Days)
+                                                                .reduce((acc, p) => acc + (p.totalAmount || 0), 0);
+                                                            
+                                                            const topServices = Object.entries(
+                                                                appointments.reduce((acc: any, curr) => {
+                                                                    acc[curr.service] = (acc[curr.service] || 0) + 1;
+                                                                    return acc;
+                                                                }, {})
+                                                            ).sort((a: any, b: any) => b[1] - a[1]).slice(0, 3);
 
-                                                        const pendingPayments = appointments.filter(a => a.status === 'completed' && !a.is_paid).length;
+                                                            const pendingPayments = appointments.filter(a => a.status === 'completed' && !a.is_paid).length;
 
-                                                        const response = await fetch('/api/ai/agent-brain', {
-                                                            method: 'POST',
-                                                            headers: { 'Content-Type': 'application/json' },
-                                                            body: JSON.stringify({
-                                                                prompt: selectedAgent.systemInstruction,
-                                                                agentName: selectedAgent.name,
-                                                                dataContext: {
-                                                                    businessName: currentBusiness.name,
-                                                                    currentTime: new Date().toLocaleString('tr-TR'),
-                                                                    summary: {
-                                                                        totalAppointments: appointments.length,
-                                                                        totalCustomers: customers.length,
-                                                                        totalStaff: staff.length,
-                                                                        revenueLast7Days: recentRevenue,
-                                                                        top3Services: topServices,
-                                                                        pendingPaymentAlerts: pendingPayments,
-                                                                        roomCount: rooms.length
-                                                                    },
-                                                                    lastActions: selectedAgent.logs
-                                                                }
-                                                            })
-                                                        });
-                                                        
-                                                        const data = await response.json();
-                                                        const aiDescription = data.analysis || `ANALİZ HATASI: AI yanıt veremedi.`;
-
-                                                        // 2. LOG THE ACTION
-                                                        const { error } = await supabase
-                                                            .from('agent_activity_logs')
-                                                            .insert({
-                                                                business_id: currentBusiness.id,
-                                                                agent_id: selectedAgent.id,
-                                                                action_type: 'analysis',
-                                                                description: aiDescription.substring(0, 500),
-                                                                log_type: aiDescription.toLowerCase().includes('kritik') ? 'critical' : 'info',
-                                                                metadata: { prompt: selectedAgent.systemInstruction, ai_raw: aiDescription }
+                                                            console.log("AI: Calling Gemini API...");
+                                                            const response = await fetch('/api/ai/agent-brain', {
+                                                                method: 'POST',
+                                                                headers: { 'Content-Type': 'application/json' },
+                                                                body: JSON.stringify({
+                                                                    prompt: selectedAgent.systemInstruction,
+                                                                    agentName: selectedAgent.name,
+                                                                    dataContext: {
+                                                                        businessName: currentBusiness.name,
+                                                                        currentTime: new Date().toLocaleString('tr-TR'),
+                                                                        summary: {
+                                                                            totalAppointments: appointments.length,
+                                                                            totalCustomers: customers.length,
+                                                                            totalStaff: staff.length,
+                                                                            revenueLast7Days: recentRevenue,
+                                                                            top3Services: topServices,
+                                                                            pendingPaymentAlerts: pendingPayments,
+                                                                            roomCount: rooms.length
+                                                                        },
+                                                                        lastActions: selectedAgent.logs
+                                                                    }
+                                                                })
                                                             });
-                                                        
-                                                        // 3. SPEND THE TOKEN (RPC CALL)
-                                                        if (!error) {
-                                                            await supabase.rpc('spend_ai_token', { 
+                                                            
+                                                            const data = await response.json();
+                                                            if (data.error) {
+                                                                console.error("Gemini API Error:", data.error);
+                                                                throw new Error(data.error);
+                                                            }
+                                                            const aiDescription = data.analysis || `ANALİZ HATASI: AI yanıt veremedi.`;
+
+                                                            // 2. LOG THE ACTION
+                                                            console.log("AI: Logging activity...");
+                                                            const { error: logError } = await supabase
+                                                                .from('agent_activity_logs')
+                                                                .insert({
+                                                                    business_id: currentBusiness.id,
+                                                                    agent_id: selectedAgent.id,
+                                                                    action_type: 'analysis',
+                                                                    description: aiDescription.substring(0, 500),
+                                                                    log_type: aiDescription.toLowerCase().includes('kritik') ? 'critical' : 'info',
+                                                                    metadata: { prompt: selectedAgent.systemInstruction, ai_raw: aiDescription }
+                                                                });
+                                                            
+                                                            if (logError) console.error("Log Error:", logError);
+                                                            
+                                                            // 3. SPEND THE TOKEN (RPC CALL)
+                                                            console.log("AI: Spending token...");
+                                                            const { error: rpcError } = await supabase.rpc('spend_ai_token', { 
                                                                 p_business_id: currentBusiness.id, 
                                                                 p_reason: `Analiz: ${selectedAgent.name}` 
                                                             });
-                                                        }
 
-                                                        if (error) throw error;
-                                                        alert("İmparatorluk Zekası Yanıtladı: \n\n" + aiDescription);
-                                                        fetchAgents();
-                                                    } catch (err) {
-                                                        console.error('Analysis error:', err);
-                                                        alert("AI Bağlantı Hatası: Lütfen bağlantınızı veya kredinizi kontrol edin.");
-                                                    } finally {
-                                                        setIsLoading(false);
-                                                    }
+                                                            if (rpcError) {
+                                                                console.error("Token RPC Error:", rpcError);
+                                                                throw new Error("Token harcanamadı: " + rpcError.message);
+                                                            }
+
+                                                            alert("İmparatorluk Zekası Yanıtladı: \n\n" + aiDescription);
+                                                            fetchAgents();
+                                                        } catch (err: any) {
+                                                            console.error('CRITICAL AI ERROR:', err);
+                                                            alert(`❌ AI HATASI: ${err.message || 'Lütfen bağlantınızı veya kredinizi kontrol edin.'}`);
+                                                        } finally {
+                                                            setIsLoading(false);
+                                                        }
                                                 }}
                                                 className="w-full py-4 bg-white text-indigo-950 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:scale-105 active:scale-95 transition-all flex items-center justify-center gap-2"
                                             >
