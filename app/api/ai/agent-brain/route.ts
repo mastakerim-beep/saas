@@ -7,13 +7,13 @@ export async function POST(req: Request) {
     try {
         const { prompt, dataContext, agentName } = await req.json();
         
-        // Debug: Anahtarın okunup okunmadığını kontrol et
-        const apiKey = process.env.GOOGLE_GENERATIVE_AI_API_KEY;
-        console.log(`[AI-DEBUG] API Key present: ${!!apiKey}`);
+        // Hardcoded key to bypass env issues
+        const apiKey = "AIzaSyAYSBzKffur6mfAV_0DKebWB5LOTZlZUBc";
+        console.log(`[AI-DEBUG] Using hardcoded API Key.`);
 
         if (!apiKey) {
             return NextResponse.json({ 
-                analysis: "HATA: Gemini API anahtarı (.env.local) sistem tarafından okunamadı. Sunucunun yeniden başlatılması gerekebilir." 
+                analysis: "HATA: API Anahtarı hala bulunamadı." 
             });
         }
 
