@@ -110,6 +110,20 @@ export type CustomerWallet = DB.CustomerWallet;
 export type WalletTransaction = DB.WalletTransaction;
 export type ConsultationBodyMap = DB.ConsultationBodyMap;
 export type InventoryUsageNorm = DB.InventoryUsageNorm;
+
+export interface Coupon {
+    id: string;
+    businessId: string;
+    customerId?: string;
+    code: string;
+    discountType: 'percentage' | 'fixed';
+    discountValue: number;
+    expiryDate?: string;
+    isUsed: boolean;
+    usedAt?: string;
+    createdAt: string;
+}
+
 export interface InventoryCategory {
     id: string;
     businessId: string;
@@ -212,6 +226,7 @@ export interface StoreState {
     usageNorms: InventoryUsageNorm[];
     inventoryCategories: InventoryCategory[];
     customerBiometrics: CustomerBiometric[];
+    coupons: Coupon[];
     
     login: (email: string, pass: string) => Promise<AppUser | null>;
     logout: () => void;
@@ -333,6 +348,10 @@ export interface StoreState {
     addUsageNorm: (norm: Omit<InventoryUsageNorm, 'id' | 'businessId'>) => Promise<void>;
     updateUsageNorm: (id: string, updates: Partial<InventoryUsageNorm>) => Promise<void>;
     
+    addCoupon: (c: Omit<Coupon, 'id' | 'businessId' | 'createdAt' | 'isUsed' | 'usedAt'>) => Promise<void>;
+    deleteCoupon: (id: string) => Promise<void>;
+    applyCoupon: (code: string) => Coupon | null;
+
     getRecommendedStaff: (serviceId: string, customerId?: string) => Staff[];
     getEffectivePrice: (serviceId: string) => number;
     predictInventory: () => any[];

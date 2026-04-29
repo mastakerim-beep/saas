@@ -134,6 +134,16 @@ export const usePaymentMethods = (deps: any) => {
                     dataRef.current.updateAppointment(paymentData.appointmentId, updates);
                     await syncDb('appointments', 'update', updates, paymentData.appointmentId, bizId);
                 }
+                // 4. Coupon Logic
+                if (options.couponId) {
+                    const coupon = dataRef.current.coupons.find((c: any) => c.id === options.couponId);
+                    if (coupon) {
+                        const now = new Date().toISOString();
+                        dataRef.current.setCoupons((prev: any[]) => prev.map((c: any) => c.id === coupon.id ? { ...c, isUsed: true, usedAt: now } : c));
+                        await syncDb('coupons', 'update', { is_used: true, used_at: now }, coupon.id, bizId);
+                    }
+                }
+
                 if (setSyncStatus) setSyncStatus('idle');
                 return { success: true };
             } catch (err) {

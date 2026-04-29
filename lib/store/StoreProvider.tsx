@@ -224,7 +224,8 @@ const StoreOrchestrator = ({ children }: { children: ReactNode }) => {
             setAllUsers: auth.setAllUsers,
             setAllCommissionRules: data.setAllCommissionRules,
             setInventoryTransfers: data.setInventoryTransfers,
-            setCustomerBiometrics: data.setCustomerBiometrics
+            setCustomerBiometrics: data.setCustomerBiometrics,
+            setCoupons: data.setCoupons
         };
 
         try {
@@ -681,7 +682,24 @@ const StoreOrchestrator = ({ children }: { children: ReactNode }) => {
             getChurnRiskCustomers,
             getUpsellPotentialCustomers,
             getBirthdaysToday,
-            setLocale: data.setLocale
+            setLocale: data.setLocale,
+            addCoupon: async (c: any) => {
+                const id = crypto.randomUUID();
+                const nc = { ...c, id, businessId: activeBizIdRef.current, createdAt: new Date().toISOString(), isUsed: false };
+                dataRef.current.setCoupons((prev: any[]) => [...prev, nc]);
+                await syncDb('coupons', 'insert', nc, id, activeBizIdRef.current);
+            },
+            deleteCoupon: async (id: string) => {
+                dataRef.current.setCoupons((prev: any[]) => prev.filter(c => c.id !== id));
+                await syncDb('coupons', 'delete', {}, id, activeBizIdRef.current);
+            },
+            applyCoupon: (code: string) => {
+                const coupon = dataRef.current.coupons.find((c: any) => c.code === code && !c.isUsed);
+                if (!coupon) return null;
+                // Expiry check
+                if (coupon.expiryDate && new Date(coupon.expiryDate) < new Date()) return null;
+                return coupon;
+            }
         };
 
         stableMethodsRef.current = methods;
@@ -771,6 +789,7 @@ const StoreOrchestrator = ({ children }: { children: ReactNode }) => {
                 inventoryCategories: data.inventoryCategories || [],
                 isLicenseExpired,
                 locale: data.locale,
+                coupons: data.coupons || [],
             }}>
                 {systemLock.isLocked && <EmpireLockScreen reason={systemLock.reason} message={systemLock.message || ""} slug={slug} />}
                 <QuotaUpgradeModal 

@@ -267,7 +267,9 @@ function CustomerDetail({ customer, onClose }: { customer: Customer; onClose: ()
         loadWallet,
         walletTransactions,
         debts,
-        customerBiometrics
+        customerBiometrics,
+        addCoupon,
+        coupons
     } = useStore();
     const [activeMenu, setActiveMenu] = useState('Detaylar');
     const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(true);
@@ -1582,37 +1584,64 @@ function CustomerDetail({ customer, onClose }: { customer: Customer; onClose: ()
                                              <h3 className="text-2xl font-black italic tracking-tighter uppercase italic text-shadow-sm">İmparatorluk Kuponları</h3>
                                              <p className="text-[10px] font-black text-amber-600 uppercase tracking-widest mt-1">Özel Müşteri Sadakat Ödülleri</p>
                                          </div>
-                                         <button className="px-8 py-3 bg-indigo-600 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest hover:scale-105 active:scale-95 transition-all shadow-xl shadow-indigo-100">
+                                         <button 
+                                            onClick={async () => {
+                                                const code = prompt('Kupon Kodunu girin (örn: HEDIYE20):');
+                                                if (!code) return;
+                                                const value = prompt('İndirim Oranını girin (yüzde):');
+                                                if (!value || isNaN(Number(value))) return;
+                                                
+                                                await addCoupon({
+                                                    customerId: customer.id,
+                                                    code: code.toUpperCase(),
+                                                    discountType: 'percentage',
+                                                    discountValue: Number(value),
+                                                    expiryDate: new Date(new Date().setFullYear(new Date().getFullYear() + 1)).toISOString()
+                                                });
+                                            }}
+                                            className="px-8 py-3 bg-indigo-600 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest hover:scale-105 active:scale-95 transition-all shadow-xl shadow-indigo-100"
+                                         >
                                              YENİ KUPON ÜRET
                                          </button>
                                      </div>
                                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                         <div className="p-8 bg-slate-50 rounded-[2.5rem] border border-slate-100 border-dashed flex flex-col items-center justify-center text-center">
-                                             <div className="w-16 h-16 bg-white rounded-2xl flex items-center justify-center text-slate-300 mb-4 shadow-sm">
-                                                 <Gift size={32} />
+                                         {coupons.filter((c: any) => c.customerId === customer.id).length === 0 && (
+                                             <div className="p-8 bg-slate-50 rounded-[2.5rem] border border-slate-100 border-dashed flex flex-col items-center justify-center text-center">
+                                                 <div className="w-16 h-16 bg-white rounded-2xl flex items-center justify-center text-slate-300 mb-4 shadow-sm">
+                                                     <Gift size={32} />
+                                                 </div>
+                                                 <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Henüz bu müşteri için aktif kupon bulunmamaktadır.</p>
                                              </div>
-                                             <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Henüz bu müşteri için aktif kupon bulunmamaktadır.</p>
-                                         </div>
-                                         {/* Mock Coupon */}
-                                         <div className="bg-gradient-to-br from-indigo-600 to-purple-700 p-8 rounded-[2.5rem] text-white relative overflow-hidden group">
-                                             <div className="absolute top-0 right-0 p-8 opacity-20 group-hover:scale-110 transition-transform">
-                                                 <Crown size={80} />
-                                             </div>
-                                             <div className="relative z-10">
-                                                 <p className="text-[10px] font-black uppercase tracking-widest text-indigo-200 mb-2 italic">HOŞGELDİN HEDİYESİ</p>
-                                                 <h4 className="text-3xl font-black italic tracking-tight italic">AURA-20-OFF</h4>
-                                                 <div className="mt-8 flex justify-between items-end">
-                                                     <div>
-                                                         <p className="text-[8px] font-black text-indigo-200 uppercase mb-1">GEÇERLİLİK</p>
-                                                         <p className="text-xs font-bold font-mono lowercase tracking-tighter">31.12.2026</p>
-                                                     </div>
-                                                     <div className="text-right">
-                                                         <p className="text-[8px] font-black text-indigo-200 uppercase mb-1">İNDİRİM</p>
-                                                         <p className="text-3xl font-black tracking-tighter">%20</p>
+                                         )}
+                                         
+                                         {coupons.filter((c: any) => c.customerId === customer.id).map((c: any) => (
+                                             <div key={c.id} className={`bg-gradient-to-br ${c.isUsed ? 'from-slate-400 to-slate-500' : 'from-indigo-600 to-purple-700'} p-8 rounded-[2.5rem] text-white relative overflow-hidden group`}>
+                                                 <div className="absolute top-0 right-0 p-8 opacity-20 group-hover:scale-110 transition-transform">
+                                                     <Crown size={80} />
+                                                 </div>
+                                                 <div className="relative z-10">
+                                                     <p className="text-[10px] font-black uppercase tracking-widest text-indigo-200 mb-2 italic">{c.isUsed ? 'KULLANILDI' : 'AKTİF KUPON'}</p>
+                                                     <h4 className="text-3xl font-black italic tracking-tight italic">{c.code}</h4>
+                                                     <div className="mt-8 flex justify-between items-end">
+                                                         <div>
+                                                             <p className="text-[8px] font-black text-indigo-200 uppercase mb-1">SON KULLANIM</p>
+                                                             <p className="text-xs font-bold font-mono lowercase tracking-tighter">
+                                                                 {c.expiryDate ? new Date(c.expiryDate).toLocaleDateString('tr-TR') : 'Sınırsız'}
+                                                             </p>
+                                                         </div>
+                                                         <div className="text-right">
+                                                             <p className="text-[8px] font-black text-indigo-200 uppercase mb-1">İNDİRİM</p>
+                                                             <p className="text-3xl font-black tracking-tighter">%{c.discountValue}</p>
+                                                         </div>
                                                      </div>
                                                  </div>
+                                                 {c.isUsed && (
+                                                     <div className="absolute inset-0 bg-black/20 backdrop-blur-[2px] flex items-center justify-center">
+                                                        <span className="rotate-[-12deg] border-4 border-white px-6 py-2 text-2xl font-black uppercase tracking-widest">GEÇERSİZ</span>
+                                                     </div>
+                                                 )}
                                              </div>
-                                         </div>
+                                         ))}
                                      </div>
                                 </div>
                             </motion.div>

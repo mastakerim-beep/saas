@@ -1,11 +1,11 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useStore, Appointment, PaymentMethod, Product, Customer, PaymentDefinition, BankAccount, Package, CustomerMembership, MembershipPlan } from "@/lib/store";
+import { useStore, Appointment, PaymentMethod, Product, Customer, PaymentDefinition, BankAccount, Package, CustomerMembership, MembershipPlan, Coupon } from "@/lib/store";
 import { 
     X, Plus, CreditCard, Banknote, Landmark,
     Trash2, Save, AlertCircle, Calendar,
-    Zap, Crown, Package as PackageIcon, Sparkles, Printer, CheckCircle2, HeartHandshake, Percent, ShoppingBag
+    Zap, Crown, Package as PackageIcon, Sparkles, Printer, CheckCircle2, HeartHandshake, Percent, ShoppingBag, Gift
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -22,7 +22,7 @@ export default function SmartCheckout({ appointment, onClose, initialCustomerId,
         processCheckout, inventory, getUpsellSuggestions, 
         paymentDefinitions, getTodayDate, currentBusiness,
         packages, services, updateAppointment, bankAccounts,
-        currentBranch, staff: allStaffRaw
+        currentBranch, staff: allStaffRaw, applyCoupon
     } = useStore();
     const allStaff = allStaffRaw ?? [];
     
@@ -77,6 +77,8 @@ export default function SmartCheckout({ appointment, onClose, initialCustomerId,
     const [pointsUsed, setPointsUsed] = useState<number>(0);
     const [isSaving, setIsSaving] = useState(false);
     const [isSuccess, setIsSuccess] = useState(false);
+    const [couponCode, setCouponCode] = useState("");
+    const [selectedCoupon, setSelectedCoupon] = useState<Coupon | null>(null);
 
     // Gift (İkram) System State
     const [isPinModalOpen, setIsPinModalOpen] = useState(false);
@@ -122,7 +124,8 @@ export default function SmartCheckout({ appointment, onClose, initialCustomerId,
     
     const subTotal = servicePrice + productsPrice;
     const discountAmount = discountMode === 'fixed' ? discountValue : discountMode === 'percentage' ? (subTotal * discountValue / 100) : 0;
-    const grandTotal = Math.max(0, subTotal - discountAmount) + tip;
+    const couponDiscount = selectedCoupon ? (selectedCoupon.discountType === 'percentage' ? (subTotal * selectedCoupon.discountValue / 100) : selectedCoupon.discountValue) : 0;
+    const grandTotal = Math.max(0, subTotal - discountAmount - couponDiscount) + tip;
     
     const totalPaid = methods.reduce((sum, m) => sum + (m.amount * m.rate), 0);
     const remaining = grandTotal - totalPaid - pointsUsed;
@@ -167,7 +170,8 @@ export default function SmartCheckout({ appointment, onClose, initialCustomerId,
                     earnedPoints,
                     tipAmount: tip,
                     pointsUsed,
-                    packageId: selectedPackageId || undefined
+                    packageId: selectedPackageId || undefined,
+                    couponId: selectedCoupon?.id
                 }
             );
             
@@ -248,6 +252,20 @@ export default function SmartCheckout({ appointment, onClose, initialCustomerId,
             isDeposit: false,
             toolId: defaultTool?.id 
         }]);
+    };
+
+    const handleApplyCoupon = () => {
+        const c = applyCoupon(couponCode);
+        if (c) {
+            if (c.customerId && c.customerId !== targetCustomerId) {
+                alert("Bu kupon başka bir müşteriye tanımlanmıştır.");
+                return;
+            }
+            setSelectedCoupon(c);
+            setCouponCode("");
+        } else {
+            alert("Geçersiz veya kullanılmış kupon kodu!");
+        }
     };
 
     const updateMethod = (index: number, field: keyof Omit<PaymentMethod, 'id'>, value: any) => {
@@ -450,6 +468,39 @@ export default function SmartCheckout({ appointment, onClose, initialCustomerId,
                                         </button>
                                     )}
                                 </div>
+                            </div>
+                        </div>
+
+                        {/* 0.6. Kupon Uygula */}
+                        <div className="p-4 rounded-[1.5rem] border border-gray-100 bg-white shadow-sm relative overflow-hidden group">
+                            <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-50/50 rounded-full -translate-y-1/2 translate-x-1/2 group-hover:scale-110 transition-transform" />
+                            <div className="relative">
+                                <p className="text-[9px] font-black uppercase tracking-widest flex items-center gap-2 text-indigo-600 mb-2">
+                                    <Gift className="w-3 h-3" /> Kupon Kullan
+                                </p>
+                                <div className="flex gap-3 items-center">
+                                    <div className="relative flex-1">
+                                        <input 
+                                            type="text"
+                                            value={couponCode}
+                                            onChange={e => setCouponCode(e.target.value.toUpperCase())}
+                                            placeholder="Kupon Kodu"
+                                            className="w-full bg-gray-50 border-none rounded-lg px-3 py-1.5 text-xs font-black outline-none focus:ring-2 focus:ring-indigo-600/10 placeholder:text-gray-300"
+                                        />
+                                    </div>
+                                    <button 
+                                        onClick={handleApplyCoupon}
+                                        className="px-4 py-2 bg-indigo-600 text-white rounded-lg font-black text-[8px] uppercase tracking-widest shadow-lg shadow-indigo-100"
+                                    >
+                                        Uygula
+                                    </button>
+                                </div>
+                                {selectedCoupon && (
+                                    <div className="mt-3 flex justify-between items-center bg-indigo-50 p-2 rounded-lg border border-indigo-100">
+                                        <p className="text-[9px] font-black text-indigo-600">{selectedCoupon.code} (%{selectedCoupon.discountValue})</p>
+                                        <button onClick={() => setSelectedCoupon(null)} className="text-red-500 hover:text-red-700"><Trash2 size={12} /></button>
+                                    </div>
+                                )}
                             </div>
                         </div>
 
@@ -822,6 +873,12 @@ export default function SmartCheckout({ appointment, onClose, initialCustomerId,
                                         <div className="flex justify-between items-center py-2 px-4 bg-indigo-50 rounded-2xl border border-indigo-100/50">
                                             <span className="text-[10px] font-black text-indigo-600 uppercase tracking-widest flex items-center gap-2"><Zap size={14} /> Puan İndirimi</span>
                                             <span className="text-sm font-black text-indigo-600">- ₺{pointsUsed}</span>
+                                        </div>
+                                    )}
+                                    {selectedCoupon && (
+                                        <div className="flex justify-between items-center py-2 px-4 bg-purple-50 rounded-2xl border border-purple-100/50">
+                                            <span className="text-[10px] font-black text-purple-600 uppercase tracking-widest flex items-center gap-2"><Gift size={14} /> Kupon: {selectedCoupon.code}</span>
+                                            <span className="text-sm font-black text-purple-600">- ₺{couponDiscount}</span>
                                         </div>
                                     )}
                                     {tip > 0 && (
