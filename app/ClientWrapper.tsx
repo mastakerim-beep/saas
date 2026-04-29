@@ -96,93 +96,60 @@ export default function ClientWrapper({ children }: { children: React.ReactNode 
     useEffect(() => {
         if (!isMounted) return;
 
-        const timer = setTimeout(() => {
+        // FAST TRACK: If we are on a login or public path, unlock immediately
+        if (isLoginPath || isPublicPath) {
+            setIsChecking(false);
+            return;
+        }
+
+        const handleRouting = async () => {
             if (!isInitialized) return;
 
-            // Allow public paths to bypass login
-            if (isPublicPath) {
-                setIsChecking(false);
-                return;
-            }
-
+            // IF NO USER: Immediate evacuation to login
             if (!currentUser) {
-                if (!isLoginPath && !isPublicPath) {
-                    const target = "/login";
-                    console.log("🛡️ [Auth Trace] No user, redirecting to login...");
-                    router.replace(target);
-                }
+                console.log("🛡️ [Auth Trace] Unauthorized access detected. Redirecting...");
                 setIsChecking(false);
+                router.replace('/login');
                 return;
             }
 
+            // IF USER EXISTS:
             if (currentUser) {
                 if (isSaaSOwner) {
-                    let target = "";
-                    if (isLoginPath || isRootPath) {
-                        target = "/admin";
-                    } else if (normalizedPathname === "/dashboard" || normalizedPathname === "/settings" || (isSuperAdminPath && normalizedPathname !== "/admin")) {
-                        target = "/admin";
-                    }
-                    
-                    if (target && normalizedPathname !== target) {
-                        router.push(target);
-                    }
-
-                    if (syncStatus === 'idle' || syncStatus === 'error') {
-                        setIsChecking(false);
+                    if (isRootPath || normalizedPathname === "/dashboard") {
+                        router.replace('/admin');
                     }
                 } else if (userBiz) {
                     const tenantPath = `/${userBiz.slug}`;
                     const currentSlugInPath = normalizedPathname.split('/')[1];
-                    // Normalize slug comparison (case-insensitive)
                     const isAnyBizSlugMatch = allBusinesses.some((b: any) => b.slug?.toLowerCase() === currentSlugInPath?.toLowerCase());
 
-                    if (isRootPath || isLoginPath) {
-                        const target = `${tenantPath}/dashboard`;
-                        if (normalizedPathname !== target) {
-                            router.push(target);
-                        }
+                    if (isRootPath) {
+                        router.replace(`${tenantPath}/dashboard`);
                     } else if (!isAnyBizSlugMatch && !normalizedPathname.includes("/api/")) {
-                        // FIX: Instead of appending, we construct the path from the base tenant slug
-                        const pathParts = normalizedPathname.split('/').filter(Boolean);
-                        // If the first part is NOT a valid slug, we replace it or prepend
-                        const subPath = pathParts.length > 0 ? pathParts.slice(isAnyBizSlugMatch ? 1 : 0).join('/') : 'dashboard';
-                        const target = `${tenantPath}/${subPath || 'dashboard'}`;
-                        
-                        if (normalizedPathname !== target) {
-                            router.push(target);
-                        }
-                    }
-                    
-                    if (syncStatus === 'idle' || syncStatus === 'error') {
-                        setIsChecking(false);
+                        router.replace(`${tenantPath}/dashboard`);
                     }
                 }
+                
+                // Unlock UI for authenticated users after sync or timeout
+                if (syncStatus === 'idle' || syncStatus === 'error') {
+                    setIsChecking(false);
+                }
             }
-        }, 100);
+        };
 
-        // 3. STORE SYNC: Unlock UI as soon as store is ready
-        if (isInitialized && isChecking) {
-             console.log("🔓 [Aura Trace] Store initialized. SyncStatus:", syncStatus);
-             if (isLoginPath || syncStatus === 'idle' || syncStatus === 'error') {
-                 const t = setTimeout(() => setIsChecking(false), 200);
-                 return () => clearTimeout(t);
-             }
-        }
+        handleRouting();
 
-        // EXTRA PROTECT: 'Safety Timeout' fallback
+        // Safety Timeout to prevent white/black screen hangs
         const safetyTimer = setTimeout(() => {
             if (isChecking) {
-                console.warn("⚠️ [Aura Trace] UI Unlock Timeout. Force unlocking. Status:", { isInitialized, syncStatus, isLoginPath });
+                console.warn("⚠️ [Aura Trace] Safety Unlock triggered.");
                 setIsChecking(false);
             }
-        }, 2000); 
+        }, 2500);
 
-        return () => {
-            clearTimeout(timer);
-            clearTimeout(safetyTimer);
-        };
-    }, [isMounted, currentUser, isLoginPath, isRootPath, isSuperAdminPath, isSaaSOwner, router, userBiz, pathname, isInitialized, isChecking, syncStatus]);
+        return () => clearTimeout(safetyTimer);
+    }, [isMounted, currentUser, isLoginPath, isPublicPath, isRootPath, isSaaSOwner, router, userBiz, pathname, isInitialized, isChecking, syncStatus, allBusinesses]);
 
     // ---- RENDER BODY ----
     
