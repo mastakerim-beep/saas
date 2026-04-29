@@ -1,21 +1,9 @@
-import { GoogleGenerativeAI } from "@google/generative-ai";
 import { NextResponse } from "next/server";
 
 export async function POST(req: Request) {
     try {
         const { prompt, dataContext, agentName } = await req.json();
         
-        // Hardcoded key for instant fix
-        const apiKey = "AIzaSyAYSBzKffur6mfAV_0DKebWB5LOTZlZUBc";
-        const genAI = new GoogleGenerativeAI(apiKey);
-        console.log(`[AI-DEBUG] Using hardcoded API Key.`);
-
-        if (!apiKey) {
-            return NextResponse.json({ 
-                analysis: "HATA: API Anahtarı hala bulunamadı." 
-            });
-        }
-
         // SDK yerine ham fetch ile doğrudan bağlantı deniyoruz
         const apiKey = "AIzaSyAYSBzKffur6mfAV_0DKebWB5LOTZlZUBc";
         const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
