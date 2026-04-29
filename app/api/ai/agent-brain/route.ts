@@ -6,13 +6,15 @@ const genAI = new GoogleGenerativeAI(process.env.GOOGLE_GENERATIVE_AI_API_KEY ||
 export async function POST(req: Request) {
     try {
         const { prompt, dataContext, agentName } = await req.json();
+        
+        // Debug: Anahtarın okunup okunmadığını kontrol et
         const apiKey = process.env.GOOGLE_GENERATIVE_AI_API_KEY;
-
-        console.log(`[AI-AGENT] Analyzing for ${agentName}...`);
+        console.log(`[AI-DEBUG] API Key present: ${!!apiKey}`);
 
         if (!apiKey) {
-            console.error("[AI-AGENT] ERROR: GOOGLE_GENERATIVE_AI_API_KEY is missing in env!");
-            return NextResponse.json({ error: "Gemini API Key is missing in .env.local" }, { status: 500 });
+            return NextResponse.json({ 
+                analysis: "HATA: Gemini API anahtarı (.env.local) sistem tarafından okunamadı. Sunucunun yeniden başlatılması gerekebilir." 
+            });
         }
 
         const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });

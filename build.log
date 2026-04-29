@@ -1,50 +1,10 @@
 
-> spa-saas@0.1.0 build
-> next build
+> aura-spa-erp@0.1.1 dev
+> next dev
 
   ▲ Next.js 14.2.35
+  - Local:        http://localhost:3000
   - Environments: .env.local
 
-   Creating an optimized production build ...
- ✓ Compiled successfully
-   Linting and checking validity of types ...
-   Collecting page data ...
-   Generating static pages (0/22) ...
-   Generating static pages (5/22) 
-   Generating static pages (10/22) 
-   Generating static pages (16/22) 
- ✓ Generating static pages (22/22)
-   Finalizing page optimization ...
-   Collecting build traces ...
-
-Route (app)                              Size     First Load JS
-┌ ○ /                                    139 B          87.6 kB
-├ ○ /_not-found                          876 B          88.4 kB
-├ ○ /ai-advisor                          3.83 kB         154 kB
-├ ○ /ai-sales                            3.14 kB         154 kB
-├ ○ /audit-log                           1.74 kB         152 kB
-├ ○ /balances                            3.83 kB         154 kB
-├ ƒ /book/[businessId]                   4.43 kB        91.9 kB
-├ ○ /calendar                            24.9 kB         175 kB
-├ ○ /customers                           5.92 kB         156 kB
-├ ○ /dashboard                           3.82 kB         255 kB
-├ ○ /expenses                            2.15 kB         153 kB
-├ ○ /finances                            3.81 kB         255 kB
-├ ○ /gun-sonu                            2.59 kB         153 kB
-├ ○ /inventory                           2.11 kB         153 kB
-├ ○ /login                               2.41 kB         153 kB
-├ ○ /marketing                           2.92 kB         153 kB
-├ ○ /memberships                         2.42 kB         153 kB
-├ ○ /operations                          1.71 kB         152 kB
-├ ○ /staff                               3.36 kB         154 kB
-├ ○ /super-admin                         4.09 kB         255 kB
-└ ○ /users                               3.3 kB          154 kB
-+ First Load JS shared by all            87.5 kB
-  ├ chunks/117-94304f763666158a.js       31.9 kB
-  ├ chunks/fd9d1056-81ecb66cf6af1b25.js  53.6 kB
-  └ other shared chunks (total)          1.96 kB
-
-
-○  (Static)   prerendered as static content
-ƒ  (Dynamic)  server-rendered on demand
-
+ ✓ Starting...
+ ✓ Ready in 1381ms
