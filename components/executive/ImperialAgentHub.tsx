@@ -308,7 +308,7 @@ export default function ImperialAgentHub() {
                                                             });
                                                         
                                                         if (error) throw error;
-                                                        alert("İmparatorluk Zekası verileri taradı: " + (isCritical ? "⚠️ Kritik bulgu saptandı!" : "✅ Sorun saptanmadı."));
+                                                        alert("İmparatorluk Zekası verileri taradı: " + (aiType === 'critical' ? "⚠️ Kritik bulgu saptandı!" : "✅ Analiz tamamlandı."));
                                                         fetchAgents();
                                                     } catch (err) {
                                                         console.error('Analysis error:', err);
