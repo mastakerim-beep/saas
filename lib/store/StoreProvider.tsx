@@ -538,6 +538,8 @@ const StoreOrchestrator = ({ children }: { children: ReactNode }) => {
             ...finMethods,
             ...pkgMethods,
             ...supportMethods,
+            addMarketingRule: data.addMarketingRule,
+            deleteMarketingRule: data.deleteMarketingRule,
 
             // Remaining UI/Support methods
             addQuote: async (q: any) => {

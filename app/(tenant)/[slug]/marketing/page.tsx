@@ -5,7 +5,7 @@ import {
     Megaphone, Target, Users, Zap, 
     Gift, ArrowRight, TrendingDown, 
     MessageSquare, Mail, Calendar,
-    Plus, Sparkles, AlertCircle,
+    Plus, Sparkles, AlertCircle, X,
     UserMinus, Crown
 } from 'lucide-react';
 import { useState, useMemo } from 'react';
@@ -224,6 +224,69 @@ export default function MarketingPage() {
                     </div>
                 </div>
             )}
+            {showRuleModal && (
+                <RuleModal 
+                    onClose={() => setShowRuleModal(false)} 
+                    onSave={(rule) => addMarketingRule(rule)} 
+                />
+            )}
+        </div>
+    );
+}
+
+function RuleModal({ onClose, onSave }: { onClose: () => void, onSave: (rule: any) => void }) {
+    const [name, setName] = useState('');
+    const [triggerType, setTriggerType] = useState('NEW_CUSTOMER');
+    const [threshold, setThreshold] = useState(0);
+    const [messageTemplate, setMessageTemplate] = useState('');
+
+    return (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-md z-[100] flex items-center justify-center p-4">
+            <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="bg-white rounded-[3rem] p-10 max-w-lg w-full shadow-2xl">
+                <div className="flex justify-between items-center mb-8">
+                    <h3 className="text-2xl font-black italic uppercase tracking-tighter">Yeni Otomasyon Kurgula</h3>
+                    <button onClick={onClose} className="p-2 hover:bg-slate-50 rounded-full text-slate-400 hover:text-slate-900"><X size={24} /></button>
+                </div>
+                
+                <div className="space-y-6">
+                    <div>
+                        <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest block mb-2">Kural İsmi</label>
+                        <input value={name} onChange={e => setName(e.target.value)} placeholder="Örn: Hoşgeldin İndirimi" className="w-full bg-slate-50 border border-slate-100 rounded-2xl px-6 py-4 text-xs font-bold outline-none focus:border-indigo-500 transition-all text-slate-900" />
+                    </div>
+                    
+                    <div className="grid grid-cols-2 gap-4">
+                        <div>
+                            <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest block mb-2">Tetikleyici</label>
+                            <select value={triggerType} onChange={e => setTriggerType(e.target.value)} className="w-full bg-slate-50 border border-slate-100 rounded-2xl px-4 py-4 text-xs font-bold outline-none text-slate-900">
+                                <option value="NEW_CUSTOMER">Yeni Kayıt</option>
+                                <option value="CHURN_RISK">Kayıp Riski (Gün)</option>
+                                <option value="LOYALTY_POINTS">Sadakat Puanı</option>
+                                <option value="BIRTHDAY">Doğum Günü</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest block mb-2">Eşik Değer</label>
+                            <input type="number" value={threshold} onChange={e => setThreshold(Number(e.target.value))} className="w-full bg-slate-50 border border-slate-100 rounded-2xl px-6 py-4 text-xs font-bold outline-none text-slate-900" />
+                        </div>
+                    </div>
+                    
+                    <div>
+                        <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest block mb-2">Mesaj Şablonu</label>
+                        <textarea value={messageTemplate} onChange={e => setMessageTemplate(e.target.value)} placeholder="Müşteriye gidecek mesaj..." className="w-full bg-slate-50 border border-slate-100 rounded-2xl px-6 py-4 text-xs font-bold outline-none h-32 resize-none text-slate-900" />
+                    </div>
+                    
+                    <button 
+                        onClick={() => {
+                            if (!name || !messageTemplate) return;
+                            onSave({ name, triggerType, threshold, messageTemplate, isActive: true });
+                            onClose();
+                        }}
+                        className="w-full py-5 bg-indigo-600 text-white rounded-3xl font-black uppercase tracking-widest shadow-xl shadow-indigo-100 hover:scale-[1.02] active:scale-95 transition-all"
+                    >
+                        OTOMASYONU AKTİF ET
+                    </button>
+                </div>
+            </motion.div>
         </div>
     );
 }

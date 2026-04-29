@@ -7,8 +7,9 @@ import {
     TrendingDown, Search, ArrowUpRight, ArrowDownRight,
     Zap, Star, Award, LayoutGrid, Sparkles,
     ChevronRight, Info, AlertTriangle, ShieldCheck, Box,
-    PieChart as PieChartIcon
+    PieChart as PieChartIcon, Bot
 } from "lucide-react";
+import ImperialAgentHub from '@/components/executive/ImperialAgentHub';
 import { useMemo, useState, useEffect } from "react";
 import { 
     BarChart, Bar, XAxis, YAxis, CartesianGrid, 
@@ -39,7 +40,7 @@ import { formatPrice } from "@/lib/utils/converter";
 export default function ExecutiveDashboard() {
     const params = useParams();
     const slug = params?.slug as string;
-    const [activeTab, setActiveTab] = useState<'overview' | 'treasury' | 'panopticon' | 'veto' | 'vision' | 'forecast'>('overview');
+    const [activeTab, setActiveTab] = useState<'overview' | 'agents' | 'treasury' | 'panopticon' | 'veto' | 'vision' | 'forecast'>('overview');
     
     const { 
         branches, payments, appointments, customers, 
@@ -201,6 +202,7 @@ export default function ExecutiveDashboard() {
             {/* TABS NAVIGATION */}
             <div className="flex gap-4 p-2 bg-white rounded-full shadow-sm border border-gray-100 mb-8 max-w-fit mx-auto relative z-10">
                 <TabBtn active={activeTab} id="overview" onClick={setActiveTab} label={d.executive_summary} icon={<TrendingUp size={14} />} />
+                <TabBtn active={activeTab} id="agents" onClick={setActiveTab} label="İmparatorluk Ajanları" icon={<Bot size={14} />} />
                 <TabBtn active={activeTab} id="vision" onClick={setActiveTab} label={d.vision} icon={<Box size={14} />} />
                 <TabBtn active={activeTab} id="treasury" onClick={setActiveTab} label={d.treasury} icon={<Wallet size={14} />} />
                 <TabBtn active={activeTab} id="veto" onClick={setActiveTab} label={d.veto} icon={<ShieldCheck size={14} />} />
@@ -513,6 +515,11 @@ export default function ExecutiveDashboard() {
                             appointments={appointments} 
                             stats={stats}
                         />
+                    </motion.div>
+                )}
+                {activeTab === 'agents' && (
+                    <motion.div key="agents" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}>
+                        <ImperialAgentHub />
                     </motion.div>
                 )}
             </AnimatePresence>
