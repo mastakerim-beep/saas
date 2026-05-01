@@ -331,10 +331,17 @@ export default function ImperialAgentHub() {
                                                                 agentName: selectedAgent.name,
                                                                 dataContext: {
                                                                     businessName: currentBusiness.name,
-                                                                    summary: {
+                                                                    metrics: {
                                                                         totalAppointments: appointments.length,
-                                                                        totalCustomers: customers.length
-                                                                    }
+                                                                        totalCustomers: customers.length,
+                                                                        totalStaff: staff.length,
+                                                                        totalServices: services.length,
+                                                                    },
+                                                                    recentActivity: appointments.slice(0, 10).map(a => ({
+                                                                        service: services.find((s: any) => s.id === a.serviceId)?.name,
+                                                                        status: a.status,
+                                                                        date: a.date
+                                                                    }))
                                                                 }
                                                             })
                                                         });
