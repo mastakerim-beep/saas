@@ -5,7 +5,7 @@ import {
     Globe, ShieldCheck, Activity, Terminal, 
     Bell, CreditCard, Zap, Server, 
     Search, Database, LogOut,
-    ChevronRight, Plus, RefreshCw, X, ShieldAlert
+    ChevronRight, Plus, RefreshCw, X, ShieldAlert, Settings, Bot
 } from 'lucide-react';
 import { useState, useMemo, useEffect } from 'react';
 import { 
