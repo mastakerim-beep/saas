@@ -32,7 +32,7 @@ export async function POST(req: Request) {
         const genAI = new GoogleGenerativeAI(apiKey);
         
         // Try multiple models in order of preference
-        const modelsToTry = ['gemini-1.5-flash', 'gemini-1.5-pro', 'gemini-pro'];
+        const modelsToTry = ['gemini-1.5-flash', 'gemini-1.5-pro', 'gemini-pro', 'gemini-1.0-pro'];
         let lastError = null;
         let analysisText = "";
 
@@ -55,7 +55,16 @@ export async function POST(req: Request) {
         }
 
         if (!analysisText) {
-            throw new Error(`Google API Yetkilendirme veya Model Hatası. Lütfen anahtarınızı kontrol edin. (Son hata: ${lastError})`);
+            // DIAGNOSTIC: List available models for this key
+            let availableModels = [];
+            try {
+                const modelList = await genAI.listModels();
+                availableModels = modelList.models?.map(m => m.name.replace('models/', '')) || [];
+            } catch (listErr) {
+                console.error("Failed to list models:", listErr);
+            }
+
+            throw new Error(`Google API Modelleri bulunamadı. Kullanılabilir modeller: [${availableModels.join(', ')}]. Son hata: ${lastError}`);
         }
 
         return NextResponse.json({ analysis: analysisText });
