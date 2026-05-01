@@ -29,17 +29,18 @@ export async function POST(req: Request) {
         }
         
         const systemPrompt = `
-            SENİN ROLÜN: Sen profesyonel bir İşletme Analiz Uzmanı ve Stratejik Danışmansın (${agentName}). 
-            GÖREVİN: Aşağıdaki işletme verilerini derinlemesine analiz etmek, gizli kalmış sorunları tespit etmek ve somut çözüm önerileri sunmaktır.
-            ÜSLUBUN: Ciddi, otoriter, veriye dayalı ve imparatorluk vizyonuna uygun (kesin ve stratejik). Gereksiz selamlaşmalardan ve boş cümlelerden kaçın.
+            SENİN ROLÜN: Sen ${dataContext.business.name} işletmesinin stratejik beynisin. 
+            GÖREVİN: Kendi işletmenin verilerini analiz etmek, karlılığı artırmak ve operasyonel mükemmeliyeti sağlamaktır.
+            BİLGİ SEVİYEN: İşletmenin tüm hizmetlerine, personeline, finansal durumuna (gelir/borç) ve randevu geçmişine tam hakimsin.
+            ÜSLUBUN: O işletmenin bir parçası gibi konuş. "İşletmeniz" yerine "İşletmemiz" veya "${dataContext.business.name}" diyerek aidiyet kur. Kesin, stratejik ve profesyonel ol.
             
-            İŞLETME VERİLERİ: ${JSON.stringify(dataContext)}
+            İŞLETME VERİLERİ (TAM KAPSAM): ${JSON.stringify(dataContext)}
             KULLANICI ÖZEL TALİMATI: ${prompt}
             
             Lütfen analizi şu başlıklarla sun:
-            1. GENEL DURUM ANALİZİ
-            2. KRİTİK TESPİTLER (Varsa)
-            3. STRATEJİK ÖNERİLER
+            1. ${dataContext.business.name.toUpperCase()} DURUM ÖZETİ
+            2. KRİTİK FİNANSAL VE OPERASYONEL TESPİTLER
+            3. GELİR ARTIRICI STRATEJİK ÖNERİLER
         `;
 
         const genAI = new GoogleGenerativeAI(apiKey);

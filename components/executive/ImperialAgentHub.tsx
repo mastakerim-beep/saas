@@ -324,27 +324,38 @@ export default function ImperialAgentHub() {
                                                     setIsLoading(true);
                                                     try {
                                                         const response = await fetch('/api/ai/agent-brain', {
-                                                            method: 'POST',
-                                                            headers: { 'Content-Type': 'application/json' },
+                                                                                                    headers: { 'Content-Type': 'application/json' },
                                                             body: JSON.stringify({
                                                                 prompt: selectedAgent.systemInstruction,
                                                                 agentName: selectedAgent.name,
                                                                 dataContext: {
-                                                                    businessName: currentBusiness.name,
-                                                                    metrics: {
-                                                                        totalAppointments: appointments.length,
-                                                                        totalCustomers: customers.length,
-                                                                        totalStaff: staff.length,
-                                                                        totalServices: services.length,
+                                                                    business: {
+                                                                        name: currentBusiness.name,
+                                                                        slug: currentBusiness.slug,
+                                                                        status: currentBusiness.status
                                                                     },
-                                                                    recentActivity: appointments.slice(0, 10).map(a => ({
+                                                                    metrics: {
+                                                                        appointments: appointments.length,
+                                                                        customers: customers.length,
+                                                                        staff: staff.length,
+                                                                        services: services.length,
+                                                                        totalRevenue: payments?.reduce((acc: number, p: any) => acc + (Number(p.amount) || 0), 0) || 0,
+                                                                        totalDebt: debts?.reduce((acc: number, d: any) => acc + (Number(d.remainingAmount) || 0), 0) || 0
+                                                                    },
+                                                                    inventory: {
+                                                                        services: services.map(s => ({ name: s.name, price: s.price })),
+                                                                        staff: staff.map(st => ({ name: st.name, role: st.role }))
+                                                                    },
+                                                                    recentActivity: appointments.slice(0, 20).map(a => ({
                                                                         service: services.find((s: any) => s.id === a.serviceId)?.name,
+                                                                        customer: customers.find((c: any) => c.id === a.customerId)?.name,
                                                                         status: a.status,
                                                                         date: a.date
                                                                     }))
                                                                 }
                                                             })
                                                         });
+                                });
                                                         
                                                         const data = await response.json();
                                                         if (data.error) throw new Error(data.error);
