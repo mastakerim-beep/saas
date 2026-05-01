@@ -13,6 +13,7 @@ import {
     Tooltip, ResponsiveContainer 
 } from 'recharts';
 import { motion, AnimatePresence } from 'framer-motion';
+import { supabase } from '@/lib/supabase';
 
 // Modular components
 import { NavBtn, StatCard, MetricBox } from './components/BasicUi';
@@ -546,7 +547,6 @@ export default function SuperAdminPage() {
                                                     
                                                     setIsRefreshing(true);
                                                     try {
-                                                        const { supabase } = await import('@/lib/supabase');
                                                         const { error } = await supabase
                                                             .from('system_config')
                                                             .upsert({ key: 'GEMINI_API_KEY', value: val });
@@ -555,6 +555,7 @@ export default function SuperAdminPage() {
                                                         alert('API Anahtarı mühürlendi ve tüm sistemlere dağıtıldı! 🏛️✨');
                                                         input.value = '';
                                                     } catch (err: any) {
+                                                        console.error('Upsert Error:', err);
                                                         alert('Mühürleme Hatası: ' + err.message);
                                                     } finally {
                                                         setIsRefreshing(false);
