@@ -13,7 +13,7 @@ export default function ImperialAgentHub() {
     const { 
         appointments = [], payments = [], customers = [], 
         expenses = [], rooms = [], settings, currentBusiness,
-        staff = []
+        staffMembers: staff = [], services = [], debts = []
     } = useStore();
 
     const [dbAgents, setDbAgents] = useState<any[]>([]);
@@ -344,10 +344,10 @@ export default function ImperialAgentHub() {
                                                                         totalDebt: debts?.reduce((acc: number, d: any) => acc + (Number(d.remainingAmount) || 0), 0) || 0
                                                                     },
                                                                     inventory: {
-                                                                        services: services.map(s => ({ name: s.name, price: s.price })),
-                                                                        staff: staff.map(st => ({ name: st.name, role: st.role }))
+                                                                        services: services.map((s: any) => ({ name: s.name, price: s.price })),
+                                                                        staff: staff.map((st: any) => ({ name: st.name, role: st.role }))
                                                                     },
-                                                                    recentActivity: appointments.slice(0, 20).map(a => ({
+                                                                    recentActivity: appointments.slice(0, 20).map((a: any) => ({
                                                                         service: services.find((s: any) => s.id === a.serviceId)?.name,
                                                                         customer: customers.find((c: any) => c.id === a.customerId)?.name,
                                                                         status: a.status,

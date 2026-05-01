@@ -75,16 +75,7 @@ export async function POST(req: Request) {
         }
 
         if (!analysisText) {
-            // DIAGNOSTIC: List available models for this key
-            let availableModels = [];
-            try {
-                const modelList = await genAI.listModels();
-                availableModels = modelList.models?.map(m => m.name.replace('models/', '')) || [];
-            } catch (listErr) {
-                console.error("Failed to list models:", listErr);
-            }
-
-            throw new Error(`Google API Modelleri bulunamadı. Kullanılabilir modeller: [${availableModels.join(', ')}]. Son hata: ${lastError}`);
+            throw new Error(`Google API Modelleri ile bağlantı kurulamadı. Son hata: ${lastError}`);
         }
 
         return NextResponse.json({ analysis: analysisText });

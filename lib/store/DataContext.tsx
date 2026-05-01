@@ -9,7 +9,7 @@ import {
     DynamicPricingRule, CustomerWallet, WalletTransaction, 
     ConsultationBodyMap, InventoryUsageNorm, CustomerMedia, CustomerBiometric,
     PackageDefinition, CommissionRule, AppointmentStatus, Staff, Payment, InventoryCategory, PackageUsageHistory,
-    PaymentDefinition, BankAccount, ExpenseCategory, ReferralSource, ConsentFormTemplate, SystemAnnouncement, LoyaltySettings, Webhook, InventoryTransfer
+    PaymentDefinition, BankAccount, ExpenseCategory, ReferralSource, ConsentFormTemplate, SystemAnnouncement, LoyaltySettings, Webhook, InventoryTransfer, Coupon
 } from './types';
 import { syncDb } from './sync-db';
 
