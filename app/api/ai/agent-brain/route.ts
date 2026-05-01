@@ -14,7 +14,13 @@ export async function POST(req: Request) {
             .eq('key', 'GEMINI_API_KEY')
             .single();
 
-        let apiKey = (configData?.value || process.env.GEMINI_API_KEY)?.trim();
+        const dbKey = configData?.value?.trim();
+        const envKey = process.env.GEMINI_API_KEY?.trim();
+        
+        let apiKey = dbKey || envKey;
+
+        console.log(`[AI-TRACE] Key Source: ${dbKey ? 'DATABASE' : 'ENV'}`);
+        console.log(`[AI-TRACE] Key Prefix: ${apiKey?.substring(0, 10)}...`);
 
         if (!apiKey || apiKey.length < 10) {
             return NextResponse.json({ 
@@ -31,8 +37,14 @@ export async function POST(req: Request) {
 
         const genAI = new GoogleGenerativeAI(apiKey);
         
-        // Try multiple models in order of preference
-        const modelsToTry = ['gemini-1.5-flash', 'gemini-1.5-pro', 'gemini-pro', 'gemini-1.0-pro'];
+        // Updated model list for May 2026 standards
+        const modelsToTry = [
+            'gemini-2.5-flash', 
+            'gemini-2.5-pro', 
+            'gemini-2.0-flash', 
+            'gemini-1.5-flash', 
+            'gemini-pro'
+        ];
         let lastError = null;
         let analysisText = "";
 
