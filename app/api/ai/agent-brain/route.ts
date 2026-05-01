@@ -21,9 +21,6 @@ export async function POST(req: Request) {
             }, { status: 500 });
         }
         
-        // Use the most compatible model and beta endpoint for latest feature support
-        const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
-
         const systemPrompt = `
             Sen bir İmparatorluk Ajanısın (${agentName}). 
             Görevin, sana verilen işletme verilerini analiz etmek ve kısa bir rapor yazmaktır.
@@ -31,26 +28,45 @@ export async function POST(req: Request) {
             KULLANICI TALİMATI: ${prompt}
         `;
 
-        const response = await fetch(url, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                contents: [{ parts: [{ text: systemPrompt }] }]
-            })
-        });
+        // Try multiple model identifiers for maximum compatibility
+        const modelsToTry = [
+            'gemini-1.5-flash',
+            'gemini-1.5-flash-latest',
+            'gemini-1.5-pro',
+            'gemini-pro'
+        ];
 
-        const rawData = await response.json();
-        
-        if (!response.ok) {
-            // Log the error for internal debugging but return a clean message
-            console.error("Gemini API Error details:", rawData.error);
-            throw new Error(`Google API Hatası: ${rawData.error?.message || 'Bağlantı reddedildi.'}`);
+        let lastError = null;
+        let text = null;
+
+        for (const model of modelsToTry) {
+            try {
+                const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+                
+                const response = await fetch(url, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        contents: [{ parts: [{ text: systemPrompt }] }]
+                    })
+                });
+
+                const rawData = await response.json();
+                
+                if (response.ok) {
+                    text = rawData.candidates?.[0]?.content?.parts?.[0]?.text;
+                    if (text) break; // Success!
+                } else {
+                    lastError = rawData.error?.message || 'Model error';
+                    console.warn(`[AI-AGENT] Model ${model} failed:`, lastError);
+                }
+            } catch (err: any) {
+                lastError = err.message;
+            }
         }
 
-        const text = rawData.candidates?.[0]?.content?.parts?.[0]?.text;
-
         if (!text) {
-            throw new Error("AI yanıt içeriği boş geldi.");
+            throw new Error(`Google API Modelleri (Flash/Pro) bulunamadı veya desteklenmiyor. Son hata: ${lastError}`);
         }
 
         return NextResponse.json({ analysis: text });
