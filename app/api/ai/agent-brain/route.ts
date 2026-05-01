@@ -21,8 +21,8 @@ export async function POST(req: Request) {
             }, { status: 500 });
         }
         
-        // Using the most stable model identifier and production endpoint
-        const url = `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash-latest:generateContent?key=${apiKey}`;
+        // Use the most compatible model and beta endpoint for latest feature support
+        const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
 
         const systemPrompt = `
             Sen bir İmparatorluk Ajanısın (${agentName}). 

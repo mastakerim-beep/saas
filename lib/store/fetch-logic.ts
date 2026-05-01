@@ -43,7 +43,7 @@ export const fetchData = async (
         }
     }
 
-    const targetId = (isSaaS && !actualBizId && !slug) ? undefined : (actualBizId || currentUser?.businessId);
+    const targetId = isSaaS ? actualBizId : (actualBizId || currentUser?.businessId);
     const isGlobalSaaSFetch = isSaaS && !targetId && !slug;
     
     // Public safe tables for Guest mode
