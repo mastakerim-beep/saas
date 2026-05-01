@@ -1,15 +1,22 @@
-import { NextResponse } from "next/server";
+import { createServiceClient } from "@/lib/supabase";
 
 export async function POST(req: Request) {
     try {
         const { prompt, dataContext, agentName } = await req.json();
         
-        // Use the official environment variable name
-        const apiKey = process.env.GEMINI_API_KEY;
+        // 1. Dinamik API Anahtarı Kontrolü (Veritabanından)
+        const supabase = createServiceClient();
+        const { data: configData } = await supabase
+            .from('system_config' as any)
+            .select('value')
+            .eq('key', 'GEMINI_API_KEY')
+            .single();
+
+        let apiKey = configData?.value || process.env.GEMINI_API_KEY;
 
         if (!apiKey) {
             return NextResponse.json({ 
-                error: 'AI Bağlantı Hatası: API Anahtarı bulunamadı. Lütfen .env.local dosyanıza GEMINI_API_KEY ekleyin ve sunucuyu restart edin.' 
+                error: 'AI Bağlantı Hatası: API Anahtarı bulunamadı. Lütfen Sistem Ayarları üzerinden GEMINI_API_KEY ekleyin.' 
             }, { status: 500 });
         }
         

@@ -23,7 +23,7 @@ import { MigrationWizard } from '@/components/system/migration/MigrationWizard';
 import { ImperialOversight } from './components/ImperialOversight';
 import DataImportWizard from '@/components/ui/DataImportWizard';
 
-type AdminTab = 'monitor' | 'tenants' | 'billing' | 'oversight' | 'notifications' | 'announcements' | 'system' | 'migration';
+type AdminTab = 'monitor' | 'tenants' | 'billing' | 'oversight' | 'notifications' | 'announcements' | 'system' | 'migration' | 'settings';
 
 export default function SuperAdminPage() {
     const { 
@@ -215,7 +215,15 @@ export default function SuperAdminPage() {
                         <Zap size={24} className="fill-white" />
                     </div>
                     <div className="flex flex-col">
-                        <h1 className="text-slate-900 font-black text-xl italic tracking-tighter uppercase leading-none">Aura Komuta Merkezi</h1>
+                        <div className="flex items-center gap-3">
+                            <h1 className="text-slate-900 font-black text-xl italic tracking-tighter uppercase leading-none">Aura Komuta Merkezi</h1>
+                            <button 
+                                onClick={() => setActiveTab('settings')}
+                                className={`p-2 rounded-lg transition-all ${activeTab === 'settings' ? 'bg-indigo-600 text-white shadow-lg' : 'hover:bg-slate-100 text-slate-400'}`}
+                            >
+                                <Settings size={16} />
+                            </button>
+                        </div>
                         <div className="flex items-center gap-3 mt-1.5">
                             <span className="text-[9px] font-black text-indigo-500 uppercase tracking-[0.2em] flex items-center gap-1.5 bg-indigo-50 px-2 py-0.5 rounded-md">
                                 <Server size={10} /> V 5.0.0
@@ -267,6 +275,7 @@ export default function SuperAdminPage() {
                     <NavBtn id="announcements" active={activeTab} onClick={setActiveTab} icon={Bell} label="Yayın Merkezi" />
                     <NavBtn id="migration" active={activeTab} onClick={setActiveTab} icon={Database} label="Veri Aktarımı" />
                     <NavBtn id="system" active={activeTab} onClick={setActiveTab} icon={Terminal} label="Sistem Terminali" />
+                    <NavBtn id="settings" active={activeTab} onClick={setActiveTab} icon={Settings} label="Sistem Ayarları" />
                     
                     <button 
                         onClick={handleRefresh}
@@ -486,6 +495,96 @@ export default function SuperAdminPage() {
                                 </div>
                                 <MigrationWizard />
                             </div>
+                        )}
+
+                        {activeTab === 'settings' && (
+                            <motion.div key="settings" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="max-w-4xl">
+                                <div className="bg-white border border-indigo-100 rounded-[3rem] p-16 shadow-xl">
+                                    <div className="flex justify-between items-center mb-12">
+                                        <div>
+                                            <h2 className="text-slate-900 text-3xl font-black italic uppercase tracking-tighter mb-2">Sistem Yapılandırması</h2>
+                                            <p className="text-[10px] font-black text-indigo-500 uppercase tracking-widest">Global Secret Management</p>
+                                        </div>
+                                        <div className="p-4 bg-rose-50 rounded-2xl text-rose-600">
+                                            <ShieldCheck size={32} />
+                                        </div>
+                                    </div>
+
+                                    <div className="space-y-12">
+                                        {/* Gemini API Section */}
+                                        <div className="p-8 bg-slate-50 rounded-[2rem] border border-slate-100">
+                                            <div className="flex items-center gap-4 mb-6">
+                                                <div className="w-12 h-12 bg-white rounded-xl shadow-sm flex items-center justify-center">
+                                                    <Bot size={24} className="text-indigo-600" />
+                                                </div>
+                                                <div>
+                                                    <h3 className="text-sm font-black uppercase text-slate-900">Google Gemini AI</h3>
+                                                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-tight">Merkezi Zeka Motoru Yapılandırması</p>
+                                                </div>
+                                            </div>
+                                            
+                                            <div className="space-y-4">
+                                                <label className="text-[10px] font-black uppercase text-slate-500 tracking-widest block px-2">API Anahtarı (GEMINI_API_KEY)</label>
+                                                <div className="relative">
+                                                    <input 
+                                                        id="gemini-key-input"
+                                                        type="password" 
+                                                        className="w-full bg-white border border-slate-200 rounded-2xl px-6 py-5 text-sm font-bold outline-none focus:border-indigo-500 transition-all text-slate-900"
+                                                        placeholder="AIzaSy..."
+                                                    />
+                                                </div>
+                                                <p className="text-[9px] font-medium text-slate-400 leading-relaxed px-2 uppercase">
+                                                    Bu anahtar, Imperial Agent Hub'daki tüm analizleri besleyen anahtardır. Değiştirildiğinde tüm işletmeler için anında güncellenir.
+                                                </p>
+                                            </div>
+
+                                            <button 
+                                                onClick={async () => {
+                                                    const input = document.getElementById('gemini-key-input') as HTMLInputElement;
+                                                    const val = input.value;
+                                                    if (!val) return alert('Lütfen geçerli bir anahtar girin.');
+                                                    
+                                                    setIsRefreshing(true);
+                                                    try {
+                                                        const { supabase } = await import('@/lib/supabase');
+                                                        const { error } = await supabase
+                                                            .from('system_config')
+                                                            .upsert({ key: 'GEMINI_API_KEY', value: val });
+                                                        
+                                                        if (error) throw error;
+                                                        alert('API Anahtarı mühürlendi ve tüm sistemlere dağıtıldı! 🏛️✨');
+                                                        input.value = '';
+                                                    } catch (err: any) {
+                                                        alert('Mühürleme Hatası: ' + err.message);
+                                                    } finally {
+                                                        setIsRefreshing(false);
+                                                    }
+                                                }}
+                                                className="mt-8 px-10 py-5 bg-indigo-600 text-white rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-xl shadow-indigo-200 hover:bg-indigo-700 transition-all flex items-center gap-3"
+                                            >
+                                                {isRefreshing ? <RefreshCw className="animate-spin" size={14} /> : <Zap size={14} fill="white" />} 
+                                                ANAHTARI MÜHÜRLE VE YAYINLA
+                                            </button>
+                                        </div>
+
+                                        {/* Security Policy Section */}
+                                        <div className="p-8 bg-rose-50/30 rounded-[2rem] border border-rose-100">
+                                             <div className="flex items-center gap-4 mb-6">
+                                                <div className="w-12 h-12 bg-white rounded-xl shadow-sm flex items-center justify-center">
+                                                    <ShieldAlert size={24} className="text-rose-600" />
+                                                </div>
+                                                <div>
+                                                    <h3 className="text-sm font-black uppercase text-slate-900">Draconian Güvenlik</h3>
+                                                    <p className="text-[10px] font-bold text-rose-400 uppercase tracking-tight">Kritik Sistem Yetkileri</p>
+                                                </div>
+                                            </div>
+                                            <p className="text-[10px] font-medium text-slate-500 uppercase leading-loose italic">
+                                                Tüm API anahtarı değişiklikleri 'Sovereign Audit' sistemine 'CRITICAL' seviyesinde loglanır ve geri alınamaz.
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </motion.div>
                         )}
                     </AnimatePresence>
                 </div>
