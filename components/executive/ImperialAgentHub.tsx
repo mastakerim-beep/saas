@@ -324,7 +324,8 @@ export default function ImperialAgentHub() {
                                                     setIsLoading(true);
                                                     try {
                                                         const response = await fetch('/api/ai/agent-brain', {
-                                                                                                    headers: { 'Content-Type': 'application/json' },
+                                                            method: 'POST',
+                                                            headers: { 'Content-Type': 'application/json' },
                                                             body: JSON.stringify({
                                                                 prompt: selectedAgent.systemInstruction,
                                                                 agentName: selectedAgent.name,
