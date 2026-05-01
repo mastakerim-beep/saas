@@ -1,4 +1,5 @@
 import { createServiceClient } from "@/lib/supabase";
+import { NextResponse } from "next/server";
 
 export async function POST(req: Request) {
     try {
@@ -12,7 +13,7 @@ export async function POST(req: Request) {
             .eq('key', 'GEMINI_API_KEY')
             .single();
 
-        let apiKey = configData?.value || process.env.GEMINI_API_KEY;
+        let apiKey = (configData?.value || process.env.GEMINI_API_KEY)?.trim();
 
         if (!apiKey) {
             return NextResponse.json({ 
