@@ -12,7 +12,7 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 import { useState, useEffect, memo, useMemo } from 'react';
 import { hasFeature } from '@/lib/utils/feature-gate';
-import { dictionary } from '@/lib/i18n/dict';
+import { dictionary, useDynamicDictionary } from '@/lib/i18n/dict';
 
 interface SidebarItemProps {
     href: string;
@@ -128,9 +128,8 @@ export default function Sidebar() {
     const [isHovered, setIsHovered] = useState(false);
     const [isMounted, setIsMounted] = useState(false);
     
-    // Safety check for dictionary access
     const safeLocale = (locale as 'tr' | 'en') || 'tr';
-    const d = dictionary[safeLocale] || dictionary.tr;
+    const d = useDynamicDictionary(safeLocale, currentBusiness?.verticals || []);
 
     // Initial mount check to prevent hydration mismatch
     useEffect(() => {

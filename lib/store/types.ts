@@ -136,12 +136,14 @@ export type AppointmentStatus = 'pending' | 'completed' | 'no-show' | 'cancelled
 
 export interface PaymentMethod {
     id: string;
-    method: 'nakit' | 'kredi-karti' | 'havale' | 'banka' | 'puan' | 'abonelik' | 'diger';
+    method: 'nakit' | 'kredi-karti' | 'havale' | 'banka' | 'puan' | 'abonelik' | 'otel-odasi' | 'diger';
     amount: number;
     currency: 'TRY' | 'USD' | 'EUR' | 'GBP';
     rate: number;
     isDeposit: boolean;
     toolId?: string;
+    roomNumber?: string; // PMS Entegrasyonu (Opera/Protel) için
+    guestName?: string;  // PMS Entegrasyonu doğrulama için
 }
 
 export interface BusinessSettings {

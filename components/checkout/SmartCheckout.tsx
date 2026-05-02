@@ -527,11 +527,11 @@ export default function SmartCheckout({ appointment, onClose, initialCustomerId,
                                                 <div className="flex justify-between items-center w-full">
                                                     <div className="flex items-center gap-4">
                                                         <div className="w-12 h-12 bg-indigo-50 rounded-2xl flex items-center justify-center text-indigo-400 group-hover:bg-indigo-600 group-hover:text-white transition-all shadow-inner">
-                                                            {m.method === 'kredi-karti' ? <CreditCard size={24} /> : m.method === 'havale' ? <Landmark size={24} /> : <Banknote size={24} />}
+                                                            {m.method === 'kredi-karti' ? <CreditCard size={24} /> : m.method === 'havale' ? <Landmark size={24} /> : m.method === 'otel-odasi' ? <Crown size={24} /> : <Banknote size={24} />}
                                                         </div>
                                                         <div>
                                                             <span className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 block mb-0.5">
-                                                                {m.method === 'kredi-karti' ? 'KREDİ KARTI' : m.method === 'havale' ? 'BANKA TRANSFERİ' : 'NAKİT ÖDEME'}
+                                                                {m.method === 'kredi-karti' ? 'KREDİ KARTI' : m.method === 'havale' ? 'BANKA TRANSFERİ' : m.method === 'otel-odasi' ? 'OTEL ODASI (PMS)' : 'NAKİT ÖDEME'}
                                                             </span>
                                                             <span className="text-[8px] font-bold text-emerald-500 uppercase">Aktif Kanal</span>
                                                         </div>
@@ -561,6 +561,47 @@ export default function SmartCheckout({ appointment, onClose, initialCustomerId,
                                                                 </button>
                                                             ))}
                                                         </div>
+                                                    </div>
+                                                )}
+                                                {m.method === 'otel-odasi' && (
+                                                    <div className="pt-3 border-t border-dashed border-gray-200 flex items-center gap-3 w-full">
+                                                        <input 
+                                                            type="text" 
+                                                            placeholder="Oda No" 
+                                                            value={m.roomNumber || ''} 
+                                                            onChange={e => updateMethod(idx, 'roomNumber', e.target.value)}
+                                                            className="w-24 bg-gray-50 border-none rounded-xl px-4 py-3 text-xs font-black text-gray-900 outline-none focus:ring-2 focus:ring-indigo-500/10 placeholder:text-gray-400"
+                                                        />
+                                                        <input 
+                                                            type="text" 
+                                                            placeholder="Misafir Adı" 
+                                                            value={m.guestName || ''} 
+                                                            onChange={e => updateMethod(idx, 'guestName', e.target.value)}
+                                                            className="flex-1 bg-gray-50 border-none rounded-xl px-4 py-3 text-xs font-black text-gray-900 outline-none focus:ring-2 focus:ring-indigo-500/10 placeholder:text-gray-400"
+                                                        />
+                                                        <button 
+                                                            onClick={async () => {
+                                                                if(!m.roomNumber) return;
+                                                                try {
+                                                                    const res = await fetch('/api/pms', {
+                                                                        method: 'POST',
+                                                                        headers: { 'Content-Type': 'application/json' },
+                                                                        body: JSON.stringify({ action: 'verify_room', roomNumber: m.roomNumber, guestName: m.guestName, businessId: currentBusiness?.id })
+                                                                    });
+                                                                    const data = await res.json();
+                                                                    if (data.success) {
+                                                                        updateMethod(idx, 'guestName', data.roomInfo.guestFullName);
+                                                                    } else {
+                                                                        alert('PMS Hatası: ' + (data.error || 'Oda bulunamadı'));
+                                                                    }
+                                                                } catch(e) {
+                                                                    alert('PMS Bağlantı Hatası');
+                                                                }
+                                                            }}
+                                                            className="px-4 py-3 bg-indigo-600 text-white rounded-xl font-black text-[9px] uppercase tracking-widest hover:bg-indigo-700 shadow-md transition-all flex items-center gap-2 shrink-0"
+                                                        >
+                                                            <Zap size={14} /> Sorgula
+                                                        </button>
                                                     </div>
                                                 )}
                                             </div>
@@ -611,11 +652,11 @@ export default function SmartCheckout({ appointment, onClose, initialCustomerId,
                                      )}
 
                                     {remaining > 0 && methods.length === 0 && (
-                                        <div className="grid grid-cols-3 gap-4">
-                                            {['nakit', 'kredi-karti', 'havale'].map((m: any) => (
-                                                <button key={m} onClick={() => addMethod(m)} className="p-10 bg-gray-50/50 hover:bg-white border-2 border-dashed border-gray-200 hover:border-indigo-600 rounded-[3rem] transition-all flex flex-col items-center gap-4 group">
-                                                    <Plus className="w-8 h-8 text-gray-300 group-hover:text-indigo-600 transition-colors" />
-                                                    <span className="text-[10px] font-black text-gray-400 group-hover:text-indigo-600 uppercase tracking-widest">{m.replace('-', ' ')} Ekle</span>
+                                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                                            {['nakit', 'kredi-karti', 'havale', 'otel-odasi'].map((m: any) => (
+                                                <button key={m} onClick={() => addMethod(m)} className="p-6 bg-gray-50/50 hover:bg-white border-2 border-dashed border-gray-200 hover:border-indigo-600 rounded-[2rem] transition-all flex flex-col items-center gap-3 group">
+                                                    <Plus className="w-6 h-6 text-gray-300 group-hover:text-indigo-600 transition-colors" />
+                                                    <span className="text-[9px] font-black text-gray-400 group-hover:text-indigo-600 uppercase tracking-widest text-center">{m === 'otel-odasi' ? 'Oda Hesabı' : m.replace('-', ' ')} Ekle</span>
                                                 </button>
                                             ))}
                                         </div>
