@@ -110,6 +110,31 @@ export const useCustomerMethods = (deps: any) => {
             }
             return true;
         },
+        addQuote: async (q: any) => {
+            const id = crypto.randomUUID();
+            const nq = { ...q, id, businessId: activeBizIdRef.current, createdAt: new Date().toISOString() };
+            dataRef.current.setAllQuotes((prev: any) => [nq, ...prev]);
+            await syncDb('quotes', 'insert', nq, id, activeBizIdRef.current);
+            return nq;
+        },
+        updateQuote: async (id: string, updates: any) => {
+            dataRef.current.updateQuote(id, updates);
+            await syncDb('quotes', 'update', updates, id, activeBizIdRef.current);
+        },
+        deleteQuote: async (id: string) => {
+            dataRef.current.deleteQuote(id);
+            await syncDb('quotes', 'delete', {}, id, activeBizIdRef.current);
+        },
+        addCustomerMedia: async (m: any) => {
+            const id = crypto.randomUUID();
+            const nm = { ...m, id, businessId: activeBizIdRef.current, createdAt: new Date().toISOString() };
+            dataRef.current.setAllCustomerMedia((prev: any) => [nm, ...prev]);
+            await syncDb('customer_media', 'insert', nm, id, activeBizIdRef.current);
+        },
+        deleteCustomerMedia: async (id: string) => {
+            dataRef.current.setAllCustomerMedia((prev: any[]) => prev.filter(m => m.id !== id));
+            await syncDb('customer_media', 'delete', {}, id, activeBizIdRef.current);
+        },
     };
 };
 

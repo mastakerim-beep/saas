@@ -1,9 +1,9 @@
-import React, { useState, useMemo, useEffect, useCallback } from 'react';
+import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import { 
     Bot, Sparkles, Activity, ShieldCheck, Zap, 
     MessageSquare, TrendingUp, Users, Settings, 
-    Play, Pause, RefreshCw, ChevronRight, AlertCircle, X,
-    Plus
+    Play, RefreshCw, ChevronRight, X,
+    Plus, Copy, Check
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useStore, Appointment, Payment, Expense, Room } from '@/lib/store';
@@ -12,19 +12,24 @@ import { supabase } from '@/lib/supabase';
 export default function ImperialAgentHub() {
     const { 
         appointments = [], payments = [], customers = [], 
-        expenses = [], rooms = [], settings, currentBusiness,
+        expenses = [], rooms = [], currentBusiness, currentUser,
         staffMembers: staff = [], services = [], debts = []
     } = useStore();
 
     const [dbAgents, setDbAgents] = useState<any[]>([]);
     const [agentLogs, setAgentLogs] = useState<any[]>([]);
     const [isLoading, setIsLoading] = useState(true);
+    const [isAnalyzing, setIsAnalyzing] = useState(false);
+    const [analysisResult, setAnalysisResult] = useState<string | null>(null);
+    const [analysisCopied, setAnalysisCopied] = useState(false);
     const [showSystemSettings, setShowSystemSettings] = useState(false);
     const [selectedAgentId, setSelectedAgentId] = useState<string | null>(null);
     const [showNewAgentModal, setShowNewAgentModal] = useState(false);
     const [showTokenModal, setShowTokenModal] = useState(false);
+    const analysisRef = useRef<HTMLDivElement>(null);
 
-    const isSovereign = settings?.email === 'kerim@mail.com' || settings?.role === 'SaaS_Owner';
+    // Secure: read role from currentUser, not from settings
+    const isSovereign = currentUser?.role === 'SaaS_Owner';
 
     // Fetch agents and logs from DB
     const fetchAgents = useCallback(async () => {
@@ -192,7 +197,7 @@ export default function ImperialAgentHub() {
                             <p className="text-[8px] font-black text-indigo-400 uppercase tracking-widest">Kalan Kredi</p>
                             <div className="flex items-center gap-2">
                                 <p className="text-sm font-black text-indigo-950">
-                                    {settings?.ai_tokens ?? currentBusiness?.ai_tokens ?? 0}
+                                    {currentBusiness?.ai_tokens ?? 0}
                                 </p>
                                 <button 
                                     onClick={() => setShowTokenModal(true)}
@@ -315,13 +320,20 @@ export default function ImperialAgentHub() {
                                                 onClick={async () => {
                                                     if (!selectedAgent || !currentBusiness?.id) return;
                                                     
-                                                    const { data: businessData } = await supabase.from('businesses').select('ai_tokens').eq('id', currentBusiness.id).single();
-                                                    if ((businessData?.ai_tokens || 0) <= 0) {
-                                                        alert("❌ YETERSİZ KREDİ: Lütfen kredi yükleyin.");
+                                                    const { data: bizData } = await supabase
+                                                        .from('businesses')
+                                                        .select('ai_tokens')
+                                                        .eq('id', currentBusiness.id)
+                                                        .single();
+
+                                                    if ((bizData?.ai_tokens || 0) <= 0) {
+                                                        setAnalysisResult('❌ **YETERSİZ KREDİ:** Lütfen Imperial Market üzerinden kredi yükleyin.');
                                                         return;
                                                     }
 
-                                                    setIsLoading(true);
+                                                    setIsAnalyzing(true);
+                                                    setAnalysisResult(null);
+
                                                     try {
                                                         const response = await fetch('/api/ai/agent-brain', {
                                                             method: 'POST',
@@ -340,7 +352,7 @@ export default function ImperialAgentHub() {
                                                                         customers: customers.length,
                                                                         staff: staff.length,
                                                                         services: services.length,
-                                                                        totalRevenue: payments?.reduce((acc: number, p: any) => acc + (Number(p.amount) || 0), 0) || 0,
+                                                                        totalRevenue: payments?.reduce((acc: number, p: any) => acc + (Number(p.totalAmount) || 0), 0) || 0,
                                                                         totalDebt: debts?.reduce((acc: number, d: any) => acc + (Number(d.remainingAmount) || 0), 0) || 0
                                                                     },
                                                                     inventory: {
@@ -360,6 +372,9 @@ export default function ImperialAgentHub() {
                                                         const data = await response.json();
                                                         if (data.error) throw new Error(data.error);
 
+                                                        setAnalysisResult(data.analysis);
+
+                                                        // Log & spend token in background
                                                         await supabase.from('agent_activity_logs').insert({
                                                             business_id: currentBusiness.id,
                                                             agent_id: selectedAgent.id,
@@ -367,25 +382,64 @@ export default function ImperialAgentHub() {
                                                             description: data.analysis.substring(0, 500),
                                                             log_type: data.analysis.toLowerCase().includes('kritik') ? 'critical' : 'info'
                                                         });
-                                                        
                                                         await supabase.rpc('spend_ai_token', { 
                                                             p_business_id: currentBusiness.id, 
                                                             p_reason: `Analiz: ${selectedAgent.name}` 
                                                         });
-
-                                                        alert("İmparatorluk Zekası Yanıtladı: \n\n" + data.analysis);
                                                         fetchAgents();
+
+                                                        // Scroll to result
+                                                        setTimeout(() => analysisRef.current?.scrollIntoView({ behavior: 'smooth' }), 100);
                                                     } catch (err: any) {
-                                                        alert(`❌ AI HATASI: ${err.message}`);
+                                                        setAnalysisResult(`❌ **AI HATASI:** ${err.message}`);
                                                     } finally {
-                                                        setIsLoading(false);
+                                                        setIsAnalyzing(false);
                                                     }
                                                 }}
-                                                className="w-full py-4 bg-white text-indigo-950 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:scale-105 active:scale-95 transition-all flex items-center justify-center gap-2"
+                                                disabled={isAnalyzing}
+                                                className="w-full py-4 bg-white text-indigo-950 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:scale-105 active:scale-95 transition-all flex items-center justify-center gap-2 disabled:opacity-60 disabled:scale-100"
                                             >
-                                                {isLoading ? <RefreshCw className="animate-spin w-3 h-3" /> : <Sparkles className="w-3 h-3" />}
-                                                ANALİZİ BAŞLAT
+                                                {isAnalyzing 
+                                                    ? <><RefreshCw className="animate-spin w-3 h-3" /> ANALİZ EDİLİYOR...</>
+                                                    : <><Sparkles className="w-3 h-3" /> ANALİZİ BAŞLAT</>
+                                                }
                                             </button>
+
+                                            {/* Analysis Result Panel */}
+                                            {analysisResult && (
+                                                <motion.div
+                                                    ref={analysisRef}
+                                                    initial={{ opacity: 0, y: 10 }}
+                                                    animate={{ opacity: 1, y: 0 }}
+                                                    className="bg-white/10 border border-white/20 rounded-2xl p-6 relative"
+                                                >
+                                                    <div className="flex justify-between items-center mb-3">
+                                                        <p className="text-[9px] font-black text-indigo-300 uppercase tracking-widest flex items-center gap-1">
+                                                            <Sparkles className="w-3 h-3" /> İmparatorluk Analizi
+                                                        </p>
+                                                        <button
+                                                            onClick={() => {
+                                                                navigator.clipboard.writeText(analysisResult);
+                                                                setAnalysisCopied(true);
+                                                                setTimeout(() => setAnalysisCopied(false), 2000);
+                                                            }}
+                                                            className="p-1.5 bg-white/10 hover:bg-white/20 rounded-lg transition-all"
+                                                            title="Kopyala"
+                                                        >
+                                                            {analysisCopied ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3 text-white/60" />}
+                                                        </button>
+                                                    </div>
+                                                    <div className="text-xs text-indigo-100/80 leading-relaxed whitespace-pre-wrap max-h-[400px] overflow-y-auto custom-scrollbar pr-2">
+                                                        {analysisResult}
+                                                    </div>
+                                                    <button
+                                                        onClick={() => setAnalysisResult(null)}
+                                                        className="mt-4 text-[9px] font-black text-white/30 hover:text-white/60 uppercase tracking-widest transition-colors"
+                                                    >
+                                                        Temizle
+                                                    </button>
+                                                </motion.div>
+                                            )}
 
                                             <button 
                                                 onClick={() => deleteAgent(selectedAgent.id)}

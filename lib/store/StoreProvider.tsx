@@ -28,6 +28,7 @@ import { useStaffMethods } from './hooks/useStaffMethods';
 import { useFinanceMethods } from './hooks/useFinanceMethods';
 import { usePackageMethods } from './hooks/usePackageMethods';
 import { useSupportMethods } from './hooks/useSupportMethods';
+import { useBusinessMethods } from './hooks/useBusinessMethods';
 
 const StoreMethodsContext = createContext<any>(undefined);
 const StoreDataContext = createContext<any>(undefined);
@@ -454,15 +455,7 @@ const StoreOrchestrator = ({ children }: { children: ReactNode }) => {
     }, [data.payments, getTodayDate]);
 
     const addZReport = async (reportData: any) => {
-        const ok = await syncDb('z_reports', 'insert', {
-            ...reportData,
-            businessId: activeBizIdRef.current,
-            branchId: biz.currentBranch?.id,
-            closedBy: auth.currentUser?.id,
-            closedByName: auth.currentUser?.name
-        });
-        if (ok) await fetchData();
-        return ok;
+        return finMethods.addZReport(reportData);
     };
 
     const stableMethodsRef = React.useRef<any>(null);
@@ -492,6 +485,7 @@ const StoreOrchestrator = ({ children }: { children: ReactNode }) => {
     const finMethods = useFinanceMethods(hookDeps);
     const pkgMethods = usePackageMethods(hookDeps);
     const supportMethods = useSupportMethods(hookDeps);
+    const businessMethods = useBusinessMethods(hookDeps);
 
     const stableMethods: any = useMemo(() => {
         const methods: any = {
@@ -507,24 +501,7 @@ const StoreOrchestrator = ({ children }: { children: ReactNode }) => {
             updateBusinessStatus: authRef.current.updateBusinessStatus,
             deleteBusiness: authRef.current.deleteBusiness,
             addBusiness: authRef.current.addBusiness,
-            updateAnyBusiness: async (id: string, updates: any) => {
-                bizRef.current.setAllBusinesses((prev: any[]) => prev.map((b: any) => b.id === id ? { ...b, ...updates } : b));
-                await syncDb('businesses', 'update', updates, id, id);
-                await fetchData(undefined, undefined, true); 
-                return true;
-            },
             provisionBusinessUser: authRef.current.provisionBusinessUser,
-            setImpersonatedBusinessId: (id: string | null) => {
-                authRef.current.setImpersonatedBusinessId(id);
-                if (id) {
-                    const bizItem = bizRef.current.allBusinesses.find(b => b.id === id);
-                    if (bizItem) {
-                        window.location.href = `/${bizItem.slug}/dashboard`;
-                    }
-                } else {
-                    window.location.href = '/admin';
-                }
-            },
             setManagerAuthorized,
             markAsModified,
             addLog,
@@ -534,7 +511,7 @@ const StoreOrchestrator = ({ children }: { children: ReactNode }) => {
             calculateCommission,
             determineChurnRisk,
 
-            // Spread modular methods
+            // Spread modular methods from hooks
             ...appMethods,
             ...payMethods,
             ...custMethods,
@@ -543,144 +520,12 @@ const StoreOrchestrator = ({ children }: { children: ReactNode }) => {
             ...finMethods,
             ...pkgMethods,
             ...supportMethods,
+            ...businessMethods,
+            
+            // Context-specific data setters (backward compatibility)
             addMarketingRule: data.addMarketingRule,
             deleteMarketingRule: data.deleteMarketingRule,
-
-            // Remaining UI/Support methods
-            addQuote: async (q: any) => {
-                const id = crypto.randomUUID();
-                const nq = { ...q, id };
-                dataRef.current.setAllQuotes((prev: any) => [nq, ...prev]);
-                await syncDb('quotes', 'insert', nq, id, activeBizIdRef.current);
-            },
-            updateQuote: async (id: string, updates: any) => {
-                dataRef.current.updateQuote(id, updates);
-                await syncDb('quotes', 'update', updates, id, activeBizIdRef.current);
-            },
-            deleteQuote: async (id: string) => {
-                dataRef.current.deleteQuote(id);
-                await syncDb('quotes', 'delete', {}, id, activeBizIdRef.current);
-            },
-            payDebt: async (id: string, amount: number, methods: any) => {
-                const debt = dataRef.current.debts.find(d => d.id === id);
-                if (!debt) return false;
-                const newStatus = debt.amount - amount <= 0 ? 'kapandı' : 'açık';
-                dataRef.current.setAllDebts((prev: any[]) => prev.map(d => d.id === id ? { ...d, status: newStatus } : d));
-                await syncDb('debts', 'update', { status: newStatus }, id, activeBizIdRef.current);
-                const paymentId = crypto.randomUUID();
-                const pay = { id: paymentId, customerId: debt.customerId, customerName: 'Borç Ödemesi', service: 'Borç Tahsilatı', methods, totalAmount: amount, date: new Date().toISOString().split('T')[0], note: 'Borç ödemesi' };
-                dataRef.current.setAllPayments((prev: any[]) => [pay, ...prev]);
-                await syncDb('payments', 'insert', pay, paymentId, activeBizIdRef.current);
-                return true;
-            },
-            addCustomerMedia: async (m: any) => {
-                const id = crypto.randomUUID();
-                const nm = { ...m, id, businessId: activeBizIdRef.current, createdAt: new Date().toISOString() };
-                dataRef.current.setAllCustomerMedia((prev: any) => [nm, ...prev]);
-                await syncDb('customer_media', 'insert', nm, id, activeBizIdRef.current);
-            },
-            deleteCustomerMedia: async (id: string) => {
-                dataRef.current.setAllCustomerMedia((prev: any[]) => prev.filter(m => m.id !== id));
-                await syncDb('customer_media', 'delete', {}, id, activeBizIdRef.current);
-            },
-            calculateDynamicPrice: (price: number, timeStr: string) => {
-                const [h] = timeStr.split(':').map(Number);
-                if (h >= 9 && h < 12) return { price: price * 0.8, reason: 'Happy Hour İndirimi (%20)' };
-                return { price, reason: null };
-            },
-            closeDay: async (reportData: any) => {
-                const bizId = activeBizIdRef.current;
-                if (!bizId) return false;
-                const today = methods.getTodayDate();
-                const paymentsToday = methods.getTodayPayments();
-                const total = paymentsToday.reduce((sum: number, p: any) => sum + p.totalAmount, 0) || 0;
-                const id = crypto.randomUUID();
-                const report = { ...reportData, id, businessId: bizId, branchId: bizRef.current.currentBranch?.id, closedBy: authRef.current.currentUser?.name || 'Sistem', createdAt: new Date().toISOString() };
-                dataRef.current.setZReports((prev: any[]) => [...prev, report]);
-                const success = await syncDb('z_reports', 'insert', report, id, bizId);
-                if (success) {
-                    methods.downloadZReportPDF(report);
-                    methods.addLog('Gün Kapatıldı', 'Sistem', '', `Ciro: ${total}`);
-                }
-                return !!success;
-            },
-            updateBusiness: async (updates: Partial<Business>) => {
-                const bizId = activeBizIdRef.current;
-                if (!bizId) return false;
-                bizRef.current.setCurrentTenant((prev: Business | null) => prev ? { ...prev, ...updates } : null);
-                return !!(await syncDb('businesses', 'update', updates, bizId, bizId));
-            },
-            addBranch: async (branch: any) => {
-                const bizData = bizRef.current.currentTenant;
-                if (bizData) {
-                    const { allowed, limit } = checkQuota(bizData, 'branches', bizRef.current.branches.length);
-                    if (!allowed) {
-                        setQuotaError({ resource: 'Şube', limit });
-                        return false;
-                    }
-                }
-                const id = crypto.randomUUID();
-                const nb = { ...branch, id, businessId: activeBizIdRef.current, createdAt: new Date().toISOString() };
-                bizRef.current.setBranches((prev: any) => [...prev, nb]);
-                await syncDb('branches', 'insert', nb, id, activeBizIdRef.current);
-                return true;
-            },
-            updateBranch: async (id: string, branch: any) => {
-                bizRef.current.setBranches((prev: any) => prev.map((b: any) => b.id === id ? { ...b, ...branch } : b));
-                await syncDb('branches', 'update', branch, id, activeBizIdRef.current);
-            },
-            deleteBranch: async (id: string) => {
-                bizRef.current.setBranches((prev: any) => prev.filter((b: any) => b.id !== id));
-                await syncDb('branches', 'delete', null, id, activeBizIdRef.current);
-            },
-            downloadZReportPDF: (report: any) => {
-                const { generateZReportPDF } = require('@/lib/utils/pdf-generator');
-                generateZReportPDF(report, bizRef.current.currentTenant);
-            },
-            transferProduct: async (transfer: any) => {
-                const bizId = activeBizIdRef.current;
-                if (!bizId) return false;
-                const { productId, fromBranchId, toBranchId, quantity, transferType, pricePerUnit } = transfer;
-                const inventory = dataRef.current.inventory;
-                const fromProduct = inventory.find(p => p.id === productId && p.branchId === fromBranchId);
-                const toProduct = inventory.find(p => p.id === productId && p.branchId === toBranchId);
-                if (fromProduct) {
-                    const newFromStock = Math.max(0, (fromProduct.stock || 0) - quantity);
-                    dataRef.current.updateProduct(fromProduct.id, { stock: newFromStock });
-                    await syncDb('inventory', 'update', { stock: newFromStock }, fromProduct.id, bizId);
-                }
-                if (toProduct) {
-                    const newToStock = (toProduct.stock || 0) + quantity;
-                    dataRef.current.updateProduct(toProduct.id, { stock: newToStock });
-                    await syncDb('inventory', 'update', { stock: newToStock }, toProduct.id, bizId);
-                }
-                const tid = crypto.randomUUID();
-                await syncDb('inventory_transfers', 'insert', { ...transfer, id: tid, businessId: bizId, createdAt: new Date().toISOString() }, tid, bizId);
-                if (transferType === 'cost' || transferType === 'profit') {
-                    const amount = quantity * (pricePerUnit || 0);
-                    const expId = crypto.randomUUID();
-                    await syncDb('expenses', 'insert', {
-                        id: expId, businessId: bizId, branchId: toBranchId,
-                        category: 'URUN_TRANSFERI', amount: amount, date: new Date().toISOString().split('T')[0],
-                        description: `${fromProduct?.name || 'Ürün'} Transfer Maliyeti`, payout_status: 'ODENDI', createdAt: new Date().toISOString()
-                    }, expId, bizId);
-                }
-                return true;
-            },
-            predictInventory: () => {
-                return dataRef.current.inventory.map(p => {
-                    const daysLeft = Math.floor((p.stock || 0) / 0.5);
-                    const runoutDate = new Date();
-                    runoutDate.setDate(runoutDate.getDate() + daysLeft);
-                    return { productId: p.id, productName: p.name, daysLeft, runoutDate: runoutDate.toISOString() };
-                });
-            },
-            getCustomerSummary: (cid: string) => ({
-                customer: dataRef.current.customers.find(c => c.id === cid),
-                appointments: dataRef.current.appointments.filter(a => a.customerId === cid),
-                packages: dataRef.current.packages.filter(p => p.customerId === cid),
-                payments: dataRef.current.payments.filter(p => p.customerId === cid)
-            }),
+            setLocale: data.setLocale,
             clearCatalog: biz.clearCatalog,
             can,
             getCustomerPackages,
@@ -689,24 +534,12 @@ const StoreOrchestrator = ({ children }: { children: ReactNode }) => {
             getChurnRiskCustomers,
             getUpsellPotentialCustomers,
             getBirthdaysToday,
-            setLocale: data.setLocale,
-            addCoupon: async (c: any) => {
-                const id = crypto.randomUUID();
-                const nc = { ...c, id, businessId: activeBizIdRef.current, createdAt: new Date().toISOString(), isUsed: false };
-                dataRef.current.setCoupons((prev: any[]) => [...prev, nc]);
-                await syncDb('coupons', 'insert', nc, id, activeBizIdRef.current);
-            },
-            deleteCoupon: async (id: string) => {
-                dataRef.current.setCoupons((prev: any[]) => prev.filter(c => c.id !== id));
-                await syncDb('coupons', 'delete', {}, id, activeBizIdRef.current);
-            },
-            applyCoupon: (code: string) => {
-                const coupon = dataRef.current.coupons.find((c: any) => c.code === code && !c.isUsed);
-                if (!coupon) return null;
-                // Expiry check
-                if (coupon.expiryDate && new Date(coupon.expiryDate) < new Date()) return null;
-                return coupon;
-            }
+            getCustomerSummary: (cid: string) => ({
+                customer: dataRef.current.customers.find((c: any) => c.id === cid),
+                appointments: dataRef.current.appointments.filter((a: any) => a.customerId === cid),
+                packages: dataRef.current.packages.filter((p: any) => p.customerId === cid),
+                payments: dataRef.current.payments.filter((p: any) => p.customerId === cid)
+            }),
         };
 
         stableMethodsRef.current = methods;
@@ -714,8 +547,8 @@ const StoreOrchestrator = ({ children }: { children: ReactNode }) => {
     }, [
         fetchData, markAsModified, biz.clearCatalog, can, addLog, addZReport, calculateCommission, determineChurnRisk, getTodayDate, getTodayPayments, 
         getCustomerPackages, getCustomerAppointments, getCustomerPayments, getChurnRiskCustomers, getUpsellPotentialCustomers, getBirthdaysToday,
-        appMethods, payMethods, custMethods, invMethods, staffMethods, finMethods, pkgMethods, supportMethods,
-        data.setLocale
+        appMethods, payMethods, custMethods, invMethods, staffMethods, finMethods, pkgMethods, supportMethods, businessMethods,
+        data.setLocale, data.addMarketingRule, data.deleteMarketingRule, pendingVetoes, panopticonFeed
     ]);
 
 

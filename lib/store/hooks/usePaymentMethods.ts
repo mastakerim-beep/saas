@@ -180,6 +180,36 @@ export const usePaymentMethods = (deps: any) => {
             stableMethodsRef.current?.addLog('🔴 İmparator Reddi', id, 'VETO', `REDDEDİLDİ: ${reason || 'Sebep belirtilmedi'}`);
             return true;
         },
+
+        calculateDynamicPrice: (price: number, timeStr: string) => {
+            const rules = dataRef.current.pricingRules || [];
+            const [h, m] = timeStr.split(':').map(Number);
+            const currentTimeInMinutes = h * 60 + m;
+
+            // Check dynamic pricing rules from DB
+            for (const rule of rules) {
+                if (!rule.isActive) continue;
+                const [startH, startM] = rule.startTime.split(':').map(Number);
+                const [endH, endM] = rule.endTime.split(':').map(Number);
+                const startInMinutes = startH * 60 + startM;
+                const endInMinutes = endH * 60 + endM;
+
+                if (currentTimeInMinutes >= startInMinutes && currentTimeInMinutes <= endInMinutes) {
+                    const discount = rule.discountPercentage || 0;
+                    return { 
+                        price: price * (1 - discount / 100), 
+                        reason: `${rule.name} (%${discount})` 
+                    };
+                }
+            }
+
+            // Legacy Fallback (Happy Hour)
+            if (h >= 9 && h < 12) {
+                return { price: price * 0.8, reason: 'Happy Hour İndirimi (%20)' };
+            }
+            
+            return { price, reason: null };
+        },
     };
 };
 

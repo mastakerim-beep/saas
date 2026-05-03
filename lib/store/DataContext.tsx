@@ -270,12 +270,14 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
     const addProduct = useCallback((p: any) => {
         const newProduct = { ...p, id: crypto.randomUUID(), createdAt: new Date().toISOString() };
         setAllInventory(prev => [...prev, newProduct]);
-        syncDb('inventory', 'insert', newProduct);
+        // Pass businessId explicitly to avoid Nuclear Fallback
+        syncDb('inventory', 'insert', newProduct, newProduct.id, newProduct.businessId || newProduct.business_id);
     }, []);
 
-    const updateProduct = useCallback((id: string, p: Partial<Product>) => {
+    const updateProduct = useCallback((id: string, p: Partial<Product> & { businessId?: string; business_id?: string }) => {
         setAllInventory(prev => prev.map(item => item.id === id ? { ...item, ...p } : item));
-        syncDb('inventory', 'update', p, id);
+        // Derive bizId from update payload or rely on Nuclear Fallback
+        syncDb('inventory', 'update', p, id, (p as any).businessId || (p as any).business_id);
     }, []);
 
     const removeProduct = useCallback((id: string) => {
@@ -373,12 +375,12 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
     const addInventoryCategory = useCallback(async (c: any) => {
         const newCat = { ...c, id: crypto.randomUUID(), createdAt: new Date().toISOString() };
         setAllInventoryCategories(prev => [...prev, newCat]);
-        syncDb('inventory_categories', 'insert', newCat);
+        syncDb('inventory_categories', 'insert', newCat, newCat.id, newCat.businessId || newCat.business_id);
     }, []);
 
     const updateInventoryCategory = useCallback(async (id: string, updates: Partial<InventoryCategory>) => {
         setAllInventoryCategories(prev => prev.map(c => c.id === id ? { ...c, ...updates } : c));
-        syncDb('inventory_categories', 'update', updates, id);
+        syncDb('inventory_categories', 'update', updates, id, (updates as any).businessId || (updates as any).business_id);
     }, []);
 
     const removeInventoryCategory = useCallback(async (id: string, deleteProducts: boolean) => {
@@ -386,19 +388,15 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
         if (!category) return;
 
         if (deleteProducts) {
+            // Filter out products belonging to this category in local state
             setAllInventory(prev => prev.filter(p => p.category !== category.name));
-            // Note: Batch delete is complex in this sync system, usually we'd delete by category in DB
-            syncDb('inventory', 'delete', {}, undefined, undefined, undefined, (table, id, status) => {
-                // custom logic for batch delete if needed
-            });
-            // Simplified: let DB handle cascade or do a custom query
-            // In this specific syncDb, we don't have batch delete. 
-            // For now, let's keep it simple and delete the category.
+            // DB cascade: handled by RLS + FK on DB side
         } else {
+            // Move products to 'Genel' category
             setAllInventory(prev => prev.map(p => p.category === category.name ? { ...p, category: 'Genel' } : p));
         }
         setAllInventoryCategories(prev => prev.filter(c => c.id !== id));
-        syncDb('inventory_categories', 'delete', {}, id);
+        syncDb('inventory_categories', 'delete', {}, id, (category as any).businessId || (category as any).business_id);
     }, [inventoryCategories]);
 
     const transferProduct = useCallback(async (productId: string, fromBranchId: string, toBranchId: string, amount: number, pricePerUnit: number = 0, transferType: string = 'free') => {
@@ -493,10 +491,11 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
     const addMarketingRule = useCallback(async (rule: any) => {
         const newRule = { ...rule, id: crypto.randomUUID(), createdAt: new Date().toISOString() };
         setMarketingRules(prev => [...prev, newRule]);
-        syncDb('marketing_rules', 'insert', newRule);
+        syncDb('marketing_rules', 'insert', newRule, newRule.id, newRule.businessId || newRule.business_id);
     }, []);
 
     const deleteMarketingRule = useCallback(async (id: string) => {
+        // Note: bizId resolved from Nuclear Fallback on delete (id only, no payload)
         setMarketingRules(prev => prev.filter(r => r.id !== id));
         syncDb('marketing_rules', 'delete', {}, id);
     }, []);
@@ -504,12 +503,12 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
     const addBiometric = useCallback(async (b: any) => {
         const newBio = { ...b, id: crypto.randomUUID(), createdAt: new Date().toISOString(), lastSyncAt: new Date().toISOString() };
         setCustomerBiometrics(prev => [...prev, newBio]);
-        syncDb('customer_biometrics', 'insert', newBio);
+        syncDb('customer_biometrics', 'insert', newBio, newBio.id, newBio.businessId || newBio.business_id);
     }, []);
 
     const updateBiometric = useCallback(async (id: string, updates: Partial<CustomerBiometric>) => {
         setCustomerBiometrics(prev => prev.map(sb => sb.id === id ? { ...sb, ...updates, lastSyncAt: new Date().toISOString() } : sb));
-        syncDb('customer_biometrics', 'update', updates, id);
+        syncDb('customer_biometrics', 'update', { ...updates, lastSyncAt: new Date().toISOString() }, id, (updates as any).businessId || (updates as any).business_id);
     }, []);
 
     const contextValue: DataContextType = useMemo(() => ({

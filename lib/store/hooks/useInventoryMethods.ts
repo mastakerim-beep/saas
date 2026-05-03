@@ -91,7 +91,47 @@ export const useInventoryMethods = (deps: any) => {
         removeInventoryCategory: async (id: string) => {
             dataRef.current.setAllInventoryCategories((prev: any[]) => prev.filter(c => c.id !== id));
             await syncDb('inventory_categories', 'delete', {}, id, activeBizIdRef.current);
-        }
+        },
+        transferProduct: async (transfer: any) => {
+            const bizId = activeBizIdRef.current;
+            if (!bizId) return false;
+            const { productId, fromBranchId, toBranchId, quantity, transferType, pricePerUnit } = transfer;
+            const inventory = dataRef.current.inventory;
+            const fromProduct = inventory.find((p: any) => p.id === productId && p.branchId === fromBranchId);
+            const toProduct = inventory.find((p: any) => p.id === productId && p.branchId === toBranchId);
+            
+            if (fromProduct) {
+                const newFromStock = Math.max(0, (fromProduct.stock || 0) - quantity);
+                dataRef.current.updateProduct(fromProduct.id, { stock: newFromStock });
+                await syncDb('inventory', 'update', { stock: newFromStock }, fromProduct.id, bizId);
+            }
+            if (toProduct) {
+                const newToStock = (toProduct.stock || 0) + quantity;
+                dataRef.current.updateProduct(toProduct.id, { stock: newToStock });
+                await syncDb('inventory', 'update', { stock: newToStock }, toProduct.id, bizId);
+            }
+            const tid = crypto.randomUUID();
+            await syncDb('inventory_transfers', 'insert', { ...transfer, id: tid, businessId: bizId, createdAt: new Date().toISOString() }, tid, bizId);
+            
+            if (transferType === 'cost' || transferType === 'profit') {
+                const amount = quantity * (pricePerUnit || 0);
+                const expId = crypto.randomUUID();
+                await syncDb('expenses', 'insert', {
+                    id: expId, businessId: bizId, branchId: toBranchId,
+                    category: 'URUN_TRANSFERI', amount: amount, date: new Date().toISOString().split('T')[0],
+                    description: `${fromProduct?.name || 'Ürün'} Transfer Maliyeti`, payout_status: 'ODENDI', createdAt: new Date().toISOString()
+                }, expId, bizId);
+            }
+            return true;
+        },
+        predictInventory: () => {
+            return dataRef.current.inventory.map((p: any) => {
+                const daysLeft = Math.floor((p.stock || 0) / 0.5); // Simplified consumption rate
+                const runoutDate = new Date();
+                runoutDate.setDate(runoutDate.getDate() + daysLeft);
+                return { productId: p.id, productName: p.name, daysLeft, runoutDate: runoutDate.toISOString() };
+            });
+        },
     };
 };
 

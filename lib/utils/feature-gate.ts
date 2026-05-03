@@ -30,8 +30,8 @@ export const PLAN_LIMITS = {
  * Checks if the current business system should be globally locked.
  */
 export const checkSystemLock = (business: Business, currentUser: AppUser | null): FeatureGateStatus => {
-    // 1. SUPERADMIN BYPASS: kerim@mail.com is never locked out
-    if (currentUser?.email === 'kerim@mail.com') {
+    // 1. SUPERADMIN BYPASS: SaaS Owners are never locked out
+    if (currentUser?.role === 'SaaS_Owner') {
         return { isLocked: false, reason: null, message: null };
     }
 
