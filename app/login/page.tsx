@@ -24,16 +24,32 @@ export default function LoginPage() {
 
     // Prevent staying on login if already authenticated
     useEffect(() => {
-        if (isInitialized) {
-            setIsCheckingAuth(false);
-            if (currentUser) {
+        const handleAutoRedirect = async () => {
+            if (isInitialized && currentUser) {
+                setIsCheckingAuth(false);
                 if (currentUser?.role === 'SaaS_Owner') {
                     router.push('/admin');
                 } else if (currentUser?.businessId) {
-                    router.push('/dashboard'); 
+                    // Try to get the slug from the business record
+                    const { data: biz } = await supabase
+                        .from('businesses')
+                        .select('slug')
+                        .eq('id', currentUser.businessId)
+                        .single();
+                        
+                    if (biz?.slug) {
+                        router.push(`/${biz.slug}/dashboard`);
+                    } else {
+                        // Fallback if no slug found
+                        router.push('/dashboard'); 
+                    }
                 }
+            } else if (isInitialized) {
+                setIsCheckingAuth(false);
             }
-        }
+        };
+        
+        handleAutoRedirect();
     }, [currentUser, isInitialized, router]);
 
     // Safety Fallback: Unlock form after 3 seconds anyway
