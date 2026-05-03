@@ -90,7 +90,7 @@ export default function LoginPage() {
     }
 
     return (
-        <div className="min-h-screen bg-gray-50 flex items-center justify-center p-6 relative overflow-hidden font-sans selection:bg-primary/30">
+        <div className="min-h-screen bg-gray-50 flex items-center justify-center p-6 relative overflow-hidden font-sans selection:bg-primary/30 grid-pattern">
             {/* Background Decorative Elements */}
             <div className="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] bg-primary/10 blur-[130px] rounded-full animate-pulse" />
             <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-purple-600/10 blur-[130px] rounded-full animate-pulse" style={{ animationDelay: '2s' }} />
@@ -109,8 +109,8 @@ export default function LoginPage() {
                     >
                         <ShieldCheck className="w-12 h-12 text-primary" />
                     </motion.div>
-                    <h1 className="text-4xl font-black text-gray-900 tracking-tighter mb-4 antialiased leading-tight">Aura Spa ERP</h1>
-                    <p className="text-gray-400 font-bold uppercase tracking-[0.2em] text-[10px]">Premium Business Operations</p>
+                    <h1 className="text-5xl font-black text-gray-900 tracking-tighter mb-4 antialiased leading-tight">Aura Kingdom</h1>
+                    <p className="text-indigo-500 font-black uppercase tracking-[0.4em] text-[9px] opacity-80">Sovereign Business Operations</p>
                 </div>
 
                 <div className="bg-white border border-gray-100 rounded-[3rem] p-12 shadow-2xl shadow-gray-200/50">
@@ -163,7 +163,7 @@ export default function LoginPage() {
                         <button 
                             type="submit"
                             disabled={isLoading}
-                            className="w-full bg-primary text-white py-5 rounded-[1.5rem] font-black text-[13px] uppercase tracking-[0.2em] hover:bg-primary/90 transition-all duration-300 shadow-2xl shadow-primary/20 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed group relative overflow-hidden"
+                            className="w-full bg-gradient-to-r from-indigo-600 to-purple-700 text-white py-5 rounded-[1.5rem] font-black text-[13px] uppercase tracking-[0.2em] hover:shadow-xl hover:shadow-indigo-500/20 transition-all duration-300 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed group relative overflow-hidden"
                         >
                             {isLoading ? (
                                 <Loader2 className="w-6 h-6 animate-spin mx-auto text-white" />

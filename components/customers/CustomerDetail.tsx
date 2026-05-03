@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { 
     User, ArrowLeft, MessageSquare, Calendar, Package as PackageIcon, 
     Star, Banknote, CreditCard, Activity, TrendingUp, Sparkles, Gift, Bot, 
-    Edit2, Shield, Info, Plus
+    Edit2, Shield, Info, Plus, X, Clock, CheckCircle
 } from 'lucide-react';
 import { useStore, Customer, Appointment, Payment, Quote, Room, StaffMember, Package } from '@/lib/store';
 import BookingModal from '@/components/calendar/BookingModal';
@@ -90,7 +90,7 @@ export function CustomerDetail({ customer, onClose }: CustomerDetailProps) {
     };
 
     return (
-        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="fixed inset-0 bg-[#F8F9FD] z-[50] flex overflow-hidden">
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="fixed inset-0 bg-[#F8F9FD] z-[50] flex overflow-hidden grid-pattern">
             <CustomerProfileSidebar 
                 menuItems={menuItems} activeMenu={activeMenu} setActiveMenu={setActiveMenu}
                 isSidebarCollapsed={isSidebarCollapsed} setIsSidebarCollapsed={setIsSidebarCollapsed}
@@ -100,7 +100,7 @@ export function CustomerDetail({ customer, onClose }: CustomerDetailProps) {
             <div className="flex-1 flex flex-col min-w-0 overflow-y-auto custom-scrollbar">
                 <header className="bg-white border-b border-gray-100 px-12 py-10 flex justify-between items-center sticky top-0 z-40 backdrop-blur-md bg-white/80">
                     <div className="flex items-center gap-6">
-                        <div className="w-16 h-16 bg-indigo-600 rounded-[2rem] flex items-center justify-center text-white font-black text-2xl shadow-xl shadow-indigo-100">
+                        <div className="w-20 h-20 bg-gradient-to-br from-indigo-600 to-purple-700 rounded-[2.5rem] flex items-center justify-center text-white font-black text-3xl shadow-2xl shadow-indigo-100/50">
                             {customer.name.charAt(0)}
                         </div>
                         <div>

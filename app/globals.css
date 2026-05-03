@@ -126,6 +126,22 @@ body {
     @apply shadow-[0_0_25px_rgba(79,70,229,0.2)];
   }
 
+  .grid-pattern {
+    background-image: radial-gradient(circle at 1px 1px, rgba(79, 70, 229, 0.05) 1px, transparent 0);
+    background-size: 24px 24px;
+  }
+
+  .grid-pattern-dark {
+    background-image: radial-gradient(circle at 1px 1px, rgba(255, 255, 255, 0.02) 1px, transparent 0);
+    background-size: 24px 24px;
+  }
+
+  .mesh-gradient {
+    background: radial-gradient(at 0% 0%, hsla(253,16%,7%,1) 0, transparent 50%), 
+                radial-gradient(at 50% 0%, hsla(225,39%,30%,1) 0, transparent 50%), 
+                radial-gradient(at 100% 0%, hsla(339,49%,30%,1) 0, transparent 50%);
+  }
+
   .receipt-gradient {
     @apply bg-gradient-to-b from-[#FDFDFD] via-white to-[#F9FAFB];
   }
