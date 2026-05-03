@@ -35,38 +35,47 @@ export const checkSystemLock = (business: Business, currentUser: AppUser | null)
         return { isLocked: false, reason: null, message: null };
     }
 
+    const biz = business as any;
+
     // 2. MANUAL SUSPENSION
-    if ((business as any).is_suspended) {
+    if (biz.is_suspended) {
         return { 
             isLocked: true, 
             reason: 'suspended', 
-            message: 'Bu işletme hesabı yönetici tarafından askıya alınmıştır. Lütfen destek ile iletişime geçin.' 
+            message: biz.suspension_reason || 'Bu işletme hesabı yönetici tarafından askıya alınmıştır. Lütfen destek ile iletişime geçin.' 
         };
     }
 
-    // 3. PAYMENT & GRACE PERIOD CHECK
-    if (business.paymentStatus === 'unpaid') {
-        const graceUntil = (business as any).grace_period_until;
+    // 3. TRIAL PERIOD CHECK
+    if (biz.trial_ends_at) {
+        const trialDate = new Date(biz.trial_ends_at);
+        if (new Date() > trialDate && biz.payment_status !== 'paid') {
+            return {
+                isLocked: true,
+                reason: 'unpaid',
+                message: 'Ücretsiz deneme süreniz sona ermiştir. Devam etmek için lütfen bir plan seçin.'
+            };
+        }
+    }
+
+    // 4. PAYMENT & GRACE PERIOD CHECK
+    if (biz.payment_status === 'overdue' || biz.payment_status === 'unpaid') {
+        const graceUntil = biz.grace_period_until;
         if (graceUntil) {
             const graceDate = new Date(graceUntil);
-            const now = new Date();
-            
-            if (now > graceDate) {
+            if (new Date() > graceDate) {
                 return { 
                     isLocked: true, 
                     reason: 'unpaid', 
-                    message: 'Ödeme süreniz ve 3 günlük ek tolerans süreniz dolmuştur. Sisteme erişim kısıtlanmıştır.' 
+                    message: 'Ödeme süreniz ve tanımlanan ek tolerans süreniz dolmuştur. Sisteme erişim kısıtlanmıştır.' 
                 };
             }
-        } else {
-            // No grace period defined means immediate lock on unpaid if not overridden
-            if (!(business as any).is_manual_override) {
-                return { 
-                    isLocked: true, 
-                    reason: 'unpaid', 
-                    message: 'Ödeme bekleyen abonelik. Lütfen devam etmek için paketinizi yenileyin.' 
-                };
-            }
+        } else if (!biz.is_manual_override) {
+            return { 
+                isLocked: true, 
+                reason: 'unpaid', 
+                message: 'Ödeme bekleyen abonelik. Lütfen devam etmek için paketinizi yenileyin.' 
+            };
         }
     }
 

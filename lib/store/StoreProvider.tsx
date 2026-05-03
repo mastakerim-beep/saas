@@ -11,7 +11,8 @@ import {
     PaymentDefinition, BankAccount, ExpenseCategory, ReferralSource, 
     ConsentFormTemplate, AuditLog, NotificationLog, CommissionRule,
     PackageDefinition, Quote, MarketingRule, DynamicPricingRule, Room, Expense, CalendarBlock, AppointmentStatus, BookingSettings,
-    LoyaltySettings, Webhook, InventoryCategory, CurrencyRate, PackageUsageHistory
+    LoyaltySettings, Webhook, InventoryCategory, CurrencyRate, PackageUsageHistory,
+    SaaSPlan, SaaSInvoice
 } from './types';
 import { fetchData as fetchDataLogic } from './fetch-logic';
 import { syncDb } from './sync-db';
@@ -271,8 +272,7 @@ const StoreOrchestrator = ({ children }: { children: ReactNode }) => {
         const isLoginPath = normalizedPath.startsWith('/login');
 
         // Otomatik veri çekme başlatıcı
-        // Sadece auth süreci tamamlandığında ve ortam (slug/kullanıcı) hazır olduğunda çek
-        if (auth.isInitialized) {
+        if (auth.isInitialized && biz.isHydrated) {
             if (isLoginPath) {
                 console.log("🛡️ [Aura Trace] Login path detected. Releasing store locks.");
                 setSyncStatus('idle');
@@ -454,9 +454,6 @@ const StoreOrchestrator = ({ children }: { children: ReactNode }) => {
         return data.payments.filter((p: any) => p.date === today);
     }, [data.payments, getTodayDate]);
 
-    const addZReport = async (reportData: any) => {
-        return finMethods.addZReport(reportData);
-    };
 
     const stableMethodsRef = React.useRef<any>(null);
 
@@ -507,7 +504,6 @@ const StoreOrchestrator = ({ children }: { children: ReactNode }) => {
             addLog,
             getTodayDate,
             getTodayPayments,
-            addZReport,
             calculateCommission,
             determineChurnRisk,
 
@@ -545,7 +541,7 @@ const StoreOrchestrator = ({ children }: { children: ReactNode }) => {
         stableMethodsRef.current = methods;
         return methods;
     }, [
-        fetchData, markAsModified, biz.clearCatalog, can, addLog, addZReport, calculateCommission, determineChurnRisk, getTodayDate, getTodayPayments, 
+        fetchData, markAsModified, biz.clearCatalog, can, addLog, calculateCommission, determineChurnRisk, getTodayDate, getTodayPayments, 
         getCustomerPackages, getCustomerAppointments, getCustomerPayments, getChurnRiskCustomers, getUpsellPotentialCustomers, getBirthdaysToday,
         appMethods, payMethods, custMethods, invMethods, staffMethods, finMethods, pkgMethods, supportMethods, businessMethods,
         data.setLocale, data.addMarketingRule, data.deleteMarketingRule, pendingVetoes, panopticonFeed
@@ -630,16 +626,27 @@ const StoreOrchestrator = ({ children }: { children: ReactNode }) => {
                 isLicenseExpired,
                 locale: data.locale,
                 coupons: data.coupons || [],
+                saasPlans: data.saasPlans || [],
+                saasInvoices: data.saasInvoices || [],
             }}>
-                {systemLock.isLocked && <EmpireLockScreen reason={systemLock.reason} message={systemLock.message || ""} slug={slug} />}
-                <QuotaUpgradeModal 
-                    isOpen={!!quotaError} 
-                    onClose={() => setQuotaError(null)} 
-                    resource={quotaError?.resource || 'Şube'} 
-                    limit={quotaError?.limit || 0} 
-                    slug={slug} 
-                />
-                {children}
+                {(!auth.isInitialized || (syncStatus === 'syncing' && !biz.currentTenant)) ? (
+                    <div className="fixed inset-0 z-[1000] bg-white flex flex-col items-center justify-center">
+                        <div className="w-16 h-16 border-4 border-indigo-100 border-t-indigo-600 rounded-full animate-spin mb-4" />
+                        <p className="text-[10px] font-black text-indigo-400 uppercase tracking-[0.3em] animate-pulse">Aura Kingdom Başlatılıyor...</p>
+                    </div>
+                ) : (
+                    <>
+                        {systemLock.isLocked && <EmpireLockScreen reason={systemLock.reason} message={systemLock.message || ""} slug={slug} />}
+                        <QuotaUpgradeModal 
+                            isOpen={!!quotaError} 
+                            onClose={() => setQuotaError(null)} 
+                            resource={quotaError?.resource || 'Şube'} 
+                            limit={quotaError?.limit || 0} 
+                            slug={slug} 
+                        />
+                        {children}
+                    </>
+                )}
             </StoreDataContext.Provider>
         </StoreMethodsContext.Provider>
     );

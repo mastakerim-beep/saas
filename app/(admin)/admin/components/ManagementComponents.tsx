@@ -98,7 +98,7 @@ export const TenantCard = ({ biz, onImpersonate, onDelete, onToggleStatus, onEdi
 };
 
 export const EditBusinessModal = ({ biz, onClose, onUpdate, loading }: any) => {
-    const { allUsers } = useStore();
+    const { allUsers, provisionBusinessUser, fetchData } = useStore();
     const [localBiz, setLocalBiz] = useState<any>(null);
 
     useEffect(() => {
@@ -199,13 +199,45 @@ export const EditBusinessModal = ({ biz, onClose, onUpdate, loading }: any) => {
                                 </div>
                             </div>
 
+                            <div className="grid grid-cols-2 gap-6">
+                                <div className="space-y-3">
+                                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Ödeme Durumu</label>
+                                    <select 
+                                        value={localBiz.paymentStatus || 'paid'} 
+                                        onChange={e => setLocalBiz({...localBiz, paymentStatus: e.target.value})}
+                                        className="w-full bg-white/[0.03] border border-white/10 rounded-2xl py-4 px-6 text-white font-bold outline-none focus:border-indigo-500 transition-all appearance-none cursor-pointer"
+                                    >
+                                        <option value="paid" className="bg-[#0f111a]">ÖDENDİ</option>
+                                        <option value="overdue" className="bg-[#0f111a]">GECİKMİŞ</option>
+                                        <option value="trial" className="bg-[#0f111a]">DENEME</option>
+                                        <option value="suspended" className="bg-[#0f111a]">KİLİTLİ</option>
+                                    </select>
+                                </div>
+                                <div className="space-y-3">
+                                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Deneme Bitiş</label>
+                                    <input 
+                                        type="date" 
+                                        value={localBiz.trialEndsAt ? localBiz.trialEndsAt.split('T')[0] : ''} 
+                                        onChange={e => setLocalBiz({...localBiz, trialEndsAt: e.target.value})}
+                                        className="w-full bg-white/[0.03] border border-white/10 rounded-2xl py-4 px-6 text-white font-bold outline-none focus:border-indigo-500 transition-all"
+                                    />
+                                </div>
+                            </div>
+
                             <div className={`p-6 rounded-[2rem] border transition-all ${localBiz.is_suspended ? 'bg-rose-950/20 border-rose-500/30' : 'bg-slate-900/40 border-white/5'}`}>
                                 <div className="flex items-center justify-between">
                                     <div>
                                         <p className={`text-[10px] font-black uppercase tracking-widest ${localBiz.is_suspended ? 'text-rose-500' : 'text-slate-400'}`}>
                                             {localBiz.is_suspended ? 'SİSTEM MÜHÜRLÜ' : 'SİSTEM AKTİF'}
                                         </p>
-                                        <p className="text-[8px] font-bold text-slate-600 uppercase tracking-wider mt-1">PROTOKOL-X ERİŞİM ENGELİ</p>
+                                        <div className="mt-2">
+                                            <input 
+                                                placeholder="Mühürleme Sebebi..."
+                                                value={localBiz.suspensionReason || ''}
+                                                onChange={e => setLocalBiz({...localBiz, suspensionReason: e.target.value})}
+                                                className="bg-transparent border-none text-[9px] font-bold text-slate-500 outline-none w-full"
+                                            />
+                                        </div>
                                     </div>
                                     <button 
                                         onClick={() => setLocalBiz({...localBiz, is_suspended: !localBiz.is_suspended})}
@@ -269,7 +301,6 @@ export const EditBusinessModal = ({ biz, onClose, onUpdate, loading }: any) => {
                                             const pass = (document.getElementById('new_user_pass') as HTMLInputElement).value;
                                             if (!email || !pass) return alert("E-posta ve şifre gerekli.");
                                             
-                                            const { provisionBusinessUser, fetchData } = useStore();
                                             const res = await provisionBusinessUser({
                                                 email,
                                                 password: pass,
@@ -299,6 +330,9 @@ export const EditBusinessModal = ({ biz, onClose, onUpdate, loading }: any) => {
                             maxUsers: localBiz.maxUsers, 
                             grace_period_until: localBiz.grace_period_until, 
                             is_suspended: localBiz.is_suspended,
+                            suspension_reason: localBiz.suspensionReason,
+                            payment_status: localBiz.paymentStatus,
+                            trial_ends_at: localBiz.trialEndsAt,
                             verticals: localBiz.verticals || ['spa']
                         })}
                         disabled={loading}

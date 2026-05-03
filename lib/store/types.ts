@@ -160,6 +160,34 @@ export interface CurrencyRate {
     rate: number;
 }
 
+
+export interface SaaSPlan {
+    id: string;
+    name: string;
+    code: string;
+    monthlyPrice: number;
+    yearlyPrice: number;
+    maxUsers: number;
+    maxBranches: number;
+    features: any;
+    isActive: boolean;
+    createdAt: string;
+}
+
+export interface SaaSInvoice {
+    id: string;
+    businessId: string;
+    amount: number;
+    currency: string;
+    status: 'pending' | 'paid' | 'failed' | 'refunded';
+    billingPeriodStart: string;
+    billingPeriodEnd: string;
+    invoiceUrl?: string;
+    paymentMethod?: string;
+    stripeInvoiceId?: string;
+    createdAt: string;
+}
+
 export interface StoreState {
     currentUser: AppUser | null;
     currentBusiness: Business | null;

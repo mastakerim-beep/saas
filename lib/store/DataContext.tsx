@@ -9,7 +9,8 @@ import {
     DynamicPricingRule, CustomerWallet, WalletTransaction, 
     ConsultationBodyMap, InventoryUsageNorm, CustomerMedia, CustomerBiometric,
     PackageDefinition, CommissionRule, AppointmentStatus, Staff, Payment, InventoryCategory, PackageUsageHistory,
-    PaymentDefinition, BankAccount, ExpenseCategory, ReferralSource, ConsentFormTemplate, SystemAnnouncement, LoyaltySettings, Webhook, InventoryTransfer, Coupon
+    PaymentDefinition, BankAccount, ExpenseCategory, ReferralSource, ConsentFormTemplate, SystemAnnouncement, LoyaltySettings, Webhook, InventoryTransfer, Coupon,
+    SaaSPlan, SaaSInvoice
 } from './types';
 import { syncDb } from './sync-db';
 
@@ -55,10 +56,14 @@ export interface DataContextType {
     inventoryTransfers: InventoryTransfer[];
     customerBiometrics: CustomerBiometric[];
     coupons: Coupon[];
+    saasPlans: SaaSPlan[];
+    saasInvoices: SaaSInvoice[];
     locale: 'tr' | 'en';
 
     setCustomerBiometrics: React.Dispatch<React.SetStateAction<CustomerBiometric[]>>;
     setCoupons: React.Dispatch<React.SetStateAction<Coupon[]>>;
+    setSaaSPlans: React.Dispatch<React.SetStateAction<SaaSPlan[]>>;
+    setSaaSInvoices: React.Dispatch<React.SetStateAction<SaaSInvoice[]>>;
     setAllAppointments: React.Dispatch<React.SetStateAction<Appointment[]>>;
     setAllBlocks: React.Dispatch<React.SetStateAction<CalendarBlock[]>>;
     setAllCustomers: React.Dispatch<React.SetStateAction<Customer[]>>;
@@ -193,6 +198,8 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
     const [inventoryTransfers, setInventoryTransfers] = useState<InventoryTransfer[]>([]);
     const [customerBiometrics, setCustomerBiometrics] = useState<CustomerBiometric[]>([]);
     const [coupons, setCoupons] = useState<Coupon[]>([]);
+    const [saasPlans, setSaaSPlans] = useState<SaaSPlan[]>([]);
+    const [saasInvoices, setSaaSInvoices] = useState<SaaSInvoice[]>([]);
     const [locale, setLocale] = useState<'tr' | 'en'>('tr');
 
 
@@ -519,6 +526,7 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
         walletTransactions, bodyMaps, usageNorms, customerMedia, packageDefinitions, commissionRules,
         paymentDefinitions, bankAccounts, expenseCategories, referralSources, consentFormTemplates,
         systemAnnouncements, loyaltySettings, webhooks, inventoryTransfers, customerBiometrics, coupons,
+        saasPlans, saasInvoices,
         setAllAppointments, setAllBlocks, setAllCustomers, setAllDebts, setAllInventory,
         setAllRooms, setAllServices, setAllPackages, setMembershipPlans, setCustomerMemberships,
         setAllStaff, setAllLogs, setAllNotifs, setAiInsights, setAllExpenses, setZReports, setAllQuotes,
@@ -527,7 +535,7 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
         setAllPayments, setAllInventoryCategories, addCustomerMedia, deleteCustomerMedia,
         setPaymentDefinitions, setBankAccounts, setExpenseCategories, setReferralSources,
         setConsentFormTemplates, setSystemAnnouncements, setLoyaltySettings, setWebhooks, setInventoryTransfers,
-        setCustomerBiometrics, setCoupons,
+        setCustomerBiometrics, setCoupons, setSaaSPlans, setSaaSInvoices,
         addCustomer, updateCustomer, deleteCustomer, addAppointment, updateAppointment, deleteAppointment,
         moveAppointment, updateAppointmentStatus, addBlock, updateBlock, removeBlock, addPackage,
         addMembershipPlan, assignMembership, addProduct, updateProduct, removeProduct, addExpense, addService,
@@ -548,7 +556,7 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
         packageDefinitions, commissionRules, inventoryCategories, transferProduct, packageUsageHistory,
         paymentDefinitions, bankAccounts, expenseCategories, referralSources, consentFormTemplates,
         systemAnnouncements, loyaltySettings, webhooks, inventoryTransfers,
-        customerBiometrics, coupons, locale
+        customerBiometrics, coupons, saasPlans, saasInvoices, locale
     ]);
 
 

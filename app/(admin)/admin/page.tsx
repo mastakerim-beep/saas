@@ -292,9 +292,10 @@ export default function SuperAdminPage() {
                     <AnimatePresence mode="wait">
                         {activeTab === 'monitor' && (
                             <motion.div key="monitor" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} className="space-y-8">
-                                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
                                     <StatCard title="Toplam Ağ Geliri" value={`₺${stats.totalRev.toLocaleString()}`} icon={CreditCard} trend="+12.4%" color="indigo" />
-                                    <StatCard title="Aktif İşletme Sayısı" value={stats.activeTenants} icon={Globe} trend="+2 yeni" color="purple" />
+                                    <StatCard title="Aktif İşletme" value={stats.activeTenants} icon={Globe} trend="+2 yeni" color="purple" />
+                                    <StatCard title="Mühürlü Node" value={allBusinesses.filter((b: any) => b.is_suspended).length} icon={ShieldAlert} trend="Kilitli" color="rose" />
                                     <StatCard title="Sistem Sorgulama" value={allLogs.length} icon={Database} trend="Stabil" color="blue" />
                                 </div>
 

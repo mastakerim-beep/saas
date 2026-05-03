@@ -18,6 +18,7 @@ interface BusinessContextType {
     consentFormTemplates: ConsentFormTemplate[];
     loyaltySettings: LoyaltySettings | null;
     webhooks: Webhook[];
+    isHydrated: boolean;
     
     setAllBusinesses: React.Dispatch<React.SetStateAction<Business[]>>;
     setCurrentTenant: React.Dispatch<React.SetStateAction<Business | null>>;
@@ -41,35 +42,6 @@ const BusinessContext = createContext<BusinessContextType | undefined>(undefined
 export const BusinessProvider = ({ children }: { children: ReactNode }) => {
     const [allBusinesses, setAllBusinesses] = useState<Business[]>([]);
     const [isHydrated, setIsHydrated] = useState(false);
-
-    // 1. Persistence Layer: Load businesses from localStorage on mount
-    useEffect(() => {
-        const saved = localStorage.getItem('aura_business_catalog');
-        if (saved) {
-            try {
-                const parsed = JSON.parse(saved);
-                if (Array.isArray(parsed) && parsed.length > 0) {
-                    console.log("📦 [Aura Persistence] Hydrated business catalog from storage");
-                    setAllBusinesses(parsed);
-                }
-            } catch (e) {
-                console.error("Failed to parse business catalog", e);
-            }
-        }
-        setIsHydrated(true);
-    }, []);
-
-    // 2. Persistence Layer: Save businesses to localStorage when updated
-    useEffect(() => {
-        if (!isHydrated) return;
-        
-        // Only save if we have data, or if we explicitly cleared it.
-        // This prevents the initial [] state from wiping out localStorage before hydration.
-        if (allBusinesses.length > 0) {
-            localStorage.setItem('aura_business_catalog', JSON.stringify(allBusinesses));
-        }
-    }, [allBusinesses, isHydrated]);
-
     const [currentTenant, setCurrentTenant] = useState<Business | null>(null);
     const [currentBranch, setCurrentBranch] = useState<Branch | null>(null);
     const [branches, setBranches] = useState<Branch[]>([]);
@@ -85,6 +57,61 @@ export const BusinessProvider = ({ children }: { children: ReactNode }) => {
     const [consentFormTemplates, setConsentFormTemplates] = useState<ConsentFormTemplate[]>([]);
     const [loyaltySettings, setLoyaltySettings] = useState<LoyaltySettings | null>(null);
     const [webhooks, setWebhooks] = useState<Webhook[]>([]);
+
+    // 1. Persistence Layer: Load businesses from localStorage on mount
+    useEffect(() => {
+        const saved = localStorage.getItem('aura_business_catalog');
+        if (saved) {
+            try {
+                const parsed = JSON.parse(saved);
+                if (Array.isArray(parsed) && parsed.length > 0) {
+                    console.log("📦 [Aura Persistence] Hydrated business catalog from storage");
+                    setAllBusinesses(parsed);
+                }
+            } catch (e) {
+                console.error("Failed to parse business catalog", e);
+            }
+        }
+        // 1.2 Hydrate Current Context
+        const savedTenant = localStorage.getItem('aura_current_tenant');
+        const savedBranch = localStorage.getItem('aura_current_branch');
+        if (savedTenant) {
+            try {
+                const parsed = JSON.parse(savedTenant);
+                console.log("📦 [Aura Persistence] Hydrated current tenant:", parsed.slug);
+                setCurrentTenant(parsed);
+            } catch (e) {}
+        }
+        if (savedBranch) {
+            try {
+                const parsed = JSON.parse(savedBranch);
+                setCurrentBranch(parsed);
+            } catch (e) {}
+        }
+        
+        setIsHydrated(true);
+    }, []);
+
+    // 2. Persistence Layer: Save businesses to localStorage when updated
+    useEffect(() => {
+        if (!isHydrated) return;
+        
+        if (allBusinesses.length > 0) {
+            localStorage.setItem('aura_business_catalog', JSON.stringify(allBusinesses));
+        }
+        
+        if (currentTenant) {
+            localStorage.setItem('aura_current_tenant', JSON.stringify(currentTenant));
+        } else {
+            localStorage.removeItem('aura_current_tenant');
+        }
+        
+        if (currentBranch) {
+            localStorage.setItem('aura_current_branch', JSON.stringify(currentBranch));
+        } else {
+            localStorage.removeItem('aura_current_branch');
+        }
+    }, [allBusinesses, currentTenant, currentBranch, isHydrated]);
     const [settings, setSettingsState] = useState<BusinessSettings>({ 
         startHour: 9, 
         endHour: 21, 
@@ -109,7 +136,7 @@ export const BusinessProvider = ({ children }: { children: ReactNode }) => {
     const contextValue = useMemo(() => ({
         allBusinesses, currentTenant, currentBranch, branches, settings, bookingSettings, allRates,
         paymentDefinitions, bankAccounts, expenseCategories, referralSources, consentFormTemplates,
-        loyaltySettings, webhooks,
+        loyaltySettings, webhooks, isHydrated,
         setAllBusinesses, setCurrentTenant, setCurrentBranch, setBranches, setSettings, setBookingSettings,
         setAllRates, setPaymentDefinitions, setBankAccounts, setExpenseCategories, setReferralSources, setConsentFormTemplates,
         setLoyaltySettings, setWebhooks,
@@ -117,7 +144,7 @@ export const BusinessProvider = ({ children }: { children: ReactNode }) => {
     }), [
         allBusinesses, currentTenant, currentBranch, branches, settings, bookingSettings, allRates,
         paymentDefinitions, bankAccounts, expenseCategories, referralSources, consentFormTemplates,
-        setSettings, clearCatalog, loyaltySettings, webhooks
+        setSettings, clearCatalog, loyaltySettings, webhooks, isHydrated
     ]);
 
     return (
