@@ -62,3 +62,11 @@ CREATE TRIGGER tr_set_trial_period
     FOR EACH ROW
     EXECUTE FUNCTION set_default_trial_period();
 
+-- 5. AI INSIGHTS CUSTOMER BAĞLANTISI (OPSİYONEL)
+DO $$ 
+BEGIN 
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='ai_insights' AND column_name='customer_id') THEN
+        ALTER TABLE ai_insights ADD COLUMN customer_id UUID REFERENCES customers(id) ON DELETE CASCADE;
+    END IF;
+END $$;
+

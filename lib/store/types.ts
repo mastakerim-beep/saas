@@ -53,7 +53,7 @@ export interface Product extends DB.Product {
 export type Service = DB.Service;
 export type AuditLog = DB.AuditLog;
 export type NotificationLog = DB.NotificationLog;
-export type AiInsight = DB.AiInsight;
+export type AiInsight = DB.AiInsight & { customerId?: string };
 export type Room = DB.Room;
 export type CommissionRule = DB.CommissionRule;
 export type Expense = DB.Expense & {

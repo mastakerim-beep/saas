@@ -7,7 +7,7 @@ import {
     Star, Banknote, CreditCard, Activity, TrendingUp, Sparkles, Gift, Bot, 
     Edit2, Shield, Info, Plus, X, Clock, CheckCircle
 } from 'lucide-react';
-import { useStore, Customer, Appointment, Payment, Quote, Room, StaffMember, Package } from '@/lib/store';
+import { useStore, Customer, Appointment, Payment, Quote, Room, Staff, Package, CustomerBiometric, AiInsight, CustomerWallet, WalletTransaction, Coupon } from '@/lib/store';
 import BookingModal from '@/components/calendar/BookingModal';
 
 // Extracted Components
@@ -49,15 +49,15 @@ export function CustomerDetail({ customer, onClose }: CustomerDetailProps) {
     const [showBioModal, setShowBioModal] = useState(false);
     const [selectedSlot, setSelectedSlot] = useState<any>(null);
 
-    const appts = useMemo(() => (appointments || []).filter(a => a.customerId === customer.id).sort((a,b) => b.date.localeCompare(a.date)), [appointments, customer.id]);
-    const pays = useMemo(() => (payments || []).filter(p => p.customerId === customer.id).sort((a,b) => b.date.localeCompare(a.date)), [payments, customer.id]);
-    const pkgs = useMemo(() => (packages || []).filter(p => p.customerId === customer.id), [packages, customer.id]);
-    const customerQuotes = useMemo(() => (quotes || []).filter(q => q.customerId === customer.id), [quotes, customer.id]);
-    const wallet = useMemo(() => (wallets || []).find(w => w.customerId === customer.id), [wallets, customer.id]);
-    const walletTxs = useMemo(() => (walletTransactions || []).filter(tx => tx.walletId === wallet?.id), [walletTransactions, wallet?.id]);
-    const biometrics = useMemo(() => (customerBiometrics || []).filter(b => b.customerId === customer.id).sort((a,b) => b.createdAt.localeCompare(a.createdAt)), [customerBiometrics, customer.id]);
-    const insights = useMemo(() => (aiInsights || []).filter(i => i.customerId === customer.id), [aiInsights, customer.id]);
-    const totalSpent = useMemo(() => pays.reduce((s, p) => s + (p.totalAmount || 0), 0), [pays]);
+    const appts = useMemo(() => (appointments || []).filter((a: Appointment) => a.customerId === customer.id).sort((a: Appointment, b: Appointment) => b.date.localeCompare(a.date)), [appointments, customer.id]);
+    const pays = useMemo(() => (payments || []).filter((p: Payment) => p.customerId === customer.id).sort((a: Payment, b: Payment) => b.date.localeCompare(a.date)), [payments, customer.id]);
+    const pkgs = useMemo(() => (packages || []).filter((p: Package) => p.customerId === customer.id), [packages, customer.id]);
+    const customerQuotes = useMemo(() => (quotes || []).filter((q: Quote) => q.customerId === customer.id), [quotes, customer.id]);
+    const wallet = useMemo(() => (wallets || []).find((w: CustomerWallet) => w.customerId === customer.id), [wallets, customer.id]);
+    const walletTxs = useMemo(() => (walletTransactions || []).filter((tx: WalletTransaction) => tx.walletId === wallet?.id), [walletTransactions, wallet?.id]);
+    const biometrics = useMemo(() => (customerBiometrics || []).filter((b: CustomerBiometric) => b.customerId === customer.id).sort((a: CustomerBiometric, b: CustomerBiometric) => b.createdAt.localeCompare(a.createdAt)), [customerBiometrics, customer.id]);
+    const insights = useMemo(() => (aiInsights || []).filter((i: AiInsight) => i.customerId === customer.id), [aiInsights, customer.id]);
+    const totalSpent = useMemo(() => pays.reduce((s: number, p: Payment) => s + (p.totalAmount || 0), 0), [pays]);
 
     const menuItems = [
         { id: 'Detaylar', label: 'Müşteri Özeti', icon: User },
@@ -167,7 +167,7 @@ export function CustomerDetail({ customer, onClose }: CustomerDetailProps) {
                         )}
                         {activeMenu === 'Kuponlar' && (
                             <CustomerTabKuponlar 
-                                coupons={coupons.filter(c => c.customerId === customer.id)}
+                                coupons={coupons.filter((c: Coupon) => c.customerId === customer.id)}
                                 onAddCoupon={(code, value) => addCoupon({ customerId: customer.id, code, discountValue: value, discountType: 'percentage' })}
                             />
                         )}
