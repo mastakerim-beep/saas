@@ -37,14 +37,20 @@ export default async function middleware(req: NextRequest) {
     },
   });
 
-  // Get session (reads from cookie, no network call)
-  const { data: { session } } = await supabase.auth.getSession();
+  // Get user (verifies the session with the server)
+  const { data: { user } } = await supabase.auth.getUser();
+  const session = !!user;
 
-  if (!session) {
+  if (!session && !isPublicPath) {
     // Redirect unauthenticated users to login
     const loginUrl = new URL('/login', req.url);
     loginUrl.searchParams.set('redirect', pathname);
     return NextResponse.redirect(loginUrl);
+  }
+
+  // If logged in and trying to access /login, redirect to dashboard or home
+  if (session && pathname === '/login') {
+    return NextResponse.redirect(new URL('/', req.url));
   }
 
   return res;
