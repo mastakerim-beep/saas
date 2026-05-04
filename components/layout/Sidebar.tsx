@@ -128,7 +128,6 @@ export default function Sidebar() {
     } = useStore();
     const [isHovered, setIsHovered] = useState(false);
     const [isMounted, setIsMounted] = useState(false);
-    const [showBilling, setShowBilling] = useState(false);
     
     const safeLocale = (locale as 'tr' | 'en') || 'tr';
     const d = useDynamicDictionary(safeLocale, currentBusiness?.verticals || []) as any;
@@ -315,21 +314,16 @@ export default function Sidebar() {
                     <div>
                         {isHovered && <p className="px-4 text-[10px] font-black text-indigo-400 uppercase tracking-widest mb-4 opacity-50 overflow-hidden whitespace-nowrap">Sistem & Paket</p>}
                         <div className="space-y-1">
-                            {can('manage_business_settings') && (
-                                <button 
-                                    onClick={() => setShowBilling(true)}
-                                    className={`w-full flex items-center gap-4 px-6 py-4 rounded-2xl text-[13px] font-semibold transition-all duration-300 text-indigo-400 hover:bg-indigo-50/50 dark:hover:bg-indigo-950/40 hover:text-indigo-900 dark:hover:text-white`}
-                                >
-                                    <div className="flex items-center justify-center min-w-[32px] relative z-10">
-                                        <CreditCard className="w-5 h-5 text-emerald-500" />
-                                    </div>
-                                    {isHovered && (
-                                        <div className="flex-1 flex items-center justify-between overflow-hidden whitespace-nowrap relative z-10">
-                                            <span className="tracking-tight antialiased">Platform Üyelik</span>
-                                            <span className="px-2 py-[1px] bg-emerald-100 text-emerald-600 rounded-full text-[9px] font-black tracking-tighter">PREMIUM</span>
-                                        </div>
-                                    )}
-                                </button>
+                             {can('manage_business_settings') && (
+                                <SidebarItem 
+                                    isHovered={isHovered} 
+                                    pathname={pathname} 
+                                    href={getTenantLink('billing')} 
+                                    icon={CreditCard} 
+                                    label="Platform Üyelik" 
+                                    badge="PREMIUM"
+                                    colorClass="text-emerald-500"
+                                />
                             )}
                             {can('manage_business_settings') && <SidebarItem isHovered={isHovered} pathname={pathname} href={getTenantLink('system')} icon={SettingsIcon} label="Sistem Tanımlamalar" colorClass="text-indigo-600" />}
                             {can('view_audit_logs') && <SidebarItem isHovered={isHovered} pathname={pathname} href={getTenantLink('logs')} icon={Terminal} label="Kernel Log" colorClass="text-gray-900" />}
@@ -451,11 +445,6 @@ export default function Sidebar() {
                 </div>
             )}
 
-            {/* Billing Modal */}
-            <AnimatePresence>
-                {showBilling && <BillingUpgradeModal onClose={() => setShowBilling(false)} />}
-            </AnimatePresence>
         </motion.div>
-        </>
     );
 }
