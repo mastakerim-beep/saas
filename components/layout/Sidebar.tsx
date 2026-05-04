@@ -455,6 +455,7 @@ export default function Sidebar() {
             <AnimatePresence>
                 {showBilling && <BillingUpgradeModal onClose={() => setShowBilling(false)} />}
             </AnimatePresence>
+        </motion.div>
         </>
     );
 }
