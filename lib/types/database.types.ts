@@ -104,6 +104,9 @@ export interface Business {
     isManualOverride?: boolean;
     subscriptionHistory?: any[];
     verticals: string[];
+    iyzico_api_key?: string;
+    iyzico_secret_key?: string;
+    iyzico_base_url?: string;
     createdAt?: string;
 }
 

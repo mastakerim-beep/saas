@@ -105,16 +105,17 @@ export default function BillingPage() {
     };
 
     return (
-        <div className="p-6 md:p-10 max-w-[1200px] mx-auto space-y-12 pb-32 font-sans overflow-hidden">
-            <div className="text-center space-y-4 mb-12">
-                <motion.div initial={{ scale: 0.8, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="w-20 h-20 bg-indigo-600/10 rounded-full flex items-center justify-center mx-auto text-indigo-600 mb-6 border border-indigo-200">
+        <div className="p-6 md:p-10 pt-16 md:pt-24 max-w-[1200px] mx-auto space-y-12 pb-32 font-sans overflow-hidden">
+            <div className="text-center space-y-4 mb-16">
+                <motion.div initial={{ scale: 0.8, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="w-20 h-20 bg-indigo-600/10 rounded-full flex items-center justify-center mx-auto text-indigo-600 mb-6 border border-indigo-200 shadow-sm">
                     <ShieldCheck size={32} />
                 </motion.div>
-                <motion.h1 initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} className="text-4xl md:text-5xl font-black tracking-tighter text-gray-900">
+                <motion.h1 initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} className="text-4xl md:text-5xl font-black tracking-tighter text-gray-900 mb-4">
                     Abonelik & Komuta Merkezi
                 </motion.h1>
-                <p className="text-gray-500 font-bold max-w-xl mx-auto uppercase tracking-widest text-[10px]">
-                    İmparatorluğun sınırlarını belirleyin. Sovereign Katmanı ile tam uyumlu operasyonel yönetim.
+                <p className="text-gray-500 font-bold max-w-xl mx-auto uppercase tracking-[0.3em] text-[10px] leading-relaxed">
+                    İmparatorluğun sınırlarını ve egemenlik haklarını buradan yönetin. <br/>
+                    <span className="text-indigo-600">Sovereign OS v2.4</span>
                 </p>
             </div>
 
@@ -297,10 +298,18 @@ export default function BillingPage() {
                                 </div>
                             </div>
                             <button 
-                                onClick={handleUpgradeRequest}
-                                className="w-full py-5 bg-indigo-600 text-white rounded-[1.5rem] font-black flex items-center justify-center gap-2 hover:bg-indigo-500 transition-all shadow-[0_0_40px_rgba(79,70,229,0.3)] active:scale-95"
+                                onClick={isEnterprise ? undefined : handleUpgradeRequest}
+                                className={`w-full py-5 rounded-[1.5rem] font-black flex items-center justify-center gap-2 transition-all shadow-[0_0_40px_rgba(79,70,229,0.3)] active:scale-95 ${
+                                    isEnterprise 
+                                    ? 'bg-white text-black cursor-default' 
+                                    : 'bg-indigo-600 text-white hover:bg-indigo-500'
+                                }`}
                             >
-                                {pricing.label.toUpperCase()} PLANA YÜKSELT <ArrowRight size={18} />
+                                {isEnterprise ? (
+                                    <>SİSTEMİNİZ EN ÜST SEVİYEDE <CheckCircle2 size={18} /></>
+                                ) : (
+                                    <>{pricing.label.toUpperCase()} PLANA YÜKSELT <ArrowRight size={18} /></>
+                                )}
                             </button>
                         </div>
                     </div>

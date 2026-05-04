@@ -877,6 +877,55 @@ function BusinessSettingsView() {
 
     return (
         <div className="max-w-4xl mx-auto py-10 space-y-12">
+            {/* Iyzico Integration Section */}
+            <div className="bg-white p-12 rounded-[4rem] shadow-sm border border-gray-100 relative overflow-hidden">
+                <div className="flex items-center gap-8 mb-10">
+                    <div className="w-24 h-24 bg-emerald-50 text-emerald-600 rounded-[2.5rem] flex items-center justify-center shadow-inner group">
+                        <CreditCard size={48} className="group-hover:scale-110 transition-transform" />
+                    </div>
+                    <div>
+                        <h3 className="text-3xl font-black text-gray-900 uppercase italic tracking-tighter mb-2">Iyzico Entegrasyonu</h3>
+                        <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest leading-relaxed">
+                            Müşterilerinizden online ödeme alabilmek için Iyzico API anahtarlarınızı tanımlayın.
+                        </p>
+                    </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    <div className="space-y-3">
+                        <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-2">IYZICO API KEY</label>
+                        <input 
+                            type="password"
+                            placeholder="api_key_..."
+                            defaultValue={currentBusiness?.iyzico_api_key || ""}
+                            onBlur={async (e) => await updateBusiness({ iyzico_api_key: e.target.value })}
+                            className="w-full bg-gray-50 border-none rounded-2xl px-6 py-4 font-mono text-xs outline-none focus:ring-4 focus:ring-emerald-500/10 transition-all"
+                        />
+                    </div>
+                    <div className="space-y-3">
+                        <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-2">IYZICO SECRET KEY</label>
+                        <input 
+                            type="password"
+                            placeholder="secret_key_..."
+                            defaultValue={currentBusiness?.iyzico_secret_key || ""}
+                            onBlur={async (e) => await updateBusiness({ iyzico_secret_key: e.target.value })}
+                            className="w-full bg-gray-50 border-none rounded-2xl px-6 py-4 font-mono text-xs outline-none focus:ring-4 focus:ring-emerald-500/10 transition-all"
+                        />
+                    </div>
+                </div>
+
+                <div className="mt-8 p-6 bg-emerald-50/50 rounded-3xl border border-emerald-100 flex items-center gap-4">
+                    <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center text-emerald-600 shadow-sm shrink-0">
+                        <Shield size={20} />
+                    </div>
+                    <p className="text-[10px] font-bold text-emerald-800 leading-relaxed uppercase tracking-tight">
+                        Anahtarlarınız 256-bit şifreleme ile saklanır. Sadece ödeme işlemleri sırasında güvenli kanal üzerinden Iyzico sunucularına iletilir.
+                    </p>
+                </div>
+                
+                <div className="absolute -right-20 -bottom-20 w-64 h-64 bg-emerald-50 opacity-10 rounded-full pointer-events-none" />
+            </div>
+
             <div className="bg-white p-12 rounded-[4rem] shadow-sm border border-gray-100 relative overflow-hidden">
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-10">
                     <div className="flex items-center gap-8">
