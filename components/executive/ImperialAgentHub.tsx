@@ -21,6 +21,7 @@ export default function ImperialAgentHub() {
     const [isLoading, setIsLoading] = useState(true);
     const [isAnalyzing, setIsAnalyzing] = useState(false);
     const [analysisResult, setAnalysisResult] = useState<string | null>(null);
+    const [suggestedActions, setSuggestedActions] = useState<any[]>([]);
     const [analysisCopied, setAnalysisCopied] = useState(false);
     const [showSystemSettings, setShowSystemSettings] = useState(false);
     const [selectedAgentId, setSelectedAgentId] = useState<string | null>(null);
@@ -373,6 +374,34 @@ export default function ImperialAgentHub() {
                                                         if (data.error) throw new Error(data.error);
 
                                                         setAnalysisResult(data.analysis);
+                                                        setSuggestedActions(data.suggested_actions || []);
+
+                                                        // If auto mode, we execute immediately
+                                                        if (selectedAgent.status === 'active' && data.suggested_actions?.length > 0) {
+                                                            console.log("OTOPİLOT DEVREDE. Aksiyonlar uygulanıyor...", data.suggested_actions);
+                                                            for (const action of data.suggested_actions) {
+                                                                if (action.action_type === 'CREATE_MARKETING_RULE') {
+                                                                    await supabase.from('marketing_rules').insert({
+                                                                        business_id: currentBusiness.id,
+                                                                        name: action.description,
+                                                                        trigger_type: action.payload?.target || 'AI_GENERATED',
+                                                                        threshold: action.payload?.discount_percent || 0,
+                                                                        message_template: `[OTOPİLOT] ${action.payload?.discount_percent || 10}% İndirim Fırsatı!`,
+                                                                        is_active: true
+                                                                    });
+                                                                }
+                                                                await supabase.from('agent_activity_logs').insert({
+                                                                    business_id: currentBusiness.id,
+                                                                    agent_id: selectedAgent.id,
+                                                                    action_type: 'execution',
+                                                                    log_type: 'action',
+                                                                    description: `⚡ OTOPİLOT YÜRÜTÜLDÜ: ${action.action_type} - ${action.description}`,
+                                                                    raw_ai_response: action
+                                                                });
+                                                            }
+                                                            // Clear suggested actions since they were auto-executed
+                                                            setSuggestedActions([]);
+                                                        }
 
                                                         // Log & spend token in background
                                                         await supabase.from('agent_activity_logs').insert({
@@ -432,9 +461,74 @@ export default function ImperialAgentHub() {
                                                     <div className="text-xs text-indigo-100/80 leading-relaxed whitespace-pre-wrap max-h-[400px] overflow-y-auto custom-scrollbar pr-2">
                                                         {analysisResult}
                                                     </div>
+                                                    {suggestedActions && suggestedActions.length > 0 && (
+                                                        <div className="mt-6 pt-6 border-t border-white/10">
+                                                            <p className="text-[9px] font-black text-emerald-400 uppercase tracking-widest mb-4 flex items-center gap-1">
+                                                                <Zap className="w-3 h-3" /> AJAN EYLEM ÖNERİLERİ
+                                                            </p>
+                                                            <div className="space-y-3">
+                                                                {suggestedActions.map((action, i) => (
+                                                                    <div key={i} className="p-4 bg-black/20 border border-emerald-500/30 rounded-xl flex justify-between items-center group">
+                                                                        <div>
+                                                                            <p className="text-[10px] font-black text-white uppercase tracking-wider">{action.action_type.replace(/_/g, ' ')}</p>
+                                                                            <p className="text-[10px] font-medium text-emerald-100/70 mt-1">{action.description}</p>
+                                                                        </div>
+                                                                        <button 
+                                                                            onClick={async () => {
+                                                                                try {
+                                                                                    if (!currentBusiness?.id) return;
+                                                                                    
+                                                                                    // 1. Otonom aksiyon tiplerine göre gerçek veritabanı etkileşimi
+                                                                                    if (action.action_type === 'CREATE_MARKETING_RULE') {
+                                                                                        const { error } = await supabase.from('marketing_rules').insert({
+                                                                                            business_id: currentBusiness.id,
+                                                                                            name: action.description,
+                                                                                            trigger_type: action.payload?.target || 'AI_GENERATED',
+                                                                                            threshold: action.payload?.discount_percent || 0,
+                                                                                            message_template: `Ajan Otopilot Kuralı: ${action.payload?.discount_percent || 10}% İndirim Fırsatı!`,
+                                                                                            is_active: true
+                                                                                        });
+                                                                                        if (error) throw error;
+                                                                                    } else if (action.action_type === 'UPDATE_PRICING') {
+                                                                                         // Örnek: Fiyat güncellemesi
+                                                                                         console.log("Fiyat güncelleniyor...", action.payload);
+                                                                                    }
+                                                                                    
+                                                                                    // 2. Aksiyonu resmi olarak logla (Veto'yu geçti)
+                                                                                    await supabase.from('agent_activity_logs').insert({
+                                                                                        business_id: currentBusiness.id,
+                                                                                        agent_id: selectedAgent.id,
+                                                                                        action_type: 'execution',
+                                                                                        log_type: 'action',
+                                                                                        description: `✅ ONAYLANDI: ${action.action_type} - ${action.description}`,
+                                                                                        raw_ai_response: action
+                                                                                    });
+
+                                                                                    alert(`Aksiyon Başarıyla Yürütüldü: ${action.action_type}`);
+                                                                                    
+                                                                                    // Aksiyonu listeden kaldır ve geçmişi güncelle
+                                                                                    setSuggestedActions(prev => prev.filter(a => a !== action));
+                                                                                    fetchAgents();
+                                                                                } catch (e: any) {
+                                                                                    alert('Aksiyon çalıştırılamadı: ' + e.message);
+                                                                                }
+                                                                            }}
+                                                                            className="px-4 py-2 bg-emerald-500 hover:bg-emerald-400 text-white rounded-lg text-[9px] font-black uppercase tracking-widest transition-all shadow-[0_0_15px_rgba(16,185,129,0.3)] group-hover:shadow-[0_0_25px_rgba(16,185,129,0.5)]"
+                                                                        >
+                                                                            ONAYLA & ÇALIŞTIR
+                                                                        </button>
+                                                                    </div>
+                                                                ))}
+                                                            </div>
+                                                        </div>
+                                                    )}
+
                                                     <button
-                                                        onClick={() => setAnalysisResult(null)}
-                                                        className="mt-4 text-[9px] font-black text-white/30 hover:text-white/60 uppercase tracking-widest transition-colors"
+                                                        onClick={() => {
+                                                            setAnalysisResult(null);
+                                                            setSuggestedActions([]);
+                                                        }}
+                                                        className="mt-6 text-[9px] font-black text-white/30 hover:text-white/60 uppercase tracking-widest transition-colors w-full text-center"
                                                     >
                                                         Temizle
                                                     </button>

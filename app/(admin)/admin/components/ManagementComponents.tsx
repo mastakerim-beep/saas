@@ -155,7 +155,17 @@ export const EditBusinessModal = ({ biz, onClose, onUpdate, loading }: any) => {
                                     />
                                 </div>
                             </div>
-
+                            
+                            <div className="space-y-3">
+                                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1 text-emerald-400">Özel Fiyatlandırma (Override MRR)</label>
+                                <input 
+                                    type="number" 
+                                    placeholder="Global plan fiyatını ez (Boş bırakırsanız global fiyat geçerli olur)"
+                                    value={localBiz.overrideMrr || ''} 
+                                    onChange={e => setLocalBiz({...localBiz, overrideMrr: e.target.value ? parseInt(e.target.value) : null})}
+                                    className="w-full bg-emerald-500/[0.03] border border-emerald-500/30 rounded-2xl py-4 px-6 text-emerald-400 font-bold outline-none focus:border-emerald-500 transition-all placeholder:text-emerald-900/50"
+                                />
+                            </div>
                             <div className="space-y-3">
                                 <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1 flex items-center gap-2">
                                     <Calendar size={12} /> Tolerans Süresi (Grace Period)
@@ -328,6 +338,7 @@ export const EditBusinessModal = ({ biz, onClose, onUpdate, loading }: any) => {
                         onClick={() => onUpdate(biz.id, { 
                             plan: localBiz.plan, 
                             maxUsers: localBiz.maxUsers, 
+                            overrideMrr: localBiz.overrideMrr,
                             grace_period_until: localBiz.grace_period_until, 
                             is_suspended: localBiz.is_suspended,
                             suspension_reason: localBiz.suspensionReason,

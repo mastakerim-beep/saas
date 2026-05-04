@@ -32,7 +32,7 @@ export default function SuperAdminPage() {
         allNotifs, zReports, setImpersonatedBusinessId,
         logout, addBusiness, provisionBusinessUser, 
         deleteBusiness, updateBusinessStatus, clearCatalog, fetchData,
-        updateAnyBusiness
+        updateAnyBusiness, saasPlans, saasInvoices
     } = useStore();
 
     const [activeTab, setActiveTab] = useState<AdminTab>('monitor');
@@ -430,6 +430,40 @@ export default function SuperAdminPage() {
                                         <div className="p-6 rounded-2xl bg-slate-50 border border-rose-100/50">
                                             <p className="text-[9px] font-black text-rose-400 uppercase tracking-widest mb-1">MÜHÜRLÜ</p>
                                             <p className="text-3xl font-black text-rose-600">{allBusinesses.filter((b: any) => b.is_suspended).length}</p>
+                                        </div>
+                                    </div>
+
+                                    {/* SaaS Plans Management */}
+                                    <div className="mt-12">
+                                        <h3 className="text-slate-900 text-xl font-black italic uppercase tracking-tighter mb-6">SaaS Abonelik Paketleri</h3>
+                                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                            {saasPlans?.map((plan: any) => (
+                                                <div key={plan.id} className="p-6 rounded-3xl bg-white border border-indigo-100 shadow-sm hover:shadow-lg transition-shadow">
+                                                    <div className="flex justify-between items-start mb-4">
+                                                        <h4 className="text-lg font-black text-slate-900">{plan.name}</h4>
+                                                        <span className={`px-3 py-1 rounded-full text-[9px] font-black uppercase ${plan.isActive ? 'bg-emerald-50 text-emerald-600' : 'bg-rose-50 text-rose-600'}`}>
+                                                            {plan.isActive ? 'AKTİF' : 'PASİF'}
+                                                        </span>
+                                                    </div>
+                                                    <div className="space-y-2 mb-6">
+                                                        <div className="flex justify-between text-sm">
+                                                            <span className="text-slate-400 font-bold">Aylık Fiyat:</span>
+                                                            <span className="font-black text-slate-900">₺{plan.monthlyPrice.toLocaleString()}</span>
+                                                        </div>
+                                                        <div className="flex justify-between text-sm">
+                                                            <span className="text-slate-400 font-bold">Yıllık Fiyat:</span>
+                                                            <span className="font-black text-slate-900">₺{plan.yearlyPrice.toLocaleString()}</span>
+                                                        </div>
+                                                        <div className="flex justify-between text-sm">
+                                                            <span className="text-slate-400 font-bold">Max Şube:</span>
+                                                            <span className="font-black text-slate-900">{plan.maxBranches >= 999 ? 'Limitsiz' : plan.maxBranches}</span>
+                                                        </div>
+                                                    </div>
+                                                    <div className="pt-4 border-t border-slate-50 flex gap-2">
+                                                        <button className="flex-1 py-2 bg-indigo-50 text-indigo-600 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-indigo-100 transition-colors">DÜZENLE</button>
+                                                    </div>
+                                                </div>
+                                            ))}
                                         </div>
                                     </div>
                                 </div>

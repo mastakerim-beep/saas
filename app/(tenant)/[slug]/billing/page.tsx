@@ -11,42 +11,53 @@ import {
 import { motion, AnimatePresence } from "framer-motion";
 import { useState, useMemo } from "react";
 
-type BillingPeriod = 'monthly' | 'quarterly' | 'annual';
+type BillingPeriod = 'monthly' | 'annual';
 
 export default function BillingPage() {
-    const { currentBusiness, branches, allUsers } = useStore();
+    const { currentBusiness, branches, allUsers, saasPlans } = useStore();
     const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
     const [period, setPeriod] = useState<BillingPeriod>('monthly');
     const [paymentMethod, setPaymentMethod] = useState<'card' | 'manual'>('card');
     const [isProcessing, setIsProcessing] = useState(false);
 
-    // Pricing Model - Adjusted to 3,000 TL monthly base
-    const BASE_PRICE = 3000;
+    // Get Enterprise Plan from DB and apply override if set
+    const enterprisePlan = useMemo(() => {
+        const basePlan = saasPlans?.find((p: any) => p.code === 'enterprise') || {
+            name: 'Imperial Enterprise',
+            monthlyPrice: 4990,
+            yearlyPrice: 49900,
+            maxUsers: 999,
+            maxBranches: 999
+        };
+
+        if (currentBusiness?.overrideMrr) {
+             return {
+                 ...basePlan,
+                 monthlyPrice: currentBusiness.overrideMrr,
+                 yearlyPrice: currentBusiness.overrideMrr * 10
+             };
+        }
+        return basePlan;
+    }, [saasPlans, currentBusiness?.overrideMrr]);
+
     const pricing = useMemo(() => {
         switch(period) {
-            case 'quarterly':
-                return {
-                    label: '3 Aylık',
-                    price: Math.round(BASE_PRICE * 3 * 0.9), // %10 Discount
-                    monthlyEquivalent: Math.round(BASE_PRICE * 0.9),
-                    discount: '%10 İndirim'
-                };
             case 'annual':
                 return {
                     label: 'Yıllık',
-                    price: Math.round(BASE_PRICE * 12 * 0.8), // %20 Discount
-                    monthlyEquivalent: Math.round(BASE_PRICE * 0.8),
-                    discount: '%20 İndirim'
+                    price: enterprisePlan.yearlyPrice,
+                    monthlyEquivalent: Math.round(enterprisePlan.yearlyPrice / 12),
+                    discount: '%16 İndirim' // Roughly 2 months free
                 };
             default:
                 return {
                     label: 'Aylık',
-                    price: BASE_PRICE,
-                    monthlyEquivalent: BASE_PRICE,
+                    price: enterprisePlan.monthlyPrice,
+                    monthlyEquivalent: enterprisePlan.monthlyPrice,
                     discount: null
                 };
         }
-    }, [period]);
+    }, [period, enterprisePlan]);
 
     // Simulated but consistent data usage based on object counts
     const estimatedDataUsage = useMemo(() => {
@@ -110,7 +121,7 @@ export default function BillingPage() {
             {/* Period Selector */}
             <div className="flex justify-center mb-8">
                 <div className="bg-gray-100 p-1.5 rounded-[2rem] flex gap-1 border border-gray-200">
-                    {(['monthly', 'quarterly', 'annual'] as BillingPeriod[]).map((p) => (
+                    {(['monthly', 'annual'] as BillingPeriod[]).map((p) => (
                         <button
                             key={p}
                             onClick={() => setPeriod(p)}
@@ -118,10 +129,10 @@ export default function BillingPage() {
                                 period === p ? 'bg-white text-indigo-600 shadow-xl shadow-indigo-600/10' : 'text-gray-500 hover:text-gray-700'
                             }`}
                         >
-                            {p === 'monthly' ? 'Aylık' : p === 'quarterly' ? '3 Aylık' : 'Yıllık'}
-                            {p !== 'monthly' && (
+                            {p === 'monthly' ? 'Aylık' : 'Yıllık'}
+                            {p === 'annual' && (
                                 <span className="ml-2 bg-emerald-500 text-white px-2 py-0.5 rounded-full text-[8px]">
-                                    {p === 'quarterly' ? '-%10' : '-%20'}
+                                    -%16
                                 </span>
                             )}
                         </button>
@@ -255,7 +266,7 @@ export default function BillingPage() {
                                 <ShieldCheck className="w-5 h-5 text-indigo-400" />
                                 <p className="text-[10px] font-black uppercase tracking-[0.2em] text-indigo-400">ÜSTÜN EGEMENLİK</p>
                             </div>
-                            <h3 className="text-4xl font-black tracking-tighter mb-4">Aura Enterprise</h3>
+                            <h3 className="text-4xl font-black tracking-tighter mb-4">{enterprisePlan.name}</h3>
                             <p className="text-gray-400 font-bold leading-relaxed text-sm max-w-sm">
                                 Tüm sınırları kaldırın. AI analitiği, limitsiz şube ve muhafız desteğiyle gerçek gücü elinize alın.
                             </p>
@@ -318,7 +329,7 @@ export default function BillingPage() {
                                         <Clock className="w-4 h-4 text-indigo-400" />
                                         <p className="text-[10px] font-black uppercase tracking-[0.2em] text-white/50">{pricing.label} ÖDEME</p>
                                     </div>
-                                    <h2 className="text-3xl font-black tracking-tight mb-2">Aura Enterprise</h2>
+                                    <h2 className="text-3xl font-black tracking-tight mb-2">{enterprisePlan.name}</h2>
                                     <p className="text-sm text-gray-400 font-bold mb-8">Toplam Abonelik Bedeli</p>
                                     
                                     <div className="flex items-end gap-2 mb-8">

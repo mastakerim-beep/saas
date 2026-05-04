@@ -98,6 +98,8 @@ export const fetchData = async (
                         // All tenant-specific tables must use the business_id filter
                         if (table === 'businesses') {
                             q = q.eq('id', idToUse);
+                        } else if (table === 'saas_plans') {
+                            // saas_plans is a global table, no business_id filter
                         } else {
                             q = q.eq('business_id', idToUse);
                         }

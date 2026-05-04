@@ -37,10 +37,24 @@ export async function POST(req: Request) {
             İŞLETME VERİLERİ (TAM KAPSAM): ${JSON.stringify(dataContext)}
             KULLANICI ÖZEL TALİMATI: ${prompt}
             
-            Lütfen analizi şu başlıklarla sun:
-            1. ${dataContext.business.name.toUpperCase()} DURUM ÖZETİ
-            2. KRİTİK FİNANSAL VE OPERASYONEL TESPİTLER
-            3. GELİR ARTIRICI STRATEJİK ÖNERİLER
+            ÖNEMLİ: Sen otopilot yeteneği olan bir sistem ajanısın. Sadece analiz yapmakla kalmaz, aynı zamanda sistem üzerinde aksiyon alabilirsin. 
+            Eğer işletmenin yararına olacak doğrudan bir aksiyon (örneğin indirim tanımlamak, mühürleme uyarısı yapmak) görüyorsan, bunu \`suggested_actions\` dizisine ekle.
+            Şu an desteklenen Action Type'lar şunlardır:
+            - CREATE_MARKETING_RULE (Örn. payload: { "discount_percent": 15, "target": "NEW_CUSTOMER" })
+            - UPDATE_PRICING (Örn. payload: { "service_id": "...", "new_price": 500 })
+            
+            YANITINI SADECE VE SADECE GEÇERLİ BİR JSON OLARAK VER. BAŞKA HİÇBİR METİN VEYA MARKDOWN KULLANMA.
+            BEKLENEN JSON FORMATI:
+            {
+              "analysis": "1. DURUM ÖZETİ\\n2. TESPİTLER\\n3. ÖNERİLER şeklinde markdown formatında detaylı metin.",
+              "suggested_actions": [
+                {
+                  "action_type": "CREATE_MARKETING_RULE",
+                  "description": "Sadık müşteriler için %10 indirim kuralı oluştur",
+                  "payload": { "discount_percent": 10, "target": "loyal_customers" }
+                }
+              ]
+            }
         `;
 
         const genAI = new GoogleGenerativeAI(apiKey);
@@ -59,7 +73,12 @@ export async function POST(req: Request) {
         for (const modelName of modelsToTry) {
             try {
                 console.log(`[AI-AGENT] Attempting analysis with ${modelName}...`);
-                const model = genAI.getGenerativeModel({ model: modelName });
+                const model = genAI.getGenerativeModel({ 
+                    model: modelName,
+                    generationConfig: {
+                        responseMimeType: "application/json",
+                    }
+                });
                 const result = await model.generateContent(systemPrompt);
                 const response = await result.response;
                 analysisText = response.text();
@@ -78,7 +97,18 @@ export async function POST(req: Request) {
             throw new Error(`Google API Modelleri ile bağlantı kurulamadı. Son hata: ${lastError}`);
         }
 
-        return NextResponse.json({ analysis: analysisText });
+        let parsedData: any = { analysis: analysisText, suggested_actions: [] };
+        try {
+            // Strip any markdown code block formatting if returned
+            const cleanJsonStr = analysisText.replace(/```json/g, '').replace(/```/g, '').trim();
+            parsedData = JSON.parse(cleanJsonStr);
+        } catch (parseError) {
+            console.error("AI Yanıtı JSON Parse Hatası:", parseError);
+            // Fallback: If not valid JSON, treat it as pure markdown analysis
+            parsedData = { analysis: analysisText, suggested_actions: [] };
+        }
+
+        return NextResponse.json(parsedData);
     } catch (error: any) {
         console.error("[AI-AGENT] CRITICAL ERROR:", error.message);
         return NextResponse.json({ 
