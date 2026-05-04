@@ -176,7 +176,6 @@ export default function Sidebar() {
 
 
     return (
-        <>
         <motion.div 
             onMouseEnter={() => setIsHovered(true)}
             onMouseLeave={() => setIsHovered(false)}
