@@ -177,6 +177,7 @@ export default function Sidebar() {
 
 
     return (
+        <>
         <motion.div 
             onMouseEnter={() => setIsHovered(true)}
             onMouseLeave={() => setIsHovered(false)}
@@ -454,6 +455,6 @@ export default function Sidebar() {
             <AnimatePresence>
                 {showBilling && <BillingUpgradeModal onClose={() => setShowBilling(false)} />}
             </AnimatePresence>
-        </motion.div>
+        </>
     );
 }

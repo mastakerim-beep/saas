@@ -65,12 +65,12 @@ export function BillingUpgradeModal({ onClose }: BillingUpgradeModalProps) {
         <motion.div 
             initial={{ opacity: 0 }} 
             animate={{ opacity: 1 }} 
-            className="fixed inset-0 bg-black/60 backdrop-blur-xl z-[3000] flex items-center justify-center p-4"
+            className="fixed inset-0 bg-black/60 backdrop-blur-xl z-[3000] flex items-center justify-center p-4 md:p-8"
         >
             <motion.div 
-                initial={{ y: 50, scale: 0.9 }} 
-                animate={{ y: 0, scale: 1 }} 
-                className="bg-white rounded-[4rem] shadow-2xl w-full max-w-5xl overflow-hidden border border-white/20"
+                initial={{ y: 50, scale: 0.9, opacity: 0 }} 
+                animate={{ y: 0, scale: 1, opacity: 1 }} 
+                className="bg-white rounded-[2rem] md:rounded-[4rem] shadow-2xl w-full max-w-5xl max-h-[90vh] overflow-y-auto border border-white/20 relative"
             >
                 <div className="flex items-center justify-between px-12 pt-12 pb-8 border-b border-gray-50">
                     <div>
