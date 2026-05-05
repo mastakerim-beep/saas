@@ -96,8 +96,8 @@ export default function ClientWrapper({ children }: { children: React.ReactNode 
     useEffect(() => {
         if (!isMounted) return;
 
-        // FAST TRACK: If we are on a public path, or login path without a user, unlock immediately
-        if (isPublicPath || (isLoginPath && !currentUser)) {
+        // FAST TRACK: If we are on a login or public path, unlock immediately
+        if (isLoginPath || isPublicPath) {
             setIsChecking(false);
             return;
         }

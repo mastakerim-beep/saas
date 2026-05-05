@@ -55,9 +55,5 @@ CREATE POLICY "webhook_events_admin_policy" ON webhook_events
 DROP POLICY IF EXISTS "app_users_admin_read_all" ON app_users;
 CREATE POLICY "app_users_admin_read_all" ON app_users
     FOR SELECT USING (
-        EXISTS (
-            SELECT 1 FROM app_users 
-            WHERE app_users.id = auth.uid() 
-            AND app_users.role = 'SaaS_Owner'
-        )
+        get_my_role() = 'SaaS_Owner'
     );
