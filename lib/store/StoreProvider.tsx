@@ -643,7 +643,7 @@ const StoreOrchestrator = ({ children }: { children: ReactNode }) => {
                 saasPlans: data.saasPlans || [],
                 saasInvoices: data.saasInvoices || [],
             }}>
-                {(!auth.isInitialized || (syncStatus === 'syncing' && !biz.currentTenant && !auth.currentUser)) ? (
+                {!auth.isInitialized ? (
                     <div className="fixed inset-0 z-[1000] bg-[#020210] flex flex-col items-center justify-center">
                         <div className="w-24 h-24 rounded-3xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center mb-8 shadow-2xl shadow-indigo-500/20 animate-pulse">
                             <Sparkles className="w-12 h-12 text-white" />
