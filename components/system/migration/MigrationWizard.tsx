@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { Upload, CheckCircle2, AlertCircle, ArrowRight, Loader2, FileSpreadsheet, Ghost } from 'lucide-react';
-import * as XLSX from 'xlsx';
+// import * as XLSX from 'xlsx'; // Fixed static import for stability
 import { MigrationEngine, MigrationItem, MigrationHealthReport } from '@/lib/migration/engine';
 import { useBusiness } from '@/lib/store/BusinessContext';
 
@@ -19,9 +19,12 @@ export const MigrationWizard: React.FC = () => {
     const [isLoading, setIsLoading] = useState(false);
 
     // Adım 1: Dosya Okuma
-    const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (!file) return;
+
+        // Dynamically import XLSX to avoid build-time errors
+        const XLSX = await import('xlsx');
 
         const reader = new FileReader();
         reader.onload = (evt) => {

@@ -22,7 +22,10 @@ export default function UsersPage() {
     const [selectedTab, setSelectedTab] = useState<'users' | 'branches' | 'permissions'>('users');
     const [searchQuery, setSearchQuery] = useState('');
     const [isAddBranchModalOpen, setIsAddBranchModalOpen] = useState(false);
+    const [isAddUserModalOpen, setIsAddUserModalOpen] = useState(false);
     const [newBranchData, setNewBranchData] = useState({ name: '', address: '', phone: '' });
+    const [newUserData, setNewUserData] = useState({ name: '', email: '', password: '', role: 'Staff' });
+    const [isSavingUser, setIsSavingUser] = useState(false);
 
     // Filtered Data
     const filteredUsers = useMemo(() => {
@@ -53,6 +56,40 @@ export default function UsersPage() {
         setIsAddBranchModalOpen(false);
     };
 
+    const handleAddUser = async () => {
+        if (!newUserData.email || !newUserData.password || !newUserData.name) {
+            alert('Lütfen tüm alanları doldurun.');
+            return;
+        }
+        
+        setIsSavingUser(true);
+        try {
+            const { data: { session } } = await (await import('@/lib/supabase')).supabase.auth.getSession();
+            const res = await fetch('/api/business/provision-staff', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${session?.access_token}`
+                },
+                body: JSON.stringify(newUserData)
+            });
+            const result = await res.json();
+            if (result.success) {
+                alert('Kullanıcı başarıyla oluşturuldu.');
+                setIsAddUserModalOpen(false);
+                setNewUserData({ name: '', email: '', password: '', role: 'Staff' });
+                // Refresh data
+                window.location.reload();
+            } else {
+                alert('Hata: ' + result.error);
+            }
+        } catch (err) {
+            alert('Bir hata oluştu.');
+        } finally {
+            setIsSavingUser(false);
+        }
+    };
+
     return (
         <div className="p-6 md:p-10 max-w-[1400px] mx-auto space-y-10 pb-32 font-sans">
             {/* Header Section */}
@@ -75,6 +112,14 @@ export default function UsersPage() {
                             className="w-full pl-11 pr-4 py-3.5 bg-white border border-gray-100 rounded-2xl text-sm font-bold outline-none focus:ring-2 focus:ring-indigo-500/10 focus:border-indigo-500 transition-all shadow-sm"
                         />
                     </div>
+                    {selectedTab === 'users' && (
+                        <button 
+                            onClick={() => setIsAddUserModalOpen(true)}
+                            className="bg-black text-white px-6 py-3.5 rounded-2xl font-black text-sm flex items-center gap-3 hover:bg-gray-800 transition shadow-xl"
+                        >
+                            <Plus className="w-5 h-5"/> Kullanıcı Ekle
+                        </button>
+                    )}
                     {selectedTab === 'branches' && (
                         <button 
                             disabled={branches.length >= (currentBusiness?.maxBranches || 1)}
@@ -332,6 +377,74 @@ export default function UsersPage() {
                                 className="w-full bg-black text-white py-5 rounded-[1.5rem] font-black text-sm shadow-xl hover:bg-gray-800 transition active:scale-95 flex items-center justify-center gap-3"
                             >
                                 <CheckCircle2 size={20}/> Şubeyi Oluştur ve Aktif Et
+                            </button>
+                        </motion.div>
+                    </div>
+                )}
+            </AnimatePresence>
+            {/* Add User Modal */}
+            <AnimatePresence>
+                {isAddUserModalOpen && (
+                    <div className="fixed inset-0 z-[1000] flex items-center justify-center p-6 bg-black/40 backdrop-blur-md">
+                        <motion.div 
+                            initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }}
+                            className="bg-white rounded-[3rem] p-10 max-w-lg w-full shadow-2xl space-y-8"
+                        >
+                            <div className="flex justify-between items-center">
+                                <h3 className="text-2xl font-black text-gray-900 tracking-tight">Yeni Kullanıcı Tanımla</h3>
+                                <button onClick={() => setIsAddUserModalOpen(false)} className="p-2 hover:bg-gray-50 rounded-xl transition-colors"><Plus className="w-6 h-6 rotate-45 text-gray-400"/></button>
+                            </div>
+
+                            <div className="space-y-6">
+                                <div className="space-y-2">
+                                    <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 ml-1">Tam İsim</label>
+                                    <input 
+                                        type="text" 
+                                        placeholder="Örn: Ahmet Yılmaz" 
+                                        value={newUserData.name} 
+                                        onChange={e => setNewUserData({...newUserData, name: e.target.value})}
+                                        className="w-full px-6 py-4 bg-gray-50 border border-gray-100 rounded-2xl font-bold text-sm outline-none focus:ring-2 focus:ring-indigo-500/10 focus:border-indigo-500"
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 ml-1">E-posta Adresi</label>
+                                    <input 
+                                        type="email" 
+                                        placeholder="ahmet@isletme.com" 
+                                        value={newUserData.email} 
+                                        onChange={e => setNewUserData({...newUserData, email: e.target.value})}
+                                        className="w-full px-6 py-4 bg-gray-50 border border-gray-100 rounded-2xl font-bold text-sm outline-none focus:ring-2 focus:ring-indigo-500/10 focus:border-indigo-500"
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 ml-1">Şifre</label>
+                                    <input 
+                                        type="password" 
+                                        placeholder="••••••••" 
+                                        value={newUserData.password} 
+                                        onChange={e => setNewUserData({...newUserData, password: e.target.value})}
+                                        className="w-full px-6 py-4 bg-gray-50 border border-gray-100 rounded-2xl font-bold text-sm outline-none focus:ring-2 focus:ring-indigo-500/10 focus:border-indigo-500"
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 ml-1">Rol</label>
+                                    <select 
+                                        value={newUserData.role} 
+                                        onChange={e => setNewUserData({...newUserData, role: e.target.value})}
+                                        className="w-full px-6 py-4 bg-gray-50 border border-gray-100 rounded-2xl font-bold text-sm outline-none focus:ring-2 focus:ring-indigo-500/10 focus:border-indigo-500 appearance-none"
+                                    >
+                                        <option value="Staff">Personel (Staff)</option>
+                                        <option value="Manager">Yönetici (Manager)</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <button 
+                                disabled={isSavingUser}
+                                onClick={handleAddUser}
+                                className="w-full bg-black text-white py-5 rounded-[1.5rem] font-black text-sm shadow-xl hover:bg-gray-800 transition active:scale-95 flex items-center justify-center gap-3 disabled:opacity-50"
+                            >
+                                {isSavingUser ? 'Oluşturuluyor...' : <><CheckCircle2 size={20}/> Kullanıcıyı Oluştur</>}
                             </button>
                         </motion.div>
                     </div>

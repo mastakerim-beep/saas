@@ -7,7 +7,7 @@ import {
     ChevronRight, ArrowRight, Table, Settings2, Zap, ShieldCheck,
     RefreshCw, Search, Filter, Database, Users
 } from 'lucide-react';
-import * as XLSX from 'xlsx';
+// import * as XLSX from 'xlsx'; // Fixed static import for system stability
 import { useStore } from '@/lib/store';
 
 interface DataImportWizardProps {
@@ -90,10 +90,13 @@ export default function DataImportWizard({ onClose, type }: DataImportWizardProp
         ]
     }[type];
 
-    const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (!file) return;
         setFile(file);
+
+        // Dynamically import XLSX to avoid build-time errors
+        const XLSX = await import('xlsx');
 
         const reader = new FileReader();
         reader.onload = (evt) => {

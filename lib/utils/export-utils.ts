@@ -1,4 +1,4 @@
-import * as XLSX from 'xlsx';
+// import * as XLSX from 'xlsx'; // Remove static import to fix bundling issues
 import { saveAs } from 'file-saver';
 import { jsPDF } from 'jspdf';
 import 'jspdf-autotable';
@@ -9,7 +9,10 @@ import 'jspdf-autotable';
  * @param filename Dosya adı (uzantısız)
  * @param sheetName Sayfa adı
  */
-export const exportToExcel = (data: any[], filename: string, sheetName: string = 'Veri') => {
+export const exportToExcel = async (data: any[], filename: string, sheetName: string = 'Veri') => {
+    // Dynamically import XLSX to avoid build-time errors
+    const XLSX = await import('xlsx');
+    
     // Veriyi çalışma sayfasına dönüştür
     const worksheet = XLSX.utils.json_to_sheet(data);
 
