@@ -64,7 +64,7 @@ BEGIN
     jsonb_build_object(
       'business_id', NEW.business_id,
       'role', NEW.role,
-      'full_name', NEW.full_name
+      'full_name', NEW.name -- Tablodaki gerçek kolon adı 'name' olarak güncellendi
     )
   WHERE id = NEW.id;
   RETURN NEW;
@@ -73,10 +73,10 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 
 DROP TRIGGER IF EXISTS trg_sync_app_user_metadata ON app_users;
 CREATE TRIGGER trg_sync_app_user_metadata
-AFTER INSERT OR UPDATE OF business_id, role, full_name ON app_users
+AFTER INSERT OR UPDATE OF business_id, role, name ON app_users
 FOR EACH ROW EXECUTE FUNCTION sync_app_user_to_metadata();
 
--- Mevcut tüm kullanıcıları bir kez senkronize edelim (Hız hemen devreye girsin)
+-- Mevcut tüm kullanıcıları bir kez senkronize edelim
 DO $$
 DECLARE
   r RECORD;
@@ -88,7 +88,7 @@ BEGIN
       jsonb_build_object(
         'business_id', r.business_id,
         'role', r.role,
-        'full_name', r.full_name
+        'full_name', r.name -- Burası da güncellendi
       )
     WHERE id = r.id;
   END LOOP;
