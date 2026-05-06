@@ -113,7 +113,20 @@ export const dictionaryData = {
         build_future: "İşletmenizin geleceğini inşa edin",
         daily_target: "Günlük Ciro Hedefi",
         cancel: "Vazgeç",
-        save: "Kaydet"
+        save: "Kaydet",
+
+        // Header
+        system_audit: "Sistem Denetim Merkezi",
+        live: "CANLI",
+        no_violations: "Sistemde herhangi bir operasyonel ihlal bulunamadı.",
+        examine_resolve: "İncele / Çöz",
+        branch_switcher: "Şube Değiştirici",
+        currently: "Şu anki",
+        all_branches: "Tüm Şubeler",
+        profile_settings: "Profil Ayarları",
+        change_password: "Şifre Değiştir",
+        business_info: "İşletme Bilgileri",
+        secure_logout: "Güvenli Çıkış"
     },
     en: {
         dashboard: "Dashboard",

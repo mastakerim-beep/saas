@@ -151,6 +151,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             return null;
         }
         setCurrentUser(appUser);
+        setIsInitialized(true); // CRITICAL: Unlock immediately after login
         return appUser;
     };
 
