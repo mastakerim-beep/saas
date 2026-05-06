@@ -59,12 +59,12 @@ CREATE OR REPLACE FUNCTION sync_app_user_to_metadata()
 RETURNS TRIGGER AS $$
 BEGIN
   UPDATE auth.users
-  SET raw_user_metadata = 
-    coalesce(raw_user_metadata, '{}'::jsonb) || 
+  SET raw_user_meta_data = 
+    coalesce(raw_user_meta_data, '{}'::jsonb) || 
     jsonb_build_object(
       'business_id', NEW.business_id,
       'role', NEW.role,
-      'full_name', NEW.name -- Tablodaki gerçek kolon adı 'name' olarak güncellendi
+      'full_name', NEW.name
     )
   WHERE id = NEW.id;
   RETURN NEW;
@@ -83,12 +83,12 @@ DECLARE
 BEGIN
   FOR r IN SELECT * FROM app_users LOOP
     UPDATE auth.users
-    SET raw_user_metadata = 
-      coalesce(raw_user_metadata, '{}'::jsonb) || 
+    SET raw_user_meta_data = 
+      coalesce(raw_user_meta_data, '{}'::jsonb) || 
       jsonb_build_object(
         'business_id', r.business_id,
         'role', r.role,
-        'full_name', r.name -- Burası da güncellendi
+        'full_name', r.name
       )
     WHERE id = r.id;
   END LOOP;
