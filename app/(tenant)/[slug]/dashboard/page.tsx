@@ -21,7 +21,7 @@ export default function Dashboard() {
     const { 
         appointments, payments, staffMembers, customers, debts, aiInsights, 
         currentUser, currentBusiness, updateBusiness, can, rates, allLogs,
-        addLog, locale
+        addLog, locale, customerMemberships
     } = useStore();
     const d = useDynamicDictionary(locale as any, currentBusiness?.verticals || []) as any;
     const [isEndOfDayOpen, setIsEndOfDayOpen] = useState(false);
@@ -247,12 +247,54 @@ export default function Dashboard() {
                         {pendingAppointments} <span className="text-lg font-bold text-gray-300 tracking-normal">{currentBusiness?.verticals?.includes('clinic') ? d.unit_patient : d.unit_appointment}</span>
                     </h3>
                     <div className="mt-4 flex -space-x-2">
-                        {[1,2,3].map(i => <div key={i} className="w-6 h-6 rounded-full bg-gray-100 border-2 border-white flex items-center justify-center text-[8px] font-black text-gray-400">?</div>)}
+                        {appointments.filter((a: any) => a.date === today && a.status === 'arrived').slice(0, 3).map((a: any, i: number) => (
+                            <div key={i} className="w-8 h-8 rounded-full bg-indigo-50 border-2 border-white flex items-center justify-center text-[10px] font-black text-indigo-600 shadow-sm" title={a.customerName}>
+                                {a.customerName?.charAt(0)}
+                            </div>
+                        ))}
+                        {appointments.filter((a: any) => a.date === today && a.status === 'arrived').length > 3 && (
+                            <div className="w-8 h-8 rounded-full bg-gray-100 border-2 border-white flex items-center justify-center text-[8px] font-black text-gray-400">
+                                +{appointments.filter((a: any) => a.date === today && a.status === 'arrived').length - 3}
+                            </div>
+                        )}
                         <div className="pl-4 text-[10px] text-gray-400 font-bold flex items-center">
                             {currentBusiness?.verticals?.includes('clinic') ? d.waiting_triage : d.waiting_prep}
                         </div>
                     </div>
                 </motion.div>
+
+                {currentBusiness?.verticals?.includes('fitness') ? (
+                    <motion.div variants={itemVariants} className="card-apple p-6 group bg-white/40 backdrop-blur-xl border-white/60">
+                         <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Aktif Üyelikler</p>
+                         <h3 className="text-3xl font-black text-gray-900 dark:text-white tracking-tighter">
+                            {customerMemberships.filter((m: any) => m.status === 'active').length} <span className="text-lg font-bold text-gray-300 tracking-normal">Üye</span>
+                         </h3>
+                         <div className="mt-4 inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[10px] font-black uppercase tracking-tighter bg-orange-50 text-orange-600">
+                            <TrendingUp className="w-3 h-3" /> +4 Yeni (Bu Hafta)
+                         </div>
+                    </motion.div>
+                ) : currentBusiness?.verticals?.includes('clinic') ? (
+                    <motion.div variants={itemVariants} className="card-apple p-6 group bg-white/40 backdrop-blur-xl border-white/60">
+                         <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Tamamlanan Vizite</p>
+                         <h3 className="text-3xl font-black text-gray-900 dark:text-white tracking-tighter">
+                            {appointments.filter((a: any) => a.date === today && a.status === 'completed').length} / {appointments.filter((a: any) => a.date === today).length}
+                         </h3>
+                         <div className="mt-4 w-full h-1 bg-gray-100 rounded-full overflow-hidden">
+                            <div 
+                                className="h-full bg-emerald-500" 
+                                style={{ width: `${(appointments.filter((a: any) => a.date === today && a.status === 'completed').length / (appointments.filter((a: any) => a.date === today).length || 1)) * 100}%` }} 
+                            />
+                         </div>
+                    </motion.div>
+                ) : (
+                    <motion.div variants={itemVariants} className="card-apple p-6 group bg-white/40 backdrop-blur-xl border-white/60">
+                        <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Aura Score</p>
+                        <h3 className="text-3xl font-black text-gray-900 dark:text-white tracking-tighter">9.2 <span className="text-lg font-bold text-gray-300 tracking-normal">/10</span></h3>
+                        <div className="mt-4 flex gap-1">
+                            {[1,2,3,4,5].map(i => <Star key={i} size={12} className="text-yellow-400 fill-yellow-400" />)}
+                        </div>
+                    </motion.div>
+                )}
 
 
                 <motion.div 

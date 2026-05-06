@@ -12,6 +12,14 @@ const inter = Inter({
 export const metadata: Metadata = {
   title: "Aura Spa ERP - Premium Klinik Yönetimi",
   description: "Gelişmiş Spa, Klinik ve Salon Yönetim Sistemi",
+  manifest: "/manifest.json",
+  themeColor: "#4F46E5",
+  viewport: {
+    width: 'device-width',
+    initialScale: 1,
+    maximumScale: 1,
+    userScalable: false,
+  }
 };
 
 export default function RootLayout({

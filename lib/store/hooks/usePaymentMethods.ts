@@ -1,3 +1,5 @@
+import { NotificationService } from '@/lib/services/notification-service';
+
 export const usePaymentMethods = (deps: any) => {
     const { 
         dataRef, 
@@ -297,6 +299,22 @@ export const usePaymentMethods = (deps: any) => {
                 customerName: paymentData.customerName || 'Müşteri (Link ile)',
                 service: link.description || 'Link ile Ödeme'
             });
+
+            // 3. Trigger Notifications
+            if (checkoutResult?.success) {
+                const customer = dataRef.current.customers.find((c: any) => c.id === link.customer_id);
+                const business = bizRef.current;
+
+                if (customer?.phone) {
+                    NotificationService.sendWhatsApp({
+                        to: customer.phone,
+                        customerName: customer.name,
+                        businessName: business?.name || 'İşletme',
+                        type: 'payment_success',
+                        amount: link.amount
+                    });
+                }
+            }
 
             return checkoutResult?.success || false;
         }

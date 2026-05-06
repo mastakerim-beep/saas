@@ -7,7 +7,7 @@ import {
     LayoutDashboard, Calendar, Users, Briefcase, 
     Receipt, Wallet, Package, Bot, UserCog, LucideIcon,
     Crown, Zap, Sparkles, TrendingUp, ShieldCheck, LayoutGrid,
-    Globe, Compass, CreditCard, FileText, ChevronRight, Info, Terminal, Settings as SettingsIcon, LogOut, FileCode, Lock, Moon, Activity
+    Globe, Compass, CreditCard, FileText, ChevronRight, Info, Terminal, Settings as SettingsIcon, LogOut, FileCode, Lock, Moon, Activity, Link as LinkIcon
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useState, useEffect, memo, useMemo } from 'react';
@@ -303,6 +303,7 @@ export default function Sidebar() {
                             {can('view_cash') && <SidebarItem isHovered={isHovered} pathname={pathname} href={getTenantLink('executive')} icon={Globe} label={d.executive} badge="VIP" colorClass="text-primary" isLocked={!hasFeature(currentBusiness || {}, 'hasAdvancedAnalytics')} />}
                             {can('view_historical_finance') && <SidebarItem isHovered={isHovered} pathname={pathname} href={getTenantLink('executive/reports')} icon={FileCode} label={d.z_report} colorClass="text-indigo-500" />}
                             {can('view_cash') && <SidebarItem isHovered={isHovered} pathname={pathname} href={getTenantLink('finances/cash')} icon={Wallet} label={d.finances} colorClass="text-indigo-500" />}
+                            {can('view_cash') && <SidebarItem isHovered={isHovered} pathname={pathname} href={getTenantLink('finances/payment-links')} icon={LinkIcon} label={d.payment_links} colorClass="text-indigo-500" />}
                             {can('view_historical_finance') && <SidebarItem isHovered={isHovered} pathname={pathname} href={getTenantLink('finances')} icon={TrendingUp} label={d.analysis} colorClass="text-indigo-500" />}
                         </div>
                     </div>

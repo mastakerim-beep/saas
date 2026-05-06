@@ -5,7 +5,7 @@ import { supabase } from '@/lib/supabase';
 import { 
     Phone, ArrowRight, Star, CreditCard, Sparkles, MapPin, 
     Bell, User, Calendar as CalendarIcon, KeyRound, QrCode, 
-    ChevronRight, Clock, Plus, Activity, Pill, Weight, Ruler, ShieldCheck
+    ChevronRight, Clock, Plus, Activity, Pill, Weight, Ruler, ShieldCheck, Wallet
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
@@ -21,7 +21,8 @@ export default function PortalClient({ business }: { business: any }) {
     const [customerData, setCustomerData] = useState<any>(null);
     const [customerPackages, setCustomerPackages] = useState<any[]>([]);
     const [appointments, setAppointments] = useState<any[]>([]);
-    const [activeTab, setActiveTab] = useState<'appointments' | 'fitness' | 'clinic'>('appointments');
+    const [payments, setPayments] = useState<any[]>([]);
+    const [activeTab, setActiveTab] = useState<'appointments' | 'fitness' | 'clinic' | 'payments'>('appointments');
 
     const handleLogin = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -70,9 +71,17 @@ export default function PortalClient({ business }: { business: any }) {
                 .eq('customer_id', targetCustomer.id)
                 .order('date', { ascending: false });
 
+            // Fetch Payments
+            const { data: pays } = await (supabase as any)
+                .from('payments')
+                .select('*')
+                .eq('customerId', targetCustomer.id)
+                .order('createdAt', { ascending: false });
+
             setCustomerData(targetCustomer);
             setCustomerPackages(packages || []);
             setAppointments(appts || []);
+            setPayments(pays || []);
             setIsAuthenticated(true);
         } catch (err) {
             console.error('Portal Login Error:', err);
@@ -203,10 +212,16 @@ export default function PortalClient({ business }: { business: any }) {
                     >
                         Randevular
                     </button>
+                    <button 
+                        onClick={() => setActiveTab('payments')}
+                        className={`flex-1 min-w-[100px] py-4 rounded-[1.5rem] text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === 'payments' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-100' : 'text-gray-400 hover:bg-white/50'}`}
+                    >
+                        Ödemeler
+                    </button>
                     {isFitness && (
                         <button 
                             onClick={() => setActiveTab('fitness')}
-                            className={`flex-1 min-w-[100px] py-4 rounded-[1.5rem] text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === 'fitness' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-200' : 'text-gray-400 hover:bg-white/50'}`}
+                            className={`flex-1 min-w-[100px] py-4 rounded-[1.5rem] text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === 'fitness' ? 'bg-orange-500 text-white shadow-lg shadow-orange-100' : 'text-gray-400 hover:bg-white/50'}`}
                         >
                             Antrenman
                         </button>
@@ -310,6 +325,53 @@ export default function PortalClient({ business }: { business: any }) {
                                     </div>
                                 </section>
                             )}
+                        </motion.div>
+                    )}
+                    
+                    {activeTab === 'payments' && (
+                        <motion.div 
+                            key="tab-payments"
+                            initial={{ opacity: 0, y: 10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, y: -10 }}
+                            className="space-y-10"
+                        >
+                             <div className="bg-indigo-950 p-8 rounded-[3.5rem] text-white shadow-2xl relative overflow-hidden">
+                                <div className="absolute top-0 right-0 p-8 opacity-10">
+                                    <CreditCard size={100} />
+                                </div>
+                                <p className="text-[10px] font-black uppercase tracking-widest text-indigo-300 mb-2">Harılama Özeti</p>
+                                <h3 className="text-4xl font-black tracking-tighter italic">
+                                    ₺{payments.reduce((s, p) => s + (p.totalAmount || 0), 0).toLocaleString('tr-TR')}
+                                </h3>
+                                <p className="text-[10px] font-bold text-indigo-400/60 mt-2 uppercase tracking-widest">Toplam İşlem Hacmi</p>
+                             </div>
+
+                             <div className="space-y-4">
+                                <h3 className="text-sm font-black text-gray-900 mb-5 px-2 tracking-tight uppercase">İşlem Geçmişi</h3>
+                                {payments.length > 0 ? payments.map((pay: any, i: number) => (
+                                    <div key={i} className="bg-white p-6 rounded-[2.5rem] border border-gray-50 shadow-sm flex justify-between items-center group hover:border-indigo-100 transition-all">
+                                        <div className="flex items-center gap-4">
+                                            <div className="w-12 h-12 bg-gray-50 rounded-2xl flex items-center justify-center text-gray-400 group-hover:text-indigo-600 transition-colors">
+                                                <Wallet size={20} />
+                                            </div>
+                                            <div>
+                                                <p className="text-xs font-black text-gray-900 tracking-tight uppercase">{pay.serviceName || 'Hizmet Ödemesi'}</p>
+                                                <p className="text-[9px] font-bold text-gray-400 uppercase">{new Date(pay.createdAt).toLocaleDateString('tr-TR')}</p>
+                                            </div>
+                                        </div>
+                                        <div className="text-right">
+                                            <p className="text-sm font-black text-gray-900">₺{pay.totalAmount?.toLocaleString('tr-TR')}</p>
+                                            <p className="text-[8px] font-bold text-emerald-500 uppercase">Tamamlandı</p>
+                                        </div>
+                                    </div>
+                                )) : (
+                                    <div className="py-20 text-center opacity-30">
+                                        <CreditCard size={40} className="mx-auto mb-4" />
+                                        <p className="text-[10px] font-black uppercase tracking-widest">İşlem kaydı bulunamadı</p>
+                                    </div>
+                                )}
+                             </div>
                         </motion.div>
                     )}
 
