@@ -9,13 +9,15 @@ import { useState } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import GlobalSearch from "./GlobalSearch";
+import { useDynamicDictionary } from "@/lib/i18n/dict";
 
 export default function Header() {
     const { 
         currentUser, currentBusiness, currentBranch, branches, 
         isOnline, syncStatus, logout, setCurrentBranch, fetchData,
-        runImperialAudit
+        runImperialAudit, locale
     } = useStore();
+    const d = useDynamicDictionary(locale as any, currentBusiness?.verticals || []) as any;
     const router = useRouter();
     const params = useParams();
     const slug = params.slug;
@@ -66,10 +68,10 @@ export default function Header() {
                                 <div className="flex items-center justify-between mb-6">
                                     <div>
                                         <h3 className="font-black text-gray-900 leading-none">Imperial Audit</h3>
-                                        <p className="text-[10px] font-black text-indigo-400 uppercase tracking-widest mt-1">Sistem Denetim Merkezi</p>
+                                        <p className="text-[10px] font-black text-indigo-400 uppercase tracking-widest mt-1">{d.system_audit}</p>
                                     </div>
                                     <div className="px-3 py-1 bg-indigo-50 text-indigo-600 rounded-full text-[10px] font-black uppercase tracking-tighter">
-                                        CANLI
+                                        {d.live}
                                     </div>
                                 </div>
 
@@ -77,7 +79,7 @@ export default function Header() {
                                     {auditAlerts.length === 0 ? (
                                         <div className="py-10 text-center opacity-40 italic flex flex-col items-center">
                                             <ShieldCheck className="w-12 h-12 mb-2 text-emerald-500" />
-                                            <p className="text-sm font-bold">Sistemde herhangi bir operasyonel ihlal bulunmuyor.</p>
+                                            <p className="text-sm font-bold">{d.no_violations}</p>
                                         </div>
                                     ) : (
                                         auditAlerts.map((alert: any, idx: number) => (
@@ -111,7 +113,7 @@ export default function Header() {
                                                             alert.type === 'critical' ? 'text-rose-600' : 'text-indigo-600'
                                                         }`}
                                                     >
-                                                        İncele / Çöz
+                                                        {d.examine_resolve}
                                                     </button>
                                                 </div>
                                             </div>
@@ -153,8 +155,8 @@ export default function Header() {
                                 className="absolute top-16 right-0 w-80 bg-white border border-gray-100 rounded-[2.5rem] shadow-2xl p-4 z-[200] overflow-hidden"
                             >
                                 <div className="p-6 bg-gray-50 rounded-[2rem] mb-3">
-                                    <p className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mb-2 opacity-80">Şube Değiştirici</p>
-                                    <p className="text-sm font-black text-gray-900 leading-tight">Şu an: <span className="text-primary">{currentBranch?.name || 'Tüm Şubeler'}</span></p>
+                                    <p className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mb-2 opacity-80">{d.branch_switcher}</p>
+                                    <p className="text-sm font-black text-gray-900 leading-tight">{d.currently}: <span className="text-primary">{currentBranch?.name || d.all_branches}</span></p>
                                 </div>
                                 <div className="space-y-1.5 px-1 py-1">
                                     {Array.isArray(branches) && branches.map((br: any) => (
@@ -232,26 +234,26 @@ export default function Header() {
                                             onClick={() => { router.push(`/${slug}/system?tab=business`); setShowProfileMenu(false); }}
                                             className="w-full flex items-center gap-4 p-4 text-xs font-black text-gray-700 hover:bg-gray-50 rounded-3xl transition-all group"
                                         >
-                                            <UserCircle className="w-5 h-5 text-gray-400 group-hover:text-indigo-600 transition-colors" /> Profil Ayarları
+                                            <UserCircle className="w-5 h-5 text-gray-400 group-hover:text-indigo-600 transition-colors" /> {d.profile_settings}
                                         </button>
                                         <button 
                                             onClick={() => { router.push(`/${slug}/system?tab=security`); setShowProfileMenu(false); }}
                                             className="w-full flex items-center gap-4 p-4 text-xs font-black text-gray-700 hover:bg-gray-50 rounded-3xl transition-all group"
                                         >
-                                            <ShieldCheck className="w-5 h-5 text-gray-400 group-hover:text-indigo-600 transition-colors" /> Şifre Değiştir
+                                            <ShieldCheck className="w-5 h-5 text-gray-400 group-hover:text-indigo-600 transition-colors" /> {d.change_password}
                                         </button>
                                         <button 
                                             onClick={() => { router.push(`/${slug}/system?tab=business`); setShowProfileMenu(false); }}
                                             className="w-full flex items-center gap-4 p-4 text-xs font-black text-gray-700 hover:bg-gray-50 rounded-3xl transition-all group"
                                         >
-                                            <Building2 className="w-5 h-5 text-gray-400 group-hover:text-indigo-600 transition-colors" /> İşletme Bilgileri
+                                            <Building2 className="w-5 h-5 text-gray-400 group-hover:text-indigo-600 transition-colors" /> {d.business_info}
                                         </button>
                                         <div className="h-px bg-gray-100 my-2 mx-2" />
                                         <button 
                                             onClick={() => { setShowProfileMenu(false); logout(); }}
                                             className="w-full flex items-center gap-4 p-4 text-xs font-black text-red-500 hover:bg-red-50 rounded-3xl transition-all"
                                         >
-                                            <LogOut className="w-5 h-5" /> Güvenli Çıkış
+                                            <LogOut className="w-5 h-5" /> {d.secure_logout}
                                         </button>
                                     </div>
                                 </motion.div>

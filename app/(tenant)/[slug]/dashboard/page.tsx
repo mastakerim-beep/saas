@@ -15,13 +15,15 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 import EndOfDayAI from "@/components/ai/EndOfDayAI";
 import QuickSaleFlow from "@/components/checkout/QuickSaleFlow";
+import { useDynamicDictionary } from '@/lib/i18n/dict';
 
 export default function Dashboard() {
     const { 
         appointments, payments, staffMembers, customers, debts, aiInsights, 
         currentUser, currentBusiness, updateBusiness, can, rates, allLogs,
-        addLog
+        addLog, locale
     } = useStore();
+    const d = useDynamicDictionary(locale as any, currentBusiness?.verticals || []) as any;
     const [isEndOfDayOpen, setIsEndOfDayOpen] = useState(false);
     const [isTargetModalOpen, setIsTargetModalOpen] = useState(false);
     const [isQuickSaleOpen, setIsQuickSaleOpen] = useState(false);
@@ -62,10 +64,10 @@ export default function Dashboard() {
 
     const timeGreeting = useMemo(() => {
         const hour = new Date().getHours();
-        if (hour < 12) return "Günaydın";
-        if (hour < 18) return "Tünaydın";
-        return "İyi Akşamlar";
-    }, []);
+        if (hour < 12) return d.good_morning;
+        if (hour < 18) return d.good_afternoon;
+        return d.good_evening;
+    }, [d]);
 
     // Capacity Logic: Real data based
     const capacity = useMemo(() => {
@@ -111,7 +113,7 @@ export default function Dashboard() {
             });
         }
         return last7Days;
-    }, [payments]);
+    }, [payments, locale]);
 
     const churnRiskCount = customers.filter((c: any) => c.isChurnRisk).length;
     const suspiciousCount = appointments.filter((a: any) => a.status === 'completed' && a.price > 0 && !payments.some((p: any) => p.appointmentId === a.id)).length;
@@ -158,7 +160,7 @@ export default function Dashboard() {
                             <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
                             <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
                         </span>
-                        İşletmeniz şu an %{capacity} kapasiteyle çalışıyor. <span onClick={() => setIsEfficiencyOpen(true)} className="text-primary hover:underline cursor-pointer">Verimliliği gör</span>
+                        {d.capacity_msg.replace('%{capacity}', capacity.toString())} <span onClick={() => setIsEfficiencyOpen(true)} className="text-primary hover:underline cursor-pointer">{d.view_efficiency}</span>
                     </p>
                 </div>
                 
@@ -182,7 +184,7 @@ export default function Dashboard() {
                          className="h-12 px-6 bg-white border border-gray-100 rounded-2xl flex items-center justify-center gap-3 shadow-sm hover:shadow-md hover:scale-105 active:scale-95 transition-all group"
                     >
                         <Moon className="w-4 h-4 text-gray-400 group-hover:text-primary" />
-                        <span className="text-[11px] font-black uppercase tracking-widest text-gray-600">Gün Sonu</span>
+                        <span className="text-[11px] font-black uppercase tracking-widest text-gray-600">{d.end_of_day}</span>
                     </button>
                     {currentBusiness?.verticals?.includes('clinic') && (
                         <>
@@ -218,7 +220,7 @@ export default function Dashboard() {
                         className="h-12 px-6 bg-primary text-white rounded-2xl shadow-xl shadow-primary/20 flex items-center justify-center gap-3 hover:scale-105 active:scale-95 transition-all"
                     >
                         <Plus className="w-4 h-4 text-white" />
-                        <span className="text-[11px] font-black uppercase tracking-widest">Hızlı Satış</span>
+                        <span className="text-[11px] font-black uppercase tracking-widest">{d.quick_sale}</span>
                     </button>
                 </div>
             </motion.div>
@@ -229,25 +231,25 @@ export default function Dashboard() {
                     <div className="absolute top-0 right-0 p-6 opacity-0 group-hover:opacity-10 transition-opacity">
                         {dailyGrowth >= 0 ? <TrendingUp size={80} className="text-emerald-500" /> : <TrendingDown size={80} className="text-rose-500" />}
                     </div>
-                    <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Bugünkü Ciro</p>
+                    <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">{d.daily_revenue}</p>
                     <h3 className="text-3xl font-black text-gray-900 dark:text-white tracking-tighter">{formatPrice(dailyRevenue)}</h3>
                     <div className={`mt-4 inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[10px] font-black uppercase tracking-tighter ${dailyGrowth >= 0 ? 'bg-emerald-50 text-emerald-600' : 'bg-rose-50 text-rose-600'}`}>
                         {dailyGrowth >= 0 ? <ArrowUpRight className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />} 
-                        {dailyGrowth >= 0 ? '+' : ''}{dailyGrowth}% Düne Göre
+                        {dailyGrowth >= 0 ? '+' : ''}{dailyGrowth}% {d.vs_yesterday}
                     </div>
                 </motion.div>
 
                 <motion.div variants={itemVariants} className="card-apple p-6 group bg-white/40 backdrop-blur-xl border-white/60">
                     <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">
-                        {currentBusiness?.verticals?.includes('clinic') ? 'Bekleyen Vizite' : 'Bekleyen İşlem'}
+                        {d.pending_action}
                     </p>
                     <h3 className="text-3xl font-black text-gray-900 dark:text-white tracking-tighter">
-                        {pendingAppointments} <span className="text-lg font-bold text-gray-300 tracking-normal">{currentBusiness?.verticals?.includes('clinic') ? 'Hasta' : 'Randevu'}</span>
+                        {pendingAppointments} <span className="text-lg font-bold text-gray-300 tracking-normal">{currentBusiness?.verticals?.includes('clinic') ? d.unit_patient : d.unit_appointment}</span>
                     </h3>
                     <div className="mt-4 flex -space-x-2">
                         {[1,2,3].map(i => <div key={i} className="w-6 h-6 rounded-full bg-gray-100 border-2 border-white flex items-center justify-center text-[8px] font-black text-gray-400">?</div>)}
                         <div className="pl-4 text-[10px] text-gray-400 font-bold flex items-center">
-                            {currentBusiness?.verticals?.includes('clinic') ? 'Triyaj Bekliyor' : 'Hazırlık Bekliyor'}
+                            {currentBusiness?.verticals?.includes('clinic') ? d.waiting_triage : d.waiting_prep}
                         </div>
                     </div>
                 </motion.div>
@@ -262,7 +264,7 @@ export default function Dashboard() {
                         <Target size={80} />
                     </div>
                     <div className="flex justify-between items-start mb-1">
-                        <p className="text-[10px] font-black text-white/70 uppercase tracking-widest leading-none">Aylık Hedef</p>
+                        <p className="text-[10px] font-black text-white/70 uppercase tracking-widest leading-none">{d.monthly_target}</p>
                         {can('manage_business') && <Edit2 size={14} className="opacity-0 group-hover:opacity-60 transition-opacity" />}
                     </div>
                     <h3 className="text-3xl font-black text-white tracking-tighter">{formatPrice(monthlyTarget)}</h3>
@@ -270,17 +272,17 @@ export default function Dashboard() {
                         <motion.div initial={{ width: 0 }} animate={{ width: `${monthlyProgress}%` }} transition={{ duration: 1.5, delay: 0.5 }} className="h-full bg-white" />
                     </div>
                     <div className="flex justify-between items-center mt-2 text-[9px] font-black uppercase text-white/80">
-                        <span>Tamamlandı %{monthlyProgress}</span>
+                        <span>{d.completed} %{monthlyProgress}</span>
                         <Zap className="w-3 h-3 text-yellow-300 fill-yellow-300" />
                     </div>
                 </motion.div>
 
                 <motion.div variants={itemVariants} className="card-apple p-6 group bg-white/40 backdrop-blur-xl border-white/60">
-                    <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Güvenlik & Müşteri Kaybı</p>
+                    <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">{d.security_risk}</p>
                     <h3 className="text-3xl font-black text-amber-600 tracking-tighter">{suspiciousCount + churnRiskCount} <span className="text-lg font-bold text-gray-300 tracking-normal">Risk</span></h3>
                     <div className="mt-4 flex gap-2">
-                        <div className="px-3 py-1 bg-amber-50 text-amber-700 rounded-xl text-[9px] font-black uppercase">Sızıntı: {suspiciousCount}</div>
-                        <div className="px-3 py-1 bg-red-50 text-red-700 rounded-xl text-[9px] font-black uppercase">Kayıp: {churnRiskCount}</div>
+                        <div className="px-3 py-1 bg-amber-50 text-amber-700 rounded-xl text-[9px] font-black uppercase">{d.leak}: {suspiciousCount}</div>
+                        <div className="px-3 py-1 bg-red-50 text-red-700 rounded-xl text-[9px] font-black uppercase">{d.loss}: {churnRiskCount}</div>
                     </div>
                 </motion.div>
             </div>
@@ -291,12 +293,12 @@ export default function Dashboard() {
                 <motion.div variants={itemVariants} className="lg:col-span-2 card-apple p-8 md:p-10 bg-white/40 backdrop-blur-xl border-white/60">
                     <div className="flex justify-between items-center mb-10">
                         <div>
-                            <h3 className="text-xl font-black text-gray-900 dark:text-white tracking-tight">Performans Analitiği</h3>
-                            <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mt-1">İşletme Büyüme Trendi (Son 7 Gün)</p>
+                            <h3 className="text-xl font-black text-gray-900 dark:text-white tracking-tight">{d.performance_analytics}</h3>
+                            <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mt-1">{d.growth_trend}</p>
                         </div>
                         <select className="bg-gray-50 border-none rounded-xl px-4 py-2 text-[10px] font-black uppercase tracking-widest text-gray-500 outline-none cursor-pointer">
-                            <option>Haftalık</option>
-                            <option>Aylık</option>
+                            <option>{d.weekly}</option>
+                            <option>{d.monthly}</option>
                         </select>
                     </div>
                     <div className="h-[340px] w-full">
@@ -332,10 +334,10 @@ export default function Dashboard() {
                         <div className="relative z-10">
                             <div className="flex items-center gap-3 mb-6">
                                 <div className="p-2 bg-white/20 rounded-xl"><Sparkles className="w-4 h-4 text-white" /></div>
-                                <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-indigo-200">Aura AI Danışmanı</h4>
+                                <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-indigo-200">{d.ai_advisor}</h4>
                             </div>
-                            <h5 className="text-xl font-black mb-3 leading-tight">Yarın yoğun geçecek!</h5>
-                            <p className="text-indigo-100 text-xs font-semibold leading-relaxed mb-8">Sabah saatlerindeki 3 boşluk için sadık müşterilerinize otomatik indirim SMS'i gönderelim mi?</p>
+                            <h5 className="text-xl font-black mb-3 leading-tight">{d.ai_busy_tomorrow}</h5>
+                            <p className="text-indigo-100 text-xs font-semibold leading-relaxed mb-8">{d.ai_busy_msg}</p>
                             <button 
                                 onClick={async () => {
                                     setIsAutomationConfirmed(true);
@@ -346,13 +348,13 @@ export default function Dashboard() {
                                 className={`w-full py-4 ${isAutomationConfirmed ? 'bg-emerald-500' : 'bg-white'} ${isAutomationConfirmed ? 'text-white' : 'text-indigo-900'} rounded-2xl font-black text-[11px] uppercase tracking-widest hover:bg-gray-100 transition-all flex items-center justify-center gap-2 btn-premium`}
                             >
                                 {isAutomationConfirmed ? <CheckCircle2 className="w-3.5 h-3.5" /> : null}
-                                {isAutomationConfirmed ? "Kampanya Onaylandı" : "Otomasyonu Onayla"} {!isAutomationConfirmed && <ChevronRight className="w-3.5 h-3.5" />}
+                                {isAutomationConfirmed ? d.automation_confirmed : d.confirm_automation} {!isAutomationConfirmed && <ChevronRight className="w-3.5 h-3.5" />}
                             </button>
                         </div>
                    </motion.div>
 
                    <motion.div variants={itemVariants} className="card-apple p-8 bg-white/40 backdrop-blur-xl border-white/60">
-                        <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-6">Canlı Şube Hareketleri</h4>
+                        <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-6">{d.live_activity}</h4>
                         <div className="space-y-5 max-h-[350px] overflow-y-auto no-scrollbar">
                             {allLogs.slice(0, 10).map((log: any, i: number) => (
                                 <div key={i} className="flex gap-4 items-start border-b border-gray-50 pb-4 last:border-0">
@@ -363,7 +365,7 @@ export default function Dashboard() {
                                         <p className="text-[11px] font-black text-gray-900 dark:text-white leading-tight truncate">{log.action}</p>
                                         <p className="text-[10px] text-gray-400 font-bold mt-0.5 truncate">{log.customerName || 'Sistem Kararı'}</p>
                                         <div className="flex justify-between items-center mt-2">
-                                            <span className="text-[8px] font-black text-gray-300 uppercase">{new Date(log.date).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })}</span>
+                                            <span className="text-[8px] font-black text-gray-300 uppercase">{new Date(log.date).toLocaleTimeString(locale === 'tr' ? 'tr-TR' : 'en-US', { hour: '2-digit', minute: '2-digit' })}</span>
                                             <span className="text-[8px] font-black text-primary uppercase cursor-pointer hover:underline">Detay</span>
                                         </div>
                                     </div>
@@ -372,7 +374,7 @@ export default function Dashboard() {
                             {allLogs.length === 0 && (
                                 <div className="text-center py-10 opacity-30">
                                     <Clock className="w-8 h-8 mx-auto mb-2" />
-                                    <p className="text-[10px] font-black uppercase">Henüz hareket yok</p>
+                                    <p className="text-[10px] font-black uppercase">{d.no_activity}</p>
                                 </div>
                             )}
                         </div>
@@ -397,12 +399,11 @@ export default function Dashboard() {
                             exit={{ opacity: 0, scale: 0.9, y: 20 }}
                             className="bg-white rounded-[3rem] p-10 w-full max-w-md relative z-10 shadow-2xl"
                         >
-                            <h3 className="text-2xl font-black text-gray-900 dark:text-white tracking-tighter uppercase italic mb-2">Hedef Belirle</h3>
-                            <p className="text-xs font-bold text-gray-400 mb-8 uppercase tracking-widest">İşletmenizin geleceğini inşa edin</p>
-                            
+                            <h3 className="text-2xl font-black text-gray-900 dark:text-white tracking-tighter uppercase italic mb-2">{d.set_target}</h3>
+                            <p className="text-xs font-bold text-gray-400 mb-8 uppercase tracking-widest">{d.build_future}</p>
                             <div className="space-y-6">
                                 <div>
-                                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block mb-2">Günlük Ciro Hedefi</label>
+                                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block mb-2">{d.daily_target}</label>
                                     <input 
                                         type="number"
                                         defaultValue={currentBusiness?.daily_target}
@@ -412,7 +413,7 @@ export default function Dashboard() {
                                     />
                                 </div>
                                 <div>
-                                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block mb-2">Aylık Ciro Hedefi</label>
+                                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block mb-2">{d.monthly_target}</label>
                                     <input 
                                         type="number"
                                         defaultValue={currentBusiness?.monthly_target}
@@ -424,8 +425,8 @@ export default function Dashboard() {
                             </div>
 
                             <div className="flex gap-3 mt-10">
-                                <button onClick={() => setIsTargetModalOpen(false)} className="flex-1 py-4 bg-gray-50 text-gray-400 rounded-2xl font-black text-[11px] uppercase tracking-widest">Vazgeç</button>
-                                <button onClick={handleUpdateTargets} className="flex-1 py-4 bg-black text-white rounded-2xl font-black text-[11px] uppercase tracking-widest shadow-xl">Kaydet</button>
+                                <button onClick={() => setIsTargetModalOpen(false)} className="flex-1 py-4 bg-gray-50 text-gray-400 rounded-2xl font-black text-[11px] uppercase tracking-widest">{d.cancel}</button>
+                                <button onClick={handleUpdateTargets} className="flex-1 py-4 bg-black text-white rounded-2xl font-black text-[11px] uppercase tracking-widest shadow-xl">{d.save}</button>
                             </div>
                         </motion.div>
                     </div>

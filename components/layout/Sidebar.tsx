@@ -244,8 +244,8 @@ export default function Sidebar() {
                             <SidebarItem isHovered={isHovered} pathname={pathname} href={getTenantLink('dashboard')} icon={LayoutDashboard} label={d.dashboard} />
                             {can('move_appt') && <SidebarItem isHovered={isHovered} pathname={pathname} href={getTenantLink('calendar')} icon={Calendar} label={d.calendar} />}
                             {can('manage_customers') && <SidebarItem isHovered={isHovered} pathname={pathname} href={getTenantLink('customers')} icon={Users} label={d.customers} />}
-                            {can('manage_staff') && <SidebarItem isHovered={isHovered} pathname={pathname} href={getTenantLink('booking-settings')} icon={Globe} label="Portal" colorClass="text-indigo-500" />}
-                            {can('manage_staff') && <SidebarItem isHovered={isHovered} pathname={pathname} href={getTenantLink('staff')} icon={Briefcase} label="Ekip" />}
+                            {can('manage_staff') && <SidebarItem isHovered={isHovered} pathname={pathname} href={getTenantLink('booking-settings')} icon={Globe} label={d.portal} colorClass="text-indigo-500" />}
+                            {can('manage_staff') && <SidebarItem isHovered={isHovered} pathname={pathname} href={getTenantLink('staff')} icon={Briefcase} label={d.team} />}
                         </div>
                     </div>
                 )}
@@ -261,16 +261,16 @@ export default function Sidebar() {
                         <div className="space-y-1">
                             {currentBusiness.verticals.includes('fitness') && (
                                 <>
-                                    <SidebarItem isHovered={isHovered} pathname={pathname} href={getTenantLink('workouts')} icon={Activity} label="Antrenman Programları" colorClass="text-orange-500" />
-                                    <SidebarItem isHovered={isHovered} pathname={pathname} href={getTenantLink('measurements')} icon={TrendingUp} label="Vücut Ölçümleri" colorClass="text-orange-500" />
-                                    <SidebarItem isHovered={isHovered} pathname={pathname} href={getTenantLink('classes')} icon={Users} label="Grup Dersleri" colorClass="text-orange-500" />
+                                    <SidebarItem isHovered={isHovered} pathname={pathname} href={getTenantLink('workouts')} icon={Activity} label={d.workouts} colorClass="text-orange-500" />
+                                    <SidebarItem isHovered={isHovered} pathname={pathname} href={getTenantLink('measurements')} icon={TrendingUp} label={d.measurements} colorClass="text-orange-500" />
+                                    <SidebarItem isHovered={isHovered} pathname={pathname} href={getTenantLink('classes')} icon={Users} label={d.classes} colorClass="text-orange-500" />
                                 </>
                             )}
                             {currentBusiness.verticals.includes('clinic') && (
                                 <>
-                                    <SidebarItem isHovered={isHovered} pathname={pathname} href={getTenantLink('medical-records')} icon={FileText} label="Hasta Dosyaları" colorClass="text-emerald-500" />
-                                    <SidebarItem isHovered={isHovered} pathname={pathname} href={getTenantLink('prescriptions')} icon={FileCode} label="Reçeteler" colorClass="text-emerald-500" />
-                                    <SidebarItem isHovered={isHovered} pathname={pathname} href={getTenantLink('lab-results')} icon={Zap} label="Laboratuvar & Test" colorClass="text-emerald-500" />
+                                    <SidebarItem isHovered={isHovered} pathname={pathname} href={getTenantLink('medical-records')} icon={FileText} label={d.medical_records} colorClass="text-emerald-500" />
+                                    <SidebarItem isHovered={isHovered} pathname={pathname} href={getTenantLink('prescriptions')} icon={FileCode} label={d.prescriptions} colorClass="text-emerald-500" />
+                                    <SidebarItem isHovered={isHovered} pathname={pathname} href={getTenantLink('lab-results')} icon={Zap} label={d.lab_results} colorClass="text-emerald-500" />
                                 </>
                             )}
                         </div>
@@ -287,8 +287,8 @@ export default function Sidebar() {
                             </p>
                         )}
                         <div className="space-y-1">
-                            <SidebarItem isHovered={isHovered} pathname={pathname} href={getTenantLink('memberships')} icon={Crown} label="Üyelikler" badge="V2" colorClass="text-indigo-400" />
-                            {isModuleEnabled('quotes') && <SidebarItem isHovered={isHovered} pathname={pathname} href={getTenantLink('quotes')} icon={FileText} label="Teklifler" colorClass="text-indigo-400" />}
+                            <SidebarItem isHovered={isHovered} pathname={pathname} href={getTenantLink('memberships')} icon={Crown} label={d.memberships} badge="V2" colorClass="text-indigo-400" />
+                            {isModuleEnabled('quotes') && <SidebarItem isHovered={isHovered} pathname={pathname} href={getTenantLink('quotes')} icon={FileText} label={d.quotes} colorClass="text-indigo-400" />}
                             {isModuleEnabled('marketing') && <SidebarItem isHovered={isHovered} pathname={pathname} href={getTenantLink('marketing')} icon={Compass} label={d.marketing} badge="AI" colorClass="text-indigo-400" isLocked={!hasFeature(currentBusiness || {}, 'hasAI')} />}
                             {isModuleEnabled('inventory') && <SidebarItem isHovered={isHovered} pathname={pathname} href={getTenantLink('inventory')} icon={Package} label={d.inventory} />}
                         </div>
@@ -301,9 +301,9 @@ export default function Sidebar() {
                         {isHovered && <p className="px-4 text-[10px] font-black text-indigo-400 uppercase tracking-widest mb-4 opacity-50 overflow-hidden whitespace-nowrap">Finans</p>}
                         <div className="space-y-1">
                             {can('view_cash') && <SidebarItem isHovered={isHovered} pathname={pathname} href={getTenantLink('executive')} icon={Globe} label={d.executive} badge="VIP" colorClass="text-primary" isLocked={!hasFeature(currentBusiness || {}, 'hasAdvancedAnalytics')} />}
-                            {can('view_historical_finance') && <SidebarItem isHovered={isHovered} pathname={pathname} href={getTenantLink('executive/reports')} icon={FileCode} label="Z-Raporu" colorClass="text-indigo-500" />}
+                            {can('view_historical_finance') && <SidebarItem isHovered={isHovered} pathname={pathname} href={getTenantLink('executive/reports')} icon={FileCode} label={d.z_report} colorClass="text-indigo-500" />}
                             {can('view_cash') && <SidebarItem isHovered={isHovered} pathname={pathname} href={getTenantLink('finances/cash')} icon={Wallet} label={d.finances} colorClass="text-indigo-500" />}
-                            {can('view_historical_finance') && <SidebarItem isHovered={isHovered} pathname={pathname} href={getTenantLink('finances')} icon={TrendingUp} label="Analiz" colorClass="text-indigo-500" />}
+                            {can('view_historical_finance') && <SidebarItem isHovered={isHovered} pathname={pathname} href={getTenantLink('finances')} icon={TrendingUp} label={d.analysis} colorClass="text-indigo-500" />}
                         </div>
                     </div>
                 )}
@@ -319,14 +319,14 @@ export default function Sidebar() {
                                     pathname={pathname} 
                                     href={getTenantLink('billing')} 
                                     icon={CreditCard} 
-                                    label="Platform Üyelik" 
+                                    label={d.platform_membership} 
                                     badge="PREMIUM"
                                     colorClass="text-emerald-500"
                                 />
                             )}
-                            {can('manage_business_settings') && <SidebarItem isHovered={isHovered} pathname={pathname} href={getTenantLink('system')} icon={SettingsIcon} label="Sistem Tanımlamalar" colorClass="text-indigo-600" />}
-                            {can('view_audit_logs') && <SidebarItem isHovered={isHovered} pathname={pathname} href={getTenantLink('logs')} icon={Terminal} label="Kernel Log" colorClass="text-gray-900" />}
-                            {can('manage_users') && <SidebarItem isHovered={isHovered} pathname={pathname} href={getTenantLink('users')} icon={UserCog} label="Kullanıcı Yetkileri" />}
+                            {can('manage_business_settings') && <SidebarItem isHovered={isHovered} pathname={pathname} href={getTenantLink('system')} icon={SettingsIcon} label={d.system_definitions} colorClass="text-indigo-600" />}
+                            {can('view_audit_logs') && <SidebarItem isHovered={isHovered} pathname={pathname} href={getTenantLink('logs')} icon={Terminal} label={d.kernel_log} colorClass="text-gray-900" />}
+                            {can('manage_users') && <SidebarItem isHovered={isHovered} pathname={pathname} href={getTenantLink('users')} icon={UserCog} label={d.user_permissions} />}
                         </div>
                     </div>
                 )}
@@ -336,10 +336,10 @@ export default function Sidebar() {
                     <div>
                         {isHovered && <p className="px-4 text-[10px] font-black text-rose-500 uppercase tracking-widest mb-4 flex items-center gap-2 overflow-hidden whitespace-nowrap"><ShieldCheck size={14}/> Global Sistem</p>}
                         <div className="space-y-1">
-                            <SidebarItem isHovered={isHovered} pathname={pathname} href="/admin" icon={Globe} label="Komuta Merkezi" colorClass="text-rose-500" />
-                            <SidebarItem isHovered={isHovered} pathname={pathname} href="/admin#announcements" icon={Sparkles} label="Duyuru Yayını" colorClass="text-indigo-600" />
-                            <SidebarItem isHovered={isHovered} pathname={pathname} href="/admin#plans" icon={CreditCard} label="Abonelik & Fiyat" colorClass="text-indigo-600" />
-                            <SidebarItem isHovered={isHovered} pathname={pathname} href="/admin#logs" icon={Terminal} label="Sistem Terminali" colorClass="text-gray-900" />
+                            <SidebarItem isHovered={isHovered} pathname={pathname} href="/admin" icon={Globe} label={d.command_center} colorClass="text-rose-500" />
+                            <SidebarItem isHovered={isHovered} pathname={pathname} href="/admin#announcements" icon={Sparkles} label={d.announcements} colorClass="text-indigo-600" />
+                            <SidebarItem isHovered={isHovered} pathname={pathname} href="/admin#plans" icon={CreditCard} label={d.plans_pricing} colorClass="text-indigo-600" />
+                            <SidebarItem isHovered={isHovered} pathname={pathname} href="/admin#logs" icon={Terminal} label={d.system_terminal} colorClass="text-gray-900" />
                         </div>
                     </div>
                 )}
@@ -380,7 +380,12 @@ export default function Sidebar() {
                                 className="min-w-0 flex-1 overflow-hidden"
                             >
                                 <p className="text-[11px] font-black text-gray-900 dark:text-white truncate tracking-tight mb-0.5">{currentUser?.name}</p>
-                                <p className="text-[9px] text-indigo-400/80 font-black uppercase tracking-widest">{currentUser?.role?.replace('Business_Owner', 'İŞLETME SAHİBİ').replace('SaaS_Owner', 'SİSTEM SAHİBİ').replace('Branch_Manager', 'ŞUBE MÜDÜRÜ').replace('_', ' ') || ''}</p>
+                                <p className="text-[9px] text-indigo-400/80 font-black uppercase tracking-widest">
+                                    {currentUser?.role === 'Business_Owner' ? d.role_owner : 
+                                     currentUser?.role === 'SaaS_Owner' ? d.role_saas : 
+                                     currentUser?.role === 'Branch_Manager' ? d.role_manager : 
+                                     d.role_staff}
+                                </p>
                             </motion.div>
                             <div className="flex flex-col gap-2">
                                 <button 
