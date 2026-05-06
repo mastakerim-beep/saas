@@ -242,7 +242,7 @@ export default function Sidebar() {
                         {isHovered && <p className="px-4 text-[10px] font-black text-indigo-400 uppercase tracking-widest mb-4 opacity-50 overflow-hidden whitespace-nowrap">Ana Operasyon</p>}
                         <div className="space-y-1">
                             <SidebarItem isHovered={isHovered} pathname={pathname} href={getTenantLink('dashboard')} icon={LayoutDashboard} label={d.dashboard} />
-                            {can('move_appt') && <SidebarItem isHovered={isHovered} pathname={pathname} href={getTenantLink('calendar')} icon={Calendar} label={d.calendar} />}
+                            {can('manage_appointments') && <SidebarItem isHovered={isHovered} pathname={pathname} href={getTenantLink('calendar')} icon={Calendar} label={d.calendar} />}
                             {can('manage_customers') && <SidebarItem isHovered={isHovered} pathname={pathname} href={getTenantLink('customers')} icon={Users} label={d.customers} />}
                             {can('manage_staff') && <SidebarItem isHovered={isHovered} pathname={pathname} href={getTenantLink('booking-settings')} icon={Globe} label={d.portal} colorClass="text-indigo-500" />}
                             {can('manage_staff') && <SidebarItem isHovered={isHovered} pathname={pathname} href={getTenantLink('staff')} icon={Briefcase} label={d.team} />}
@@ -288,9 +288,9 @@ export default function Sidebar() {
                         )}
                         <div className="space-y-1">
                             <SidebarItem isHovered={isHovered} pathname={pathname} href={getTenantLink('memberships')} icon={Crown} label={d.memberships} badge="V2" colorClass="text-indigo-400" />
-                            {isModuleEnabled('quotes') && <SidebarItem isHovered={isHovered} pathname={pathname} href={getTenantLink('quotes')} icon={FileText} label={d.quotes} colorClass="text-indigo-400" />}
-                            {isModuleEnabled('marketing') && <SidebarItem isHovered={isHovered} pathname={pathname} href={getTenantLink('marketing')} icon={Compass} label={d.marketing} badge="AI" colorClass="text-indigo-400" isLocked={!hasFeature(currentBusiness || {}, 'hasAI')} />}
-                            {isModuleEnabled('inventory') && <SidebarItem isHovered={isHovered} pathname={pathname} href={getTenantLink('inventory')} icon={Package} label={d.inventory} />}
+                            {isModuleEnabled('quotes') && can('manage_customers') && <SidebarItem isHovered={isHovered} pathname={pathname} href={getTenantLink('quotes')} icon={FileText} label={d.quotes} colorClass="text-indigo-400" />}
+                            {isModuleEnabled('marketing') && can('view_marketing') && <SidebarItem isHovered={isHovered} pathname={pathname} href={getTenantLink('marketing')} icon={Compass} label={d.marketing} badge="AI" colorClass="text-indigo-400" isLocked={!hasFeature(currentBusiness || {}, 'hasAI')} />}
+                            {isModuleEnabled('inventory') && can('view_inventory') && <SidebarItem isHovered={isHovered} pathname={pathname} href={getTenantLink('inventory')} icon={Package} label={d.inventory} />}
                         </div>
                     </div>
                 )}
@@ -300,11 +300,11 @@ export default function Sidebar() {
                     <div>
                         {isHovered && <p className="px-4 text-[10px] font-black text-indigo-400 uppercase tracking-widest mb-4 opacity-50 overflow-hidden whitespace-nowrap">Finans</p>}
                         <div className="space-y-1">
-                            {can('view_cash') && <SidebarItem isHovered={isHovered} pathname={pathname} href={getTenantLink('executive')} icon={Globe} label={d.executive} badge="VIP" colorClass="text-primary" isLocked={!hasFeature(currentBusiness || {}, 'hasAdvancedAnalytics')} />}
-                            {can('view_historical_finance') && <SidebarItem isHovered={isHovered} pathname={pathname} href={getTenantLink('executive/reports')} icon={FileCode} label={d.z_report} colorClass="text-indigo-500" />}
-                            {can('view_cash') && <SidebarItem isHovered={isHovered} pathname={pathname} href={getTenantLink('finances/cash')} icon={Wallet} label={d.finances} colorClass="text-indigo-500" />}
-                            {can('view_cash') && <SidebarItem isHovered={isHovered} pathname={pathname} href={getTenantLink('finances/payment-links')} icon={LinkIcon} label={d.payment_links} colorClass="text-indigo-500" />}
-                            {can('view_historical_finance') && <SidebarItem isHovered={isHovered} pathname={pathname} href={getTenantLink('finances')} icon={TrendingUp} label={d.analysis} colorClass="text-indigo-500" />}
+                            {can('view_executive_summary') && <SidebarItem isHovered={isHovered} pathname={pathname} href={getTenantLink('executive')} icon={Globe} label={d.executive} badge="VIP" colorClass="text-primary" isLocked={!hasFeature(currentBusiness || {}, 'hasAdvancedAnalytics')} />}
+                            {can('view_reports') && <SidebarItem isHovered={isHovered} pathname={pathname} href={getTenantLink('executive/reports')} icon={FileCode} label={d.z_report} colorClass="text-indigo-500" />}
+                            {can('view_finances') && <SidebarItem isHovered={isHovered} pathname={pathname} href={getTenantLink('finances/cash')} icon={Wallet} label={d.finances} colorClass="text-indigo-500" />}
+                            {can('view_finances') && <SidebarItem isHovered={isHovered} pathname={pathname} href={getTenantLink('finances/payment-links')} icon={LinkIcon} label={d.payment_links} colorClass="text-indigo-500" />}
+                            {can('view_reports') && <SidebarItem isHovered={isHovered} pathname={pathname} href={getTenantLink('finances')} icon={TrendingUp} label={d.analysis} colorClass="text-indigo-500" />}
                         </div>
                     </div>
                 )}

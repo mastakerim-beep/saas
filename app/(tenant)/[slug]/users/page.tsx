@@ -7,7 +7,8 @@ import {
     Building2, Trash2, Edit3, 
     CheckCircle2, AlertCircle, Banknote, Crown, Sparkles,
     Plus, MapPin, Phone, Mail, ArrowRight,
-    Search, LayoutGrid, Settings2, ShieldAlert, Calendar
+    Search, LayoutGrid, Settings2, ShieldAlert, Calendar,
+    Package, FileCode
 } from 'lucide-react';
 import { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -263,11 +264,13 @@ export default function UsersPage() {
                                 <thead className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] bg-gray-50/50">
                                     <tr>
                                         <th className="px-10 py-8">Yetkili (Personel)</th>
-                                        <th className="px-6 py-8 text-center">Randevu Yönetimi</th>
-                                        <th className="px-6 py-8 text-center">Kasa & Finans</th>
-                                        <th className="px-6 py-8 text-center">Müşteri Data</th>
-                                        <th className="px-6 py-8 text-center">AI & Pazarlama</th>
-                                        <th className="px-6 py-8 text-center">Sistem Ayar</th>
+                                        <th className="px-6 py-8 text-center">Randevu</th>
+                                        <th className="px-6 py-8 text-center">Finans</th>
+                                        <th className="px-6 py-8 text-center">Müşteri</th>
+                                        <th className="px-6 py-8 text-center">Pazarlama</th>
+                                        <th className="px-6 py-8 text-center">Envanter</th>
+                                        <th className="px-6 py-8 text-center">Raporlar</th>
+                                        <th className="px-6 py-8 text-center">Sistem</th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-gray-50">
@@ -286,9 +289,11 @@ export default function UsersPage() {
                                             </td>
                                             {[
                                                 { id: 'manage_appointments', label: 'Randevu', icon: Calendar },
-                                                { id: 'view_executive_summary', label: 'Finans', icon: Banknote },
+                                                { id: 'view_finances', label: 'Finans', icon: Banknote },
                                                 { id: 'manage_customers', label: 'Müşteri', icon: Users },
                                                 { id: 'view_marketing', label: 'Pazarlama', icon: Sparkles },
+                                                { id: 'view_inventory', label: 'Envanter', icon: Package },
+                                                { id: 'view_reports', label: 'Raporlar', icon: FileCode },
                                                 { id: 'manage_staff', label: 'Sistem', icon: Settings2 },
                                             ].map(perm => {
                                                 const has = user.permissions.includes(perm.id) || user.permissions.includes('all');

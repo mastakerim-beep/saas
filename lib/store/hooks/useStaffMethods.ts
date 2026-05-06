@@ -40,7 +40,7 @@ export const useStaffMethods = (deps: any) => {
             if (stableMethodsRef.current?.addLog) stableMethodsRef.current.addLog('Personel Silindi', staff.name);
         },
         updateStaffPermissions: async (userId: string, perms: string[]) => {
-            await syncDb('users', 'update', { permissions: perms }, userId, activeBizIdRef.current);
+            await syncDb('app_users', 'update', { permissions: perms }, userId, activeBizIdRef.current);
         },
         addCommissionRule: async (rule: any) => {
             const id = crypto.randomUUID();
