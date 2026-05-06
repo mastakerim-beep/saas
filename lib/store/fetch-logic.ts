@@ -142,6 +142,9 @@ export const fetchData = async (
         // Fetch Core Tables First
         await Promise.allSettled(tablesInThisPhase.map(fetchTable));
 
+        // CRITICAL: Release UI Lock after Core Data is ready
+        setters.setSyncStatus('idle');
+
         // APPLY CORE DATA IMMEDIATELY
         if (dataMap.businesses) {
             const businesses = dataMap.businesses;
@@ -239,7 +242,6 @@ export const fetchData = async (
                 setters.setSaaSPlans?.(dataMap.saas_plans || []);
                 setters.setSaaSInvoices?.(dataMap.saas_invoices || []);
                 
-                setters.setSyncStatus('idle');
                 console.log("✨ [Aura Sync] Background Hydration Complete");
             });
         } else {

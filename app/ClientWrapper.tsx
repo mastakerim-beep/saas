@@ -132,7 +132,8 @@ export default function ClientWrapper({ children }: { children: React.ReactNode 
                 }
                 
                 // Unlock UI for authenticated users after sync or timeout
-                if (syncStatus === 'idle' || syncStatus === 'error') {
+                // IMPROVED: If we have a user and their business is resolved, we can unlock early
+                if (syncStatus === 'idle' || syncStatus === 'error' || (currentUser && userBiz)) {
                     setIsChecking(false);
                 }
             }
@@ -141,12 +142,13 @@ export default function ClientWrapper({ children }: { children: React.ReactNode 
         handleRouting();
 
         // Safety Timeout to prevent white/black screen hangs
+        // REDUCED: 1.5s is enough for a premium experience
         const safetyTimer = setTimeout(() => {
             if (isChecking) {
                 console.warn("⚠️ [Aura Trace] Safety Unlock triggered.");
                 setIsChecking(false);
             }
-        }, 2500);
+        }, 1500);
 
         return () => clearTimeout(safetyTimer);
     }, [isMounted, currentUser, isLoginPath, isPublicPath, isRootPath, isSaaSOwner, router, userBiz, pathname, isInitialized, isChecking, syncStatus, allBusinesses]);
