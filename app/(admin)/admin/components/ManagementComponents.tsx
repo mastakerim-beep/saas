@@ -105,82 +105,100 @@ export const EditBusinessModal = ({ biz, onClose, onUpdate, loading }: any) => {
         if (biz) setLocalBiz({ ...biz });
     }, [biz]);
 
+    // Keyboard Listener for ESC
+    useEffect(() => {
+        const handleEsc = (e: KeyboardEvent) => {
+            if (e.key === 'Escape') onClose();
+        };
+        window.addEventListener('keydown', handleEsc);
+        return () => window.removeEventListener('keydown', handleEsc);
+    }, [onClose]);
+
     if (!biz || !localBiz) return null;
 
     return (
-        <div className="fixed inset-0 z-[110] flex items-center justify-center p-6 backdrop-blur-xl bg-slate-950/60 text-left">
+        <div 
+            className="fixed inset-0 z-[120] flex items-center justify-center p-4 md:p-10 backdrop-blur-2xl bg-slate-950/80"
+            onClick={(e) => e.target === e.currentTarget && onClose()}
+        >
             <motion.div 
                 initial={{ scale: 0.95, opacity: 0, y: 20 }}
                 animate={{ scale: 1, opacity: 1, y: 0 }}
-                className="bg-[#0f111a] border border-white/5 rounded-[3rem] w-full max-w-2xl overflow-hidden shadow-[0_32px_64px_-12px_rgba(0,0,0,0.8)] relative"
+                exit={{ scale: 0.95, opacity: 0, y: 20 }}
+                className="bg-[#0a0b14] border border-white/10 rounded-[3rem] w-full max-w-4xl max-h-[85vh] overflow-hidden shadow-[0_64px_128px_-24px_rgba(0,0,0,0.9)] relative flex flex-col text-left"
             >
-                {/* Neon Background Accents */}
-                <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-600/10 blur-[100px] -z-10" />
-                
-                <div className="p-12">
-                    <div className="flex justify-between items-start mb-10">
-                        <div>
-                            <h2 className="text-white text-3xl font-black italic uppercase tracking-tighter leading-none">İşletme Yönetimi</h2>
-                            <p className="text-[10px] font-bold text-indigo-400 uppercase tracking-[0.3em] mt-3 flex items-center gap-2">
-                                <Shield size={12} /> Imperial Control: {biz.name}
-                            </p>
-                        </div>
-                        <button onClick={onClose} className="w-12 h-12 bg-white/5 hover:bg-white/10 rounded-2xl flex items-center justify-center text-slate-400 transition-all border border-white/5 group">
-                            <X size={20} className="group-hover:rotate-90 transition-transform duration-300" />
-                        </button>
+                {/* Header - Fixed */}
+                <div className="p-8 md:p-10 border-b border-white/5 flex justify-between items-center bg-white/[0.02]">
+                    <div className="space-y-2">
+                        <h2 className="text-white text-2xl md:text-3xl font-black italic uppercase tracking-tighter leading-none">İşletme Yönetimi</h2>
+                        <p className="text-[11px] font-black text-indigo-400 uppercase tracking-[0.4em] flex items-center gap-2 opacity-80">
+                            <Shield size={12} className="text-indigo-500" /> Imperial Control: {biz.name}
+                        </p>
                     </div>
+                    <button onClick={onClose} className="w-12 h-12 bg-white/5 hover:bg-white/10 rounded-2xl flex items-center justify-center text-slate-400 transition-all border border-white/10 group active:scale-95">
+                        <X size={20} className="group-hover:rotate-90 transition-transform duration-300" />
+                    </button>
+                </div>
 
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
+                {/* Content - Scrollable */}
+                <div className="p-8 md:p-10 overflow-y-auto no-scrollbar flex-1">
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 md:gap-12">
                         {/* Settings Form */}
                         <div className="space-y-8">
-                            <div className="grid grid-cols-2 gap-6">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                 <div className="space-y-3">
-                                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Abonelik Planı</label>
-                                    <select 
-                                        value={localBiz.plan || 'Basic'} 
-                                        onChange={e => setLocalBiz({...localBiz, plan: e.target.value})}
-                                        className="w-full bg-white/[0.03] border border-white/10 rounded-2xl py-4 px-6 text-white font-bold outline-none focus:border-indigo-500 transition-all appearance-none cursor-pointer"
-                                    >
-                                        <option value="Basic" className="bg-[#0f111a]">Aura Basic</option>
-                                        <option value="Aura Enterprise" className="bg-[#0f111a]">Imperial Enterprise</option>
-                                    </select>
+                                    <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest ml-1">Abonelik Planı</label>
+                                    <div className="relative">
+                                        <select 
+                                            value={localBiz.plan || 'Basic'} 
+                                            onChange={e => setLocalBiz({...localBiz, plan: e.target.value})}
+                                            className="w-full bg-white/5 border border-white/10 rounded-2xl py-4.5 px-6 text-white font-bold outline-none focus:border-indigo-500 transition-all appearance-none cursor-pointer"
+                                        >
+                                            <option value="Basic" className="bg-[#0a0b14]">Aura Basic</option>
+                                            <option value="Aura Enterprise" className="bg-[#0a0b14]">Imperial Enterprise</option>
+                                        </select>
+                                        <Zap size={14} className="absolute right-6 top-1/2 -translate-y-1/2 text-slate-600 pointer-events-none" />
+                                    </div>
                                 </div>
                                 <div className="space-y-3">
-                                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Node Limiti</label>
-                                    <input 
-                                        type="number" 
-                                        value={localBiz.maxUsers || 5} 
-                                        onChange={e => setLocalBiz({...localBiz, maxUsers: parseInt(e.target.value)})}
-                                        className="w-full bg-white/[0.03] border border-white/10 rounded-2xl py-4 px-6 text-white font-bold outline-none focus:border-indigo-500 transition-all"
-                                    />
+                                    <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest ml-1">Node Limiti</label>
+                                    <div className="relative">
+                                        <input 
+                                            type="number" 
+                                            value={localBiz.maxUsers || 5} 
+                                            onChange={e => setLocalBiz({...localBiz, maxUsers: parseInt(e.target.value)})}
+                                            className="w-full bg-white/5 border border-white/10 rounded-2xl py-4.5 px-6 text-white font-bold outline-none focus:border-indigo-500 transition-all"
+                                        />
+                                        <Users size={14} className="absolute right-6 top-1/2 -translate-y-1/2 text-slate-600" />
+                                    </div>
                                 </div>
                             </div>
                             
                             <div className="space-y-3">
-                                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1 text-emerald-400">Özel Fiyatlandırma (Override MRR)</label>
+                                <label className="text-[11px] font-black text-emerald-400 uppercase tracking-widest ml-1">Özel Fiyatlandırma (Override MRR)</label>
                                 <input 
                                     type="number" 
-                                    placeholder="Global plan fiyatını ez (Boş bırakırsanız global fiyat geçerli olur)"
+                                    placeholder="Global plan fiyatını ez (Boş = Global)"
                                     value={localBiz.overrideMrr || ''} 
                                     onChange={e => setLocalBiz({...localBiz, overrideMrr: e.target.value ? parseInt(e.target.value) : null})}
-                                    className="w-full bg-emerald-500/[0.03] border border-emerald-500/30 rounded-2xl py-4 px-6 text-emerald-400 font-bold outline-none focus:border-emerald-500 transition-all placeholder:text-emerald-900/50"
+                                    className="w-full bg-emerald-500/[0.03] border border-emerald-500/20 rounded-2xl py-5 px-6 text-emerald-400 font-bold outline-none focus:border-emerald-500 transition-all placeholder:text-emerald-900/40"
                                 />
                             </div>
                             <div className="space-y-3">
-                                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1 flex items-center gap-2">
+                                <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest ml-1 flex items-center gap-2">
                                     <Calendar size={12} /> Tolerans Süresi (Grace Period)
                                 </label>
                                 <input 
                                     type="date" 
                                     value={localBiz.grace_period_until ? localBiz.grace_period_until.split('T')[0] : ''} 
                                     onChange={e => setLocalBiz({...localBiz, grace_period_until: e.target.value})}
-                                    className="w-full bg-white/[0.03] border border-white/10 rounded-2xl py-4 px-6 text-white font-bold outline-none focus:border-indigo-500 transition-all"
+                                    className="w-full bg-white/5 border border-white/10 rounded-2xl py-4.5 px-6 text-white font-bold outline-none focus:border-indigo-500 transition-all"
                                 />
                             </div>
 
                             <div className="space-y-5">
-                                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Active Kingdoms</label>
-                                <div className="flex gap-2">
+                                <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest ml-1">Active Kingdoms</label>
+                                <div className="flex gap-3">
                                     {[
                                         { id: 'spa', label: 'SPA', color: 'bg-indigo-500' },
                                         { id: 'clinic', label: 'CLINIC', color: 'bg-emerald-500' },
@@ -196,13 +214,13 @@ export const EditBusinessModal = ({ biz, onClose, onUpdate, loading }: any) => {
                                                 if (next.length === 0) return;
                                                 setLocalBiz({ ...localBiz, verticals: next });
                                             }}
-                                            className={`flex-1 py-3 rounded-xl border transition-all text-[9px] font-black tracking-widest flex items-center justify-center gap-2 ${
+                                            className={`flex-1 py-4 rounded-xl border transition-all text-[10px] font-black tracking-[0.2em] flex items-center justify-center gap-2 ${
                                                 (localBiz.verticals || ['spa']).includes(v.id)
                                                 ? 'border-white/20 bg-white/10 text-white'
-                                                : 'border-white/5 bg-transparent text-slate-600'
+                                                : 'border-white/5 bg-transparent text-slate-600 hover:border-white/10'
                                             }`}
                                         >
-                                            <div className={`w-1.5 h-1.5 rounded-full ${v.color} ${(localBiz.verticals || ['spa']).includes(v.id) ? 'shadow-[0_0_8px_rgba(255,255,255,0.3)]' : 'opacity-20'}`} />
+                                            <div className={`w-1.5 h-1.5 rounded-full ${v.color} ${(localBiz.verticals || ['spa']).includes(v.id) ? 'shadow-[0_0_10px_rgba(255,255,255,0.4)]' : 'opacity-20'}`} />
                                             {v.label}
                                         </button>
                                     ))}
@@ -211,33 +229,33 @@ export const EditBusinessModal = ({ biz, onClose, onUpdate, loading }: any) => {
 
                             <div className="grid grid-cols-2 gap-6">
                                 <div className="space-y-3">
-                                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Ödeme Durumu</label>
+                                    <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest ml-1">Ödeme Durumu</label>
                                     <select 
                                         value={localBiz.paymentStatus || 'paid'} 
                                         onChange={e => setLocalBiz({...localBiz, paymentStatus: e.target.value})}
-                                        className="w-full bg-white/[0.03] border border-white/10 rounded-2xl py-4 px-6 text-white font-bold outline-none focus:border-indigo-500 transition-all appearance-none cursor-pointer"
+                                        className="w-full bg-white/5 border border-white/10 rounded-2xl py-4.5 px-6 text-white font-bold outline-none focus:border-indigo-500 transition-all appearance-none cursor-pointer"
                                     >
-                                        <option value="paid" className="bg-[#0f111a]">ÖDENDİ</option>
-                                        <option value="overdue" className="bg-[#0f111a]">GECİKMİŞ</option>
-                                        <option value="trial" className="bg-[#0f111a]">DENEME</option>
-                                        <option value="suspended" className="bg-[#0f111a]">KİLİTLİ</option>
+                                        <option value="paid" className="bg-[#0a0b14]">ÖDENDİ</option>
+                                        <option value="overdue" className="bg-[#0a0b14]">GECİKMİŞ</option>
+                                        <option value="trial" className="bg-[#0a0b14]">DENEME</option>
+                                        <option value="suspended" className="bg-[#0a0b14]">KİLİTLİ</option>
                                     </select>
                                 </div>
                                 <div className="space-y-3">
-                                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Deneme Bitiş</label>
+                                    <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest ml-1">Deneme Bitiş</label>
                                     <input 
                                         type="date" 
                                         value={localBiz.trialEndsAt ? localBiz.trialEndsAt.split('T')[0] : ''} 
                                         onChange={e => setLocalBiz({...localBiz, trialEndsAt: e.target.value})}
-                                        className="w-full bg-white/[0.03] border border-white/10 rounded-2xl py-4 px-6 text-white font-bold outline-none focus:border-indigo-500 transition-all"
+                                        className="w-full bg-white/5 border border-white/10 rounded-2xl py-4.5 px-6 text-white font-bold outline-none focus:border-indigo-500 transition-all"
                                     />
                                 </div>
                             </div>
 
-                            <div className={`p-6 rounded-[2rem] border transition-all ${localBiz.is_suspended ? 'bg-rose-950/20 border-rose-500/30' : 'bg-slate-900/40 border-white/5'}`}>
+                            <div className={`p-8 rounded-[2.5rem] border transition-all ${localBiz.is_suspended ? 'bg-rose-950/30 border-rose-500/40' : 'bg-white/5 border-white/5 hover:border-white/10'}`}>
                                 <div className="flex items-center justify-between">
-                                    <div>
-                                        <p className={`text-[10px] font-black uppercase tracking-widest ${localBiz.is_suspended ? 'text-rose-500' : 'text-slate-400'}`}>
+                                    <div className="flex-1 mr-6">
+                                        <p className={`text-[11px] font-black uppercase tracking-[0.2em] ${localBiz.is_suspended ? 'text-rose-500' : 'text-slate-400'}`}>
                                             {localBiz.is_suspended ? 'SİSTEM MÜHÜRLÜ' : 'SİSTEM AKTİF'}
                                         </p>
                                         <div className="mt-2">
@@ -245,13 +263,13 @@ export const EditBusinessModal = ({ biz, onClose, onUpdate, loading }: any) => {
                                                 placeholder="Mühürleme Sebebi..."
                                                 value={localBiz.suspensionReason || ''}
                                                 onChange={e => setLocalBiz({...localBiz, suspensionReason: e.target.value})}
-                                                className="bg-transparent border-none text-[9px] font-bold text-slate-500 outline-none w-full"
+                                                className="bg-transparent border-none text-[11px] font-bold text-slate-500 outline-none w-full placeholder:opacity-30"
                                             />
                                         </div>
                                     </div>
                                     <button 
                                         onClick={() => setLocalBiz({...localBiz, is_suspended: !localBiz.is_suspended})}
-                                        className={`px-6 py-3 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all ${localBiz.is_suspended ? 'bg-rose-600 text-white shadow-[0_0_20px_rgba(225,29,72,0.4)]' : 'bg-white/5 text-slate-400 border border-white/5 hover:bg-white/10'}`}
+                                        className={`px-8 py-4 rounded-xl text-[10px] font-black uppercase tracking-[0.2em] transition-all active:scale-95 ${localBiz.is_suspended ? 'bg-rose-600 text-white shadow-[0_0_30px_rgba(225,29,72,0.4)]' : 'bg-white/5 text-slate-400 border border-white/10 hover:bg-rose-600 hover:text-white hover:border-rose-600'}`}
                                     >
                                         {localBiz.is_suspended ? 'MÜHÜRÜ KALDIR' : 'MÜHÜRLE'}
                                     </button>
@@ -260,49 +278,49 @@ export const EditBusinessModal = ({ biz, onClose, onUpdate, loading }: any) => {
                         </div>
 
                         {/* User Management */}
-                        <div className="bg-black/20 border border-white/5 rounded-[2.5rem] p-8 space-y-6">
+                        <div className="bg-black/30 border border-white/5 rounded-[3rem] p-10 space-y-8">
                             <div className="flex justify-between items-center">
-                                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-2">
-                                    <Users size={12} /> Node Matrix Users
+                                <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
+                                    <Users size={14} /> Node Matrix Users
                                 </label>
-                                <span className="bg-indigo-600/20 text-indigo-400 px-3 py-1 rounded-full text-[8px] font-black border border-indigo-500/20">
+                                <span className="bg-indigo-600/20 text-indigo-400 px-4 py-1.5 rounded-xl text-[10px] font-black border border-indigo-500/20 uppercase tracking-widest">
                                     {localBiz.maxUsers || 5} MAX
                                 </span>
                             </div>
                             
-                            <div className="space-y-3 max-h-[300px] overflow-y-auto pr-2 no-scrollbar">
+                            <div className="space-y-4 max-h-[350px] overflow-y-auto pr-2 no-scrollbar">
                                 {(allUsers || []).filter((u: any) => u.businessId === biz.id).map((user: any) => (
-                                    <div key={user.id} className="bg-white/[0.02] border border-white/5 p-4 rounded-2xl flex justify-between items-center group hover:bg-white/[0.04] transition-all">
-                                        <div className="flex items-center gap-3">
-                                            <div className="w-8 h-8 bg-indigo-600/20 border border-indigo-500/20 rounded-lg flex items-center justify-center text-[10px] font-black text-indigo-400">
+                                    <div key={user.id} className="bg-white/[0.03] border border-white/5 p-5 rounded-2xl flex justify-between items-center group hover:bg-white/[0.06] hover:border-white/10 transition-all">
+                                        <div className="flex items-center gap-4">
+                                            <div className="w-10 h-10 bg-indigo-600/20 border border-indigo-500/20 rounded-xl flex items-center justify-center text-[11px] font-black text-indigo-400">
                                                 {user.name?.charAt(0) || 'U'}
                                             </div>
                                             <div>
-                                                <p className="text-[10px] font-black text-white leading-tight">{user.name}</p>
-                                                <p className="text-[8px] font-bold text-slate-500">{user.email}</p>
+                                                <p className="text-[11px] font-black text-white leading-tight">{user.name}</p>
+                                                <p className="text-[9px] font-bold text-slate-500 truncate max-w-[120px]">{user.email}</p>
                                             </div>
                                         </div>
-                                        <div className="px-3 py-1 bg-white/5 border border-white/5 rounded-lg text-[7px] font-black text-slate-400 uppercase tracking-widest">
+                                        <div className="px-3 py-1.5 bg-white/5 border border-white/5 rounded-lg text-[9px] font-black text-slate-500 uppercase tracking-widest">
                                             {user.role}
                                         </div>
                                     </div>
                                 ))}
 
-                                <div className="mt-6 pt-6 border-t border-dashed border-white/10 space-y-4">
-                                    <p className="text-[9px] font-black text-indigo-400 uppercase tracking-widest flex items-center gap-2">
-                                        <Fingerprint size={12} /> DEPLOY NEW AUTH NODE
+                                <div className="mt-10 pt-10 border-t border-dashed border-white/10 space-y-5">
+                                    <p className="text-[11px] font-black text-indigo-400 uppercase tracking-[0.3em] flex items-center gap-2">
+                                        <Fingerprint size={14} /> DEPLOY NEW AUTH NODE
                                     </p>
-                                    <div className="grid grid-cols-1 gap-3">
+                                    <div className="grid grid-cols-1 gap-4">
                                         <input 
                                             id="new_user_email"
                                             placeholder="Node E-mail" 
-                                            className="bg-black/40 border border-white/5 rounded-xl py-3 px-4 text-[10px] font-bold text-white outline-none focus:border-indigo-500 transition-all" 
+                                            className="bg-black/40 border border-white/5 rounded-2xl py-4 px-6 text-[11px] font-bold text-white outline-none focus:border-indigo-500 transition-all" 
                                         />
                                         <input 
                                             type="password" 
                                             id="new_user_pass"
                                             placeholder="Access Key" 
-                                            className="bg-black/40 border border-white/5 rounded-xl py-3 px-4 text-[10px] font-bold text-white outline-none focus:border-indigo-500 transition-all" 
+                                            className="bg-black/40 border border-white/5 rounded-2xl py-4 px-6 text-[11px] font-bold text-white outline-none focus:border-indigo-500 transition-all" 
                                         />
                                     </div>
                                     <button 
@@ -325,7 +343,7 @@ export const EditBusinessModal = ({ biz, onClose, onUpdate, loading }: any) => {
                                                 alert("Hata: " + res.error);
                                             }
                                         }}
-                                        className="w-full py-4 bg-indigo-600 text-white rounded-2xl font-black text-[9px] uppercase tracking-widest shadow-lg shadow-indigo-600/20 hover:bg-indigo-500 transition-all"
+                                        className="w-full py-5 bg-indigo-600 text-white rounded-[1.5rem] font-black text-[11px] uppercase tracking-[0.2em] shadow-xl shadow-indigo-600/30 hover:bg-indigo-500 active:scale-95 transition-all"
                                     >
                                         INITIALIZE NODE ACCESS
                                     </button>
@@ -347,7 +365,7 @@ export const EditBusinessModal = ({ biz, onClose, onUpdate, loading }: any) => {
                             verticals: localBiz.verticals || ['spa']
                         })}
                         disabled={loading}
-                        className="w-full py-6 bg-white text-black rounded-[2rem] font-black text-[12px] uppercase tracking-[0.2em] shadow-xl hover:bg-indigo-50 transition-all mt-10"
+                        className="w-full py-7 bg-white text-black rounded-[2.5rem] font-black text-[14px] uppercase tracking-[0.3em] shadow-2xl hover:bg-indigo-50 active:scale-95 transition-all mt-12 mb-10"
                     >
                         {loading ? 'DEPLOYING UPDATES...' : 'FINALIZE ALL CHANGES ✓'}
                     </button>

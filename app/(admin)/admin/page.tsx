@@ -266,8 +266,8 @@ export default function SuperAdminPage() {
 
             <div className="relative z-10 flex gap-4 px-8 py-8 h-[calc(100vh-80px)] overflow-hidden">
                 {/* Sidebar Navigation */}
-                <div className="w-64 shrink-0 flex flex-col gap-2">
-                    <p className="px-4 text-[9px] font-black text-slate-400 uppercase tracking-[0.3em] mb-4">Tactical Matrix</p>
+                <div className="w-72 shrink-0 flex flex-col gap-2.5">
+                    <p className="px-5 text-[11px] font-black text-slate-400 uppercase tracking-[0.4em] mb-4 opacity-60">Tactical Matrix</p>
                     <NavBtn id="monitor" active={activeTab} onClick={setActiveTab} icon={Activity} label="İzleme" badge="CANLI" />
                     <NavBtn id="tenants" active={activeTab} onClick={setActiveTab} icon={Globe} label="İşletmeler" badge={allBusinesses.length.toString()} />
                     <NavBtn id="oversight" active={activeTab} onClick={setActiveTab} icon={ShieldAlert} label="İmparatorluk Denetimi" badge="AI" />
@@ -280,10 +280,10 @@ export default function SuperAdminPage() {
                     
                     <button 
                         onClick={handleRefresh}
-                        className="mt-4 mx-2 px-4 py-3 rounded-xl border border-indigo-100 bg-white hover:bg-indigo-50 text-[10px] font-bold text-indigo-600 flex items-center justify-center gap-2 transition-all"
+                        className="mt-6 mx-2 px-4 py-4 rounded-2xl border border-indigo-100 bg-white hover:bg-indigo-50 text-[11px] font-black text-indigo-600 flex items-center justify-center gap-3 transition-all shadow-sm active:scale-95"
                     >
-                        <RefreshCw size={14} className={isRefreshing ? 'animate-spin' : ''} />
-                        VERİLERİ YENİLE
+                        <RefreshCw size={16} className={isRefreshing ? 'animate-spin' : ''} />
+                        VERİLERİ SENKRONİZE ET
                     </button>
                 </div>
 
@@ -434,36 +434,78 @@ export default function SuperAdminPage() {
                                     </div>
 
                                     {/* SaaS Plans Management */}
-                                    <div className="mt-12">
-                                        <h3 className="text-slate-900 text-xl font-black italic uppercase tracking-tighter mb-6">SaaS Abonelik Paketleri</h3>
-                                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                                            {saasPlans?.map((plan: any) => (
-                                                <div key={plan.id} className="p-6 rounded-3xl bg-white border border-indigo-100 shadow-sm hover:shadow-lg transition-shadow">
-                                                    <div className="flex justify-between items-start mb-4">
-                                                        <h4 className="text-lg font-black text-slate-900">{plan.name}</h4>
-                                                        <span className={`px-3 py-1 rounded-full text-[9px] font-black uppercase ${plan.isActive ? 'bg-emerald-50 text-emerald-600' : 'bg-rose-50 text-rose-600'}`}>
-                                                            {plan.isActive ? 'AKTİF' : 'PASİF'}
-                                                        </span>
-                                                    </div>
-                                                    <div className="space-y-2 mb-6">
-                                                        <div className="flex justify-between text-sm">
-                                                            <span className="text-slate-400 font-bold">Aylık Fiyat:</span>
-                                                            <span className="font-black text-slate-900">₺{plan.monthlyPrice.toLocaleString()}</span>
+                                    <div className="mt-16">
+                                        <h3 className="text-slate-900 text-2xl font-black italic uppercase tracking-tighter mb-8">SaaS Abonelik Paketleri</h3>
+                                        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                                            {saasPlans && saasPlans.length > 0 ? (
+                                                saasPlans.map((plan: any) => (
+                                                    <div key={plan.id} className="p-8 rounded-[3rem] bg-white border border-indigo-100 shadow-sm hover:shadow-2xl hover:border-indigo-300 transition-all group">
+                                                        <div className="flex justify-between items-start mb-6">
+                                                            <h4 className="text-xl font-black text-slate-900 italic tracking-tighter">{plan.name}</h4>
+                                                            <span className={`px-4 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-widest ${plan.isActive ? 'bg-emerald-50 text-emerald-600' : 'bg-rose-50 text-rose-600'}`}>
+                                                                {plan.isActive ? 'AKTİF' : 'PASİF'}
+                                                            </span>
                                                         </div>
-                                                        <div className="flex justify-between text-sm">
-                                                            <span className="text-slate-400 font-bold">Yıllık Fiyat:</span>
-                                                            <span className="font-black text-slate-900">₺{plan.yearlyPrice.toLocaleString()}</span>
+                                                        <div className="space-y-4 mb-8">
+                                                            <div className="flex justify-between text-sm">
+                                                                <span className="text-slate-400 font-bold uppercase text-[10px] tracking-widest">Aylık Fiyat</span>
+                                                                <span className="font-black text-slate-900">₺{plan.monthlyPrice.toLocaleString()}</span>
+                                                            </div>
+                                                            <div className="flex justify-between text-sm">
+                                                                <span className="text-slate-400 font-bold uppercase text-[10px] tracking-widest">Yıllık Fiyat</span>
+                                                                <span className="font-black text-slate-900">₺{plan.yearlyPrice.toLocaleString()}</span>
+                                                            </div>
+                                                            <div className="flex justify-between text-sm">
+                                                                <span className="text-slate-400 font-bold uppercase text-[10px] tracking-widest">Node Kapasitesi</span>
+                                                                <span className="font-black text-indigo-600 bg-indigo-50 px-3 py-0.5 rounded-lg">{plan.maxBranches >= 999 ? 'LİMİTSİZ' : plan.maxBranches}</span>
+                                                            </div>
                                                         </div>
-                                                        <div className="flex justify-between text-sm">
-                                                            <span className="text-slate-400 font-bold">Max Şube:</span>
-                                                            <span className="font-black text-slate-900">{plan.maxBranches >= 999 ? 'Limitsiz' : plan.maxBranches}</span>
+                                                        <div className="pt-6 border-t border-slate-50">
+                                                            <button className="w-full py-4 bg-slate-900 text-white rounded-2xl text-[11px] font-black uppercase tracking-[0.2em] hover:bg-indigo-600 transition-all shadow-xl">YAPILANDIRMA</button>
                                                         </div>
                                                     </div>
-                                                    <div className="pt-4 border-t border-slate-50 flex gap-2">
-                                                        <button className="flex-1 py-2 bg-indigo-50 text-indigo-600 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-indigo-100 transition-colors">DÜZENLE</button>
-                                                    </div>
+                                                ))
+                                            ) : (
+                                                <div className="col-span-3 py-16 border-2 border-dashed border-slate-100 rounded-[3rem] flex flex-col items-center justify-center opacity-40">
+                                                    <Zap size={48} className="text-slate-300 mb-4" />
+                                                    <p className="text-lg font-black text-slate-900 uppercase italic tracking-tighter">Aktif Plan Bulunmuyor</p>
+                                                    <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest mt-2">Sisteme henüz bir SaaS abonelik paketi tanımlanmamış.</p>
                                                 </div>
-                                            ))}
+                                            )}
+                                        </div>
+                                    </div>
+
+                                    {/* Recent SaaS Invoices */}
+                                    <div className="mt-16">
+                                        <h3 className="text-slate-900 text-2xl font-black italic uppercase tracking-tighter mb-8">Son SaaS Tahsilatları</h3>
+                                        <div className="bg-slate-50 border border-slate-100 rounded-[3rem] overflow-hidden">
+                                            {saasInvoices && saasInvoices.length > 0 ? (
+                                                <div className="divide-y divide-slate-100">
+                                                    {saasInvoices.slice(0, 10).map((inv: any) => (
+                                                        <div key={inv.id} className="p-6 flex items-center justify-between hover:bg-white transition-colors">
+                                                            <div className="flex items-center gap-6">
+                                                                <div className="w-12 h-12 bg-indigo-50 rounded-xl flex items-center justify-center text-indigo-600">
+                                                                    <CreditCard size={20} />
+                                                                </div>
+                                                                <div>
+                                                                    <p className="text-sm font-black text-slate-900 uppercase tracking-tighter">{inv.businessName || 'Bilinmeyen İşletme'}</p>
+                                                                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">{inv.date || inv.createdAt?.split('T')[0]}</p>
+                                                                </div>
+                                                            </div>
+                                                            <div className="text-right">
+                                                                <p className="text-lg font-black text-slate-900 tracking-tighter">₺{inv.amount.toLocaleString()}</p>
+                                                                <span className="text-[9px] font-black text-emerald-500 bg-emerald-50 px-2 py-0.5 rounded-lg uppercase tracking-widest">BAŞARILI</span>
+                                                            </div>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            ) : (
+                                                <div className="py-20 flex flex-col items-center justify-center opacity-40">
+                                                    <Activity size={40} className="text-slate-300 mb-4" />
+                                                    <p className="text-lg font-black text-slate-900 uppercase italic tracking-tighter">Tahsilat Kaydı Yok</p>
+                                                    <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest mt-2">Henüz bir abonelik ödemesi gerçekleşmemiş.</p>
+                                                </div>
+                                            )}
                                         </div>
                                     </div>
                                 </div>
@@ -472,15 +514,29 @@ export default function SuperAdminPage() {
 
                         {activeTab === 'notifications' && (
                             <motion.div key="notifications" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6 text-left">
-                                <div className="bg-white border border-indigo-100 rounded-[2.5rem] p-10 shadow-sm text-left">
-                                    <h2 className="text-slate-900 text-2xl font-black italic uppercase tracking-tighter mb-10">Dahili Raporlar</h2>
-                                    <div className="space-y-6 pb-10">
-                                        {allNotifs.filter((n: any) => n.type === 'INTERNAL_REPORT').map((n: any, i: number) => (
-                                            <div key={i} className="bg-slate-50 border border-indigo-50 rounded-[2rem] p-8">
-                                                <p className="text-slate-900 font-black text-lg uppercase">GÜNLÜK RAPOR - {n.sentAt?.split('T')[0]}</p>
-                                                <div className="bg-white rounded-2xl p-6 font-mono text-[11px] mt-4 border border-indigo-50 whitespace-pre-wrap">{n.content}</div>
+                                <div className="bg-white border border-indigo-100 rounded-[2.5rem] p-12 shadow-sm min-h-[600px] flex flex-col">
+                                    <h2 className="text-slate-900 text-3xl font-black italic uppercase tracking-tighter mb-10">Dahili Raporlar</h2>
+                                    
+                                    <div className="flex-1 space-y-6 overflow-y-auto no-scrollbar pb-10">
+                                        {allNotifs.filter((n: any) => n.type === 'INTERNAL_REPORT').length > 0 ? (
+                                            allNotifs.filter((n: any) => n.type === 'INTERNAL_REPORT').map((n: any, i: number) => (
+                                                <div key={i} className="bg-slate-50 border border-indigo-50 rounded-[2.5rem] p-10 hover:border-indigo-200 transition-all">
+                                                    <div className="flex justify-between items-center mb-6">
+                                                        <p className="text-slate-900 font-black text-xl uppercase italic tracking-tighter">GÜNLÜK SİSTEM ANALİZİ</p>
+                                                        <span className="bg-white px-4 py-2 rounded-xl text-[11px] font-black text-slate-400 border border-slate-100 uppercase">{n.sentAt?.split('T')[0]}</span>
+                                                    </div>
+                                                    <div className="bg-white rounded-3xl p-8 font-mono text-[12px] leading-relaxed border border-indigo-50 whitespace-pre-wrap text-slate-600 shadow-inner">{n.content}</div>
+                                                </div>
+                                            ))
+                                        ) : (
+                                            <div className="flex-1 flex flex-col items-center justify-center text-center opacity-40 py-20">
+                                                <div className="w-24 h-24 bg-slate-50 rounded-[2rem] flex items-center justify-center mb-6 border border-slate-100">
+                                                    <Bell size={40} className="text-slate-300" />
+                                                </div>
+                                                <p className="text-xl font-black text-slate-900 uppercase tracking-tighter italic">Rapor Bekleniyor</p>
+                                                <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest mt-2">Henüz sistem tarafından üretilmiş bir dahili rapor bulunmuyor.</p>
                                             </div>
-                                        ))}
+                                        )}
                                     </div>
                                 </div>
                             </motion.div>
