@@ -118,6 +118,36 @@ export default function Dashboard() {
     const churnRiskCount = customers.filter((c: any) => c.isChurnRisk).length;
     const suspiciousCount = appointments.filter((a: any) => a.status === 'completed' && a.price > 0 && !payments.some((p: any) => p.appointmentId === a.id)).length;
 
+    // 4. Dynamic Aura Score Calculation (The Brain)
+    const auraScore = useMemo(() => {
+        if (!mounted) return 0;
+        let score = 5.0; // Baseline
+
+        // Revenue Factor (Up to +2.0)
+        if (monthlyTarget > 0) {
+            score += (monthlyRevenue / monthlyTarget) * 2.0;
+        }
+
+        // Capacity Factor (Up to +1.5)
+        score += (capacity / 100) * 1.5;
+
+        // Customer & Loyalty Factor (Up to +1.5)
+        if (customers.length > 0) {
+            score += 0.5;
+            const healthyRatio = (customers.length - churnRiskCount) / customers.length;
+            score += healthyRatio * 1.0;
+        }
+
+        // Risk Penalties (Up to -2.0)
+        if (suspiciousCount > 0) score -= 1.0;
+        if (churnRiskCount > customers.length * 0.3) score -= 1.0;
+
+        // Staffing Factor (+0.5)
+        if (staffMembers.some((s: any) => s.status === 'active')) score += 0.5;
+
+        return Math.min(10, Math.max(1.0, Number(score.toFixed(1))));
+    }, [mounted, monthlyRevenue, monthlyTarget, capacity, customers.length, churnRiskCount, suspiciousCount, staffMembers]);
+
     const containerVariants = {
         hidden: { opacity: 0 },
         show: {
@@ -289,9 +319,12 @@ export default function Dashboard() {
                 ) : (
                     <motion.div variants={itemVariants} className="card-apple p-6 group bg-white/40 backdrop-blur-xl border-white/60">
                         <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Aura Score</p>
-                        <h3 className="text-3xl font-black text-gray-900 dark:text-white tracking-tighter">9.2 <span className="text-lg font-bold text-gray-300 tracking-normal">/10</span></h3>
+                        <h3 className="text-3xl font-black text-gray-900 dark:text-white tracking-tighter">{auraScore} <span className="text-lg font-bold text-gray-300 tracking-normal">/10</span></h3>
                         <div className="mt-4 flex gap-1">
-                            {[1,2,3,4,5].map(i => <Star key={i} size={12} className="text-yellow-400 fill-yellow-400" />)}
+                            {[1,2,3,4,5].map(i => {
+                                const isGold = i <= Math.round(auraScore / 2);
+                                return <Star key={i} size={12} className={isGold ? "text-yellow-400 fill-yellow-400" : "text-gray-200 fill-gray-200"} />;
+                            })}
                         </div>
                     </motion.div>
                 )}
