@@ -2,12 +2,23 @@ import { createServerClient } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
 
 export async function middleware(request: NextRequest) {
+  const { pathname } = request.nextUrl;
+  const userAgent = request.headers.get('user-agent') || '';
+
+  // 1. BOT PROTECTION LAYER
+  // Block known bad bots and suspicious scanners
+  const botPattern = /bot|crawler|spider|crawling|slurp|bingbot|yandex|baidu|semrush|ahrefs|python|curl|wget/i;
+  if (botPattern.test(userAgent) && !pathname.startsWith('/api/public')) {
+    return new NextResponse('Access Denied: Bot Activity Detected', { status: 403 });
+  }
+
   let response = NextResponse.next({
     request: {
       headers: request.headers,
     },
   });
 
+  // 2. SUPABASE AUTH INITIALIZATION
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
@@ -35,19 +46,24 @@ export async function middleware(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser();
 
-  const { pathname } = request.nextUrl;
+  // 3. SECURITY HEADERS
+  // Modern web security standard headers
+  response.headers.set('X-Frame-Options', 'DENY');
+  response.headers.set('X-Content-Type-Options', 'nosniff');
+  response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
+  response.headers.set('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
+  response.headers.set('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
 
-  // Public paths
+  // 4. AUTH REDIRECTION LOGIC (FLUID EXPERIENCE)
   const isPublicPath = ['/login', '/book', '/portal'].some(p => pathname.startsWith(p));
   const isRoot = pathname === '/';
 
-  // 1. If no user and trying to access a protected route
+  // If no user and trying to access a protected route
   if (!user && !isPublicPath && !isRoot) {
     const url = request.nextUrl.clone();
     url.pathname = '/login';
     url.searchParams.set('redirect', pathname);
     
-    // Create a new redirect response but carry over the cookies/headers from our base response
     const redirectResponse = NextResponse.redirect(url);
     response.cookies.getAll().forEach(cookie => {
       redirectResponse.cookies.set(cookie.name, cookie.value, cookie);
@@ -55,7 +71,7 @@ export async function middleware(request: NextRequest) {
     return redirectResponse;
   }
 
-  // 2. If user exists and trying to access login
+  // If user exists and trying to access login, send to root (which redirects to dashboard)
   if (user && pathname === '/login') {
     const url = new URL('/', request.url);
     const redirectResponse = NextResponse.redirect(url);

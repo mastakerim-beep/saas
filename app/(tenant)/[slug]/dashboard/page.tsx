@@ -121,32 +121,43 @@ export default function Dashboard() {
     // 4. Dynamic Aura Score Calculation (The Brain)
     const auraScore = useMemo(() => {
         if (!mounted) return 0;
-        let score = 5.0; // Baseline
+        
+        // Critical: If no core data exists, we cannot provide an accurate score
+        const hasData = payments.length > 0 || appointments.length > 0 || customers.length > 0;
+        if (!hasData) return null; // Signal "No Data" state
 
-        // Revenue Factor (Up to +2.0)
+        let score = 1.0; // Starting from bottom
+
+        // 1. Setup & Readiness Factor (+1.0)
+        if (staffMembers.some((s: any) => s.status === 'active')) score += 1.0;
+        if (currentBusiness?.monthly_target > 0) score += 0.5;
+
+        // 2. Revenue Performance (Up to +3.0)
         if (monthlyTarget > 0) {
-            score += (monthlyRevenue / monthlyTarget) * 2.0;
+            const revenueRatio = monthlyRevenue / monthlyTarget;
+            score += Math.min(3.0, revenueRatio * 3.0);
         }
 
-        // Capacity Factor (Up to +1.5)
-        score += (capacity / 100) * 1.5;
+        // 3. Operational Efficiency (Up to +2.0)
+        // High capacity use is good, but 100% might mean overwork. Optimal is 70-85%
+        if (capacity > 0) {
+            const efficiency = capacity > 85 ? 1.5 : (capacity / 85) * 2.0;
+            score += efficiency;
+        }
 
-        // Customer & Loyalty Factor (Up to +1.5)
+        // 4. Customer Health (Up to +2.5)
         if (customers.length > 0) {
-            score += 0.5;
+            score += 0.5; // Base for having customers
             const healthyRatio = (customers.length - churnRiskCount) / customers.length;
-            score += healthyRatio * 1.0;
+            score += healthyRatio * 2.0;
         }
 
-        // Risk Penalties (Up to -2.0)
-        if (suspiciousCount > 0) score -= 1.0;
-        if (churnRiskCount > customers.length * 0.3) score -= 1.0;
-
-        // Staffing Factor (+0.5)
-        if (staffMembers.some((s: any) => s.status === 'active')) score += 0.5;
+        // 5. Security & Risk Penalties (Negative impact)
+        if (suspiciousCount > 0) score -= 1.5;
+        if (churnRiskCount > customers.length * 0.4) score -= 1.0;
 
         return Math.min(10, Math.max(1.0, Number(score.toFixed(1))));
-    }, [mounted, monthlyRevenue, monthlyTarget, capacity, customers.length, churnRiskCount, suspiciousCount, staffMembers]);
+    }, [mounted, payments.length, appointments.length, customers.length, currentBusiness, monthlyRevenue, monthlyTarget, capacity, churnRiskCount, suspiciousCount, staffMembers]);
 
     const containerVariants = {
         hidden: { opacity: 0 },
@@ -319,12 +330,19 @@ export default function Dashboard() {
                 ) : (
                     <motion.div variants={itemVariants} className="card-apple p-6 group bg-white/40 backdrop-blur-xl border-white/60">
                         <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Aura Score</p>
-                        <h3 className="text-3xl font-black text-gray-900 dark:text-white tracking-tighter">{auraScore} <span className="text-lg font-bold text-gray-300 tracking-normal">/10</span></h3>
+                        <h3 className="text-3xl font-black text-gray-900 dark:text-white tracking-tighter">
+                            {auraScore !== null ? auraScore : 'N/A'} 
+                            {auraScore !== null && <span className="text-lg font-bold text-gray-300 tracking-normal">/10</span>}
+                        </h3>
                         <div className="mt-4 flex gap-1">
-                            {[1,2,3,4,5].map(i => {
-                                const isGold = i <= Math.round(auraScore / 2);
-                                return <Star key={i} size={12} className={isGold ? "text-yellow-400 fill-yellow-400" : "text-gray-200 fill-gray-200"} />;
-                            })}
+                            {auraScore !== null ? (
+                                [1,2,3,4,5].map(i => {
+                                    const isGold = i <= Math.round(auraScore / 2);
+                                    return <Star key={i} size={12} className={isGold ? "text-yellow-400 fill-yellow-400" : "text-gray-200 fill-gray-200"} />;
+                                })
+                            ) : (
+                                <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest italic">Yetersiz Veri Analizi</p>
+                            )}
                         </div>
                     </motion.div>
                 )}
