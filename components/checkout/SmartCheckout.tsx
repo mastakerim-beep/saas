@@ -5,7 +5,7 @@ import { useStore, Appointment, PaymentMethod, Product, Customer, PaymentDefinit
 import { 
     X, Plus, CreditCard, Banknote, Landmark,
     Trash2, Save, AlertCircle, Calendar,
-    Zap, Crown, Package as PackageIcon, Sparkles, Printer, CheckCircle2, HeartHandshake, Percent, ShoppingBag, Gift
+    Zap, Crown, Package as PackageIcon, Sparkles, Printer, CheckCircle2, HeartHandshake, Percent, ShoppingBag, Gift, Link as LinkIcon, Copy, MessageSquare
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -97,6 +97,8 @@ export default function SmartCheckout({ appointment, onClose, initialCustomerId,
     const [overrideService, setOverrideService] = useState(initialServiceName);
     const [overridePrice, setOverridePrice] = useState(initialServicePrice);
     const [isServiceEditorOpen, setIsServiceEditorOpen] = useState(false);
+    const [isLinkModalOpen, setIsLinkModalOpen] = useState(false);
+    const [generatedLink, setGeneratedLink] = useState<string | null>(null);
 
     useEffect(() => {
         const dates = [];
@@ -191,6 +193,33 @@ export default function SmartCheckout({ appointment, onClose, initialCustomerId,
         } catch (error: any) {
             console.error(error);
             alert(error?.message || "Ödeme kaydedilirken bir hata oluştu.");
+        } finally {
+            setIsSaving(false);
+        }
+    };
+
+    const handleGenerateLink = async () => {
+        if (isSaving) return;
+        setIsSaving(true);
+        try {
+            const amount = grandTotal;
+            const link = await useStore().createPaymentLink({
+                customerId: targetCustomerId,
+                appointmentId: appointment?.id,
+                amount: amount,
+                description: `${overrideService} Ödemesi`
+            });
+
+            if (link) {
+                const url = `${window.location.origin}/portal/pay/${link.token}`;
+                setGeneratedLink(url);
+                setIsLinkModalOpen(true);
+            } else {
+                alert("Ödeme linki oluşturulurken bir hata oluştu.");
+            }
+        } catch (error) {
+            console.error(error);
+            alert("Sistem hatası.");
         } finally {
             setIsSaving(false);
         }
@@ -339,6 +368,46 @@ export default function SmartCheckout({ appointment, onClose, initialCustomerId,
                                 <div className="flex gap-4">
                                     <button onClick={() => setIsPinModalOpen(false)} className="flex-1 py-4 text-xs font-black text-gray-400 uppercase tracking-widest">Vazgeç</button>
                                     <button onClick={confirmPin} className="flex-1 py-4 bg-indigo-600 text-white rounded-2xl font-black text-xs uppercase tracking-widest shadow-lg shadow-indigo-100">Onayla</button>
+                                </div>
+                            </motion.div>
+                        </motion.div>
+                    )}
+                </AnimatePresence>
+
+                {/* Link Modal */}
+                <AnimatePresence>
+                    {isLinkModalOpen && (
+                        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[1200] bg-black/80 backdrop-blur-xl flex items-center justify-center p-6">
+                            <motion.div initial={{ scale: 0.9, y: 20 }} animate={{ scale: 1, y: 0 }} className="bg-white rounded-[3rem] p-12 max-w-lg w-full text-center shadow-2xl relative">
+                                <div className="w-20 h-20 bg-indigo-50 text-indigo-600 rounded-[2rem] flex items-center justify-center mx-auto mb-8 shadow-inner">
+                                    <LinkIcon size={40} />
+                                </div>
+                                <h3 className="text-3xl font-black text-gray-900 uppercase italic tracking-tighter mb-2">Ödeme Linki Hazır</h3>
+                                <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-10">Müşteriye bu linki göndererek ödemeyi kendi cihazından yapmasını sağlayabilirsiniz.</p>
+                                
+                                <div className="bg-gray-50 p-6 rounded-2xl mb-8 flex items-center justify-between border border-gray-100 group">
+                                    <p className="text-[10px] font-bold text-gray-500 truncate mr-4">{generatedLink}</p>
+                                    <button 
+                                        onClick={() => {
+                                            navigator.clipboard.writeText(generatedLink || "");
+                                            alert("Link kopyalandı!");
+                                        }}
+                                        className="p-3 bg-white hover:bg-indigo-600 hover:text-white rounded-xl shadow-sm transition-all"
+                                    >
+                                        <Copy size={20} />
+                                    </button>
+                                </div>
+
+                                <div className="flex gap-4">
+                                    <button onClick={() => setIsLinkModalOpen(false)} className="flex-1 py-4 text-xs font-black text-gray-400 uppercase tracking-widest">Kapat</button>
+                                    <button 
+                                        onClick={() => {
+                                            window.open(`https://wa.me/?text=${encodeURIComponent(`Aura Spa Ödeme Linki: ${generatedLink}`)}`, '_blank');
+                                        }} 
+                                        className="flex-1 py-4 bg-emerald-500 text-white rounded-2xl font-black text-xs uppercase tracking-widest shadow-lg shadow-emerald-100 flex items-center justify-center gap-2"
+                                    >
+                                        <MessageSquare size={16} /> WHATSAPP
+                                    </button>
                                 </div>
                             </motion.div>
                         </motion.div>
@@ -998,7 +1067,7 @@ export default function SmartCheckout({ appointment, onClose, initialCustomerId,
                             </div>
                         </div>
 
-                        <div className="mt-10">
+                        <div className="flex flex-col gap-3 mt-10">
                             <button 
                                 onClick={() => {
                                     if (needsAuthForDiscount) {
@@ -1008,11 +1077,29 @@ export default function SmartCheckout({ appointment, onClose, initialCustomerId,
                                         handleProcess();
                                     }
                                 }}
-                                className={`w-full py-8 rounded-[2.5rem] font-black text-sm shadow-2xl hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-4 uppercase tracking-[0.2em] ${needsAuthForDiscount ? 'bg-amber-600 text-white shadow-amber-200 animate-pulse' : 'bg-indigo-600 text-white shadow-indigo-200'}`}
+                                disabled={isSaving}
+                                className={`w-full py-6 rounded-[2.5rem] font-black text-sm uppercase tracking-[0.3em] shadow-[0_20px_50px_rgba(79,70,229,0.3)] hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-4 group disabled:opacity-50 ${needsAuthForDiscount ? 'bg-amber-600 text-white shadow-amber-200 animate-pulse' : 'bg-indigo-600 text-white'}`}
                             >
-                                {needsAuthForDiscount ? <Sparkles size={24} /> : <CheckCircle2 size={24} />}
-                                {needsAuthForDiscount ? 'Yönetici Onayı Bekleniyor' : 'TAHSİLATI TAMAMLA'}
+                                {isSaving ? (
+                                    <div className="w-5 h-5 border-2 border-white/20 border-t-white rounded-full animate-spin" />
+                                ) : (
+                                    <>
+                                        {needsAuthForDiscount ? <Sparkles size={24} /> : <CheckCircle2 size={24} />}
+                                        <span>{needsAuthForDiscount ? 'Yönetici Onayı Bekleniyor' : 'TAHSİLATI TAMAMLA'}</span>
+                                    </>
+                                )}
                             </button>
+
+                            {grandTotal > 0 && (
+                                <button 
+                                    onClick={handleGenerateLink}
+                                    disabled={isSaving}
+                                    className="w-full bg-white text-indigo-600 border-2 border-indigo-100 py-6 rounded-[2.5rem] font-black text-sm uppercase tracking-[0.3em] hover:bg-indigo-50 transition-all flex items-center justify-center gap-4 group disabled:opacity-50"
+                                >
+                                    <div className="bg-indigo-100 p-2 rounded-xl group-hover:scale-110 transition-transform"><LinkIcon size={24} /></div>
+                                    <span>LİNK İLE ÖDEME GÖNDER</span>
+                                </button>
+                            )}
                         </div>
                     </div>
                 </div>

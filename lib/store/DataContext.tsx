@@ -56,6 +56,7 @@ export interface DataContextType {
     inventoryTransfers: InventoryTransfer[];
     customerBiometrics: CustomerBiometric[];
     coupons: Coupon[];
+    allPaymentLinks: PaymentLink[];
     saasPlans: SaaSPlan[];
     saasInvoices: SaaSInvoice[];
     locale: 'tr' | 'en';
@@ -103,6 +104,7 @@ export interface DataContextType {
     setLoyaltySettings: React.Dispatch<React.SetStateAction<LoyaltySettings | null>>;
     setWebhooks: React.Dispatch<React.SetStateAction<Webhook[]>>;
     setInventoryTransfers: React.Dispatch<React.SetStateAction<InventoryTransfer[]>>;
+    setAllPaymentLinks: React.Dispatch<React.SetStateAction<PaymentLink[]>>;
     setLocale: (l: 'tr' | 'en') => void;
 
     // CRUD Methods
@@ -200,6 +202,7 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
     const [coupons, setCoupons] = useState<Coupon[]>([]);
     const [saasPlans, setSaaSPlans] = useState<SaaSPlan[]>([]);
     const [saasInvoices, setSaaSInvoices] = useState<SaaSInvoice[]>([]);
+    const [allPaymentLinks, setAllPaymentLinks] = useState<PaymentLink[]>([]);
     const [locale, setLocale] = useState<'tr' | 'en'>('tr');
 
 
@@ -526,7 +529,7 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
         walletTransactions, bodyMaps, usageNorms, customerMedia, packageDefinitions, commissionRules,
         paymentDefinitions, bankAccounts, expenseCategories, referralSources, consentFormTemplates,
         systemAnnouncements, loyaltySettings, webhooks, inventoryTransfers, customerBiometrics, coupons,
-        saasPlans, saasInvoices,
+        saasPlans, saasInvoices, allPaymentLinks,
         setAllAppointments, setAllBlocks, setAllCustomers, setAllDebts, setAllInventory,
         setAllRooms, setAllServices, setAllPackages, setMembershipPlans, setCustomerMemberships,
         setAllStaff, setAllLogs, setAllNotifs, setAiInsights, setAllExpenses, setZReports, setAllQuotes,
@@ -536,6 +539,7 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
         setPaymentDefinitions, setBankAccounts, setExpenseCategories, setReferralSources,
         setConsentFormTemplates, setSystemAnnouncements, setLoyaltySettings, setWebhooks, setInventoryTransfers,
         setCustomerBiometrics, setCoupons, setSaaSPlans, setSaaSInvoices,
+        setAllPaymentLinks,
         addCustomer, updateCustomer, deleteCustomer, addAppointment, updateAppointment, deleteAppointment,
         moveAppointment, updateAppointmentStatus, addBlock, updateBlock, removeBlock, addPackage,
         addMembershipPlan, assignMembership, addProduct, updateProduct, removeProduct, addExpense, addService,
@@ -556,7 +560,7 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
         packageDefinitions, commissionRules, inventoryCategories, transferProduct, packageUsageHistory,
         paymentDefinitions, bankAccounts, expenseCategories, referralSources, consentFormTemplates,
         systemAnnouncements, loyaltySettings, webhooks, inventoryTransfers,
-        customerBiometrics, coupons, saasPlans, saasInvoices, locale
+        customerBiometrics, coupons, saasPlans, saasInvoices, allPaymentLinks, locale
     ]);
 
 

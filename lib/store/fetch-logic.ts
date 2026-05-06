@@ -61,7 +61,7 @@ export const fetchData = async (
         'customer_wallets', 'wallet_transactions', 'consultation_body_maps', 
         'inventory_usage_norms', 'loyalty_settings', 'webhooks', 
         'inventory_categories', 'inventory_transfers', 'package_usage_history', 'customer_biometrics', 'coupons',
-        'saas_plans', 'saas_invoices'
+        'saas_plans', 'saas_invoices', 'payment_links'
     ];
 
     // CRITICAL GUARD: If we have no targetId and not doing a global SaaS fetch, abort or we'll get empty data
@@ -235,6 +235,7 @@ export const fetchData = async (
                 setters.setPackageUsageHistory?.(dataMap.package_usage_history || []);
                 setters.setCustomerBiometrics?.(dataMap.customer_biometrics || []);
                 setters.setCoupons?.(toCamel(dataMap.coupons));
+                setters.setAllPaymentLinks?.(toCamel(dataMap.payment_links));
                 setters.setSaaSPlans?.(dataMap.saas_plans || []);
                 setters.setSaaSInvoices?.(dataMap.saas_invoices || []);
                 

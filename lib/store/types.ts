@@ -111,6 +111,21 @@ export type WalletTransaction = DB.WalletTransaction;
 export type ConsultationBodyMap = DB.ConsultationBodyMap;
 export type InventoryUsageNorm = DB.InventoryUsageNorm;
 
+export interface PaymentLink {
+    id: string;
+    businessId: string;
+    customerId?: string;
+    appointmentId?: string;
+    amount: number;
+    currency: string;
+    status: 'pending' | 'paid' | 'expired' | 'cancelled';
+    token: string;
+    description?: string;
+    expiresAt: string;
+    createdAt: string;
+    paidAt?: string;
+}
+
 export interface Coupon {
     id: string;
     businessId: string;
@@ -428,4 +443,9 @@ export interface StoreState {
     panopticonFeed: any[];
     approveDraconianVeto: (type: 'payment' | 'appointment', id: string) => Promise<boolean>;
     rejectDraconianVeto: (type: 'payment' | 'appointment', id: string, reason?: string) => Promise<boolean>;
+
+    // Payment Links
+    createPaymentLink: (data: { customerId?: string, appointmentId?: string, amount: number, description?: string }) => Promise<PaymentLink | null>;
+    getPaymentLink: (token: string) => Promise<PaymentLink | null>;
+    processLinkPayment: (token: string, paymentData: any) => Promise<boolean>;
 }

@@ -478,7 +478,8 @@ const StoreOrchestrator = ({ children }: { children: ReactNode }) => {
         setPendingVetoes: setPendingVetoes,
         setQuotaError: setQuotaError,
         fetchData: fetchData,
-        stableMethodsRef // Passing the ref instead of null
+        stableMethodsRef, // Passing the ref instead of null
+        supabase
     };
 
     const appMethods = useAppointmentMethods(hookDeps);
@@ -524,6 +525,11 @@ const StoreOrchestrator = ({ children }: { children: ReactNode }) => {
             ...pkgMethods,
             ...supportMethods,
             ...businessMethods,
+            
+            // Payment Links
+            createPaymentLink: payMethods.createPaymentLink,
+            getPaymentLink: payMethods.getPaymentLink,
+            processLinkPayment: payMethods.processLinkPayment,
             
             // Context-specific data setters (backward compatibility)
             addMarketingRule: data.addMarketingRule,

@@ -210,6 +210,96 @@ export const usePaymentMethods = (deps: any) => {
             
             return { price, reason: null };
         },
+
+        createPaymentLink: async (data: { customerId?: string, appointmentId?: string, amount: number, description?: string }) => {
+            const bizId = activeBizIdRef.current;
+            if (!bizId) return null;
+            
+            const id = crypto.randomUUID();
+            const token = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+            const link = {
+                id,
+                business_id: bizId,
+                customer_id: data.customerId,
+                appointment_id: data.appointmentId,
+                amount: data.amount,
+                currency: 'TRY',
+                status: 'pending',
+                token,
+                description: data.description,
+                expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+                created_at: new Date().toISOString()
+            };
+
+            try {
+                await syncDb('payment_links', 'insert', link, id, bizId);
+                stableMethodsRef.current?.addLog('🔗 Ödeme Linki Oluşturuldu', data.description || 'Hizmet Ödemesi', `Tutar: ${data.amount} TL`);
+                return link as any;
+            } catch (err) {
+                console.error("Create Payment Link Error:", err);
+                return null;
+            }
+        },
+
+        getPaymentLink: async (token: string) => {
+            const { data, error } = await deps.supabase
+                .from('payment_links')
+                .select('*, businesses!inner(iyzico_api_key, iyzico_secret_key)')
+                .eq('token', token)
+                .single();
+            
+            if (error || !data) return null;
+            return data as any;
+        },
+
+        processLinkPayment: async (token: string, paymentData: any) => {
+            // This is called when the customer finishes the public payment form
+            const { data: link, error } = await deps.supabase
+                .from('payment_links')
+                .select('*, businesses!inner(iyzico_api_key, iyzico_secret_key)')
+                .eq('token', token)
+                .single();
+
+            if (error || !link || link.status !== 'pending') return false;
+
+            // Gateway Detection
+            const biz = (link as any).businesses;
+            const hasIyzico = biz?.iyzico_api_key && biz?.iyzico_secret_key;
+
+            if (hasIyzico) {
+                console.log("⚡ [Aura Pay] Iyzico Gateway Active for business:", link.business_id);
+                // Here we would normally invoke the Supabase Edge Function for Iyzico
+                // to securely process the card details and perform the 3D Secure handshake.
+                // For this demo, we simulate a successful gateway response after a short delay.
+                await new Promise(r => setTimeout(r, 1500));
+            } else {
+                console.log("🛠️ [Aura Pay] Simulation Mode: Business has no Iyzico keys. Auto-approving for demo.");
+            }
+
+            // 1. Mark link as paid
+            const now = new Date().toISOString();
+            await syncDb('payment_links', 'update', { status: 'paid', paid_at: now }, link.id, link.business_id);
+
+            // 2. Create the actual payment record in the system
+            const checkoutResult = await stableMethodsRef.current?.processCheckout({
+                customerId: link.customer_id,
+                appointmentId: link.appointment_id,
+                totalAmount: link.amount,
+                date: now.split('T')[0],
+                methods: [{
+                    id: crypto.randomUUID(),
+                    method: 'kredi-karti', // Link payments are usually card
+                    amount: link.amount,
+                    currency: 'TRY',
+                    rate: 1,
+                    isDeposit: false
+                }],
+                customerName: paymentData.customerName || 'Müşteri (Link ile)',
+                service: link.description || 'Link ile Ödeme'
+            });
+
+            return checkoutResult?.success || false;
+        }
     };
 };
 
