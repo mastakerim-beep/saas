@@ -64,7 +64,9 @@ const StoreOrchestrator = ({ children }: { children: ReactNode }) => {
     const slug = params?.slug as string;
     
     // --- IDENTITY ANCHOR ---
-    const lastResolvedBizIdRef = React.useRef<string | undefined>(undefined);
+    const lastResolvedBizIdRef = React.useRef<string | undefined>(
+        typeof window !== 'undefined' ? localStorage.getItem('aura_last_resolved_biz_id') || undefined : undefined
+    );
     
     // --- DATA REFS (Stable bridge for methods) ---
     const dataRef = React.useRef(data);
@@ -172,9 +174,14 @@ const StoreOrchestrator = ({ children }: { children: ReactNode }) => {
         const controller = new AbortController();
         fetchControllerRef.current = controller;
 
-        if (!targetUser) return;
-        const isSaaS = targetUser.role === 'SaaS_Owner';
-        if (!targetBizId && !isSaaS) return;
+        // REMOVED: if (!targetUser) return; 
+        // We allow fetching even without a user for Guest/Kiosk mode.
+        
+        const isSaaS = targetUser?.role === 'SaaS_Owner';
+        if (!targetBizId && !isSaaS && !slug) {
+             console.log("⏳ [Store] Fetch deferred: No target identity and no slug available.");
+             return;
+        }
 
         // Validation passed, now we can set the throttle timestamp and last ID
         lastFetchTimeRef.current = now;

@@ -23,10 +23,8 @@ export const fetchData = async (
     // --- IDENTITY RESOLUTION ---
     let actualBizId = bizId;
     
-    // If Guest or SaaS and on a slug, but bizId is missing, resolve it NOW
-    if ((isSaaS || isGuest) && !actualBizId && slug) {
-        // Try local cache first from stored businesses if available
-        // Note: setters usually don't provide the current state, but we can try to resolve it from the DB
+    // If we have a slug but no bizId, resolve it from the DB as a fallback
+    if (!actualBizId && slug) {
         try {
             console.log(`🔍 [Aura Sync] Identity Warp: Resolving business ID for slug "${slug}"...`);
             const { data: bData, error: bError } = await supabase.from('businesses').select('id').eq('slug', slug).maybeSingle();
@@ -34,9 +32,9 @@ export const fetchData = async (
                 actualBizId = bData.id;
                 console.log("✅ [Aura Sync] Identity Locked:", actualBizId);
             } else if (bError) {
-                console.error("❌ Identity Resolution Error:", bError);
+                console.error("❌ Identity Resolution Error:", bError.message);
             } else {
-                console.warn("⚠️ Identity Resolution: Slug not found in DB");
+                console.warn("⚠️ Identity Resolution: Slug not found in DB. Possible RLS or 404.");
             }
         } catch (e) {
             console.error("Failed to resolve identity from slug:", e);
