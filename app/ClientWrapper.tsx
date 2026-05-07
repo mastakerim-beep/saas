@@ -109,7 +109,7 @@ export default function ClientWrapper({ children }: { children: React.ReactNode 
             if (!currentUser) {
                 console.log("🛡️ [Auth Trace] Unauthorized access detected. Redirecting...");
                 setIsChecking(false);
-                router.replace('/login');
+                window.location.replace('/login');
                 return;
             }
 
@@ -242,7 +242,7 @@ export default function ClientWrapper({ children }: { children: React.ReactNode 
                                 {children}
                             </main>
                         </div>
-                    ) : (
+                    ) : currentUser ? (
                         <>
                             <Sidebar />
                             <div className="flex-1 flex flex-col min-w-0 bg-background/50 backdrop-blur-sm relative">
@@ -254,6 +254,10 @@ export default function ClientWrapper({ children }: { children: React.ReactNode 
                                 </main>
                             </div>
                         </>
+                    ) : (
+                        <div className="flex-1 flex items-center justify-center bg-[#020210]">
+                             <div className="w-12 h-12 border-4 border-indigo-500/20 border-t-indigo-500 rounded-full animate-spin" />
+                        </div>
                     )}
                 </div>
             </div>

@@ -156,29 +156,39 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     };
 
     const logout = async () => {
-        // Clear user state but keep initialization true to allow routing
+        // 1. Immediate UI cleanup
         setCurrentUser(null);
         
         try {
-            // Background cleanup
-            const keysToRemove = [];
-            for (let i = 0; i < localStorage.length; i++) {
-                const key = localStorage.key(i);
-                if (key && (key.includes('supabase.auth.token') || key.startsWith('sb-'))) {
-                    keysToRemove.push(key);
+            // 2. Clear Auth Tokens from LocalStorage immediately
+            if (typeof window !== 'undefined') {
+                const keysToRemove = [];
+                for (let i = 0; i < localStorage.length; i++) {
+                    const key = localStorage.key(i);
+                    if (key && (key.includes('supabase.auth.token') || key.startsWith('sb-') || key.includes('aura_'))) {
+                        keysToRemove.push(key);
+                    }
                 }
+                keysToRemove.forEach(k => localStorage.removeItem(k));
+                
+                // 3. Clear session cookies (Supabase specific)
+                document.cookie.split(";").forEach((c) => {
+                    document.cookie = c
+                        .replace(/^ +/, "")
+                        .replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/");
+                });
             }
-            keysToRemove.forEach(k => localStorage.removeItem(k));
-            localStorage.removeItem('aura_business_catalog');
-            localStorage.removeItem('aura_last_branch');
 
-            // Sign out from Supabase
-            await supabase.auth.signOut();
+            // 4. Background sign out (don't wait for it to redirect)
+            supabase.auth.signOut().catch(e => console.error('Signout background error:', e));
+            
         } catch (err) {
             console.error('Logout error:', err);
         } finally {
-            // Force hard redirect to clear all states and memory
-            window.location.replace('/login');
+            // 5. Force hard redirect to clear memory and states
+            if (typeof window !== 'undefined') {
+                window.location.href = '/login';
+            }
         }
     };
 

@@ -216,6 +216,7 @@ export interface StoreState {
     allBusinesses: Business[];
     allUsers: AppUser[];
     allPayments: Payment[]; 
+    allPaymentLinks: PaymentLink[];
     
     impersonatedBusinessId: string | null;
     isImpersonating: boolean;

@@ -240,7 +240,10 @@ const StoreOrchestrator = ({ children }: { children: ReactNode }) => {
             setAllCommissionRules: data.setAllCommissionRules,
             setInventoryTransfers: data.setInventoryTransfers,
             setCustomerBiometrics: data.setCustomerBiometrics,
-            setCoupons: data.setCoupons
+            setCoupons: data.setCoupons,
+            setAllPaymentLinks: data.setAllPaymentLinks,
+            setSaaSPlans: data.setSaaSPlans,
+            setSaaSInvoices: data.setSaaSInvoices
         };
 
         try {
@@ -642,6 +645,7 @@ const StoreOrchestrator = ({ children }: { children: ReactNode }) => {
                 coupons: data.coupons || [],
                 saasPlans: data.saasPlans || [],
                 saasInvoices: data.saasInvoices || [],
+                allPaymentLinks: data.allPaymentLinks || [],
             }}>
                 {!auth.isInitialized ? (
                     <div className="fixed inset-0 z-[1000] bg-[#020210] flex flex-col items-center justify-center">
