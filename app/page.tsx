@@ -6,29 +6,31 @@ import { useStore } from "@/lib/store";
 
 export default function Home() {
   const router = useRouter();
-  const { currentUser, currentBusiness } = useStore();
+  const { currentUser, currentBusiness, isInitialized } = useStore();
 
   useEffect(() => {
-    // Smart Redirection Logic
-    if (!currentUser) {
+    // 1. If no user, definitely go to login
+    if (isInitialized && !currentUser) {
       router.push("/login");
       return;
     }
 
-    // 1. Superadmin Redirection
-    if (currentUser.role === 'SaaS_Owner' || currentUser.email === 'kerim@mail.com') {
+    if (!isInitialized) return;
+
+    // 2. Superadmin Redirection
+    if (currentUser?.role === 'SaaS_Owner' || currentUser?.email === 'kerim@mail.com') {
       router.push("/admin");
       return;
     }
 
-    // 2. Business User Redirection (Sub-agents)
+    // 3. Business User Redirection (Sub-agents)
     if (currentBusiness?.slug) {
       router.push(`/${currentBusiness.slug}/calendar`);
-    } else {
-      // Fallback if no slug found
-      router.push("/login");
-    }
-  }, [router, currentUser, currentBusiness]);
+    } 
+    // 4. Critical: If user exists but slug is missing, WAIT. 
+    // Do NOT redirect back to /login as that creates an infinite loop.
+    // The StoreProvider/ClientWrapper will eventually resolve the business or show an error.
+  }, [router, currentUser, currentBusiness, isInitialized]);
 
   return (
     <div className="min-h-screen bg-gray-50 flex items-center justify-center">
