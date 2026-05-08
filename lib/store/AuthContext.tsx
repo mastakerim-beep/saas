@@ -79,6 +79,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
                 const { data: { session } } = await supabase.auth.getSession();
                 if (session?.user) {
                     const appUser = await fetchAppUserProfile(session.user.id, session.user.email!);
+                    console.log('🛡️ [Auth Trace] Initial profile fetched:', !!appUser);
                     setCurrentUser(appUser);
                 }
             } catch (err) {
@@ -107,6 +108,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
                 } catch (err) {
                     console.error('Profile fetch error:', err);
                 } finally {
+                    console.log('🛡️ [Auth Trace] Auth listener finalized.');
                     setIsInitialized(true);
                 }
             } else {
@@ -115,18 +117,21 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             }
         });
 
-        // --- SAFETY TIMEOUT: Force initialization if auth listener is stuck ---
-        // Reduced timeout for better UX, now that we have multiple safety layers
-        const safetyTimeoutMs = 1500; 
+        // INCREASED TIMEOUT: 1.5s was causing loops on slow networks.
+        // We wait longer to give the profile fetch a chance to complete.
+        const safetyTimeoutMs = 8000; 
         const safetyTimer = setTimeout(() => {
             setIsInitialized(prev => {
                 if (!prev) {
-                    console.warn('⚠️ [Auth Trace] Initialization timeout. Forced unlock.');
-                    // Try manual session check
+                    console.warn('⚠️ [Auth Trace] Initialization timeout (8s). Forced unlock.');
+                    // Try manual session check one last time
                     supabase.auth.getSession().then(({ data: { session } }) => {
                         if (session?.user) {
                             fetchAppUserProfile(session.user.id, session.user.email!).then(profile => {
-                                if (profile) setCurrentUser(profile);
+                                if (profile) {
+                                    console.log('🛡️ [Auth Trace] Late profile arrival after timeout.');
+                                    setCurrentUser(profile);
+                                }
                             });
                         }
                     });
