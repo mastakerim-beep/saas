@@ -71,15 +71,9 @@ export async function middleware(request: NextRequest) {
     return redirectResponse;
   }
 
-  // If user exists and trying to access login, send to root (which redirects to dashboard)
-  if (user && pathname === '/login') {
-    const url = new URL('/', request.url);
-    const redirectResponse = NextResponse.redirect(url);
-    response.cookies.getAll().forEach(cookie => {
-      redirectResponse.cookies.set(cookie.name, cookie.value, cookie);
-    });
-    return redirectResponse;
-  }
+  // REMOVED: Redirect from /login to root if user exists. 
+  // This was causing infinite loops when a session existed but the profile record was missing or failed to fetch on the client.
+  // The client-side (ClientWrapper and LoginPage) will handle redirecting authenticated users.
 
   return response;
 }

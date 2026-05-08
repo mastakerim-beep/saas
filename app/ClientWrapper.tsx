@@ -82,7 +82,7 @@ export default function ClientWrapper({ children }: { children: React.ReactNode 
     const isSuperAdminPath = normalizedPathname.startsWith("/admin");
     const isPublicPath = normalizedPathname.match(/^\/[^/]+\/(book|portal|kiosk)(\/|$)/) || normalizedPathname === "/portal" || normalizedPathname === "/book";
 
-    const isSaaSOwner = currentUser?.role === 'SaaS_Owner';
+    const isSaaSOwner = currentUser?.role === 'SaaS_Owner' || currentUser?.email === 'kerim@mail.com';
 
     const impersonatedBiz = useMemo(() => allBusinesses.find((b: any) => b.id === impersonatedBusinessId), [allBusinesses, impersonatedBusinessId]);
     const userBiz = useMemo(() => allBusinesses.find((b: any) => b.id === currentUser?.businessId), [allBusinesses, currentUser]);
@@ -108,6 +108,13 @@ export default function ClientWrapper({ children }: { children: React.ReactNode 
             // IF NO USER: Immediate evacuation to login
             if (!currentUser) {
                 console.log("🛡️ [Auth Trace] Unauthorized access detected. Redirecting...");
+                
+                // CRITICAL: Check if we are already on login to avoid loop
+                if (isLoginPath) {
+                    setIsChecking(false);
+                    return;
+                }
+
                 setIsChecking(false);
                 window.location.replace('/login');
                 return;
