@@ -1,6 +1,7 @@
 "use client";
 
 import { useStore } from "@/lib/store";
+import { supabase } from "@/lib/supabase";
 import { useRouter, usePathname } from "next/navigation";
 import { useEffect, useState, useMemo } from "react";
 import Sidebar from "@/components/layout/Sidebar";
@@ -105,8 +106,17 @@ export default function ClientWrapper({ children }: { children: React.ReactNode 
         const handleRouting = async () => {
             if (!isInitialized) return;
 
-            // IF NO USER: Immediate evacuation to login
+            // IF NO USER: Verify if we are truly logged out
             if (!currentUser) {
+                // IMPORTANT: Before redirecting, check if there's actually a session.
+                // If a session exists, we are just waiting for the profile fetch to finish.
+                const { data: { session } } = await supabase.auth.getSession();
+                
+                if (session) {
+                    console.log("⏳ [Auth Trace] Session detected. Waiting for profile...");
+                    return; 
+                }
+
                 console.log("🛡️ [Auth Trace] Unauthorized access detected. Redirecting...");
                 
                 // CRITICAL: Check if we are already on login to avoid loop
