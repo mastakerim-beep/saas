@@ -54,8 +54,7 @@ export async function middleware(request: NextRequest) {
   response.headers.set('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
   response.headers.set('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
 
-  // 4. AUTH REDIRECTION LOGIC (FLUID EXPERIENCE)
-  // We identify public paths more robustly to support tenant-specific booking/portal pages
+  const isRoot = pathname === '/';
   const isPublicPath = [
     '/login', 
     '/book', 
@@ -68,10 +67,21 @@ export async function middleware(request: NextRequest) {
   pathname.includes('/portal') || 
   pathname.includes('/kiosk');
 
-  const isRoot = pathname === '/';
+  // 1. If it's a public path, allow it immediately
+  if (isPublicPath) {
+    return response;
+  }
 
-  // CRITICAL: If we are already on a public path or at the root, do NOT redirect to login
-  if (isPublicPath || isRoot) {
+  // 2. If it's the root and no user, force redirect to login
+  if (isRoot && !user) {
+    console.log(`🛡️ [Middleware] Root access without session. Redirecting to /login...`);
+    const url = request.nextUrl.clone();
+    url.pathname = '/login';
+    return NextResponse.redirect(url);
+  }
+
+  // 3. If it's the root and we have a user, let it pass (ClientWrapper will handle tenant/admin routing)
+  if (isRoot && user) {
     return response;
   }
 
