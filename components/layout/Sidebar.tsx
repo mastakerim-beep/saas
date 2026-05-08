@@ -301,6 +301,17 @@ export default function Sidebar() {
                         {isHovered && <p className="px-4 text-[10px] font-black text-indigo-400 uppercase tracking-widest mb-4 opacity-50 overflow-hidden whitespace-nowrap">Finans</p>}
                         <div className="space-y-1">
                             {can('view_executive_summary') && <SidebarItem isHovered={isHovered} pathname={pathname} href={getTenantLink('executive')} icon={Globe} label={d.executive} badge="VIP" colorClass="text-primary" isLocked={!hasFeature(currentBusiness || {}, 'hasAdvancedAnalytics')} />}
+                            {(currentUser?.role === 'Business_Owner' || currentUser?.role === 'SaaS_Owner') && (
+                                <SidebarItem 
+                                    isHovered={isHovered} 
+                                    pathname={pathname} 
+                                    href={getTenantLink('executive/technogym')} 
+                                    icon={Activity} 
+                                    label="Technogym Exit" 
+                                    badge="NEW" 
+                                    colorClass="text-rose-500" 
+                                />
+                            )}
                             {can('view_reports') && <SidebarItem isHovered={isHovered} pathname={pathname} href={getTenantLink('executive/reports')} icon={FileCode} label={d.z_report} colorClass="text-indigo-500" />}
                             {can('view_finances') && <SidebarItem isHovered={isHovered} pathname={pathname} href={getTenantLink('finances/cash')} icon={Wallet} label={d.finances} colorClass="text-indigo-500" />}
                             {can('view_finances') && <SidebarItem isHovered={isHovered} pathname={pathname} href={getTenantLink('finances/payment-links')} icon={LinkIcon} label={d.payment_links} colorClass="text-indigo-500" />}
