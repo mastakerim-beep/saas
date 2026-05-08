@@ -716,6 +716,8 @@ export interface BookingSettings {
     allowStaffSelect: boolean;
     bookingMessage: string;
     accentColor: string;
+    maxDailySlotsPerStaff: number;
+    paymentMode: 'none' | 'deposit' | 'full' | 'both';
     createdAt?: string;
     updatedAt?: string;
 }

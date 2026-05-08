@@ -291,6 +291,22 @@ export default function BookingSettingsPage() {
                                 <div className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-all ${settings.allowStaffSelect ? 'left-5.5' : 'left-0.5'}`} />
                              </button>
                         </div>
+
+                        <div className="space-y-4 pt-4 border-t border-gray-50">
+                            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Günlük Slot Limiti (Personel Başı)</label>
+                            <div className="flex items-center gap-4">
+                                <input 
+                                    type="number" min="0" max="50"
+                                    value={settings.maxDailySlotsPerStaff || 0}
+                                    onChange={e => setSettings({...settings, maxDailySlotsPerStaff: parseInt(e.target.value) || 0})}
+                                    className="w-20 p-4 bg-gray-50 border border-gray-100 rounded-2xl font-black text-lg text-center outline-none focus:ring-2 focus:ring-indigo-500/10 focus:border-indigo-500 transition-all"
+                                />
+                                <div className="flex-1 text-[10px] font-bold text-gray-500 leading-tight">
+                                    Müşterilere her gün için gösterilecek maksimum randevu saati. <br/>
+                                    <span className="text-indigo-600">0: Kısıtlama yok</span>
+                                </div>
+                            </div>
+                        </div>
                     </div>
 
                     <div className="bg-[#0A0A0B] text-white p-8 rounded-[3rem] shadow-2xl relative overflow-hidden group">

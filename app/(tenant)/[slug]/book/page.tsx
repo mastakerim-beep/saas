@@ -46,7 +46,7 @@ export default function PublicBookingPortal() {
     // Derived Data
     const availableStaff = useMemo(() => {
         if (!selectedBranch) return [];
-        return staffMembers.filter(s => s.branchId === selectedBranch.id);
+        return staffMembers.filter((s: Staff) => s.branchId === selectedBranch.id);
     }, [selectedBranch, staffMembers]);
 
     const paymentAmount = useMemo(() => {
@@ -60,11 +60,32 @@ export default function PublicBookingPortal() {
         }
         return 0;
     }, [selectedService, settings, selectedPaymentMode]);
+    const timeSlots = useMemo(() => {
+        // Base working slots
+        const baseSlots = ['09:00', '10:00', '11:00', '13:00', '14:00', '15:00', '16:00', '17:00', '18:00'];
+        const limit = settings?.maxDailySlotsPerStaff || 0;
+        
+        if (limit > 0 && baseSlots.length > limit) {
+            // Pick a balanced distribution of slots if limited
+            // E.g. if limit is 3, pick morning, noon, evening
+            if (limit === 1) return [baseSlots[Math.floor(baseSlots.length / 2)]];
+            if (limit === 2) return [baseSlots[1], baseSlots[baseSlots.length - 2]];
+            
+            // Otherwise just slice or step through
+            const step = Math.floor(baseSlots.length / limit);
+            const filtered = [];
+            for (let i = 0; i < limit; i++) {
+                filtered.push(baseSlots[Math.min(i * step, baseSlots.length - 1)]);
+            }
+            return filtered;
+        }
+        return baseSlots;
+    }, [settings]);
 
     const handleConfirm = async () => {
         // 1. Existing Customer Check
         let finalCustomerId = '';
-        const existing = customers.find(c => c.phone === customerInfo.phone);
+        const existing = customers.find((c: any) => c.phone === customerInfo.phone);
         
         if (existing) {
             finalCustomerId = existing.id;
@@ -184,7 +205,7 @@ export default function PublicBookingPortal() {
                                 <p className="text-gray-400 text-sm font-bold uppercase tracking-widest">SİZE EN YAKIN KONUMU SEÇİN</p>
                             </div>
                             <div className="grid grid-cols-1 gap-4">
-                                {branches.map((branch) => (
+                                {branches.map((branch: Branch) => (
                                     <button 
                                         key={branch.id} onClick={() => { setSelectedBranch(branch); setStep(2); }}
                                         className="group p-8 bg-white border border-gray-100 rounded-[2.5rem] flex items-center justify-between hover:border-indigo-500 hover:shadow-xl hover:shadow-indigo-500/5 transition-all outline-none"
@@ -217,7 +238,7 @@ export default function PublicBookingPortal() {
                             </div>
                             <h2 className="text-2xl font-black tracking-tight mb-8">Nasıl bir deneyim istersiniz?</h2>
                             <div className="grid grid-cols-1 gap-4">
-                                {services.map((service) => (
+                                {services.map((service: Service) => (
                                     <button 
                                         key={service.id} onClick={() => { setSelectedService(service); setStep(settings.allowStaffSelect ? 3 : 4); }}
                                         className="group p-8 bg-white border border-gray-100 rounded-[2.5rem] flex items-center justify-between hover:border-indigo-500 hover:shadow-xl transition-all outline-none"
@@ -264,7 +285,7 @@ export default function PublicBookingPortal() {
                                     <h3 className="font-black text-gray-900 text-sm tracking-tight">Herhangi Biri</h3>
                                     <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest mt-1">HIZLI RANDEVU</p>
                                 </button>
-                                {availableStaff.map((s) => (
+                                {availableStaff.map((s: Staff) => (
                                     <button 
                                         key={s.id} onClick={() => { setSelectedStaff(s); setStep(4); }}
                                         className="p-8 bg-white border border-gray-100 rounded-[2.5rem] flex flex-col items-center justify-center hover:border-indigo-500 hover:shadow-xl transition-all outline-none text-center"
@@ -304,7 +325,7 @@ export default function PublicBookingPortal() {
                             <div className="space-y-4">
                                 <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Uygun Saatler</label>
                                 <div className="grid grid-cols-3 gap-3">
-                                    {['09:00', '10:00', '11:00', '13:00', '14:00', '15:00', '16:00', '17:00', '18:00'].map(t => (
+                                    {timeSlots.map(t => (
                                         <button 
                                             key={t} onClick={() => setSelectedTime(t)}
                                             className={`py-4 rounded-2xl font-black text-sm transition-all ${selectedTime === t ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-100' : 'bg-white border border-gray-100 hover:border-indigo-500'}`}

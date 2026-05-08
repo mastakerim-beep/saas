@@ -55,25 +55,42 @@ export async function middleware(request: NextRequest) {
   response.headers.set('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
 
   // 4. AUTH REDIRECTION LOGIC (FLUID EXPERIENCE)
-  const isPublicPath = ['/login', '/book', '/portal'].some(p => pathname.startsWith(p));
+  // We identify public paths more robustly to support tenant-specific booking/portal pages
+  const isPublicPath = [
+    '/login', 
+    '/book', 
+    '/portal', 
+    '/api/public',
+    '/api/webhook',
+    '/api/auth'
+  ].some(p => pathname.startsWith(p)) || 
+  pathname.includes('/book') || 
+  pathname.includes('/portal') || 
+  pathname.includes('/kiosk');
+
   const isRoot = pathname === '/';
 
+  // CRITICAL: If we are already on a public path or at the root, do NOT redirect to login
+  if (isPublicPath || isRoot) {
+    return response;
+  }
+
   // If no user and trying to access a protected route
-  if (!user && !isPublicPath && !isRoot) {
+  if (!user) {
+    console.log(`🛡️ [Middleware] Unauthorized access to ${pathname}. Redirecting to /login...`);
     const url = request.nextUrl.clone();
     url.pathname = '/login';
     url.searchParams.set('redirect', pathname);
     
     const redirectResponse = NextResponse.redirect(url);
+    
+    // Copy cookies to ensure session state is preserved during redirect
     response.cookies.getAll().forEach(cookie => {
       redirectResponse.cookies.set(cookie.name, cookie.value, cookie);
     });
+    
     return redirectResponse;
   }
-
-  // REMOVED: Redirect from /login to root if user exists. 
-  // This was causing infinite loops when a session existed but the profile record was missing or failed to fetch on the client.
-  // The client-side (ClientWrapper and LoginPage) will handle redirecting authenticated users.
 
   return response;
 }
