@@ -109,11 +109,13 @@ export default function ClientWrapper({ children }: { children: React.ReactNode 
             // IF NO USER: Verify if we are truly logged out
             if (!currentUser) {
                 // IMPORTANT: Before redirecting, check if there's actually a session.
-                // If a session exists, we are just waiting for the profile fetch to finish.
                 const { data: { session } } = await supabase.auth.getSession();
                 
                 if (session) {
                     console.log("⏳ [Auth Trace] Session detected. Waiting for profile...");
+                    // If we have a session but no profile, allow the UI to show children (Home/Dashboard)
+                    // which will handle the loading state or redirect once the user arrives.
+                    setIsChecking(false);
                     return; 
                 }
 

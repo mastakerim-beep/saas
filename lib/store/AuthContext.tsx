@@ -34,17 +34,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
     const fetchAppUserProfile = async (authUserId: string, email: string): Promise<AppUser | null> => {
         try {
-            const { data, error } = await supabase
-                .from('app_users')
-                .select('*')
-                .eq('email', email)
-                .single();
-
-            if (error || !data) {
-                const { data: byId } = await supabase.from('app_users').select('*').eq('id', authUserId).single();
-                if (!byId) {
-                    return null;
-                }
+            // Priority 1: Fetch by ID (Primary Key is fastest)
+            const { data: byId } = await supabase.from('app_users').select('*').eq('id', authUserId).single();
+            
+            if (byId) {
                 return {
                     id: byId.id,
                     businessId: byId.business_id,
@@ -56,16 +49,23 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
                     allowedBranches: byId.allowed_branches || []
                 };
             }
-            return {
-                id: data.id,
-                businessId: data.business_id || null,
-                branchId: data.branch_id || null,
-                role: data.role || 'Staff',
-                name: data.name || 'Kullanıcı',
-                email: data.email,
-                permissions: data.permissions || [],
-                allowedBranches: data.allowed_branches || []
-            };
+
+            // Priority 2: Fallback to email if ID match fails (e.g. legacy records)
+            const { data: byEmail } = await supabase.from('app_users').select('*').eq('email', email).single();
+            if (byEmail) {
+                return {
+                    id: byEmail.id,
+                    businessId: byEmail.business_id || null,
+                    branchId: byEmail.branch_id || null,
+                    role: byEmail.role || 'Staff',
+                    name: byEmail.name || 'Kullanıcı',
+                    email: byEmail.email,
+                    permissions: byEmail.permissions || [],
+                    allowedBranches: byEmail.allowed_branches || []
+                };
+            }
+            
+            return null;
         } catch (err) {
             console.error('Critical Profile Fetch Failure:', err);
             return null;
