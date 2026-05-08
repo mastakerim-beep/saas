@@ -128,7 +128,7 @@ export default function ClientWrapper({ children }: { children: React.ReactNode 
                 }
 
                 setIsChecking(false);
-                window.location.replace('/login');
+                router.push('/login'); 
                 return;
             }
 
