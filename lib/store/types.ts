@@ -10,15 +10,23 @@ export interface Branch extends DB.Branch {
     timezone?: string; // e.g. "Europe/Istanbul", "Europe/London", "America/New_York"
 }
 export type AppUser = DB.AppUser;
-export type Customer = DB.Customer;
+export interface Customer extends DB.Customer {
+    vertical_data?: any;
+}
 export type MembershipPlan = DB.MembershipPlan;
 export type CustomerMembership = DB.CustomerMembership;
-export type Package = DB.Package;
-export type PackageDefinition = DB.PackageDefinition;
+export interface Package extends DB.Package {
+    status?: 'active' | 'expired' | 'finished' | 'cancelled' | string;
+}
+export interface PackageDefinition extends DB.PackageDefinition {
+    validityDays?: number;
+}
 export type PackageUsageHistory = DB.PackageUsageHistory;
 export interface Appointment extends DB.Appointment {
     syncStatus?: 'idle' | 'syncing' | 'error';
     isSealed?: boolean;
+    vertical?: string;
+    apptRef?: string;
 }
 export interface CalendarBlock extends DB.CalendarBlock {
     roomId?: string | null;

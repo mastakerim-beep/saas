@@ -98,10 +98,20 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
                 try {
                     const appUser = await fetchAppUserProfile(session.user.id, session.user.email!);
                     if (!appUser) {
-                        // CRITICAL: If session exists but profile is missing, force sign out to prevent loops
-                        console.error('🛡️ [Auth Trace] Profile missing for session. Forcing SignOut.');
-                        await supabase.auth.signOut();
+                        // CRITICAL: If session exists but profile is missing, this is a corrupted state.
+                        // We must perform a hard logout immediately to break potential loops.
+                        console.error('🛡️ [Auth Trace] Profile missing for session. Performing hard reset.');
                         setCurrentUser(null);
+                        
+                        // Clear local storage and cookies immediately
+                        if (typeof window !== 'undefined') {
+                            localStorage.removeItem('sb-' + process.env.NEXT_PUBLIC_SUPABASE_URL?.split('.')[0].split('//')[1] + '-auth-token');
+                            document.cookie.split(";").forEach((c) => {
+                                document.cookie = c.replace(/^ +/, "").replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/");
+                            });
+                        }
+                        
+                        await supabase.auth.signOut();
                     } else {
                         setCurrentUser(appUser);
                     }
@@ -126,13 +136,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
                     console.warn('⚠️ [Auth Trace] Initialization timeout (8s). Forced unlock.');
                     // Try manual session check one last time
                     supabase.auth.getSession().then(({ data: { session } }) => {
-                        if (session?.user) {
-                            fetchAppUserProfile(session.user.id, session.user.email!).then(profile => {
-                                if (profile) {
-                                    console.log('🛡️ [Auth Trace] Late profile arrival after timeout.');
-                                    setCurrentUser(profile);
-                                }
-                            });
+                        if (session) {
+                            console.log("⏳ [Auth Trace] Session detected but profile missing. Waiting for AuthContext cleanup...");
+                            // Do NOT redirect yet, wait for AuthContext to detect the missing profile and sign out.
+                            return; 
                         }
                     });
                 }

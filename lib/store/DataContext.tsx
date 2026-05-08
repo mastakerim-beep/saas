@@ -10,7 +10,7 @@ import {
     ConsultationBodyMap, InventoryUsageNorm, CustomerMedia, CustomerBiometric,
     PackageDefinition, CommissionRule, AppointmentStatus, Staff, Payment, InventoryCategory, PackageUsageHistory,
     PaymentDefinition, BankAccount, ExpenseCategory, ReferralSource, ConsentFormTemplate, SystemAnnouncement, LoyaltySettings, Webhook, InventoryTransfer, Coupon,
-    SaaSPlan, SaaSInvoice
+    SaaSPlan, SaaSInvoice, PaymentLink
 } from './types';
 import { syncDb } from './sync-db';
 

@@ -112,9 +112,8 @@ export default function ClientWrapper({ children }: { children: React.ReactNode 
                 const { data: { session } } = await supabase.auth.getSession();
                 
                 if (session) {
-                    console.log("⏳ [Auth Trace] Session detected. Waiting for profile...");
-                    // If we have a session but no profile, allow the UI to show children (Home/Dashboard)
-                    // which will handle the loading state or redirect once the user arrives.
+                    console.log("⏳ [Auth Trace] Session detected but profile missing. Waiting for AuthContext cleanup...");
+                    // Do NOT redirect yet, wait for AuthContext to detect the missing profile and sign out.
                     setIsChecking(false);
                     return; 
                 }

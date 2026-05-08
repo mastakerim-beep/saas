@@ -1,7 +1,7 @@
 "use client";
 
 import { motion } from 'framer-motion';
-import { Activity, Target, Zap, Heart, Shield, Bot, RefreshCw, Plus, ChevronRight } from 'lucide-react';
+import { Activity, Target, Zap, Heart, Shield, Bot, RefreshCw, Plus, ChevronRight, Sparkles } from 'lucide-react';
 import { Customer } from '@/lib/store';
 
 interface CustomerTabWellnessProps {
