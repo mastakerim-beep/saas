@@ -18,28 +18,40 @@ export function ImperialOversight({ businesses, logs, zReports, notifications = 
     
     // Filter Imperial Veto Logs
     const vetoLogs = useMemo(() => {
-        return logs.filter(l => l.action === 'IMPERIAL_VETO' || l.action === 'VETO')
-                   .sort((a, b) => new Date(b.date || b.createdAt).getTime() - new Date(a.date || a.createdAt).getTime());
+        if (!Array.isArray(logs)) return [];
+        return logs.filter(l => l && (l.action === 'IMPERIAL_VETO' || l.action === 'VETO'))
+                   .sort((a, b) => {
+                       const dateA = new Date(a.date || a.createdAt || 0).getTime();
+                       const dateB = new Date(b.date || b.createdAt || 0).getTime();
+                       return dateB - dateA;
+                   });
     }, [logs]);
 
     // Filter Security Alerts (Danger type from notification_logs)
     const securityAlerts = useMemo(() => {
-        return (notifications || [])
-            .filter(n => n.type === 'danger' || n.title?.toLowerCase().includes('security'))
-            .sort((a, b) => new Date(b.sentAt || b.createdAt).getTime() - new Date(a.sentAt || a.createdAt).getTime());
+        if (!Array.isArray(notifications)) return [];
+        return notifications
+            .filter(n => n && (n.type === 'danger' || n.title?.toLowerCase().includes('security')))
+            .sort((a, b) => {
+                const dateA = new Date(a.sentAt || a.createdAt || 0).getTime();
+                const dateB = new Date(b.sentAt || b.createdAt || 0).getTime();
+                return dateB - dateA;
+            });
     }, [notifications]);
 
     // Calculate Intervention Data per Business
     const businessMetrics = useMemo(() => {
+        if (!Array.isArray(businesses)) return [];
         return businesses.map(biz => {
-            const bizZReports = zReports.filter(z => z.businessId === biz.id);
+            if (!biz) return null;
+            const bizZReports = (zReports || []).filter(z => z && z.businessId === biz.id);
             const totalDelta = bizZReports.reduce((s, z) => s + (z.interventionDelta || 0), 0);
-            const bizVetos = vetoLogs.filter(l => l.businessId === biz.id).length;
-            const totalCiro = bizZReports.reduce((s, z) => s + (z.expectedNakit + z.expectedKart + z.expectedHavale), 0);
-            const bizSecurityAlerts = securityAlerts.filter(a => a.businessId === biz.id).length;
+            const bizVetos = vetoLogs.filter(l => l && l.businessId === biz.id).length;
+            const totalCiro = bizZReports.reduce((s, z) => s + ((z.expectedNakit || 0) + (z.expectedKart || 0) + (z.expectedHavale || 0)), 0);
+            const bizSecurityAlerts = securityAlerts.filter(a => a && a.businessId === biz.id).length;
             
             return {
-                name: biz.name,
+                name: biz.name || 'Bilinmeyen İşletme',
                 id: biz.id,
                 delta: totalDelta,
                 vetoCount: bizVetos,
@@ -47,11 +59,12 @@ export function ImperialOversight({ businesses, logs, zReports, notifications = 
                 ciro: totalCiro,
                 riskRatio: totalCiro > 0 ? (totalDelta / totalCiro) * 100 : 0
             };
-        });
+        }).filter(Boolean) as any[];
     }, [businesses, zReports, vetoLogs, securityAlerts]);
 
     const stats = useMemo(() => {
-        const totalDelta = zReports.reduce((s, z) => s + (z.interventionDelta || 0), 0);
+        const reports = Array.isArray(zReports) ? zReports : [];
+        const totalDelta = reports.reduce((s, z) => s + (z.interventionDelta || 0), 0);
         const criticalSaps = businessMetrics.filter(m => m.riskRatio > 5 || m.securityCount > 0).length;
         const activeSecurityThreats = securityAlerts.filter(a => a.status === 'unread').length;
         return { totalDelta, criticalSaps, activeSecurityThreats };
