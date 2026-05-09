@@ -113,7 +113,7 @@ export interface InventoryTransfer {
     createdAt: string;
 }
 export type Quote = DB.Quote;
-export type LoyaltySettings = DB.LoyaltySettings;
+export type LoyaltySettings = DB.LoyaltySetting;
 export type Webhook = DB.Webhook;
 export type SystemAnnouncement = DB.SystemAnnouncement;
 export type TenantModule = DB.TenantModule;
