@@ -43,10 +43,14 @@ export default function MasterFranchisePage() {
 
     // Aggregate Global Stats
     const globalStats = useMemo(() => {
-        const totalCiro = allPayments.reduce((acc, p) => acc + (p.totalAmount || 0), 0);
-        const totalCustomers = allBusinesses.reduce((acc, b) => acc + (b.customerCount || 0), 0); // Mocked if not present
-        const activeBusinesses = allBusinesses.filter(b => b.status === 'active').length;
-        const totalVetoes = allLogs.filter(l => l.action === 'IMPERIAL_VETO').length;
+        const payments = allPayments || [];
+        const businesses = allBusinesses || [];
+        const logs = allLogs || [];
+
+        const totalCiro = payments.reduce((acc, p) => acc + (p.totalAmount || 0), 0);
+        const totalCustomers = businesses.reduce((acc, b) => acc + (b.customerCount || 0), 0);
+        const activeBusinesses = businesses.filter(b => b.status === 'active').length;
+        const totalVetoes = logs.filter(l => l.action === 'IMPERIAL_VETO').length;
 
         return {
             totalCiro,
@@ -56,7 +60,7 @@ export default function MasterFranchisePage() {
         };
     }, [allPayments, allBusinesses, allLogs]);
 
-    if (!isInitialized || currentUser?.role !== 'SaaS_Owner') {
+    if (!isInitialized || (!isSaaS && !isHolding)) {
         return (
             <div className="min-h-screen bg-[#020210] flex items-center justify-center">
                 <div className="animate-pulse flex flex-col items-center">

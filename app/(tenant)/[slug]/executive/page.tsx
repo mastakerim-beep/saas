@@ -84,7 +84,8 @@ export default function ExecutiveDashboard() {
 
     // Sorted Logs: Latest at Top
     const sortedLogs = useMemo(() => {
-        return [...allLogs].sort((a: AuditLog, b: AuditLog) => {
+        const logs = Array.isArray(allLogs) ? allLogs : [];
+        return [...logs].sort((a: AuditLog, b: AuditLog) => {
             const dateA = new Date(a.date || a.createdAt || 0).getTime();
             const dateB = new Date(b.date || b.createdAt || 0).getTime();
             return dateB - dateA;
@@ -93,21 +94,25 @@ export default function ExecutiveDashboard() {
 
     // REAL-TIME DATA CALCULATIONS
     const stats = useMemo(() => {
+        const appts = Array.isArray(appointments) ? appointments : [];
+        const pays = Array.isArray(payments) ? payments : [];
+        const custs = Array.isArray(customers) ? customers : [];
+
         const todayStr = new Date().toISOString().split('T')[0];
         const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
         const sixtyDaysAgo = new Date(Date.now() - 60 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
         
-        const todayAppts = appointments.filter((a: Appointment) => a.date === todayStr);
-        const todayPayments = payments.filter((p: Payment) => p.date === todayStr);
+        const todayAppts = appts.filter((a: Appointment) => a.date === todayStr);
+        const todayPayments = pays.filter((p: Payment) => p.date === todayStr);
         const todayCash = todayPayments.reduce((sum: number, p: Payment) => sum + p.totalAmount, 0);
         
-        const thirtyDayRev = payments.filter((p: Payment) => p.date >= thirtyDaysAgo).reduce((sum: number, p: Payment) => sum + p.totalAmount, 0);
-        const prevThirtyDayRev = payments.filter((p: Payment) => p.date < thirtyDaysAgo && p.date >= sixtyDaysAgo).reduce((sum: number, p: Payment) => sum + p.totalAmount, 0);
+        const thirtyDayRev = pays.filter((p: Payment) => p.date >= thirtyDaysAgo).reduce((sum: number, p: Payment) => sum + p.totalAmount, 0);
+        const prevThirtyDayRev = pays.filter((p: Payment) => p.date < thirtyDaysAgo && p.date >= sixtyDaysAgo).reduce((sum: number, p: Payment) => sum + p.totalAmount, 0);
         
         const revenueDiff = prevThirtyDayRev > 0 ? ((thirtyDayRev - prevThirtyDayRev) / prevThirtyDayRev) * 100 : thirtyDayRev > 0 ? 100 : 0;
 
         return {
-            potentialCustomers: customers.length,
+            potentialCustomers: custs.length,
             todayAppts: todayAppts.length,
             todayCash,
             revenueDiff
@@ -116,16 +121,18 @@ export default function ExecutiveDashboard() {
 
     // Dynamic Chart Data: Last 14 days
     const lineData = useMemo(() => {
+        const pays = Array.isArray(payments) ? payments : [];
+        const appts = Array.isArray(appointments) ? appointments : [];
         const data: any[] = [];
         for (let i = 13; i >= 0; i--) {
             const date = new Date(Date.now() - i * 24 * 60 * 60 * 1000);
             const dateStr = date.toISOString().split('T')[0];
             const name = `${date.getDate().toString().padStart(2, '0')}.${(date.getMonth() + 1).toString().padStart(2, '0')}`;
             
-            const dayPayments = payments.filter((p: Payment) => p.date === dateStr);
+            const dayPayments = pays.filter((p: Payment) => p.date === dateStr);
             const tahsilat = dayPayments.reduce((sum: number, p: Payment) => sum + p.totalAmount, 0);
             
-            const dayAppts = appointments.filter((a: Appointment) => a.date === dateStr);
+            const dayAppts = appts.filter((a: Appointment) => a.date === dateStr);
             const satis = dayAppts.reduce((sum: number, a: Appointment) => sum + (a.price || 0), 0);
 
             data.push({ name, satis, tahsilat });
@@ -135,10 +142,11 @@ export default function ExecutiveDashboard() {
 
     // Real Heatmap Algorithm
     const heatmapData = useMemo(() => {
+        const appts = Array.isArray(appointments) ? appointments : [];
         const slots = Array(144).fill(0);
         const today = new Date();
         
-        appointments.forEach((appt: Appointment) => {
+        appts.forEach((appt: Appointment) => {
             const apptDate = new Date(appt.date);
             const diffDays = Math.floor((today.getTime() - apptDate.getTime()) / (1000 * 60 * 60 * 24));
             if (diffDays >= 0 && diffDays < 7) {
