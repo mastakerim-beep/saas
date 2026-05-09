@@ -45,7 +45,7 @@ export default function ExecutiveDashboard() {
     const { 
         branches, payments, appointments, customers, 
         expenses, allLogs, can, fetchData, systemAnnouncements,
-        locale
+        locale, currentUser
     } = useStore();
     const safeLocale = (locale as 'tr' | 'en') || 'tr';
     const d = dictionary[safeLocale] || dictionary.tr;

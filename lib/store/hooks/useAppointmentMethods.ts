@@ -113,6 +113,21 @@ export const useAppointmentMethods = (deps: any) => {
             }
             return !!ok;
         },
+        assignRoomToAppointment: async (appointmentId: string, roomId: string) => {
+            const appt = dataRef.current.appointments.find((a: any) => a.id === appointmentId);
+            if (!appt) return false;
+            const targetBizId = appt.businessId || activeBizIdRef.current;
+            dataRef.current.setAllAppointments((prev: any) => prev.map((a: any) => a.id === appointmentId ? { ...a, roomId } : a));
+            const ok = await syncDb('appointments', 'update', { room_id: roomId }, appointmentId, targetBizId);
+            if (ok) {
+                stableMethodsRef.current?.addLog('Randevu Odaya Atandı', appt.customerName, `Oda ID: ${roomId}`, 'Oto-Atama');
+            }
+            return ok;
+        },
+        updateRoomStatus: async (id: string, status: string) => {
+            dataRef.current.setAllRooms((prev: any) => prev.map((r: any) => r.id === id ? { ...r, status } : r));
+            await syncDb('rooms', 'update', { status }, id, activeBizIdRef.current);
+        },
     };
 };
 
