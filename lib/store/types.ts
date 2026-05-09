@@ -9,7 +9,9 @@ export type Business = DB.Business & { ai_tokens?: number };
 export interface Branch extends DB.Branch {
     timezone?: string; // e.g. "Europe/Istanbul", "Europe/London", "America/New_York"
 }
-export type AppUser = DB.AppUser;
+export interface AppUser extends DB.AppUser {
+    holding_id?: string | null;
+}
 export interface Customer extends DB.Customer {
     vertical_data?: any;
 }
