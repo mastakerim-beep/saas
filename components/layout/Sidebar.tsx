@@ -186,7 +186,7 @@ export default function Sidebar() {
         >
             {/* Header / Brand */}
             <div className="p-6 h-[100px] flex items-center justify-between">
-                <div className="flex items-center gap-4 min-w-[40px]">
+                <div className="flex items-center gap-4 min-w-[40px] flex-1">
                     <div className={`w-12 h-12 rounded-2xl bg-gradient-to-br ${
                         currentBusiness?.verticals?.includes('clinic') ? 'from-emerald-500 to-teal-600' :
                         currentBusiness?.verticals?.includes('fitness') ? 'from-amber-500 to-orange-600' :
@@ -344,14 +344,19 @@ export default function Sidebar() {
                 )}
 
                 {/* Admin / Global Sys Admin */}
-                {currentUser?.role === 'SaaS_Owner' && (
+                {(currentUser?.role === 'SaaS_Owner' || currentUser?.holding_id) && (
                     <div>
-                        {isHovered && <p className="px-4 text-[10px] font-black text-rose-500 uppercase tracking-widest mb-4 flex items-center gap-2 overflow-hidden whitespace-nowrap"><ShieldCheck size={14}/> Global Sistem</p>}
+                        {isHovered && <p className="px-4 text-[10px] font-black text-rose-500 uppercase tracking-widest mb-4 flex items-center gap-2 overflow-hidden whitespace-nowrap"><ShieldCheck size={14}/> {currentUser?.role === 'SaaS_Owner' ? 'Global Sistem' : 'Holding Yönetimi'}</p>}
                         <div className="space-y-1">
-                            <SidebarItem isHovered={isHovered} pathname={pathname} href="/admin" icon={Globe} label={d.command_center} colorClass="text-rose-500" />
-                            <SidebarItem isHovered={isHovered} pathname={pathname} href="/admin#announcements" icon={Sparkles} label={d.announcements} colorClass="text-indigo-600" />
-                            <SidebarItem isHovered={isHovered} pathname={pathname} href="/admin#plans" icon={CreditCard} label={d.plans_pricing} colorClass="text-indigo-600" />
-                            <SidebarItem isHovered={isHovered} pathname={pathname} href="/admin#logs" icon={Terminal} label={d.system_terminal} colorClass="text-gray-900" />
+                            <SidebarItem isHovered={isHovered} pathname={pathname} href="/executive" icon={Crown} label={currentUser?.role === 'SaaS_Owner' ? "Global Oversight" : "Holding Oversight"} colorClass="text-amber-500" badge={currentUser?.role === 'SaaS_Owner' ? "MASTER" : "HOLDING"} />
+                            {currentUser?.role === 'SaaS_Owner' && (
+                                <>
+                                    <SidebarItem isHovered={isHovered} pathname={pathname} href="/admin" icon={Globe} label={d.command_center} colorClass="text-rose-500" />
+                                    <SidebarItem isHovered={isHovered} pathname={pathname} href="/admin#announcements" icon={Sparkles} label={d.announcements} colorClass="text-indigo-600" />
+                                    <SidebarItem isHovered={isHovered} pathname={pathname} href="/admin#plans" icon={CreditCard} label={d.plans_pricing} colorClass="text-indigo-600" />
+                                    <SidebarItem isHovered={isHovered} pathname={pathname} href="/admin#logs" icon={Terminal} label={d.system_terminal} colorClass="text-gray-900" />
+                                </>
+                            )}
                         </div>
                     </div>
                 )}

@@ -84,8 +84,25 @@ export const fetchData = async (
                             q = q.eq('business_id', idToUse);
                         }
                     } else if (isSaaS && !slug) {
-                        if (['businesses', 'app_users'].includes(table)) {
+                        // Global Oversight Mode for SaaS Owners
+                        if (['businesses', 'app_users', 'z_reports', 'payments', 'audit_logs', 'notification_logs', 'system_announcements', 'saas_invoices', 'saas_plans'].includes(table)) {
                             q = q.limit(1000);
+                        } else {
+                            return [];
+                        }
+                    } else if (user?.holding_id && !slug) {
+                        // Holding Oversight Mode for Multi-Tenant Owners (e.g., Sanitas)
+                        if (table === 'businesses') {
+                            q = q.eq('holding_id', user.holding_id);
+                        } else if (['z_reports', 'payments', 'audit_logs', 'notification_logs'].includes(table)) {
+                            // First get the business IDs for this holding
+                            const { data: holdingBiz } = await supabase.from('businesses').select('id').eq('holding_id', user.holding_id);
+                            const bizIds = holdingBiz?.map(b => b.id) || [];
+                            if (bizIds.length > 0) {
+                                q = q.in('business_id', bizIds).limit(1000);
+                            } else {
+                                return [];
+                            }
                         } else {
                             return [];
                         }

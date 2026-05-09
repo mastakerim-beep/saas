@@ -1,11 +1,11 @@
 "use client";
 
 import { useState, useMemo } from 'react';
-import { useStore } from '@/lib/store';
+import { useStore, ZReport } from '@/lib/store';
 import { 
     Calendar, FileCode, CheckCircle2, AlertTriangle, 
     Search, ChevronRight, LayoutList, TrendingUp, Zap,
-    ShieldCheck, CalendarDays, BrainCircuit, X
+    ShieldCheck, CalendarDays, BrainCircuit, X, Activity
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -16,17 +16,17 @@ export default function ZReportArchive() {
 
     const filteredReports = useMemo(() => {
         return zReports
-            .filter(r => r.reportDate.includes(searchTerm) || (r.notes || '').toLowerCase().includes(searchTerm.toLowerCase()))
-            .sort((a, b) => new Date(b.reportDate).getTime() - new Date(a.reportDate).getTime());
+            .filter((r: ZReport) => r.reportDate.includes(searchTerm) || (r.notes || '').toLowerCase().includes(searchTerm.toLowerCase()))
+            .sort((a: ZReport, b: ZReport) => new Date(b.reportDate).getTime() - new Date(a.reportDate).getTime());
     }, [zReports, searchTerm]);
 
     const selectedReport = useMemo(() => 
-        zReports.find(r => r.id === selectedReportId), 
+        zReports.find((r: ZReport) => r.id === selectedReportId), 
     [zReports, selectedReportId]);
 
     const stats = useMemo(() => {
         const total = zReports.length;
-        const risky = zReports.filter(r => (r.notes || '').includes('eksik') || (r.notes || '').includes('risk')).length;
+        const risky = zReports.filter((r: ZReport) => (r.notes || '').includes('eksik') || (r.notes || '').includes('risk')).length;
         return { total, risky };
     }, [zReports]);
 
@@ -93,7 +93,7 @@ export default function ZReportArchive() {
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-50">
-                            {filteredReports.map((report) => (
+                            {filteredReports.map((report: ZReport) => (
                                 <tr 
                                     key={report.id} 
                                     className="hover:bg-slate-50/50 transition-all cursor-default group"

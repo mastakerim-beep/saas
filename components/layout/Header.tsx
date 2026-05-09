@@ -156,32 +156,70 @@ export default function Header() {
                             >
                                 <div className="p-6 bg-gray-50 rounded-[2rem] mb-3">
                                     <p className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mb-2 opacity-80">{d.branch_switcher}</p>
-                                    <p className="text-sm font-black text-gray-900 leading-tight">{d.currently}: <span className="text-primary">{currentBranch?.name || d.all_branches}</span></p>
+                                    <p className="text-sm font-black text-gray-900 leading-tight">{d.currently}: <span className="text-primary">{currentBusiness?.name} / {currentBranch?.name || d.all_branches}</span></p>
                                 </div>
-                                <div className="space-y-1.5 px-1 py-1">
-                                    {Array.isArray(branches) && branches.map((br: any) => (
-                                        <button 
-                                            key={br.id}
-                                            onClick={() => {
-                                                setCurrentBranch(br);
-                                                localStorage.setItem('aura_last_branch', br.id);
-                                                setShowBranchMenu(false);
-                                            }}
-                                            className={`w-full flex items-center justify-between p-4 rounded-3xl transition-all duration-300 ${
-                                                currentBranch?.id === br.id 
-                                                ? 'bg-indigo-600 text-white shadow-xl shadow-indigo-500/20' 
-                                                : 'text-indigo-950 hover:bg-indigo-50 hover:text-indigo-600'
-                                            }`}
-                                        >
-                                            <div className="flex items-center gap-4">
-                                                <div className={`p-2 rounded-xl ${currentBranch?.id === br.id ? 'bg-white/20' : 'bg-primary/5'}`}>
-                                                    <MapPin size={18} />
+                                
+                                <div className="space-y-4 max-h-[450px] overflow-y-auto pr-1 custom-scrollbar">
+                                    {/* BUSINESS SWITCHER (For Holding/SaaS Owners) */}
+                                    {(currentUser?.role === 'SaaS_Owner' || currentUser?.holding_id) && allBusinesses.length > 1 && (
+                                        <div className="space-y-1.5 px-1">
+                                            <p className="text-[9px] font-black text-indigo-400 uppercase tracking-widest mb-2 px-3 italic">İşletmeler (Holding)</p>
+                                            {allBusinesses.map((b: any) => (
+                                                <button 
+                                                    key={b.id}
+                                                    onClick={() => {
+                                                        if (currentUser.role === 'SaaS_Owner') {
+                                                            useStore.getState().setImpersonatedBusinessId(b.id);
+                                                        }
+                                                        window.location.href = `/${b.slug}/executive`;
+                                                        setShowBranchMenu(false);
+                                                    }}
+                                                    className={`w-full flex items-center justify-between p-4 rounded-3xl transition-all duration-300 ${
+                                                        currentBusiness?.id === b.id 
+                                                        ? 'bg-amber-500 text-white shadow-xl shadow-amber-500/20' 
+                                                        : 'bg-white border border-gray-100 text-gray-900 hover:bg-amber-50 hover:text-amber-600'
+                                                    }`}
+                                                >
+                                                    <div className="flex items-center gap-4">
+                                                        <div className={`p-2 rounded-xl ${currentBusiness?.id === b.id ? 'bg-white/20' : 'bg-amber-50'}`}>
+                                                            <Building2 size={18} />
+                                                        </div>
+                                                        <span className="text-sm font-black tracking-tight">{b.name}</span>
+                                                    </div>
+                                                    {currentBusiness?.id === b.id && <div className="w-2 h-2 bg-white rounded-full" />}
+                                                </button>
+                                            ))}
+                                            <div className="h-px bg-gray-100 my-4 mx-3" />
+                                        </div>
+                                    )}
+
+                                    {/* BRANCH SWITCHER (Standard) */}
+                                    <div className="space-y-1.5 px-1 pb-1">
+                                        <p className="text-[9px] font-black text-indigo-400 uppercase tracking-widest mb-2 px-3 italic">Şubeler</p>
+                                        {Array.isArray(branches) && branches.map((br: any) => (
+                                            <button 
+                                                key={br.id}
+                                                onClick={() => {
+                                                    setCurrentBranch(br);
+                                                    localStorage.setItem('aura_last_branch', br.id);
+                                                    setShowBranchMenu(false);
+                                                }}
+                                                className={`w-full flex items-center justify-between p-4 rounded-3xl transition-all duration-300 ${
+                                                    currentBranch?.id === br.id 
+                                                    ? 'bg-indigo-600 text-white shadow-xl shadow-indigo-500/20' 
+                                                    : 'text-indigo-950 hover:bg-indigo-50 hover:text-indigo-600'
+                                                }`}
+                                            >
+                                                <div className="flex items-center gap-4">
+                                                    <div className={`p-2 rounded-xl ${currentBranch?.id === br.id ? 'bg-white/20' : 'bg-primary/5'}`}>
+                                                        <MapPin size={18} />
+                                                    </div>
+                                                    <span className="text-sm font-black tracking-tight">{br.name}</span>
                                                 </div>
-                                                <span className="text-sm font-black tracking-tight">{br.name}</span>
-                                            </div>
-                                            {currentBranch?.id === br.id && <div className="w-2 h-2 bg-white rounded-full" />}
-                                        </button>
-                                    ))}
+                                                {currentBranch?.id === br.id && <div className="w-2 h-2 bg-white rounded-full" />}
+                                            </button>
+                                        ))}
+                                    </div>
                                 </div>
                             </motion.div>
                         )}

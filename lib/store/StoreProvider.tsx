@@ -139,10 +139,12 @@ const StoreOrchestrator = ({ children }: { children: ReactNode }) => {
     const activeBizId = useMemo(() => {
         let id: string | undefined = undefined;
         const isSaaS = auth.currentUser?.role === 'SaaS_Owner';
+        const isHoldingOwner = !!auth.currentUser?.holding_id;
         const isAdminPath = pathname?.startsWith('/admin');
+        const isExecutivePath = pathname?.startsWith('/executive');
 
-        // SaaS Owners on admin paths should NOT have an activeBizId to ensure global fetch
-        if (isSaaS && isAdminPath && !auth.impersonatedBusinessId) {
+        // SaaS Owners or Holding Owners on oversight paths should NOT have an activeBizId to ensure global fetch
+        if ((isSaaS || (isHoldingOwner && isExecutivePath)) && (isAdminPath || isExecutivePath) && !auth.impersonatedBusinessId) {
             return undefined;
         }
 

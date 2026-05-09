@@ -210,6 +210,33 @@ export default function ExecutiveDashboard() {
                 <TabBtn active={activeTab} id="forecast" onClick={setActiveTab} label={d.forecast} icon={<Zap size={14} />} />
             </div>
 
+            {/* SaaS Owner - Global Shortcut */}
+            {currentUser?.role === 'SaaS_Owner' && (
+                <div className="max-w-[1600px] mx-auto px-4 mb-4">
+                    <Link href="/executive">
+                        <motion.div 
+                            whileHover={{ scale: 1.01 }}
+                            whileTap={{ scale: 0.99 }}
+                            className="bg-indigo-600 p-4 rounded-3xl flex items-center justify-between shadow-xl shadow-indigo-200 cursor-pointer group"
+                        >
+                            <div className="flex items-center gap-4">
+                                <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center text-white">
+                                    <ShieldCheck size={20} />
+                                </div>
+                                <div>
+                                    <h4 className="text-sm font-black text-white italic tracking-tighter uppercase">Master Franchise Global Oversight</h4>
+                                    <p className="text-[9px] font-bold text-indigo-200 uppercase tracking-widest">Tüm şubeleri kuş bakışı izlemek için tıklayın</p>
+                                </div>
+                            </div>
+                            <div className="flex items-center gap-2 text-white">
+                                <span className="text-[9px] font-black uppercase tracking-widest opacity-60 group-hover:opacity-100 transition-opacity">Global Panele Geç</span>
+                                <ChevronRight size={16} />
+                            </div>
+                        </motion.div>
+                    </Link>
+                </div>
+            )}
+
             <AnimatePresence mode="wait">
                 {activeTab === 'overview' && (
                     <motion.div key="overview" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="space-y-8">
