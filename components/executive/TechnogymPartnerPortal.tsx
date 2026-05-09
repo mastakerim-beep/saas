@@ -8,7 +8,7 @@ import { useStore } from "@/lib/store";
 import { toast } from "sonner";
 
 export default function TechnogymPartnerPortal() {
-    const { currentBusiness, customers } = useStore();
+    const { currentBusiness, customers, marketingRules } = useStore();
     const [insights, setInsights] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [isSimulating, setIsSimulating] = useState(false);
