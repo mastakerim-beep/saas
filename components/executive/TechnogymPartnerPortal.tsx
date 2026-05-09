@@ -1,7 +1,7 @@
 "use client";
 
 import { motion, AnimatePresence } from "framer-motion";
-import { Activity, ShieldCheck, Zap, TrendingUp, Sparkles, ArrowRight, Brain, Target, DollarSign, RefreshCw } from "lucide-react";
+import { Activity, ShieldCheck, Zap, TrendingUp, Sparkles, ArrowRight, Brain, Target, DollarSign, RefreshCw, Users } from "lucide-react";
 import { useState, useEffect } from "react";
 import { TechnogymIntelligence } from "@/lib/services/TechnogymIntelligence";
 import { useStore } from "@/lib/store";
@@ -50,7 +50,7 @@ export default function TechnogymPartnerPortal() {
         }
     };
 
-    const hasActiveAutomation = marketingRules.some(r => r.triggerType === 'TECHNOGYM_BIOMETRIC' && r.isActive);
+    const hasActiveAutomation = marketingRules.some((r: any) => r.triggerType === 'TECHNOGYM_BIOMETRIC' && r.isActive);
 
     return (
         <div className="space-y-8 p-1">
