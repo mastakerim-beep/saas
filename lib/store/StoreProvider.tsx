@@ -65,37 +65,27 @@ const StoreOrchestrator = ({ children }: { children: ReactNode }) => {
     const pathname = usePathname();
     const slug = params?.slug as string;
     
-    const [isInitialized, setIsInitialized] = useState(() => {
-        if (typeof window !== 'undefined') {
-            return isPublicAuraRoute(window.location.pathname);
-        }
-        return false;
-    });
+    const [isInitialized, setIsInitialized] = useState(false);
     const isFetchingRef = React.useRef(false);
     const lastFetchedKeyRef = React.useRef<string>("");
     
-    // Safety Unlock for Public Pages
+    // Safety Unlock & Initialization
     useEffect(() => {
         const isPublic = isPublicAuraRoute(pathname);
         
-        if (isPublic) {
-            setIsInitialized(true);
-            return;
-        }
-
-        if (auth.isInitialized) {
+        if (isPublic || auth.isInitialized) {
             setIsInitialized(true);
         }
 
         const safetyTimer = setTimeout(() => {
-            if (!auth.isInitialized) {
-                console.warn("⚠️ [Store Trace] Safety Unlock triggered (StoreProvider).");
+            if (!isInitialized) {
+                console.warn("⚠️ [Store] Safety Unlock triggered.");
                 setIsInitialized(true);
             }
         }, 3000);
 
         return () => clearTimeout(safetyTimer);
-    }, [auth.isInitialized, pathname]);
+    }, [auth.isInitialized, pathname, isInitialized]);
 
     // --- IDENTITY ANCHOR ---
     const lastResolvedBizIdRef = React.useRef<string | undefined>(

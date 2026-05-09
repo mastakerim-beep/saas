@@ -73,118 +73,66 @@ export default function ClientWrapper({ children }: { children: React.ReactNode 
     
     const router = useRouter();
     const pathname = usePathname();
-    const [isChecking, setIsChecking] = useState(() => {
-        if (typeof window !== 'undefined') {
-            return !isPublicAuraRoute(window.location.pathname);
-        }
-        return true;
-    });
+    const [isChecking, setIsChecking] = useState(true);
     const [isMounted, setIsMounted] = useState(false);
 
-    const normalizePath = (p: string) => p.replace(/\/+$/, '') || '/';
-    const normalizedPathname = normalizePath(pathname);
+    const normalizedPathname = useMemo(() => pathname?.replace(/\/+$/, '') || '/', [pathname]);
 
     const isLoginPath = normalizedPathname.startsWith("/login");
+    const isPublicPath = useMemo(() => isPublicAuraRoute(normalizedPathname), [normalizedPathname]);
     const isRootPath = normalizedPathname === "/";
     const isSuperAdminPath = normalizedPathname.startsWith("/admin");
-    const isPublicPath = 
-        normalizedPathname.startsWith("/book") || 
-        normalizedPathname.startsWith("/portal") || 
-        normalizedPathname.startsWith("/kiosk") ||
-        normalizedPathname.match(/^\/[^/]+\/(book|portal|kiosk)(\/|$)/);
 
     const isSaaSOwner = currentUser?.role === 'SaaS_Owner' || currentUser?.email === 'kerim@mail.com';
-
     const impersonatedBiz = useMemo(() => allBusinesses.find((b: any) => b.id === impersonatedBusinessId), [allBusinesses, impersonatedBusinessId]);
     const userBiz = useMemo(() => allBusinesses.find((b: any) => b.id === currentUser?.businessId), [allBusinesses, currentUser]);
 
-    // 1. Initial Mount Check
     useEffect(() => {
         setIsMounted(true);
     }, []);
 
-    // 2. Routing Logic
     useEffect(() => {
         if (!isMounted || !pathname) return;
 
-        const isPublic = isPublicAuraRoute(pathname);
-
-        // FAST TRACK: If we are on a login or public path, unlock immediately
-        if (isLoginPath || isPublic) {
-            if (isChecking) {
-                console.log("🔓 [Aura Trace] Public/Login Path Detected. Unlocking UI.");
-                setIsChecking(false);
-            }
+        // 1. PUBLIC PATH BYPASS
+        if (isLoginPath || isPublicPath) {
+            setIsChecking(false);
             return;
         }
 
-        const handleRouting = async () => {
-            if (!isInitialized) return;
-
-            // IF NO USER: Verify if we are truly logged out
+        // 2. AUTH ROUTING
+        if (isInitialized) {
             if (!currentUser) {
-                // IMPORTANT: Before redirecting, check if there's actually a session.
-                const { data: { session } } = await supabase.auth.getSession();
-                
-                if (session) {
-                    console.log("⏳ [Auth Trace] Session detected but profile missing. Waiting for AuthContext cleanup...");
-                    // Do NOT redirect yet, wait for AuthContext to detect the missing profile and sign out.
-                    setIsChecking(false);
-                    return; 
-                }
-
-                console.log("🛡️ [Auth Trace] Unauthorized access detected. Redirecting...");
-                
-                // CRITICAL: Check if we are already on login to avoid loop
-                if (isLoginPath) {
-                    setIsChecking(false);
-                    return;
-                }
-
+                // Not logged in and not a public path -> Redirect to login
+                console.log("🛡️ [Auth] Redirecting to login...");
                 setIsChecking(false);
-                router.push('/login'); 
-                return;
-            }
-
-            // IF USER EXISTS:
-            if (currentUser) {
+                router.push('/login');
+            } else {
+                // Logged in -> Handle role-based redirects
                 if (isSaaSOwner) {
                     if (isRootPath || normalizedPathname === "/dashboard") {
                         router.replace('/admin');
                     }
                 } else if (userBiz) {
                     const tenantPath = `/${userBiz.slug}`;
-                    const currentSlugInPath = normalizedPathname.split('/')[1];
-                    const isAnyBizSlugMatch = allBusinesses.some((b: any) => b.slug?.toLowerCase() === currentSlugInPath?.toLowerCase());
-
-                    if (isRootPath) {
-                        router.replace(`${tenantPath}/dashboard`);
-                    } else if (!isAnyBizSlugMatch && !normalizedPathname.includes("/api/")) {
+                    if (isRootPath || (!normalizedPathname.startsWith(tenantPath) && !normalizedPathname.includes("/api/"))) {
                         router.replace(`${tenantPath}/dashboard`);
                     }
                 }
-                
-                // Unlock UI for authenticated users after sync or timeout
-                // IMPROVED: If we have a user and their business is resolved, we can unlock early
-                if (syncStatus === 'idle' || syncStatus === 'error' || (currentUser && userBiz)) {
-                    setIsChecking(false);
-                }
-            }
-        };
-
-        handleRouting();
-
-        // Safety Timeout to prevent white/black screen hangs
-        // REDUCED: 1.5s is enough for a premium experience
-        const safetyTimer = setTimeout(() => {
-            if (isChecking) {
-                console.warn("⚠️ [Aura Trace] Safety Unlock triggered.");
                 setIsChecking(false);
             }
-        }, 1500);
+        }
 
-        return () => clearTimeout(safetyTimer);
-    }, [isMounted, currentUser, isLoginPath, isPublicPath, isRootPath, isSaaSOwner, router, userBiz, pathname, isInitialized, isChecking, syncStatus, allBusinesses]);
+        // 3. SAFETY UNLOCK
+        const timer = setTimeout(() => {
+            if (isChecking) {
+                console.warn("⚠️ [Auth] Safety unlock triggered.");
+                setIsChecking(false);
+            }
+        }, 2000);
+
+        return () => clearTimeout(timer);
+    }, [isMounted, isInitialized, currentUser, pathname, isPublicPath, isLoginPath]);
 
     // ---- RENDER BODY ----
     
