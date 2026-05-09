@@ -73,7 +73,12 @@ export default function ClientWrapper({ children }: { children: React.ReactNode 
     
     const router = useRouter();
     const pathname = usePathname();
-    const [isChecking, setIsChecking] = useState(true);
+    const [isChecking, setIsChecking] = useState(() => {
+        if (typeof window !== 'undefined') {
+            return !isPublicAuraRoute(window.location.pathname);
+        }
+        return true;
+    });
     const [isMounted, setIsMounted] = useState(false);
 
     const normalizePath = (p: string) => p.replace(/\/+$/, '') || '/';

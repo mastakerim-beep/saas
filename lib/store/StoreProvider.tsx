@@ -64,21 +64,22 @@ const StoreOrchestrator = ({ children }: { children: ReactNode }) => {
     const params = useParams();
     const pathname = usePathname();
     const slug = params?.slug as string;
-    const [isInitialized, setIsInitialized] = useState(false);
+    
+    const [isInitialized, setIsInitialized] = useState(() => {
+        if (typeof window !== 'undefined') {
+            return isPublicAuraRoute(window.location.pathname);
+        }
+        return false;
+    });
     const isFetchingRef = React.useRef(false);
     const lastFetchedKeyRef = React.useRef<string>("");
     
     // Safety Unlock for Public Pages
     useEffect(() => {
-        if (!pathname) return;
-        
         const isPublic = isPublicAuraRoute(pathname);
         
         if (isPublic) {
-            if (!isInitialized) {
-                console.log("🔓 [Store Trace] Public Path detected. Immediate Unlock.");
-                setIsInitialized(true);
-            }
+            setIsInitialized(true);
             return;
         }
 
