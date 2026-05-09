@@ -31,6 +31,7 @@ import { usePackageMethods } from './hooks/usePackageMethods';
 import { useSupportMethods } from './hooks/useSupportMethods';
 import { useBusinessMethods } from './hooks/useBusinessMethods';
 import { Sparkles } from 'lucide-react';
+import { isPublicAuraRoute } from '@/lib/utils/route-guard';
 
 const StoreMethodsContext = createContext<any>(undefined);
 const StoreDataContext = createContext<any>(undefined);
@@ -63,7 +64,38 @@ const StoreOrchestrator = ({ children }: { children: ReactNode }) => {
     const params = useParams();
     const pathname = usePathname();
     const slug = params?.slug as string;
+    const [isInitialized, setIsInitialized] = useState(false);
+    const isFetchingRef = React.useRef(false);
+    const lastFetchedKeyRef = React.useRef<string>("");
     
+    // Safety Unlock for Public Pages
+    useEffect(() => {
+        if (!pathname) return;
+        
+        const isPublic = isPublicAuraRoute(pathname);
+        
+        if (isPublic) {
+            if (!isInitialized) {
+                console.log("🔓 [Store Trace] Public Path detected. Immediate Unlock.");
+                setIsInitialized(true);
+            }
+            return;
+        }
+
+        if (auth.isInitialized) {
+            setIsInitialized(true);
+        }
+
+        const safetyTimer = setTimeout(() => {
+            if (!auth.isInitialized) {
+                console.warn("⚠️ [Store Trace] Safety Unlock triggered (StoreProvider).");
+                setIsInitialized(true);
+            }
+        }, 3000);
+
+        return () => clearTimeout(safetyTimer);
+    }, [auth.isInitialized, pathname]);
+
     // --- IDENTITY ANCHOR ---
     const lastResolvedBizIdRef = React.useRef<string | undefined>(
         typeof window !== 'undefined' ? localStorage.getItem('aura_last_resolved_biz_id') || undefined : undefined
@@ -116,12 +148,14 @@ const StoreOrchestrator = ({ children }: { children: ReactNode }) => {
     const activeBizId = useMemo(() => {
         let id: string | undefined = undefined;
         const isSaaS = auth.currentUser?.role === 'SaaS_Owner';
-        const isAdminPath = pathname.startsWith('/admin');
+        const isAdminPath = pathname?.startsWith('/admin');
 
         // SaaS Owners on admin paths should NOT have an activeBizId to ensure global fetch
         if (isSaaS && isAdminPath && !auth.impersonatedBusinessId) {
             return undefined;
         }
+
+        const businessIdFromParams = params?.businessId as string;
 
         if (auth.impersonatedBusinessId) {
             id = auth.impersonatedBusinessId;
@@ -130,22 +164,22 @@ const StoreOrchestrator = ({ children }: { children: ReactNode }) => {
             const bizFromSlug = biz.allBusinesses.find(b => b.slug === slug);
             if (bizFromSlug) {
                 id = bizFromSlug.id;
-            } else if (lastResolvedBizIdRef.current && !isSaaS) {
-                // STICKY FALLBACK: If we have a slug but list is empty, don't clear the ID
-                id = lastResolvedBizIdRef.current;
-            }
+            } 
+        } else if (businessIdFromParams) {
+            // Priority 2: Direct ID from public routes (/book/[id], /portal/[id])
+            id = businessIdFromParams;
         } else if (auth.currentUser?.businessId && !isSaaS) {
             id = auth.currentUser.businessId;
         }
 
-        // STICKY IDENTITY CACHE (Hydration Guard)
-        if (!id && slug && lastResolvedBizIdRef.current) {
+        // STICKY IDENTITY CACHE (Only for root/admin paths where no slug/ID is present)
+        if (!id && !slug && !businessIdFromParams && lastResolvedBizIdRef.current) {
              id = lastResolvedBizIdRef.current;
         }
 
         if (id) lastResolvedBizIdRef.current = id;
         return id;
-    }, [auth.impersonatedBusinessId, auth.currentUser?.businessId, auth.currentUser?.role, slug, biz.allBusinesses, pathname]);
+    }, [auth.impersonatedBusinessId, auth.currentUser?.businessId, auth.currentUser?.role, slug, biz.allBusinesses, pathname, params]);
 
     // Update ref in effect for consistency
     useEffect(() => {
@@ -175,9 +209,6 @@ const StoreOrchestrator = ({ children }: { children: ReactNode }) => {
         const controller = new AbortController();
         fetchControllerRef.current = controller;
 
-        // REMOVED: if (!targetUser) return; 
-        // We allow fetching even without a user for Guest/Kiosk mode.
-        
         const isSaaS = targetUser?.role === 'SaaS_Owner';
         if (!targetBizId && !isSaaS && !slug) {
              console.log("⏳ [Store] Fetch deferred: No target identity and no slug available.");
@@ -188,9 +219,6 @@ const StoreOrchestrator = ({ children }: { children: ReactNode }) => {
         lastFetchTimeRef.current = now;
         lastFetchBizIdRef.current = targetBizId;
 
-        // Note: data ve biz objelerinden gelen setter fonksiyonları React tarafından stable tutulur, 
-        // ancak objenin kendisi her re-render'da değişebileceği için fetchData'yı bozmamak adına 
-        // doğrudan bağımlılık yerine fonksiyon içinde kullanıyoruz.
         const setters = {
             setAllCustomers: data.setAllCustomers,
             setAllAppointments: data.setAllAppointments,
@@ -270,68 +298,53 @@ const StoreOrchestrator = ({ children }: { children: ReactNode }) => {
                 setSyncStatus(prev => prev === 'syncing' ? 'idle' : prev);
             }
         }
-    }, []); // Bağımlılık dizisi boşaltıldı: Ref'ler kullanılıyor.
+    }, []);
 
     useEffect(() => {
+        if (!auth.isInitialized || !biz.isHydrated) return;
+
         const handleOnline = () => setIsOnline(true);
         const handleOffline = () => setIsOnline(false);
         window.addEventListener('online', handleOnline);
         window.addEventListener('offline', handleOffline);
 
-        const normalizePath = (p: string) => p?.replace(/\/+$/, '') || '/';
-        const normalizedPath = normalizePath(pathname);
+        const normalizedPath = pathname?.replace(/\/+$/, '') || '/';
         const isLoginPath = normalizedPath.startsWith('/login');
 
         // Otomatik veri çekme başlatıcı
-        if (auth.isInitialized && biz.isHydrated) {
+        const runFetch = async () => {
             if (isLoginPath) {
-                console.log("🛡️ [Aura Trace] Login path detected. Releasing store locks.");
                 setSyncStatus('idle');
                 return;
             }
 
-            const hasTarget = auth.currentUser || slug;
-            const isSaaS = auth.currentUser?.role === 'SaaS_Owner';
-            
-            // SLUG STABILIZATION: In tenant layout, wait for params to hydrate.
-            if (!slug && typeof window !== 'undefined' && window.location.pathname.split('/').length >= 3) {
-                 console.log("⏳ [Aura Trace] Holding fetch: Slug expected but not yet hydrated.");
-                 return;
+            const currentKey = `${activeBizId}-${slug}`;
+            if (lastFetchedKeyRef.current === currentKey && Date.now() - lastFetchTimeRef.current < 15000) {
+                return; // Already fetched or fetching this exact context (Throttled to 15s)
             }
 
-            // HYPER-SCALE OPTIMIZATION
-            const hasBusinesses = biz.allBusinesses.length > 0;
-            const isNeedBusinesses = isSaaS && slug && !hasBusinesses;
+            const isPublic = isPublicAuraRoute(pathname);
 
-            if (isNeedBusinesses) {
-                console.log("🚧 [Aura Trace] Businesses missing. Loading catalog first...");
-                fetchData(); 
+            if (!activeBizId && !slug && pathname && pathname.split('/').length >= 3 && !isPublic) {
                 return;
             }
 
-            if (hasTarget) {
-                // If we are SaaS and on a slug, ensure we don't fire UNTIL we have an ID
-                if (isSaaS && slug && !activeBizId && hasBusinesses) {
-                    console.log("⏳ [Aura Trace] Resolved ID is still pending despite having businesses...");
-                    return;
+            const hasTarget = auth.currentUser || slug || activeBizId;
+            if (hasTarget && !isFetchingRef.current) {
+                console.log("🔍 [Aura Trace] Triggering fetch for:", currentKey);
+                isFetchingRef.current = true;
+                lastFetchedKeyRef.current = currentKey;
+                try {
+                    await fetchData(activeBizId);
+                } finally {
+                    isFetchingRef.current = false;
                 }
-
-                console.log("🔍 [Aura Trace] Triggering fetch:", { 
-                    initialized: auth.isInitialized, 
-                    user: auth.currentUser?.email, 
-                    activeBizId, 
-                    slug,
-                    cacheHit: hasBusinesses
-                });
-                fetchData(activeBizId);
-            } else {
-                console.log("⏳ [Aura Trace] No user/slug context. Releasing UI lock.");
+            } else if (!hasTarget) {
                 setSyncStatus('idle');
             }
-        } else {
-            // SHIELD: Systems not initialized or logging out
-            setSyncStatus('idle');
-        }
+        };
+
+        runFetch();
 
         // Debounced Realtime Trigger
         const triggerFetch = () => {
@@ -647,7 +660,7 @@ const StoreOrchestrator = ({ children }: { children: ReactNode }) => {
                 saasInvoices: data.saasInvoices || [],
                 allPaymentLinks: data.allPaymentLinks || [],
             }}>
-                {!auth.isInitialized ? (
+                {!isInitialized ? (
                     <div className="fixed inset-0 z-[1000] bg-[#020210] flex flex-col items-center justify-center">
                         <div className="w-24 h-24 rounded-3xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center mb-8 shadow-2xl shadow-indigo-500/20 animate-pulse">
                             <Sparkles className="w-12 h-12 text-white" />

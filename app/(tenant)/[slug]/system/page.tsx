@@ -1031,10 +1031,17 @@ function ChannelsSettingsView({ business }: { business: any }) {
         },
         {
             id: 'portal',
-            label: 'Müşteri VIP Portalı',
+            label: 'Müşteri VIP Portalı (PWA)',
             icon: Star,
-            description: 'Müşterilerinizin paketlerini ve puanlarını takip edebileceği PWA ekranı.',
+            description: 'Müşterilerinizin paketlerini ve puanlarını takip edebileceği web ekranı.',
             url: `${origin}/portal/${business?.id}`
+        },
+        {
+            id: 'mobile-app',
+            label: 'Imperial Mobile App (iOS/Android)',
+            icon: Zap,
+            description: 'Müşterileriniz için en üst düzey VIP mobil uygulama deneyimi.',
+            url: `https://aura-imperial.app/download/${business?.slug}`
         }
     ];
 
@@ -1045,8 +1052,8 @@ function ChannelsSettingsView({ business }: { business: any }) {
     };
 
     return (
-        <div className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="space-y-10">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
                 {channels.map((channel) => (
                     <motion.div 
                         key={channel.id}

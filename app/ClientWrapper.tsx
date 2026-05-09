@@ -10,6 +10,7 @@ import LicenseGuard from "@/components/layout/LicenseGuard";
 import { Inter } from "next/font/google";
 import { Megaphone, Sparkles } from "lucide-react";
 import { motion } from "framer-motion";
+import { isPublicAuraRoute } from "@/lib/utils/route-guard";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -81,7 +82,11 @@ export default function ClientWrapper({ children }: { children: React.ReactNode 
     const isLoginPath = normalizedPathname.startsWith("/login");
     const isRootPath = normalizedPathname === "/";
     const isSuperAdminPath = normalizedPathname.startsWith("/admin");
-    const isPublicPath = normalizedPathname.match(/^\/[^/]+\/(book|portal|kiosk)(\/|$)/) || normalizedPathname === "/portal" || normalizedPathname === "/book";
+    const isPublicPath = 
+        normalizedPathname.startsWith("/book") || 
+        normalizedPathname.startsWith("/portal") || 
+        normalizedPathname.startsWith("/kiosk") ||
+        normalizedPathname.match(/^\/[^/]+\/(book|portal|kiosk)(\/|$)/);
 
     const isSaaSOwner = currentUser?.role === 'SaaS_Owner' || currentUser?.email === 'kerim@mail.com';
 
@@ -95,11 +100,16 @@ export default function ClientWrapper({ children }: { children: React.ReactNode 
 
     // 2. Routing Logic
     useEffect(() => {
-        if (!isMounted) return;
+        if (!isMounted || !pathname) return;
+
+        const isPublic = isPublicAuraRoute(pathname);
 
         // FAST TRACK: If we are on a login or public path, unlock immediately
-        if (isLoginPath || isPublicPath) {
-            setIsChecking(false);
+        if (isLoginPath || isPublic) {
+            if (isChecking) {
+                console.log("🔓 [Aura Trace] Public/Login Path Detected. Unlocking UI.");
+                setIsChecking(false);
+            }
             return;
         }
 
