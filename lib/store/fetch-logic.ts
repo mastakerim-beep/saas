@@ -1,6 +1,6 @@
 import { supabase } from '@/lib/supabase';
-import { toCamel, retryRequest, generateReferenceCode, generatePaymentRef } from '@/lib/utils/converter';
-import { AppUser, Business, Branch } from './types';
+import { toCamel, retryRequest } from '@/lib/utils/converter';
+import { AppUser } from './types';
 
 export const fetchData = async (
     bizId: string | undefined,
@@ -10,7 +10,7 @@ export const fetchData = async (
     startDate?: string,
     endDate?: string,
     signal?: AbortSignal,
-    slug?: string // New parameter for targeted resolution
+    slug?: string
 ) => {
     const coreTables = [
         'businesses', 'branches', 'staff', 'rooms', 
@@ -20,31 +20,19 @@ export const fetchData = async (
     const isSaaS = currentUser?.role === 'SaaS_Owner';
     const isGuest = !currentUser;
     
-    // --- IDENTITY RESOLUTION ---
     let actualBizId = bizId;
     
-    // If we have a slug but no bizId, resolve it from the DB as a fallback
     if (!actualBizId && slug) {
         try {
-            console.log(`🔍 [Aura Sync] Identity Warp: Resolving business ID for slug "${slug}"...`);
-            const { data: bData, error: bError } = await supabase.from('businesses').select('id').eq('slug', slug).maybeSingle();
-            if (bData?.id) {
-                actualBizId = bData.id;
-                console.log("✅ [Aura Sync] Identity Locked:", actualBizId);
-            } else if (bError) {
-                console.error("❌ Identity Resolution Error:", bError.message);
-            } else {
-                console.warn("⚠️ Identity Resolution: Slug not found in DB. Possible RLS or 404.");
-            }
+            const { data: bData } = await supabase.from('businesses').select('id').eq('slug', slug).maybeSingle();
+            if (bData?.id) actualBizId = bData.id;
         } catch (e) {
-            console.error("Failed to resolve identity from slug:", e);
+            console.error("Failed to resolve identity:", e);
         }
     }
 
     const targetId = isSaaS ? actualBizId : (actualBizId || currentUser?.businessId);
-    const isGlobalSaaSFetch = isSaaS && !targetId && !slug;
     
-    // Public safe tables for Guest mode
     const publicTables = [
         'businesses', 'branches', 'services', 'staff', 
         'booking_settings', 'membership_plans'
@@ -64,9 +52,7 @@ export const fetchData = async (
         'saas_plans', 'saas_invoices', 'payment_links'
     ];
 
-    // CRITICAL GUARD: If we have no targetId and not doing a global SaaS fetch, abort or we'll get empty data
     if (!targetId && !isSaaS && !isGuest) {
-        console.warn("⚠️ Fetch aborted: No targetId resolved and user is not SaaS/Guest");
         setters.setSyncStatus('idle');
         return;
     }
@@ -77,17 +63,16 @@ export const fetchData = async (
     const dataMap: any = {};
 
     try {
-        // --- PHASE 1: CORE DATA (Fast track) ---
-        const tablesInThisPhase = isGuest ? publicTables : coreTa        const fetchTable = async (table: string) => {
+        const tablesInThisPhase = isGuest ? publicTables : coreTables;
+        
+        const fetchTable = async (table: string) => {
             try {
                 const result = await retryRequest(async () => {
                     if (signal?.aborted) throw new Error('Aborted');
                     let q = supabase.from(table).select('*');
-                    if (signal) q = q.abortSignal(signal);
                     
                     const idToUse = targetId;
                     
-                    // TARGETED SCALE FETCH: 
                     if (table === 'businesses' && isSaaS && !idToUse && slug) {
                         q = q.eq('slug', slug);
                     } else if (idToUse) {
@@ -131,7 +116,7 @@ export const fetchData = async (
                 const camelData = toCamel(result || []);
                 dataMap[table] = camelData;
 
-                // --- PROGRESSIVE HYDRATION: Apply data as soon as it arrives ---
+                // --- PROGRESSIVE HYDRATION ---
                 if (table === 'staff') setters.setAllStaff?.(camelData);
                 if (table === 'rooms') setters.setAllRooms?.(camelData);
                 if (table === 'services') setters.setAllServices?.(camelData);
@@ -140,7 +125,6 @@ export const fetchData = async (
                 if (table === 'booking_settings') setters.setBookingSettings?.(camelData[0] || null);
                 if (table === 'tenant_modules') setters.setTenantModules?.(camelData);
 
-                // Full Tables (Phase 2) also progressive
                 if (table === 'appointments') setters.setAllAppointments?.(camelData);
                 if (table === 'customers') setters.setAllCustomers?.(camelData);
                 if (table === 'payments') setters.setAllPayments?.(camelData);
@@ -158,33 +142,18 @@ export const fetchData = async (
             }
         };
 
-        // Fetch Core Tables First
         await Promise.allSettled(tablesInThisPhase.map(fetchTable));
-
-        // CRITICAL: Release UI Lock after Core Data is ready
         setters.setSyncStatus('idle');
 
-        // APPLY BUSINESS/IDENTITY (Must be handled after Phase 1)
         if (dataMap.businesses) {
             const businesses = dataMap.businesses;
-            const isGlobalFetch = isSaaS && !targetId && !slug;
-            if (isGlobalFetch) {
-                setters.setAllBusinesses(businesses.sort((a: any, b: any) => (a.name || '').localeCompare(b.name || '')));
-            } else if (businesses.length > 0) {
-                setters.setAllBusinesses((prev: any[]) => {
-                    const merged = [...prev];
-                    businesses.forEach((newBiz: any) => {
-                        const idx = merged.findIndex(v => v.id === newBiz.id);
-                        if (idx > -1) merged[idx] = newBiz;
-                        else merged.push(newBiz);
-                    });
-                    return merged.sort((a: any, b: any) => (a.name || '').localeCompare(b.name || ''));
-                });
-            }
             const finalBizId = targetId || businesses[0]?.id;
             const targetBusiness = businesses.find((b: any) => b.id === finalBizId) || businesses[0];
             if (targetBusiness) {
-                setters.setCurrentTenant?.((prev: any) => JSON.stringify(prev) === JSON.stringify(targetBusiness) ? prev : targetBusiness);
+                setters.setCurrentTenant?.(targetBusiness);
+            }
+            if (isSaaS && !targetId && !slug) {
+                setters.setAllBusinesses(businesses.sort((a: any, b: any) => (a.name || '').localeCompare(b.name || '')));
             }
         }
 
@@ -198,14 +167,12 @@ export const fetchData = async (
             } else if (userBranchId && branches.some((b: any) => b.id === userBranchId)) {
                 branchToUse = branches.find((b: any) => b.id === userBranchId);
             }
-            setters.setCurrentBranch((prev: any) => (prev?.id === branchToUse?.id) ? prev : branchToUse);
+            setters.setCurrentBranch(branchToUse);
         }
 
-        // --- PHASE 2: REMAINING DATA (Background) ---
         if (!isGuest) {
             Promise.allSettled(fullTables.map(fetchTable)).then(() => {
                 if (signal?.aborted) return;
-                // Remaining setters for tables not in the progressive list
                 setters.setAllDebts?.(dataMap.debts || []);
                 setters.setAllExpenses?.(dataMap.expenses || []);
                 setters.setAllPackageDefinitions?.(dataMap.package_definitions || []);
@@ -237,22 +204,12 @@ export const fetchData = async (
                 setters.setAllPaymentLinks?.(dataMap.payment_links || []);
                 setters.setSaaSPlans?.(dataMap.saas_plans || []);
                 setters.setSaaSInvoices?.(dataMap.saas_invoices || []);
-                
-                console.log("✨ [Aura Sync] Background Hydration Complete");
             });
-        }
-      });
-        } else {
-            setters.setSyncStatus('idle');
         }
 
     } catch (error: any) {
-        if (error.name === 'AbortError' || error.message === 'Aborted') {
-            throw error;
-        }
         console.error("Fetch Error:", error);
         setters.setSyncStatus('error');
-        throw error;
     } finally {
         console.timeEnd("Aura Fetch Speed");
     }
