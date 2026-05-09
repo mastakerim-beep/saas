@@ -6,6 +6,7 @@ import { Check, Calendar, Clock, User, Phone, ArrowRight, Loader2, Sparkles, Map
 import { submitBooking } from './actions';
 import SmartTriage from './components/SmartTriage';
 import WalletPassTicket from './components/WalletPassTicket';
+import ImperialAppCard from '@/components/shared/ImperialAppCard';
 
 type Business = Database['public']['Tables']['businesses']['Row'];
 type Staff = Database['public']['Tables']['staff']['Row'];
@@ -168,6 +169,8 @@ export default function BookingClient({
             customerName={name}
             ticketId={ticketId || `TK-${Math.floor(Math.random() * 10000)}`}
         />
+
+        <ImperialAppCard />
       </div>
     );
   }

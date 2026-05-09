@@ -5,13 +5,15 @@ import { supabase } from '@/lib/supabase';
 import { 
     Phone, ArrowRight, Star, CreditCard, Sparkles, MapPin, 
     Bell, User, Calendar as CalendarIcon, KeyRound, QrCode, 
-    ChevronRight, Clock, Plus, Activity, Pill, Weight, Ruler, ShieldCheck, Wallet
+    ChevronRight, Clock, Plus, Activity, Pill, Weight, Ruler, ShieldCheck, Wallet, Download, Smartphone
 } from 'lucide-react';
+import ImperialAppCard from '@/components/shared/ImperialAppCard';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
     LineChart, Line, XAxis, YAxis, CartesianGrid, 
     Tooltip, ResponsiveContainer, AreaChart, Area 
 } from 'recharts';
+import DailySummaryCard from '@/components/portal/DailySummaryCard';
 
 export default function PortalClient({ business }: { business: any }) {
     const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -78,7 +80,17 @@ export default function PortalClient({ business }: { business: any }) {
                 .eq('customerId', targetCustomer.id)
                 .order('createdAt', { ascending: false });
 
-            setCustomerData(targetCustomer);
+            // Fetch Biometrics (Technogym)
+            const { data: biometrics } = await (supabase as any)
+                .from('customer_biometrics')
+                .select('*')
+                .eq('customer_id', targetCustomer.id)
+                .order('created_at', { ascending: false });
+
+            setCustomerData({
+                ...targetCustomer,
+                biometrics: biometrics || []
+            });
             setCustomerPackages(packages || []);
             setAppointments(appts || []);
             setPayments(pays || []);
@@ -245,6 +257,9 @@ export default function PortalClient({ business }: { business: any }) {
                             exit={{ opacity: 0, y: -10 }}
                             className="space-y-10"
                         >
+                            {/* Günün Özeti (Daily Summary) */}
+                            <DailySummaryCard customer={customerData} />
+
                             {/* Upcoming Section */}
                             <section>
                                 <h3 className="text-sm font-black text-gray-900 mb-5 px-2 tracking-tight uppercase">Yaklaşan Randevular</h3>
@@ -487,6 +502,11 @@ export default function PortalClient({ business }: { business: any }) {
                         </motion.div>
                     )}
                 </AnimatePresence>
+
+                {/* Mobile App conversion */}
+                <div className="pb-10">
+                    <ImperialAppCard />
+                </div>
             </main>
 
             {/* Bottom Nav */}

@@ -94,6 +94,9 @@ export type ZReport = DB.ZReport & {
     closedByUserId?: string; 
     closedBy?: string; 
     intervention_delta?: number;
+    isSealed?: boolean;
+    surgeRevenueBoost?: number;
+    biometricEngagementScore?: number;
 };
 
 export interface InventoryTransfer {

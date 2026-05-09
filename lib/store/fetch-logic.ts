@@ -115,16 +115,22 @@ export const fetchData = async (
                         return [];
                     }
 
-                    // LIMIT HEAVY TABLES
+                    // LIMIT HEAVY TABLES (Performance Turbo)
                     if (table === 'audit_logs' || table === 'notification_logs') {
-                        q = q.order('created_at', { ascending: false }).limit(200);
+                        q = q.order('created_at', { ascending: false }).limit(50);
                     }
                     if (table === 'z_reports' || table === 'payments') {
-                        q = q.order('created_at', { ascending: false }).limit(1000);
+                        q = q.order('created_at', { ascending: false }).limit(500);
+                    }
+                    if (table === 'appointments') {
+                        // Default to last 60 days for operational speed
+                        const sixtyDaysAgo = new Date();
+                        sixtyDaysAgo.setDate(sixtyDaysAgo.getDate() - 60);
+                        q = q.gte('date', sixtyDaysAgo.toISOString().split('T')[0]).limit(1000);
                     }
 
-                    if (startDate && (table === 'payments' || table === 'expenses')) q = q.gte('date', startDate);
-                    if (endDate && (table === 'payments' || table === 'expenses')) q = q.lte('date', endDate);
+                    if (startDate && (table === 'payments' || table === 'expenses' || table === 'appointments')) q = q.gte('date', startDate);
+                    if (endDate && (table === 'payments' || table === 'expenses' || table === 'appointments')) q = q.lte('date', endDate);
                     
                     const { data, error } = await q;
                     if (error) throw error;

@@ -121,8 +121,15 @@ export default function ZReportArchive() {
                                     </td>
                                     <td className="px-8 py-6 font-black text-slate-900 italic text-sm">₺{report.actualNakit?.toLocaleString('tr-TR')}</td>
                                     <td className="px-8 py-6 font-black text-indigo-600 italic text-sm">₺{report.actualKart?.toLocaleString('tr-TR')}</td>
-                                    <td className="px-8 py-6 text-xs font-bold text-slate-400 uppercase">
-                                        {report.closedBy || 'Belirsiz'}
+                                    <td className="px-8 py-6">
+                                        {report.isSealed ? (
+                                            <div className="flex flex-col items-start gap-1">
+                                                <span className="text-[9px] font-black text-slate-900 uppercase tracking-tighter">{report.closedBy || 'Sistem Otonom'}</span>
+                                                <span className="text-[8px] font-bold text-slate-400 uppercase">Mühür Yetkilisi</span>
+                                            </div>
+                                        ) : (
+                                            <span className="text-[10px] font-bold text-rose-500 uppercase italic">Henüz Mühürlenmedi</span>
+                                        )}
                                     </td>
                                     <td className="px-8 py-6 text-right">
                                         <button 
@@ -166,6 +173,17 @@ export default function ZReportArchive() {
                                     <X size={20} />
                                 </button>
                             </div>
+
+                            {/* SEAL BADGE */}
+                            {selectedReport.isSealed && (
+                                <div className="absolute top-24 right-12 pointer-events-none opacity-20 rotate-12 select-none z-20">
+                                    <div className="border-[6px] border-rose-600 px-8 py-4 rounded-3xl flex flex-col items-center">
+                                        <ShieldCheck size={60} className="text-rose-600 mb-2" />
+                                        <span className="text-4xl font-black text-rose-600 tracking-[0.2em]">SEALED</span>
+                                        <span className="text-[10px] font-black text-rose-600 uppercase mt-1">Draconian Veto System</span>
+                                    </div>
+                                </div>
+                            )}
                             
                             <div className="p-10 space-y-8 max-h-[60vh] overflow-y-auto scrollbar-hide">
                                 <div className="bg-slate-50/50 p-8 rounded-[2rem] border border-slate-100">
@@ -174,6 +192,21 @@ export default function ZReportArchive() {
                                     </h4>
                                     <div className="whitespace-pre-wrap text-sm font-bold text-slate-600 leading-relaxed italic">
                                         {selectedReport.aiSummary || 'Bu rapor için AI özeti bulunmamaktadır.'}
+                                    </div>
+                                </div>
+
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div className="p-6 bg-slate-50 rounded-2xl border border-slate-100 relative overflow-hidden group">
+                                        <TrendingUp size={40} className="absolute -right-4 -bottom-4 text-emerald-500/10 group-hover:scale-125 transition-transform" />
+                                        <p className="text-[9px] font-black text-slate-400 uppercase mb-2">Surge Revenue Boost</p>
+                                        <p className="font-black text-xl italic text-emerald-600">+₺{selectedReport.surgeRevenueBoost?.toLocaleString('tr-TR') || '0'}</p>
+                                        <p className="text-[8px] font-bold text-slate-300 uppercase mt-1">AI Dynamic Pricing Contribution</p>
+                                    </div>
+                                    <div className="p-6 bg-slate-50 rounded-2xl border border-slate-100 relative overflow-hidden group">
+                                        <Activity size={40} className="absolute -right-4 -bottom-4 text-indigo-500/10 group-hover:scale-125 transition-transform" />
+                                        <p className="text-[9px] font-black text-slate-400 uppercase mb-2">Biometric Score</p>
+                                        <p className="font-black text-xl italic text-indigo-600">%{selectedReport.biometricEngagementScore || '0'}</p>
+                                        <p className="text-[8px] font-bold text-slate-300 uppercase mt-1">Technogym Wellness Engagement</p>
                                     </div>
                                 </div>
 
