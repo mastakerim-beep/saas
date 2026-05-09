@@ -233,6 +233,108 @@ export default function TechnogymPartnerPortal() {
                 </div>
             </div>
 
+            {/* B2C Preview - The Customer Journey */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
+                <div className="lg:col-span-2 space-y-6">
+                    <div className="card-apple p-8 bg-white/40 backdrop-blur-xl border-white/60 h-full">
+                        <div className="flex items-center justify-between mb-8">
+                            <div className="flex items-center gap-3">
+                                <Activity className="text-indigo-600 w-6 h-6" />
+                                <h3 className="text-lg font-black text-gray-900 uppercase tracking-tight">Biometric Stream History</h3>
+                            </div>
+                            <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Global Fleet Monitor</span>
+                        </div>
+                        
+                        {/* Placeholder for a chart - using CSS bars for now for speed/stability */}
+                        <div className="h-64 flex items-end justify-between gap-2 px-4 border-b border-gray-100 pb-2">
+                            {[40, 70, 45, 90, 65, 80, 30, 95, 50, 75, 40, 85].map((h, i) => (
+                                <motion.div 
+                                    key={i}
+                                    initial={{ height: 0 }}
+                                    animate={{ height: `${h}%` }}
+                                    className={`w-full rounded-t-lg ${h > 80 ? 'bg-rose-500' : 'bg-indigo-500/40'}`}
+                                />
+                            ))}
+                        </div>
+                        <div className="flex justify-between mt-4 px-4">
+                            <span className="text-[8px] font-black text-gray-400 uppercase">08:00</span>
+                            <span className="text-[8px] font-black text-gray-400 uppercase">12:00</span>
+                            <span className="text-[8px] font-black text-gray-400 uppercase">16:00</span>
+                            <span className="text-[8px] font-black text-gray-400 uppercase">20:00</span>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Mobile Mockup - Imperial Wellness App */}
+                <div className="flex justify-center">
+                    <div className="w-[280px] h-[580px] bg-[#0a0a0b] rounded-[3rem] border-[8px] border-gray-800 shadow-2xl relative overflow-hidden flex flex-col">
+                        {/* Status Bar */}
+                        <div className="h-10 flex items-end justify-between px-6 pb-2">
+                            <span className="text-[10px] font-bold text-white">9:41</span>
+                            <div className="flex items-center gap-1.5">
+                                <div className="w-3 h-3 bg-white/20 rounded-full" />
+                                <div className="w-5 h-2.5 bg-emerald-500 rounded-sm" />
+                            </div>
+                        </div>
+
+                        {/* App Content */}
+                        <div className="flex-1 p-5 overflow-y-auto space-y-6">
+                            <div className="flex items-center justify-between">
+                                <div className="w-10 h-10 bg-white/10 rounded-full flex items-center justify-center">
+                                    <Users size={18} className="text-white" />
+                                </div>
+                                <span className="text-[10px] font-black text-indigo-400 uppercase tracking-widest italic">Imperial App</span>
+                            </div>
+
+                            <div className="pt-4">
+                                <h4 className="text-white text-xl font-black tracking-tight leading-tight mb-1 italic">Hoş Geldin, Kerim</h4>
+                                <p className="text-white/40 text-[10px] font-bold uppercase tracking-widest">Bugün harika bir performans sergiledin.</p>
+                            </div>
+
+                            {/* The AI Offer Card (Simulated) */}
+                            <motion.div 
+                                initial={{ scale: 0.9, opacity: 0 }}
+                                animate={{ scale: 1, opacity: 1 }}
+                                transition={{ delay: 1 }}
+                                className="p-5 bg-gradient-to-br from-indigo-600 to-violet-700 rounded-3xl shadow-xl border border-white/10 relative overflow-hidden"
+                            >
+                                <div className="absolute -top-4 -right-4 w-16 h-16 bg-white/10 rounded-full blur-xl" />
+                                <div className="relative z-10">
+                                    <div className="flex items-center gap-2 mb-3">
+                                        <Zap size={14} className="text-amber-300" />
+                                        <span className="text-[8px] font-black text-white uppercase tracking-widest">Akıllı Toparlanma</span>
+                                    </div>
+                                    <h5 className="text-white font-black text-sm leading-snug mb-3">Kas yorgunluğun %92 seviyesinde. Hızlı toparlanma ister misin?</h5>
+                                    <div className="p-3 bg-white/10 rounded-xl mb-4">
+                                        <p className="text-[9px] text-white/80 font-bold tracking-tight">Sana özel %20 indirimli "Recovery Massage" fırsatı hazır!</p>
+                                    </div>
+                                    <button className="w-full py-2.5 bg-white text-indigo-600 rounded-xl text-[9px] font-black uppercase tracking-widest shadow-lg">
+                                        ŞİMDİ REZERVE ET
+                                    </button>
+                                </div>
+                            </motion.div>
+
+                            {/* Recent Activity */}
+                            <div className="space-y-3 pt-4">
+                                <p className="text-[9px] font-black text-white/30 uppercase tracking-[0.2em]">Son Antrenman</p>
+                                <div className="p-4 bg-white/5 rounded-2xl border border-white/5 flex items-center justify-between">
+                                    <div>
+                                        <p className="text-[10px] font-black text-white uppercase">Leg Press</p>
+                                        <p className="text-[8px] text-white/40 font-bold">12 Reps x 4 Sets</p>
+                                    </div>
+                                    <TrendingUp size={14} className="text-emerald-500" />
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Home Indicator */}
+                        <div className="h-6 flex justify-center items-center">
+                            <div className="w-20 h-1 bg-white/20 rounded-full" />
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             {/* The "Exit" Strategic Value Footer */}
             <div className="p-10 bg-black rounded-[4rem] text-white relative overflow-hidden group shadow-2xl">
                 <div className="absolute top-0 right-0 p-12 opacity-5 group-hover:opacity-10 transition-all group-hover:scale-110">
