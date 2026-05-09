@@ -260,6 +260,7 @@ function RuleModal({ onClose, onSave }: { onClose: () => void, onSave: (rule: an
                             <select value={triggerType} onChange={e => setTriggerType(e.target.value)} className="w-full bg-slate-50 border border-slate-100 rounded-2xl px-4 py-4 text-xs font-bold outline-none text-slate-900">
                                 <option value="NEW_CUSTOMER">Yeni Kayıt</option>
                                 <option value="CHURN_RISK">Kayıp Riski (Gün)</option>
+                                <option value="TECHNOGYM_BIOMETRIC">Technogym Biyometrik (Yorgunluk)</option>
                                 <option value="LOYALTY_POINTS">Sadakat Puanı</option>
                                 <option value="BIRTHDAY">Doğum Günü</option>
                             </select>
