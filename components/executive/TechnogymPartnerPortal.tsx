@@ -8,10 +8,85 @@ import { useStore } from "@/lib/store";
 import { toast } from "sonner";
 
 export default function TechnogymPartnerPortal() {
-    const { currentBusiness, customers, marketingRules } = useStore();
+    const { currentBusiness, customers, marketingRules, locale } = useStore();
     const [insights, setInsights] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [isSimulating, setIsSimulating] = useState(false);
+
+    const t = {
+        tr: {
+            engine: "İmparatorluk Zeka Motoru",
+            autopilot: "Otopilot Aktif",
+            simulate: "Canlı Senkronizasyon Simüle Et",
+            syncing: "Senkronize Ediliyor...",
+            active: "Aktif",
+            setup: "Otomasyon Kur",
+            healthScore: "Aura Sağlık Skoru",
+            bioDensity: "Biyometrik Yoğunluk",
+            nodes: "Veri Noktası",
+            stream: "Yüksek hassasiyetli veri akışı",
+            potential: "Potansiyel Gelir (Gelecek 7 Gün)",
+            potentialDesc: "Biyometrik yorgunluk sinyallerinden AI destekli gelir fırsatları",
+            revenueEngine: "Gelir Analiz Motoru",
+            hardwareToFinancial: "Donanım Sinyalinden Finansal Aksiyona",
+            confidence: "AI Güven Oranı",
+            wellnessAge: "Wellness Yaşı",
+            aiReasoning: "AI Akıl Yürütme",
+            estRevenue: "Tahm. Gelir",
+            action: "Aksiyon",
+            noInsights: "Aksiyon Alınacak Veri Bulunamadı",
+            assetTitle: "Stratejik Varlık: Technogym Köprüsü",
+            hardwareIntoRev: "Donanımdan Gelire.",
+            strategicDesc: "AURA, Technogym cihazlarını sadece bir egzersiz aleti olmaktan çıkarıp, işletme sahibi için bir Satış Temsilcisi haline getirir.",
+            financialImpact: "Finansal Etki Analizi",
+            uplift: "Tahmini Ciro Artışı",
+            churn: "Müşteri Kaybı Azalması",
+            efficiency: "Otomasyon Verimliliği",
+            welcome: "Hoş Geldin",
+            performance: "Bugün harika bir performans sergiledin.",
+            recovery: "Akıllı Toparlanma",
+            offer: "Kas yorgunluğun yüksek. Hızlı toparlanma ister misin?",
+            discount: "Sana özel %20 indirimli 'Recovery Massage' fırsatı hazır!",
+            bookNow: "ŞİMDİ REZERVE ET",
+            recent: "Son Antrenman"
+        },
+        en: {
+            engine: "Imperial Intelligence Engine",
+            autopilot: "Auto-Pilot Active",
+            simulate: "Simulate Live Sync",
+            syncing: "Syncing...",
+            active: "Active",
+            setup: "Setup Automation",
+            healthScore: "Aura Health Score",
+            bioDensity: "Biometric Density",
+            nodes: "Nodes",
+            stream: "High-fidelity data stream",
+            potential: "Potential Revenue (Next 7 Days)",
+            potentialDesc: "AI-Driven revenue opportunities from biometric triggers",
+            revenueEngine: "Revenue Insight Engine",
+            hardwareToFinancial: "Hardware Signal to Financial Action",
+            confidence: "AI Confidence",
+            wellnessAge: "Wellness Age",
+            aiReasoning: "AI Reasoning",
+            estRevenue: "Est. Revenue",
+            action: "Action",
+            noInsights: "No Actionable Insights Found",
+            assetTitle: "Strategic Asset: Technogym Bridge",
+            hardwareIntoRev: "Hardware into Revenue.",
+            strategicDesc: "AURA transforms Technogym hardware into a dedicated sales representative for the business owner.",
+            financialImpact: "Financial Impact Analysis",
+            uplift: "Est. Revenue Uplift",
+            churn: "Churn Reduction",
+            efficiency: "Automation Efficiency",
+            welcome: "Welcome",
+            performance: "You performed great today.",
+            recovery: "Smart Recovery",
+            offer: "Your fatigue is high. Want a fast recovery?",
+            discount: "Your 20% discount for 'Recovery Massage' is ready!",
+            bookNow: "BOOK NOW",
+            recent: "Recent Activity"
+        }
+    }[locale || 'tr'];
 
     const loadInsights = async () => {
         if (currentBusiness?.id) {
@@ -33,15 +108,14 @@ export default function TechnogymPartnerPortal() {
 
     const handleSimulateSync = async () => {
         if (!currentBusiness?.id || !customers?.[0]?.id) {
-            toast.error("No business or customer context found.");
+            toast.error("Context error.");
             return;
         }
         
         setIsSimulating(true);
         try {
-            // Simulate 3 different syncs
             await TechnogymIntelligence.triggerMockSync(currentBusiness.id, customers[0].id);
-            toast.success("Technogym Mywellness Sync Successful!");
+            toast.success(locale === 'tr' ? "Senkronizasyon Başarılı!" : "Sync Successful!");
             await loadInsights();
         } catch (err) {
             toast.error("Sync failed");
@@ -65,9 +139,9 @@ export default function TechnogymPartnerPortal() {
                             Technogym <span className="text-indigo-600">x</span> Aura
                         </h2>
                         <div className="flex items-center gap-2">
-                            <p className="text-[10px] font-black text-gray-400 uppercase tracking-[0.3em]">Imperial Intelligence Engine</p>
+                            <p className="text-[10px] font-black text-gray-400 uppercase tracking-[0.3em]">{t.engine}</p>
                             {hasActiveAutomation && (
-                                <span className="px-2 py-0.5 bg-indigo-600 text-white text-[8px] font-black uppercase rounded-full animate-pulse">Auto-Pilot Active</span>
+                                <span className="px-2 py-0.5 bg-indigo-600 text-white text-[8px] font-black uppercase rounded-full animate-pulse">{t.autopilot}</span>
                             )}
                         </div>
                     </div>
@@ -79,7 +153,7 @@ export default function TechnogymPartnerPortal() {
                             href={`/${currentBusiness?.slug}/marketing`}
                             className="text-[10px] font-black text-indigo-600 uppercase tracking-widest hover:underline flex items-center gap-2 mr-4"
                         >
-                            <Zap size={14} /> Otomasyon Kur
+                            <Zap size={14} /> {t.setup}
                         </a>
                     )}
                     <button 
@@ -88,7 +162,7 @@ export default function TechnogymPartnerPortal() {
                         className="px-6 py-3 bg-white border border-gray-200 text-gray-900 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-gray-50 transition-all flex items-center gap-2 shadow-sm"
                     >
                         <RefreshCw size={14} className={isSimulating ? "animate-spin" : ""} />
-                        {isSimulating ? "Syncing..." : "Simulate Live Sync"}
+                        {isSimulating ? t.syncing : t.simulate}
                     </button>
 
                     <div className="px-6 py-3 bg-emerald-50 text-emerald-600 rounded-2xl border border-emerald-100 flex items-center gap-3">
@@ -96,7 +170,7 @@ export default function TechnogymPartnerPortal() {
                             <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
                             <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
                         </div>
-                        <span className="text-[10px] font-black uppercase tracking-widest">Mywellness Cloud: Active</span>
+                        <span className="text-[10px] font-black uppercase tracking-widest">Mywellness Cloud: {t.active}</span>
                     </div>
                 </div>
             </div>
@@ -106,22 +180,22 @@ export default function TechnogymPartnerPortal() {
                 <div className="card-apple p-6 bg-white/40 backdrop-blur-xl border-white/60">
                     <div className="flex items-center gap-2 mb-4">
                         <Target className="text-indigo-600 w-4 h-4" />
-                        <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Aura Health Score</p>
+                        <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{t.healthScore}</p>
                     </div>
                     <h3 className="text-3xl font-black text-gray-900 dark:text-white tracking-tighter">84<span className="text-lg text-gray-300">/100</span></h3>
                     <div className="mt-4 flex items-center gap-2 text-[9px] font-black text-emerald-600 uppercase">
-                        <TrendingUp size={12} /> +4% vs last week
+                        <TrendingUp size={12} /> +4%
                     </div>
                 </div>
                 
                 <div className="card-apple p-6 bg-white/40 backdrop-blur-xl border-white/60">
                     <div className="flex items-center gap-2 mb-4">
                         <Activity className="text-indigo-600 w-4 h-4" />
-                        <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Biometric Density</p>
+                        <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{t.bioDensity}</p>
                     </div>
-                    <h3 className="text-3xl font-black text-gray-900 dark:text-white tracking-tighter">{insights.length * 12} <span className="text-sm font-bold text-gray-300">Nodes</span></h3>
+                    <h3 className="text-3xl font-black text-gray-900 dark:text-white tracking-tighter">{insights.length * 12} <span className="text-sm font-bold text-gray-300">{t.nodes}</span></h3>
                     <div className="mt-4 flex items-center gap-2 text-[9px] font-black text-indigo-600 uppercase">
-                        <Zap size={12} /> High-fidelity data stream
+                        <Zap size={12} /> {t.stream}
                     </div>
                 </div>
 
@@ -129,12 +203,12 @@ export default function TechnogymPartnerPortal() {
                     <div className="flex items-center justify-between mb-4">
                         <div className="flex items-center gap-2">
                             <DollarSign className="text-white/60 w-4 h-4" />
-                            <p className="text-[10px] font-black text-white/60 uppercase tracking-widest">Potential Revenue (Next 7 Days)</p>
+                            <p className="text-[10px] font-black text-white/60 uppercase tracking-widest">{t.potential}</p>
                         </div>
                         <Sparkles className="text-indigo-300 w-4 h-4 animate-pulse" />
                     </div>
                     <h3 className="text-4xl font-black tracking-tighter">₺{insights.reduce((acc, curr) => acc + (curr.projectedRevenue || 0), 12450).toLocaleString()}</h3>
-                    <p className="text-[10px] font-bold text-white/50 mt-2 uppercase tracking-tight">AI-Driven revenue opportunities from biometric fatigue triggers</p>
+                    <p className="text-[10px] font-bold text-white/50 mt-2 uppercase tracking-tight">{t.potentialDesc}</p>
                 </div>
             </div>
 
@@ -144,12 +218,12 @@ export default function TechnogymPartnerPortal() {
                     <div className="flex items-center gap-3">
                         <Brain className="text-indigo-600 w-6 h-6" />
                         <div>
-                            <h3 className="text-lg font-black text-gray-900 dark:text-white tracking-tight uppercase">Revenue Insight Engine</h3>
-                            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Hardware Signal to Financial Action</p>
+                            <h3 className="text-lg font-black text-gray-900 dark:text-white tracking-tight uppercase">{t.revenueEngine}</h3>
+                            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{t.hardwareToFinancial}</p>
                         </div>
                     </div>
                     <div className="px-4 py-2 bg-indigo-50 rounded-full border border-indigo-100 flex items-center gap-2">
-                        <span className="text-[10px] font-black text-indigo-600 uppercase tracking-widest">AI Confidence: 94.2%</span>
+                        <span className="text-[10px] font-black text-indigo-600 uppercase tracking-widest">{t.confidence}: 94.2%</span>
                     </div>
                 </div>
 
@@ -178,7 +252,7 @@ export default function TechnogymPartnerPortal() {
                                     <div>
                                         <h4 className="text-base font-black text-gray-900">{insight.customerName}</h4>
                                         <div className="flex items-center gap-2 mt-1">
-                                            <span className="text-[9px] font-black text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-full uppercase">Wellness Age: {insight.wellnessAge}</span>
+                                            <span className="text-[9px] font-black text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-full uppercase">{t.wellnessAge}: {insight.wellnessAge}</span>
                                         </div>
                                     </div>
                                 </div>
@@ -196,7 +270,7 @@ export default function TechnogymPartnerPortal() {
                                         <div className="p-4 bg-emerald-50/30 rounded-2xl border border-emerald-100/50">
                                             <div className="flex items-center gap-2 mb-1">
                                                 <Brain size={12} className="text-emerald-600" />
-                                                <p className="text-[10px] font-black text-emerald-700 uppercase tracking-tight">AI Reasoning</p>
+                                                <p className="text-[10px] font-black text-emerald-700 uppercase tracking-tight">{t.aiReasoning}</p>
                                             </div>
                                             <p className="text-[10px] text-emerald-600/80 font-bold italic">"{insight.recommendation.aiReasoning}"</p>
                                         </div>
@@ -206,7 +280,7 @@ export default function TechnogymPartnerPortal() {
                                 {/* The Action & Value */}
                                 <div className="flex items-center gap-6 min-w-[200px]">
                                     <div className="text-right">
-                                        <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest">Est. Revenue</p>
+                                        <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest">{t.estRevenue}</p>
                                         <p className="text-lg font-black text-gray-900">₺{insight.projectedRevenue}</p>
                                         <div className="flex items-center justify-end gap-1 mt-1">
                                             <div className="w-12 h-1 bg-gray-100 rounded-full overflow-hidden">
@@ -227,7 +301,7 @@ export default function TechnogymPartnerPortal() {
                     {insights.length === 0 && !loading && (
                         <div className="text-center py-20 opacity-30">
                             <Zap className="w-12 h-12 mx-auto mb-4 text-gray-300" />
-                            <p className="text-xs font-black uppercase tracking-widest">No Actionable Insights Found</p>
+                            <p className="text-xs font-black uppercase tracking-widest">{t.noInsights}</p>
                         </div>
                     )}
                 </div>
@@ -287,8 +361,8 @@ export default function TechnogymPartnerPortal() {
                             </div>
 
                             <div className="pt-4">
-                                <h4 className="text-white text-xl font-black tracking-tight leading-tight mb-1 italic">Hoş Geldin, Kerim</h4>
-                                <p className="text-white/40 text-[10px] font-bold uppercase tracking-widest">Bugün harika bir performans sergiledin.</p>
+                                <h4 className="text-white text-xl font-black tracking-tight leading-tight mb-1 italic">{t.welcome}, Kerim</h4>
+                                <p className="text-white/40 text-[10px] font-bold uppercase tracking-widest">{t.performance}</p>
                             </div>
 
                             {/* The AI Offer Card (Simulated) */}
@@ -302,21 +376,21 @@ export default function TechnogymPartnerPortal() {
                                 <div className="relative z-10">
                                     <div className="flex items-center gap-2 mb-3">
                                         <Zap size={14} className="text-amber-300" />
-                                        <span className="text-[8px] font-black text-white uppercase tracking-widest">Akıllı Toparlanma</span>
+                                        <span className="text-[8px] font-black text-white uppercase tracking-widest">{t.recovery}</span>
                                     </div>
-                                    <h5 className="text-white font-black text-sm leading-snug mb-3">Kas yorgunluğun %92 seviyesinde. Hızlı toparlanma ister misin?</h5>
+                                    <h5 className="text-white font-black text-sm leading-snug mb-3">{t.offer}</h5>
                                     <div className="p-3 bg-white/10 rounded-xl mb-4">
-                                        <p className="text-[9px] text-white/80 font-bold tracking-tight">Sana özel %20 indirimli "Recovery Massage" fırsatı hazır!</p>
+                                        <p className="text-[9px] text-white/80 font-bold tracking-tight">{t.discount}</p>
                                     </div>
                                     <button className="w-full py-2.5 bg-white text-indigo-600 rounded-xl text-[9px] font-black uppercase tracking-widest shadow-lg">
-                                        ŞİMDİ REZERVE ET
+                                        {t.bookNow}
                                     </button>
                                 </div>
                             </motion.div>
 
                             {/* Recent Activity */}
                             <div className="space-y-3 pt-4">
-                                <p className="text-[9px] font-black text-white/30 uppercase tracking-[0.2em]">Son Antrenman</p>
+                                <p className="text-[9px] font-black text-white/30 uppercase tracking-[0.2em]">{t.recent}</p>
                                 <div className="p-4 bg-white/5 rounded-2xl border border-white/5 flex items-center justify-between">
                                     <div>
                                         <p className="text-[10px] font-black text-white uppercase">Leg Press</p>
@@ -347,10 +421,9 @@ export default function TechnogymPartnerPortal() {
                             <Activity className="text-indigo-400 w-6 h-6" />
                             <span className="text-[11px] font-black uppercase tracking-[0.4em] text-indigo-400">Strategic Asset: Technogym Bridge</span>
                         </div>
-                        <h3 className="text-4xl font-black mb-6 leading-tight italic tracking-tighter">Hardware into Revenue.</h3>
+                        <h3 className="text-4xl font-black mb-6 leading-tight italic tracking-tighter">{t.hardwareIntoRev}</h3>
                         <p className="text-gray-400 text-base font-medium leading-relaxed mb-10">
-                            AURA, Technogym cihazlarını sadece bir egzersiz aleti olmaktan çıkarıp, 
-                            işletme sahibi için bir **"Satış Temsilcisi"** haline getirir. 
+                            {t.strategicDesc} 
                             Biyometrik sinyalleri anlık olarak ciro fırsatına dönüştüren bu mimari, 
                             wellness endüstrisinin gelecekteki standartıdır.
                         </p>
@@ -364,18 +437,18 @@ export default function TechnogymPartnerPortal() {
                     </div>
 
                     <div className="card-apple bg-white/5 backdrop-blur-2xl border-white/10 p-10">
-                        <h4 className="text-xl font-black mb-6 tracking-tight">Financial Impact Analysis</h4>
+                        <h4 className="text-xl font-black mb-6 tracking-tight">{t.financialImpact}</h4>
                         <div className="space-y-6">
                             <div className="flex justify-between items-end border-b border-white/5 pb-4">
-                                <span className="text-xs text-gray-400 font-bold uppercase tracking-widest">Est. Revenue Uplift</span>
+                                <span className="text-xs text-gray-400 font-bold uppercase tracking-widest">{t.uplift}</span>
                                 <span className="text-2xl font-black text-emerald-400">+28.4%</span>
                             </div>
                             <div className="flex justify-between items-end border-b border-white/5 pb-4">
-                                <span className="text-xs text-gray-400 font-bold uppercase tracking-widest">Churn Reduction</span>
+                                <span className="text-xs text-gray-400 font-bold uppercase tracking-widest">{t.churn}</span>
                                 <span className="text-2xl font-black text-indigo-400">-15.2%</span>
                             </div>
                             <div className="flex justify-between items-end border-b border-white/5 pb-4">
-                                <span className="text-xs text-gray-400 font-bold uppercase tracking-widest">Automation Efficiency</span>
+                                <span className="text-xs text-gray-400 font-bold uppercase tracking-widest">{t.efficiency}</span>
                                 <span className="text-2xl font-black text-white">92%</span>
                             </div>
                         </div>
