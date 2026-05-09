@@ -24,6 +24,23 @@ Bugün yapılan tüm geliştirmeler, stratejik hamleler ve siber güvenlik opera
 
 ---
 
+## 📋 AURA BACKLOG (YAPILACAKLAR & ÖLÇEKLEME)
+
+### 🥇 Öncelikli Görevler (Stratejik Analiz Raporundan)
+- [x] **Gerçek API Entegrasyonu (Mywellness Cloud):** Technogym mock verileri yerine gerçek Mywellness Webhook/API `sync_engine` altyapısının kurulması. (Supabase Edge Function yazıldı)
+- [x] **Dinamik Fiyatlama Ajanı (Surge Pricing AI):** Yorgunluk oranları yüksek ve boş oda sayısı düşük olduğunda (Uber mantığı) anlık %15 fiyat artışı yapacak "Surge Pricing" modülünün eklenmesi. (PostgreSQL AI Engine yazıldı)
+- [ ] **Edge-Based Cron Jobs (Otonom Z-Raporu):** İstemci (client) tarafındaki Z-Raporu ve ciro hesabı yükünün Supabase Edge Functions ve `pg_cron` ile her gece 23:59'da otomatik çalışacak şekilde serverless yapıya taşınması.
+- [ ] **B2C Native App (Imperial App):** Portaldaki React B2C mockup'ının, React Native (Expo) kullanılarak gerçek ve Push Notification destekli bir mobil uygulamaya dönüştürülmesi.
+
+### 🥈 Rekabetçi Özellikler (Rakip Analizinden)
+- [ ] **Zero-Friction Google Reserve:** Google İşletmem hesabı üzerinden şifresiz/üyeliksiz saniyeler içinde "Misafir Rezervasyonu" (Guest Booking) akışının mükemmelleştirilmesi.
+- [ ] **Fiziksel POS & E-Fatura Ağı:** Türkiye ve Avrupa yerel pazarı için Paraşüt/KolayBi gibi E-Fatura sağlayıcıları ile muhasebe entegrasyonu.
+- [ ] **Agresif No-Show (Gelmemeyi Engelleme) Motoru:** Müşterinin gelmeme riskine göre dinamik randevu hatırlatmaları ve daha önce gelmemiş müşteriden otomatik %50 kapora kesim (Stripe) sistemi.
+- [ ] **Master Franchise (Holding God Mode) Paneli:** Tüm şubelerin (İstanbul, Londra, Dubai vs.) tek bir ekrandan anlık ciro, donanım verimi ve doluluk olarak yönetilmesi.
+- [ ] **WhatsApp AI Concierge:** Müşteri sorularına (örn: "Bugün boş yer var mı?") Aura AI'ın veritabanından anlık yanıt verip randevu kapatabildiği WhatsApp botu.
+
+---
+
 ## ✅ SON DURUM
 - **Build Durumu:** Başarılı (Code 0)
 - **Git Durumu:** Pushed to `origin/main`
