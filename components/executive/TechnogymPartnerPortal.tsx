@@ -13,7 +13,7 @@ export default function TechnogymPartnerPortal() {
     const [loading, setLoading] = useState(true);
     const [isSimulating, setIsSimulating] = useState(false);
 
-    const t = {
+    const t: any = ({
         tr: {
             engine: "İmparatorluk Zeka Motoru",
             autopilot: "Otopilot Aktif",
@@ -86,7 +86,7 @@ export default function TechnogymPartnerPortal() {
             bookNow: "BOOK NOW",
             recent: "Recent Activity"
         }
-    }[locale || 'tr'];
+    } as any)[locale || 'tr'];
 
     const loadInsights = async () => {
         if (currentBusiness?.id) {
