@@ -90,13 +90,13 @@ export const fetchData = async (
                         } else {
                             return [];
                         }
-                    } else if (user?.holding_id && !slug) {
+                    } else if (currentUser?.holding_id && !slug) {
                         // Holding Oversight Mode for Multi-Tenant Owners (e.g., Sanitas)
                         if (table === 'businesses') {
-                            q = q.eq('holding_id', user.holding_id);
+                            q = q.eq('holding_id', currentUser.holding_id);
                         } else if (['z_reports', 'payments', 'audit_logs', 'notification_logs'].includes(table)) {
                             // First get the business IDs for this holding
-                            const { data: holdingBiz } = await supabase.from('businesses').select('id').eq('holding_id', user.holding_id);
+                            const { data: holdingBiz } = await supabase.from('businesses').select('id').eq('holding_id', currentUser.holding_id);
                             const bizIds = holdingBiz?.map(b => b.id) || [];
                             if (bizIds.length > 0) {
                                 q = q.in('business_id', bizIds).limit(1000);
