@@ -186,11 +186,13 @@ export function ImperialOversight({ businesses, logs, zReports, notifications = 
                                             <div className="w-2 h-2 rounded-full bg-rose-500 shadow-[0_0_10px_rgba(244,63,94,0.8)]" />
                                             <span className="text-[11px] font-black text-white uppercase tracking-widest">{alert.title}</span>
                                         </div>
-                                        <span className="text-[8px] font-black text-slate-500">{new Date(alert.sentAt || alert.createdAt).toLocaleTimeString()}</span>
+                                        <span className="text-[8px] font-black text-slate-500">
+                                            {alert.sentAt || alert.createdAt ? new Date(alert.sentAt || alert.createdAt).toLocaleTimeString() : 'Anlık'}
+                                        </span>
                                     </div>
                                     <p className="text-slate-400 text-[11px] leading-relaxed mb-4">{alert.content}</p>
                                     <div className="flex justify-between items-center">
-                                        <span className="text-[8px] font-black text-indigo-400 bg-indigo-500/10 px-2 py-1 rounded-md">ID: {alert.business_id?.substring(0,8)}...</span>
+                                        <span className="text-[8px] font-black text-indigo-400 bg-indigo-500/10 px-2 py-1 rounded-md">ID: {alert.businessId?.substring(0,8) || 'GLOBAL'}...</span>
                                         <button className="text-[9px] font-black text-white bg-rose-600 px-4 py-1.5 rounded-lg hover:bg-rose-500 transition-colors">MÜDAHALE ET</button>
                                     </div>
                                 </motion.div>
