@@ -92,7 +92,7 @@ export default function TechnogymPartnerPortal() {
         if (currentBusiness?.id) {
             setLoading(true);
             try {
-                const data = await TechnogymIntelligence.getActionableInsights(currentBusiness.id);
+                const data = await TechnogymIntelligence.getActionableInsights(currentBusiness.id, locale);
                 setInsights(data);
             } catch (err) {
                 console.error(err);
