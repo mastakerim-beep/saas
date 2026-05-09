@@ -117,8 +117,14 @@ export const fetchData = async (
                 dataMap[table] = camelData;
 
                 // --- PROGRESSIVE HYDRATION ---
-                if (table === 'staff') setters.setAllStaff?.(camelData);
-                if (table === 'rooms') setters.setAllRooms?.(camelData);
+                if (table === 'staff') {
+                    console.log(`🛡️ [Imperial Trace] Staff Hydrated: ${camelData.length} members`);
+                    setters.setAllStaff?.(camelData);
+                }
+                if (table === 'rooms') {
+                    console.log(`🛡️ [Imperial Trace] Rooms Hydrated: ${camelData.length} units`);
+                    setters.setAllRooms?.(camelData);
+                }
                 if (table === 'services') setters.setAllServices?.(camelData);
                 if (table === 'app_users') setters.setAllUsers?.(camelData);
                 if (table === 'branches') setters.setBranches?.(camelData);

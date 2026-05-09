@@ -289,7 +289,7 @@ const StoreOrchestrator = ({ children }: { children: ReactNode }) => {
                 setSyncStatus(prev => prev === 'syncing' ? 'idle' : prev);
             }
         }
-    }, []);
+    }, [data, biz, auth, slug]);
 
     useEffect(() => {
         if (!auth.isInitialized || !biz.isHydrated) return;
@@ -322,11 +322,11 @@ const StoreOrchestrator = ({ children }: { children: ReactNode }) => {
 
             const hasTarget = auth.currentUser || slug || activeBizId;
             if (hasTarget && !isFetchingRef.current) {
-                console.log("🔍 [Aura Trace] Triggering fetch for:", currentKey);
+                console.log(`🛡️ [Imperial Trace] Orbit Established for: ${currentKey}`);
                 isFetchingRef.current = true;
                 lastFetchedKeyRef.current = currentKey;
                 try {
-                    await fetchData(activeBizId);
+                    await fetchData(activeBizId, undefined, true); // Force fetch on identity locked
                 } finally {
                     isFetchingRef.current = false;
                 }
