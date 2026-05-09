@@ -223,11 +223,11 @@ export default function ClientWrapper({ children }: { children: React.ReactNode 
                                 {children}
                             </main>
                         </div>
-                    ) : currentUser ? (
+                    ) : (currentUser || isPublicPath) ? (
                         <>
-                            <Sidebar />
+                            {(!isPublicPath) && <Sidebar />}
                             <div className="flex-1 flex flex-col min-w-0 bg-background/50 backdrop-blur-sm relative">
-                                <Header />
+                                {(!isPublicPath) && <Header />}
                                 <main className="flex-1 overflow-y-auto w-full relative custom-scrollbar">
                                     <div className="h-full w-full">
                                         {children}

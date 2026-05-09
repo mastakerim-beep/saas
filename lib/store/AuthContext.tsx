@@ -127,21 +127,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             }
         });
 
-        // INCREASED TIMEOUT: 1.5s was causing loops on slow networks.
-        // We wait longer to give the profile fetch a chance to complete.
-        const safetyTimeoutMs = 8000; 
+        // INCREASED TIMEOUT: Reduced to 3s for better UX while maintaining safety.
+        const safetyTimeoutMs = 3000; 
         const safetyTimer = setTimeout(() => {
             setIsInitialized(prev => {
                 if (!prev) {
-                    console.warn('⚠️ [Auth Trace] Initialization timeout (8s). Forced unlock.');
-                    // Try manual session check one last time
-                    supabase.auth.getSession().then(({ data: { session } }) => {
-                        if (session) {
-                            console.log("⏳ [Auth Trace] Session detected but profile missing. Waiting for AuthContext cleanup...");
-                            // Do NOT redirect yet, wait for AuthContext to detect the missing profile and sign out.
-                            return; 
-                        }
-                    });
+                    console.warn('⚠️ [Auth Trace] Initialization timeout (3s). Forced unlock.');
                 }
                 return true; 
             });
