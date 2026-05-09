@@ -85,7 +85,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             } catch (err) {
                 console.error('🛡️ [Auth Trace] Initial session check failed:', err);
             } finally {
-                setIsInitialized(true); 
+                // Ensure profile fetch is accounted for
+                setTimeout(() => setIsInitialized(true), 100);
             }
         };
         checkInitialSession();

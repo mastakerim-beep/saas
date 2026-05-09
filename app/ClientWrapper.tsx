@@ -103,10 +103,16 @@ export default function ClientWrapper({ children }: { children: React.ReactNode 
         // 2. AUTH ROUTING
         if (isInitialized) {
             if (!currentUser) {
-                // Not logged in and not a public path -> Redirect to login
-                console.log("🛡️ [Auth] Redirecting to login...");
-                setIsChecking(false);
-                router.push('/login');
+                // Buffer: Give it a tiny bit more time if we just initialized but have no user
+                // This prevents flashes/redirects on slow profile fetches
+                const buffer = setTimeout(() => {
+                    if (!currentUser && !isPublicPath && !isLoginPath) {
+                        console.log("🛡️ [Auth] Redirecting to login (Buffer Exhausted)...");
+                        setIsChecking(false);
+                        router.push('/login');
+                    }
+                }, 800); // 800ms buffer for profile fetch
+                return () => clearTimeout(buffer);
             } else {
                 // Logged in -> Handle role-based redirects
                 if (isSaaSOwner) {
@@ -129,7 +135,7 @@ export default function ClientWrapper({ children }: { children: React.ReactNode 
                 console.warn("⚠️ [Auth] Safety unlock triggered.");
                 setIsChecking(false);
             }
-        }, 2000);
+        }, 3000);
 
         return () => clearTimeout(timer);
     }, [isMounted, isInitialized, currentUser, pathname, isPublicPath, isLoginPath]);

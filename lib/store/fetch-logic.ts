@@ -78,9 +78,7 @@ export const fetchData = async (
 
     try {
         // --- PHASE 1: CORE DATA (Fast track) ---
-        const tablesInThisPhase = isGuest ? publicTables : coreTables;
-        
-        const fetchTable = async (table: string) => {
+        const tablesInThisPhase = isGuest ? publicTables : coreTa        const fetchTable = async (table: string) => {
             try {
                 const result = await retryRequest(async () => {
                     if (signal?.aborted) throw new Error('Aborted');
@@ -93,29 +91,23 @@ export const fetchData = async (
                     if (table === 'businesses' && isSaaS && !idToUse && slug) {
                         q = q.eq('slug', slug);
                     } else if (idToUse) {
-                        // All tenant-specific tables must use the business_id filter
                         if (table === 'businesses') {
                             q = q.eq('id', idToUse);
                         } else if (table === 'saas_plans') {
-                            // saas_plans is a global table, no business_id filter
+                            // global
                         } else {
                             q = q.eq('business_id', idToUse);
                         }
                     } else if (isSaaS && !slug) {
-                        // Global SaaS fetch - no filters, but limit results for safety
                         if (['businesses', 'app_users'].includes(table)) {
                             q = q.limit(1000);
                         } else {
-                            // Don't fetch bulk operational data without a tenant context
-                            console.log(`Skipping bulk fetch for ${table} in global SaaS mode`);
                             return [];
                         }
                     } else if (!isGuest) {
-                        // If not SaaS/Guest and no ID, RLS will block anyway, but let's be explicit
                         return [];
                     }
 
-                    // LIMIT HEAVY TABLES (Performance Turbo)
                     if (table === 'audit_logs' || table === 'notification_logs') {
                         q = q.order('created_at', { ascending: false }).limit(50);
                     }
@@ -123,7 +115,6 @@ export const fetchData = async (
                         q = q.order('created_at', { ascending: false }).limit(500);
                     }
                     if (table === 'appointments') {
-                        // Default to last 60 days for operational speed
                         const sixtyDaysAgo = new Date();
                         sixtyDaysAgo.setDate(sixtyDaysAgo.getDate() - 60);
                         q = q.gte('date', sixtyDaysAgo.toISOString().split('T')[0]).limit(1000);
@@ -136,8 +127,30 @@ export const fetchData = async (
                     if (error) throw error;
                     return data;
                 });
-                dataMap[table] = toCamel(result || []);
-                return { table, data: dataMap[table] };
+                
+                const camelData = toCamel(result || []);
+                dataMap[table] = camelData;
+
+                // --- PROGRESSIVE HYDRATION: Apply data as soon as it arrives ---
+                if (table === 'staff') setters.setAllStaff?.(camelData);
+                if (table === 'rooms') setters.setAllRooms?.(camelData);
+                if (table === 'services') setters.setAllServices?.(camelData);
+                if (table === 'app_users') setters.setAllUsers?.(camelData);
+                if (table === 'branches') setters.setBranches?.(camelData);
+                if (table === 'booking_settings') setters.setBookingSettings?.(camelData[0] || null);
+                if (table === 'tenant_modules') setters.setTenantModules?.(camelData);
+
+                // Full Tables (Phase 2) also progressive
+                if (table === 'appointments') setters.setAllAppointments?.(camelData);
+                if (table === 'customers') setters.setAllCustomers?.(camelData);
+                if (table === 'payments') setters.setAllPayments?.(camelData);
+                if (table === 'membership_plans') setters.setMembershipPlans?.(camelData);
+                if (table === 'customer_memberships') setters.setCustomerMemberships?.(camelData);
+                if (table === 'z_reports') setters.setZReports?.(camelData);
+                if (table === 'calendar_blocks') setters.setAllBlocks?.(camelData);
+                if (table === 'inventory') setters.setAllInventory?.(camelData);
+
+                return { table, data: camelData };
             } catch (e: any) {
                 console.error(`❌ Table Fetch Error: ${table}`, e);
                 dataMap[table] = [];
@@ -151,7 +164,7 @@ export const fetchData = async (
         // CRITICAL: Release UI Lock after Core Data is ready
         setters.setSyncStatus('idle');
 
-        // APPLY CORE DATA IMMEDIATELY
+        // APPLY BUSINESS/IDENTITY (Must be handled after Phase 1)
         if (dataMap.businesses) {
             const businesses = dataMap.businesses;
             const isGlobalFetch = isSaaS && !targetId && !slug;
@@ -168,60 +181,38 @@ export const fetchData = async (
                     return merged.sort((a: any, b: any) => (a.name || '').localeCompare(b.name || ''));
                 });
             }
-            
-            // Re-detect target biz from fetched data if it wasn't resolved before
             const finalBizId = targetId || businesses[0]?.id;
             const targetBusiness = businesses.find((b: any) => b.id === finalBizId) || businesses[0];
-            
             if (targetBusiness) {
                 setters.setCurrentTenant?.((prev: any) => JSON.stringify(prev) === JSON.stringify(targetBusiness) ? prev : targetBusiness);
             }
         }
 
-        if (dataMap.branches) {
-            setters.setBranches?.(dataMap.branches);
-            if (dataMap.branches.length > 0) {
-                const branches = dataMap.branches;
-                const savedBranchId = localStorage.getItem('aura_last_branch');
-                const userBranchId = currentUser?.branchId;
-                let branchToUse = branches[0];
-                if (savedBranchId && branches.some((b: any) => b.id === savedBranchId)) {
-                    branchToUse = branches.find((b: any) => b.id === savedBranchId);
-                } else if (userBranchId && branches.some((b: any) => b.id === userBranchId)) {
-                    branchToUse = branches.find((b: any) => b.id === userBranchId);
-                }
-                setters.setCurrentBranch((prev: any) => (prev?.id === branchToUse?.id) ? prev : branchToUse);
+        if (dataMap.branches && dataMap.branches.length > 0) {
+            const branches = dataMap.branches;
+            const savedBranchId = localStorage.getItem('aura_last_branch');
+            const userBranchId = currentUser?.branchId;
+            let branchToUse = branches[0];
+            if (savedBranchId && branches.some((b: any) => b.id === savedBranchId)) {
+                branchToUse = branches.find((b: any) => b.id === savedBranchId);
+            } else if (userBranchId && branches.some((b: any) => b.id === userBranchId)) {
+                branchToUse = branches.find((b: any) => b.id === userBranchId);
             }
+            setters.setCurrentBranch((prev: any) => (prev?.id === branchToUse?.id) ? prev : branchToUse);
         }
-        
-        setters.setAllStaff?.(dataMap.staff || []);
-        setters.setAllRooms?.(dataMap.rooms || []);
-        setters.setAllServices?.(dataMap.services || []);
-        setters.setAllUsers?.(dataMap.app_users || []);
-        setters.setTenantModules?.(dataMap.tenant_modules || []);
-        setters.setBookingSettings?.(dataMap.booking_settings?.[0] || null);
 
         // --- PHASE 2: REMAINING DATA (Background) ---
         if (!isGuest) {
-            // Non-blocking fetch for the rest
             Promise.allSettled(fullTables.map(fetchTable)).then(() => {
                 if (signal?.aborted) return;
-                
-                // Final setters for remaining data
-                setters.setAllAppointments?.(toCamel(dataMap.appointments));
-                setters.setAllCustomers?.(toCamel(dataMap.customers));
-                setters.setAllPayments?.(toCamel(dataMap.payments));
-                setters.setMembershipPlans?.(dataMap.membership_plans || []);
-                setters.setCustomerMemberships?.(dataMap.customer_memberships || []);
+                // Remaining setters for tables not in the progressive list
                 setters.setAllDebts?.(dataMap.debts || []);
-                setters.setAllInventory?.(dataMap.inventory || []);
                 setters.setAllExpenses?.(dataMap.expenses || []);
                 setters.setAllPackageDefinitions?.(dataMap.package_definitions || []);
                 setters.setAllPackages?.(dataMap.packages || []);
                 setters.setAllCommissionRules?.(dataMap.commission_rules || []);
                 setters.setAllLogs?.(dataMap.audit_logs || []);
                 setters.setAllCustomerMedia?.(dataMap.customer_media || []);
-                setters.setZReports?.(dataMap.z_reports || []);
                 setters.setPaymentDefinitions?.(dataMap.payment_definitions || []);
                 setters.setBankAccounts?.(dataMap.bank_accounts || []);
                 setters.setExpenseCategories?.(dataMap.expense_categories || []);
@@ -239,17 +230,18 @@ export const fetchData = async (
                 setters.setInventoryTransfers?.(dataMap.inventory_transfers || []);
                 setters.setWebhooks?.(dataMap.webhooks || []);
                 setters.setAllNotifs?.(dataMap.notification_logs || []);
-                setters.setAllBlocks?.(dataMap.calendar_blocks || []);
                 setters.setAllInventoryCategories?.(dataMap.inventory_categories || []);
                 setters.setPackageUsageHistory?.(dataMap.package_usage_history || []);
                 setters.setCustomerBiometrics?.(dataMap.customer_biometrics || []);
-                setters.setCoupons?.(toCamel(dataMap.coupons));
-                setters.setAllPaymentLinks?.(toCamel(dataMap.payment_links));
+                setters.setCoupons?.(dataMap.coupons || []);
+                setters.setAllPaymentLinks?.(dataMap.payment_links || []);
                 setters.setSaaSPlans?.(dataMap.saas_plans || []);
                 setters.setSaaSInvoices?.(dataMap.saas_invoices || []);
                 
                 console.log("✨ [Aura Sync] Background Hydration Complete");
             });
+        }
+      });
         } else {
             setters.setSyncStatus('idle');
         }
