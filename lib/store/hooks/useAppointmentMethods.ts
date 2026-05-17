@@ -75,7 +75,7 @@ export const useAppointmentMethods = (deps: any) => {
                 return false;
             }
             dataRef.current.updateAppointment(id, updates);
-            const targetBizId = prevState.businessId || activeBizIdRef.current;
+            const targetBizId = prevState?.businessId || activeBizIdRef.current;
             const ok = await syncDb('appointments', 'update', updates, id, targetBizId);
             if (!ok && prevState) {
                 dataRef.current.updateAppointment(id, prevState);

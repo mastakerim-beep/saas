@@ -106,7 +106,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
                         
                         // Clear local storage and cookies immediately
                         if (typeof window !== 'undefined') {
-                            localStorage.removeItem('sb-' + process.env.NEXT_PUBLIC_SUPABASE_URL?.split('.')[0].split('//')[1] + '-auth-token');
+                            const keysToRemove = [];
+                            for (let i = 0; i < localStorage.length; i++) {
+                                const key = localStorage.key(i);
+                                if (key && (key.includes('supabase.auth.token') || key.startsWith('sb-') || key.includes('aura_'))) {
+                                    keysToRemove.push(key);
+                                }
+                            }
+                            keysToRemove.forEach(k => localStorage.removeItem(k));
                             document.cookie.split(";").forEach((c) => {
                                 document.cookie = c.replace(/^ +/, "").replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/");
                             });

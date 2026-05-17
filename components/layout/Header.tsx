@@ -15,7 +15,7 @@ export default function Header() {
     const { 
         currentUser, currentBusiness, currentBranch, branches, 
         isOnline, syncStatus, logout, setCurrentBranch, fetchData,
-        runImperialAudit, locale
+        runImperialAudit, locale, allBusinesses, setImpersonatedBusinessId
     } = useStore();
     const d = useDynamicDictionary(locale as any, currentBusiness?.verticals || []) as any;
     const router = useRouter();
@@ -169,7 +169,7 @@ export default function Header() {
                                                     key={b.id}
                                                     onClick={() => {
                                                         if (currentUser.role === 'SaaS_Owner') {
-                                                            useStore.getState().setImpersonatedBusinessId(b.id);
+                                                            setImpersonatedBusinessId(b.id);
                                                         }
                                                         window.location.href = `/${b.slug}/executive`;
                                                         setShowBranchMenu(false);

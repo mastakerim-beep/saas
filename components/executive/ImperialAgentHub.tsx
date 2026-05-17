@@ -408,8 +408,8 @@ export default function ImperialAgentHub() {
                                                             business_id: currentBusiness.id,
                                                             agent_id: selectedAgent.id,
                                                             action_type: 'analysis',
-                                                            description: data.analysis.substring(0, 500),
-                                                            log_type: data.analysis.toLowerCase().includes('kritik') ? 'critical' : 'info'
+                                                            description: (data.analysis || '').substring(0, 500),
+                                                            log_type: (data.analysis || '').toLowerCase().includes('kritik') ? 'critical' : 'info'
                                                         });
                                                         await supabase.rpc('spend_ai_token', { 
                                                             p_business_id: currentBusiness.id, 

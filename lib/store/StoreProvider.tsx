@@ -104,7 +104,7 @@ const StoreOrchestrator = ({ children }: { children: ReactNode }) => {
     const activeBizIdRef = React.useRef<string | undefined>(undefined);
     const lastFetchTimeRef = React.useRef<number>(0);
     const lastFetchBizIdRef = React.useRef<string | undefined>(undefined);
-    const realtimeTimeoutRef = React.useRef<NodeJS.Timeout | null>(null);
+    const realtimeTimeoutRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
     
     const [recentlyModified, setRecentlyModified] = useState<Set<string>>(new Set());
     const recentlyModifiedRef = React.useRef<Set<string>>(new Set());
@@ -356,6 +356,9 @@ const StoreOrchestrator = ({ children }: { children: ReactNode }) => {
                 .on('postgres_changes', { event: '*', schema: 'public', table: 'appointments', filter: `business_id=eq.${activeBizId}` }, triggerFetch)
                 .on('postgres_changes', { event: '*', schema: 'public', table: 'staff', filter: `business_id=eq.${activeBizId}` }, triggerFetch)
                 .on('postgres_changes', { event: '*', schema: 'public', table: 'payments', filter: `business_id=eq.${activeBizId}` }, triggerFetch)
+                .on('postgres_changes', { event: '*', schema: 'public', table: 'customers', filter: `business_id=eq.${activeBizId}` }, triggerFetch)
+                .on('postgres_changes', { event: '*', schema: 'public', table: 'inventory', filter: `business_id=eq.${activeBizId}` }, triggerFetch)
+                .on('postgres_changes', { event: '*', schema: 'public', table: 'packages', filter: `business_id=eq.${activeBizId}` }, triggerFetch)
                 .subscribe();
         }
         

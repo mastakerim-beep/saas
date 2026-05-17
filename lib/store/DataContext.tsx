@@ -92,7 +92,7 @@ export interface DataContextType {
     setAllCustomerMedia: React.Dispatch<React.SetStateAction<CustomerMedia[]>>;
     setAllPackageDefinitions: React.Dispatch<React.SetStateAction<PackageDefinition[]>>;
     setAllCommissionRules: React.Dispatch<React.SetStateAction<CommissionRule[]>>;
-    setAllPayments: React.Dispatch<React.SetStateAction<any[]>>;
+    setAllPayments: React.Dispatch<React.SetStateAction<Payment[]>>;
     setAllInventoryCategories: React.Dispatch<React.SetStateAction<InventoryCategory[]>>;
     setPackageUsageHistory: React.Dispatch<React.SetStateAction<PackageUsageHistory[]>>;
     setPaymentDefinitions: React.Dispatch<React.SetStateAction<PaymentDefinition[]>>;
@@ -135,7 +135,7 @@ export interface DataContextType {
     addQuote: (q: Omit<Quote, 'id' | 'businessId'>) => void;
     updateQuote: (id: string, updates: Partial<Quote>) => void;
     deleteQuote: (id: string) => void;
-    addBodyMap: (map: Omit<ConsultationBodyMap, 'id' | 'businessId'>) => Promise<void>;
+    addBodyMap: (map: Omit<ConsultationBodyMap, 'id' | 'businessId' | 'business_id'>) => Promise<void>;
     updateBodyMap: (id: string, mapData: any) => Promise<void>;
     addUsageNorm: (norm: Omit<InventoryUsageNorm, 'id' | 'businessId'>) => Promise<void>;
     updateUsageNorm: (id: string, updates: Partial<InventoryUsageNorm>) => Promise<void>;
@@ -186,7 +186,7 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
     const [customerMedia, setAllCustomerMedia] = useState<CustomerMedia[]>([]);
     const [packageDefinitions, setAllPackageDefinitions] = useState<PackageDefinition[]>([]);
     const [commissionRules, setAllCommissionRules] = useState<CommissionRule[]>([]);
-    const [allPayments, setAllPayments] = useState<any[]>([]);
+    const [allPayments, setAllPayments] = useState<Payment[]>([]);
     const [inventoryCategories, setAllInventoryCategories] = useState<InventoryCategory[]>([]);
     const [packageUsageHistory, setPackageUsageHistory] = useState<PackageUsageHistory[]>([]);
     const [paymentDefinitions, setPaymentDefinitions] = useState<PaymentDefinition[]>([]);
@@ -273,9 +273,22 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
         setMembershipPlans(prev => [...prev, newPlan]);
     }, []);
 
-    const assignMembership = useCallback((cid: string, pid: string) => {
-        // Logic
-    }, []);
+    const assignMembership = useCallback(async (cid: string, pid: string) => {
+        const plan = membershipPlans.find(p => p.id === pid);
+        if (!plan) return;
+        const id = crypto.randomUUID();
+        const m = { 
+            id, customerId: cid, planId: pid, 
+            startDate: new Date().toISOString().split('T')[0], 
+            expiryDate: new Date(Date.now() + (plan.periodDays || 30) * 86400000).toISOString().split('T')[0], 
+            remainingSessions: plan.sessionsPerMonth, 
+            status: 'active' as const 
+        };
+        setCustomerMemberships(prev => [...prev, m]);
+        
+        // Target biz id could be pulled from the plan
+        await syncDb('customer_memberships', 'insert', m, id, (plan as any).businessId || (plan as any).business_id);
+    }, [membershipPlans]);
 
     const addProduct = useCallback((p: any) => {
         const newProduct = { ...p, id: crypto.randomUUID(), createdAt: new Date().toISOString() };
@@ -327,7 +340,6 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
     }, []);
 
     const addQuote = useCallback((q: Omit<Quote, 'id' | 'businessId'>) => {
-        // @ts-ignore
         const newQuote = { ...q, id: crypto.randomUUID(), createdAt: new Date().toISOString() };
         setAllQuotes(prev => [...prev, newQuote as Quote]);
     }, []);
@@ -341,7 +353,6 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
     }, []);
 
     const addBodyMap = useCallback(async (map: Omit<ConsultationBodyMap, 'id' | 'businessId'>) => {
-        // @ts-ignore
         const newMap = { ...map, id: crypto.randomUUID() };
         setBodyMaps(prev => [...prev, newMap as ConsultationBodyMap]);
     }, []);
@@ -351,7 +362,6 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
     }, []);
 
     const addUsageNorm = useCallback(async (norm: Omit<InventoryUsageNorm, 'id' | 'businessId'>) => {
-        // @ts-ignore
         const newNorm = { ...norm, id: crypto.randomUUID() };
         setUsageNorms(prev => [...prev, newNorm as InventoryUsageNorm]);
     }, []);
@@ -410,18 +420,14 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
     }, [inventoryCategories]);
 
     const transferProduct = useCallback(async (productId: string, fromBranchId: string, toBranchId: string, amount: number, pricePerUnit: number = 0, transferType: string = 'free') => {
-        // Envanter bağımlılığını kaldırmak için doğrudan state setter'ı içinden kontrol edebiliriz ya da 
-        // find işlemini dışarıdan gelen güncel referansla (inventoryRef olsa iyi olurdu ama mevcut yapıda setter yeterli) yapabiliriz.
-        // Mevcut yapıda inventory bağımlılığı re-render döngüsüne sokuyor.
+        let success = false;
         
-        // Önemli: inventory bağımlılığını [] yaparak fonksiyonu re-render'lardan kurtarıyoruz.
-        // İçerideki logic'i ise state'in en güncel halini görecek şekilde (prev => ...) kurguluyoruz.
-        
-        return new Promise<boolean>(async (resolve) => {
+        await new Promise<void>((resolvePromise) => {
             setAllInventory(prev => {
                 const sourceProduct = prev.find(p => p.id === productId);
                 if (!sourceProduct || (sourceProduct.stock || 0) < amount) {
-                    resolve(false);
+                    success = false;
+                    resolvePromise();
                     return prev;
                 }
 
@@ -442,31 +448,58 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
                     updatedList.push({ ...sourceProduct, id: newId, branchId: toBranchId, stock: amount, createdAt: new Date().toISOString() });
                 }
 
-                // Async işlemler (SyncDB) dışarıda yapılacak
-                (async () => {
-                    await syncDb('inventory', 'update', { stock: newSourceStock }, productId);
-                    if (targetProduct) {
-                        await syncDb('inventory', 'update', { stock: (targetProduct.stock || 0) + amount }, targetProduct.id);
-                    } else {
-                        const newProd = updatedList[updatedList.length - 1];
-                        await syncDb('inventory', 'insert', newProd, newProd.id);
-                    }
-
-                    await syncDb('inventory_transfers', 'insert', {
-                        product_id: productId,
-                        from_branch_id: fromBranchId,
-                        to_branch_id: toBranchId,
-                        quantity: amount,
-                        price_per_unit: pricePerUnit,
-                        transfer_type: transferType,
-                        created_at: new Date().toISOString()
-                    });
-                })();
-
-                resolve(true);
+                success = true;
+                resolvePromise();
                 return updatedList;
             });
         });
+
+        if (!success) return false;
+
+        try {
+            let sourceProduct: any = null;
+            let targetProduct: any = null;
+            let newProd: any = null;
+
+            setAllInventory(prev => {
+                sourceProduct = prev.find(p => p.id === productId);
+                targetProduct = prev.find(p => p.name === sourceProduct?.name && p.branchId === toBranchId && p.id !== productId);
+                if (!targetProduct) {
+                    newProd = prev.find(p => p.name === sourceProduct?.name && p.branchId === toBranchId);
+                }
+                return prev;
+            });
+
+            if (!sourceProduct) return false;
+
+            const targetBizId = sourceProduct.businessId || sourceProduct.business_id;
+
+            const p1 = syncDb('inventory', 'update', { stock: sourceProduct.stock }, productId, targetBizId);
+            let p2 = Promise.resolve(true);
+            if (targetProduct) {
+                p2 = syncDb('inventory', 'update', { stock: targetProduct.stock }, targetProduct.id, targetBizId);
+            } else if (newProd) {
+                p2 = syncDb('inventory', 'insert', newProd, newProd.id, targetBizId);
+            }
+
+            const transId = crypto.randomUUID();
+            const p3 = syncDb('inventory_transfers', 'insert', {
+                id: transId,
+                product_id: productId,
+                from_branch_id: fromBranchId,
+                to_branch_id: toBranchId,
+                quantity: amount,
+                price_per_unit: pricePerUnit,
+                transfer_type: transferType,
+                created_at: new Date().toISOString()
+            }, transId, targetBizId);
+
+            const results = await Promise.all([p1, p2, p3]);
+            return results.every(Boolean);
+        } catch (error) {
+            console.error("❌ Product transfer sync failed:", error);
+            return false;
+        }
     }, []);
 
     const addPackageUsageHistory = useCallback((h: any) => {

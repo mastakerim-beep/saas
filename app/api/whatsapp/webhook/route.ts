@@ -21,7 +21,7 @@ export async function POST(req: Request) {
         // 2. Initialize Gemini for B2C Concierge
         const { data: config } = await supabase.from('system_config').select('value').eq('key', 'GEMINI_API_KEY').single();
         const genAI = new GoogleGenerativeAI(config?.value || process.env.GEMINI_API_KEY || "");
-        const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+        const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
 
         const systemPrompt = `
             Sen ${business.name} işletmesinin WhatsApp AI Concierge botusun. 

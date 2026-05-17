@@ -74,10 +74,7 @@ export async function POST(req: Request) {
             try {
                 console.log(`[AI-AGENT] Attempting analysis with ${modelName}...`);
                 const model = genAI.getGenerativeModel({ 
-                    model: modelName,
-                    generationConfig: {
-                        responseMimeType: "application/json",
-                    }
+                    model: modelName
                 });
                 const result = await model.generateContent(systemPrompt);
                 const response = await result.response;

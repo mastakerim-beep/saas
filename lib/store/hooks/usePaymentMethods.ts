@@ -205,11 +205,6 @@ export const usePaymentMethods = (deps: any) => {
                 }
             }
 
-            // Legacy Fallback (Happy Hour)
-            if (h >= 9 && h < 12) {
-                return { price: price * 0.8, reason: 'Happy Hour İndirimi (%20)' };
-            }
-            
             return { price, reason: null };
         },
 
@@ -218,7 +213,7 @@ export const usePaymentMethods = (deps: any) => {
             if (!bizId) return null;
             
             const id = crypto.randomUUID();
-            const token = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+            const token = crypto.randomUUID().replace(/-/g, '') + crypto.randomUUID().replace(/-/g, '');
             const link = {
                 id,
                 business_id: bizId,

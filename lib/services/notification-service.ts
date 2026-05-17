@@ -11,6 +11,7 @@ export interface NotificationPayload {
     type: 'payment_success' | 'appointment_reminder' | 'link_payment_request';
     amount?: number;
     link?: string;
+    time?: string;
 }
 
 export const NotificationService = {
@@ -22,7 +23,7 @@ export const NotificationService = {
         
         const templates = {
             payment_success: `Merhaba ${payload.customerName}, ${payload.businessName} için ₺${payload.amount} tutarındaki ödemeniz başarıyla alınmıştır. Bizi tercih ettiğiniz için teşekkürler!`,
-            appointment_reminder: `Hatırlatma: ${payload.businessName} randevunuz bugün saat {time}'da. Sizi bekliyoruz!`,
+            appointment_reminder: `Hatırlatma: ${payload.businessName} randevunuz bugün saat ${payload.time || 'belirtilen saatte'}. Sizi bekliyoruz!`,
             link_payment_request: `Merhaba ${payload.customerName}, ${payload.businessName} ödemeniz için güvenli link: ${payload.link}`
         };
 

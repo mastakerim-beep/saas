@@ -49,7 +49,7 @@ export const fetchData = async (
         'customer_wallets', 'wallet_transactions', 'consultation_body_maps', 
         'inventory_usage_norms', 'loyalty_settings', 'webhooks', 
         'inventory_categories', 'inventory_transfers', 'package_usage_history', 'customer_biometrics', 'coupons',
-        'saas_plans', 'saas_invoices', 'payment_links'
+        'saas_plans', 'saas_invoices', 'payment_links', 'ai_insights'
     ];
 
     if (!targetId && !isSaaS && !isGuest) {
@@ -175,14 +175,14 @@ export const fetchData = async (
             if (targetBusiness) {
                 setters.setCurrentTenant?.(targetBusiness);
             }
-            if (isSaaS && !targetId && !slug) {
+            if ((isSaaS || currentUser?.holding_id) && !targetId && !slug) {
                 setters.setAllBusinesses(businesses.sort((a: any, b: any) => (a.name || '').localeCompare(b.name || '')));
             }
         }
 
         if (dataMap.branches && dataMap.branches.length > 0) {
             const branches = dataMap.branches;
-            const savedBranchId = localStorage.getItem('aura_last_branch');
+            const savedBranchId = typeof window !== 'undefined' ? localStorage.getItem('aura_last_branch') : null;
             const userBranchId = currentUser?.branchId;
             let branchToUse = branches[0];
             if (savedBranchId && branches.some((b: any) => b.id === savedBranchId)) {
@@ -227,6 +227,7 @@ export const fetchData = async (
                 setters.setAllPaymentLinks?.(dataMap.payment_links || []);
                 setters.setSaaSPlans?.(dataMap.saas_plans || []);
                 setters.setSaaSInvoices?.(dataMap.saas_invoices || []);
+                setters.setAiInsights?.(dataMap.ai_insights || []);
             });
         }
 
